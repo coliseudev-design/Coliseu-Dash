@@ -19,8 +19,8 @@ export default function Produtos() {
   const k = kpis.data?.kpis
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4">
         <KPICard
           label="Total Produtos"
           value={formatNum(k?.total_produtos)}

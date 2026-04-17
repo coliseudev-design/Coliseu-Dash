@@ -23,8 +23,8 @@ export default function DataTable<T>({
 }: Props<T>) {
   return (
     <div className="card !p-0 overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+      <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+        <table className="w-full text-xs sm:text-sm min-w-[500px]">
           <thead className="bg-bg-secondary border-b border-[#E0E0E0]">
             <tr>
               {columns.map((c) => (
@@ -32,7 +32,7 @@ export default function DataTable<T>({
                   key={String(c.key)}
                   style={c.width ? { width: c.width } : undefined}
                   className={clsx(
-                    'px-4 py-2.5 text-xs font-semibold text-text-secondary uppercase tracking-wide',
+                    'px-3 sm:px-4 py-2 sm:py-2.5 text-[10px] sm:text-xs font-semibold text-text-secondary uppercase tracking-wide whitespace-nowrap',
                     c.align === 'right' && 'text-right',
                     c.align === 'center' && 'text-center',
                     !c.align && 'text-left',
@@ -48,15 +48,15 @@ export default function DataTable<T>({
               Array.from({ length: 5 }).map((_, i) => (
                 <tr key={i} className="border-b border-[#E0E0E0] last:border-0">
                   {columns.map((c) => (
-                    <td key={String(c.key)} className="px-4 py-3">
-                      <div className="h-4 bg-bg-tertiary animate-pulse rounded" />
+                    <td key={String(c.key)} className="px-3 sm:px-4 py-2.5 sm:py-3">
+                      <div className="h-3 sm:h-4 bg-bg-tertiary animate-pulse rounded" />
                     </td>
                   ))}
                 </tr>
               ))
             ) : data.length === 0 ? (
               <tr>
-                <td colSpan={columns.length} className="px-4 py-12 text-center text-text-muted">
+                <td colSpan={columns.length} className="px-4 py-10 sm:py-12 text-center text-text-muted text-sm">
                   {empty}
                 </td>
               </tr>
@@ -70,8 +70,8 @@ export default function DataTable<T>({
                     <td
                       key={String(c.key)}
                       className={clsx(
-                        'px-4 py-3 text-text-primary',
-                        c.align === 'right' && 'text-right mono',
+                        'px-3 sm:px-4 py-2.5 sm:py-3 text-text-primary',
+                        c.align === 'right' && 'text-right mono whitespace-nowrap',
                         c.align === 'center' && 'text-center',
                         c.className,
                       )}

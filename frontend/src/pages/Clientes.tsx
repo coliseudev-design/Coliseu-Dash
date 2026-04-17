@@ -18,10 +18,10 @@ export default function Clientes() {
   const k = kpis.data?.kpis
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <PeriodFilter />
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         <KPICard
           label="Total Clientes"
           value={formatNum(k?.total_clientes)}

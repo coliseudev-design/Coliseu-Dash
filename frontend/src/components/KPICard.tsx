@@ -18,26 +18,26 @@ export default function KPICard({
 }: Props) {
   return (
     <div className="card">
-      <div className="flex items-start justify-between">
-        <div className="kpi-label">{label}</div>
+      <div className="flex items-start justify-between gap-2">
+        <div className="kpi-label flex-1">{label}</div>
         {Icon && (
-          <div className={clsx('w-8 h-8 rounded-lg bg-bg-tertiary flex items-center justify-center', iconColor)}>
-            <Icon size={16} />
+          <div className={clsx('w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-bg-tertiary flex items-center justify-center flex-shrink-0', iconColor)}>
+            <Icon size={14} className="sm:w-4 sm:h-4" />
           </div>
         )}
       </div>
-      <div className="mt-2">
+      <div className="mt-1.5 sm:mt-2">
         {loading ? (
-          <div className="h-8 w-32 bg-bg-tertiary animate-pulse rounded" />
+          <div className="h-6 sm:h-8 w-24 bg-bg-tertiary animate-pulse rounded" />
         ) : (
-          <div className="kpi-value">{value}</div>
+          <div className="kpi-value break-words">{value}</div>
         )}
         {(hint || trendValue) && (
-          <div className="mt-1 text-xs text-text-secondary flex items-center gap-1">
+          <div className="mt-0.5 sm:mt-1 text-[10px] sm:text-xs text-text-secondary flex items-center gap-1 truncate">
             {trend === 'up' && <span className="text-success">▲</span>}
             {trend === 'down' && <span className="text-danger">▼</span>}
             {trendValue && <span>{trendValue}</span>}
-            {hint && <span>{hint}</span>}
+            {hint && <span className="truncate">{hint}</span>}
           </div>
         )}
       </div>

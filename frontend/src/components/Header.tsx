@@ -16,19 +16,19 @@ export default function Header({ onMenuClick, title }: Props) {
   const [menuOpen, setMenuOpen] = useState(false)
 
   return (
-    <header className="h-16 bg-white border-b border-[#E0E0E0] sticky top-0 z-20 flex items-center px-4 lg:px-6">
+    <header className="h-14 sm:h-16 bg-white border-b border-[#E0E0E0] sticky top-0 z-20 flex items-center px-3 sm:px-4 lg:px-6">
       <button
-        className="lg:hidden p-2 -ml-2 text-text-secondary hover:bg-bg-secondary rounded"
+        className="lg:hidden p-2 -ml-2 text-text-secondary hover:bg-bg-secondary rounded-lg active:bg-bg-tertiary"
         onClick={onMenuClick}
         aria-label="Abrir menu"
       >
-        <Menu size={20} />
+        <Menu size={22} />
       </button>
 
-      <h1 className="font-heading text-lg font-semibold ml-2 lg:ml-0">{title}</h1>
+      <h1 className="font-heading text-base sm:text-lg font-semibold ml-1 sm:ml-2 lg:ml-0 truncate">{title}</h1>
 
-      <div className="ml-auto flex items-center gap-3">
-        {/* Status sync */}
+      <div className="ml-auto flex items-center gap-1 sm:gap-3">
+        {/* Status sync (desktop) */}
         <div className="hidden md:flex items-center gap-2 text-xs text-text-secondary">
           {status === 'ok' ? (
             <CheckCircle2 size={14} className="text-success" />
@@ -36,13 +36,22 @@ export default function Header({ onMenuClick, title }: Props) {
             <AlertCircle size={14} className="text-warning" />
           )}
           <span>
-            Última sync:{' '}
+            Sync:{' '}
             <span className="mono">{lastSync ? formatDateTime(lastSync) : 'nunca'}</span>
           </span>
         </div>
 
+        {/* Sync indicator mobile (só o ícone) */}
+        <div className="md:hidden flex items-center">
+          {status === 'ok' ? (
+            <CheckCircle2 size={16} className="text-success" />
+          ) : (
+            <AlertCircle size={16} className="text-warning" />
+          )}
+        </div>
+
         <button
-          className="btn-ghost !px-2 !py-2"
+          className="p-2 text-text-secondary hover:bg-bg-secondary rounded-lg active:bg-bg-tertiary"
           onClick={triggerSync}
           disabled={isSyncing}
           title="Forçar sincronização"
@@ -53,7 +62,7 @@ export default function Header({ onMenuClick, title }: Props) {
         {/* Usuário */}
         <div className="relative">
           <button
-            className="flex items-center gap-2 px-2 py-1.5 hover:bg-bg-secondary rounded-lg"
+            className="flex items-center gap-2 px-1.5 py-1 sm:px-2 sm:py-1.5 hover:bg-bg-secondary rounded-lg active:bg-bg-tertiary"
             onClick={() => setMenuOpen((o) => !o)}
           >
             <div className="w-8 h-8 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center text-sm font-semibold">
@@ -67,9 +76,9 @@ export default function Header({ onMenuClick, title }: Props) {
           {menuOpen && (
             <>
               <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} />
-              <div className="absolute right-0 mt-1 w-48 bg-white border border-[#E0E0E0] rounded-lg shadow-card-hover z-40 py-1">
+              <div className="absolute right-0 mt-1 w-52 bg-white border border-[#E0E0E0] rounded-lg shadow-card-hover z-40 py-1">
                 <div className="px-3 py-2 border-b border-[#E0E0E0]">
-                  <div className="text-sm font-medium">{user?.nome}</div>
+                  <div className="text-sm font-medium truncate">{user?.nome}</div>
                   <div className="text-xs text-text-secondary truncate">{user?.email}</div>
                 </div>
                 <button

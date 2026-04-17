@@ -15,10 +15,10 @@ export default function Ranking() {
   const clientes = usePeriodQuery<any>('/ranking/clientes', { limit: 10 })
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <PeriodFilter />
 
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid lg:grid-cols-2 gap-4 sm:gap-6">
         <ChartCard
           title="Top 10 Vendedores"
           subtitle="Vendedores com maior volume de vendas"

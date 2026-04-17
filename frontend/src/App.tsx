@@ -8,15 +8,11 @@ import DashboardLayout from './components/DashboardLayout'
 import Home from './pages/Home'
 import Vendas from './pages/Vendas'
 import Financeiro from './pages/Financeiro'
-import Lucratividade from './pages/Lucratividade'
 import Comissoes from './pages/Comissoes'
 import Ranking from './pages/Ranking'
 import Estatisticas from './pages/Estatisticas'
-import Compras from './pages/Compras'
-import Devolucoes from './pages/Devolucoes'
 import Produtos from './pages/Produtos'
 import Clientes from './pages/Clientes'
-import LogPage from './pages/Log'
 
 function Protected({ children }: { children: JSX.Element }) {
   const user = useAuthStore((s) => s.user)
@@ -54,15 +50,11 @@ export default function App() {
         <Route index element={<Home />} />
         <Route path="vendas" element={<Vendas />} />
         <Route path="financeiro" element={<Financeiro />} />
-        <Route path="lucratividade" element={<Lucratividade />} />
         <Route path="comissoes" element={<Comissoes />} />
         <Route path="ranking" element={<Ranking />} />
         <Route path="estatisticas" element={<Estatisticas />} />
-        <Route path="compras" element={<Compras />} />
-        <Route path="devolucoes" element={<Devolucoes />} />
         <Route path="produtos" element={<Produtos />} />
         <Route path="clientes" element={<Clientes />} />
-        <Route path="log" element={<LogPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

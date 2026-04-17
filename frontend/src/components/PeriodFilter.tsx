@@ -27,18 +27,18 @@ export default function PeriodFilter() {
   }
 
   return (
-    <div className="card !p-3">
-      <div className="flex items-center gap-2 flex-wrap">
-        <Calendar size={16} className="text-text-secondary ml-1" />
+    <div className="card !p-2.5 sm:!p-3">
+      <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1 -mb-1" style={{ WebkitOverflowScrolling: 'touch' }}>
+        <Calendar size={16} className="text-text-secondary ml-1 flex-shrink-0" />
         {PERIOD_OPTIONS.map((opt) => (
           <button
             key={opt.key}
             onClick={() => handleClick(opt.key)}
             className={clsx(
-              'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
+              'px-3 py-2 sm:py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap flex-shrink-0',
               period === opt.key
                 ? 'bg-brand-500 text-white'
-                : 'bg-bg-secondary text-text-secondary hover:bg-bg-tertiary',
+                : 'bg-bg-secondary text-text-secondary hover:bg-bg-tertiary active:bg-[#E5E7EB]',
             )}
           >
             {opt.label}

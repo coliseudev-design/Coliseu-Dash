@@ -27,14 +27,14 @@ export default function Home() {
   const recentes = useApiQuery<any>('/vendas/recentes', { limit: 8 })
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div>
         <h2 className="font-heading text-xl font-semibold">Visão Geral</h2>
         <p className="text-text-secondary text-sm">Resumo consolidado do negócio em tempo real</p>
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
         <KPICard
           label="Faturamento Hoje"
           value={formatBRLCompact(ov.data?.hoje.total)}
@@ -81,7 +81,7 @@ export default function Home() {
         />
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-6">
+      <div className="grid lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Gráfico de vendas últimos 7 dias */}
         <ChartCard
           title="Vendas · Últimos 7 dias"
@@ -121,12 +121,11 @@ export default function Home() {
             {[
               { to: '/vendas', label: 'Vendas' },
               { to: '/financeiro', label: 'Financeiro' },
-              { to: '/lucratividade', label: 'Lucro' },
               { to: '/comissoes', label: 'Comissões' },
               { to: '/ranking', label: 'Ranking' },
+              { to: '/estatisticas', label: 'Estatísticas' },
               { to: '/produtos', label: 'Produtos' },
               { to: '/clientes', label: 'Clientes' },
-              { to: '/log', label: 'Log' },
             ].map((m) => (
               <Link
                 key={m.to}
@@ -142,27 +141,27 @@ export default function Home() {
 
       {/* Últimas vendas */}
       <ChartCard title="Últimas Vendas" subtitle="8 pedidos mais recentes" loading={recentes.isLoading}>
-        <div className="overflow-x-auto -mx-5">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto -mx-3 sm:-mx-5" style={{ WebkitOverflowScrolling: 'touch' }}>
+          <table className="w-full text-xs sm:text-sm min-w-[600px]">
             <thead>
-              <tr className="text-xs text-text-secondary uppercase border-b border-[#E0E0E0]">
-                <th className="text-left px-5 py-2">Pedido</th>
-                <th className="text-left px-5 py-2">Cliente</th>
-                <th className="text-left px-5 py-2">Vendedor</th>
-                <th className="text-left px-5 py-2">Data</th>
-                <th className="text-right px-5 py-2">Valor</th>
-                <th className="text-center px-5 py-2">Status</th>
+              <tr className="text-[10px] sm:text-xs text-text-secondary uppercase border-b border-[#E0E0E0]">
+                <th className="text-left px-3 sm:px-5 py-2 whitespace-nowrap">Pedido</th>
+                <th className="text-left px-3 sm:px-5 py-2">Cliente</th>
+                <th className="text-left px-3 sm:px-5 py-2 hidden sm:table-cell">Vendedor</th>
+                <th className="text-left px-3 sm:px-5 py-2 whitespace-nowrap">Data</th>
+                <th className="text-right px-3 sm:px-5 py-2 whitespace-nowrap">Valor</th>
+                <th className="text-center px-3 sm:px-5 py-2">Status</th>
               </tr>
             </thead>
             <tbody>
               {(recentes.data?.data || []).map((r: any) => (
                 <tr key={r.id} className="border-b border-[#E0E0E0] last:border-0 hover:bg-bg-secondary">
-                  <td className="px-5 py-2.5 mono text-brand-600 font-medium">{r.numero_pedido}</td>
-                  <td className="px-5 py-2.5 truncate max-w-[200px]">{r.cliente || '—'}</td>
-                  <td className="px-5 py-2.5 text-text-secondary">{r.vendedor || '—'}</td>
-                  <td className="px-5 py-2.5 text-text-secondary">{formatDateTime(r.data_venda)}</td>
-                  <td className="px-5 py-2.5 text-right mono font-medium">{formatBRL(r.valor_total)}</td>
-                  <td className="px-5 py-2.5 text-center">
+                  <td className="px-3 sm:px-5 py-2.5 mono text-brand-600 font-medium whitespace-nowrap">{r.numero_pedido}</td>
+                  <td className="px-3 sm:px-5 py-2.5 truncate max-w-[140px] sm:max-w-[220px]">{r.cliente || '—'}</td>
+                  <td className="px-3 sm:px-5 py-2.5 text-text-secondary hidden sm:table-cell">{r.vendedor || '—'}</td>
+                  <td className="px-3 sm:px-5 py-2.5 text-text-secondary whitespace-nowrap">{formatDateTime(r.data_venda)}</td>
+                  <td className="px-3 sm:px-5 py-2.5 text-right mono font-medium whitespace-nowrap">{formatBRL(r.valor_total)}</td>
+                  <td className="px-3 sm:px-5 py-2.5 text-center">
                     <span className={`badge-${r.status === 'FINALIZADO' ? 'success' : r.status === 'CANCELADO' ? 'neutral' : 'warning'}`}>
                       {r.status}
                     </span>

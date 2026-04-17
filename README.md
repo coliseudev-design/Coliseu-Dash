@@ -32,18 +32,19 @@ Dashboard corporativo para Coliseu / Compensados Mama com sincronização autom�
 - [x] Autenticação JWT (24h) + refresh (`POST /api/auth/login`, `GET /api/auth/me`, `POST /api/auth/refresh`, `POST /api/auth/logout`)
 - [x] Middleware `authMiddleware` (JWT) e `syncApiKeyMiddleware` (`X-Sync-Api-Key`) — proteção contra SQL‑injection via whitelist de tabelas/colunas
 - [x] Endpoint unificado de ingestão: `POST /api/sync/ingest` (tabela + rows + mode=upsert|truncate)
-- [x] **11 módulos funcionais** com KPIs, séries temporais, filtros por período e busca:
-  - `/api/vendas` · `/api/financeiro` · `/api/lucratividade` · `/api/comissoes`
-  - `/api/ranking` · `/api/estatisticas` · `/api/compras` · `/api/devolucoes`
-  - `/api/produtos` · `/api/clientes` · `/api/log`
+- [x] **7 módulos funcionais** com KPIs, séries temporais, filtros por período e busca:
+  - `/api/vendas` · `/api/financeiro` · `/api/comissoes`
+  - `/api/ranking` · `/api/estatisticas` · `/api/produtos` · `/api/clientes`
+- [x] **Financeiro** inclui: Caixa (`/caixa`) + Espécies Vendidas (`/especies-vendidas`) + Contas a Receber/Pagar + Fluxo de Caixa
 - [x] CORS restrito a origens configuradas
 - [x] Healthcheck `/api/health`
 
 ### Frontend (React 19 + Vite + Tailwind)
-- [x] Layout corporativo branco (sidebar + header + área principal)
-- [x] Login com redirect automático
-- [x] 13 páginas: Home, Login + 11 módulos
-- [x] Gráficos Recharts (linha, barra, pizza)
+- [x] Layout corporativo branco com **logo oficial Coliseu Sistemas** (header escuro na sidebar e na tela de login)
+- [x] **Totalmente responsivo — otimizado para celular**: sidebar vira drawer com overlay, tabelas com scroll horizontal touch, KPIs compactos em 2 colunas no mobile, botões com área tátil ampliada
+- [x] Login com redirect automático e modo teste sem senha
+- [x] 9 páginas: Home, Login + 7 módulos
+- [x] Gráficos Recharts (linha, barra, pizza) — com alturas e fontes adaptativas
 - [x] TanStack Query para cache/refetch automático
 - [x] Zustand para sessão/auth
 - [x] Web Worker de sincronização (`syncWorker.ts`) para polling e cache offline

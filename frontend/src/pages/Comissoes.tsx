@@ -16,10 +16,10 @@ export default function Comissoes() {
   const detalhes = usePeriodQuery<any>('/comissoes/detalhes', { limit: 100 })
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <PeriodFilter />
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4">
         <KPICard
           label="Total de Comissões"
           value={formatBRLCompact(kpis.data?.kpis?.total)}

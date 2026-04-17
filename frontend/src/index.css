@@ -27,30 +27,30 @@
 
 @layer components {
   .card {
-    @apply bg-white border border-[#E0E0E0] rounded-xl shadow-card p-5 transition-shadow;
+    @apply bg-white border border-[#E0E0E0] rounded-xl shadow-card p-3 sm:p-5 transition-shadow;
   }
   .card:hover {
     @apply shadow-card-hover;
   }
   .btn {
-    @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all;
+    @apply inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-lg font-medium text-sm transition-all;
   }
   .btn-primary {
-    @apply btn bg-brand-500 text-white hover:bg-brand-600 active:bg-brand-700;
+    @apply btn bg-brand-500 text-white hover:bg-brand-600 active:bg-brand-700 disabled:opacity-60;
   }
   .btn-secondary {
-    @apply btn bg-white border border-[#E0E0E0] text-text-primary hover:bg-bg-secondary;
+    @apply btn bg-white border border-[#E0E0E0] text-text-primary hover:bg-bg-secondary active:bg-bg-tertiary;
   }
   .btn-ghost {
-    @apply btn text-text-secondary hover:bg-bg-tertiary;
+    @apply btn text-text-secondary hover:bg-bg-tertiary active:bg-bg-secondary;
   }
   .input {
-    @apply w-full px-3 py-2 text-sm rounded-lg border border-[#E0E0E0] bg-white
+    @apply w-full px-3 py-2.5 text-sm rounded-lg border border-[#E0E0E0] bg-white
            focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500
            placeholder:text-text-muted;
   }
   .badge {
-    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium;
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] sm:text-xs font-medium whitespace-nowrap;
   }
   .badge-success { @apply badge bg-green-50 text-green-700; }
   .badge-warning { @apply badge bg-amber-50 text-amber-700; }
@@ -58,8 +58,14 @@
   .badge-info    { @apply badge bg-blue-50 text-blue-700; }
   .badge-neutral { @apply badge bg-gray-100 text-gray-700; }
 
-  .kpi-label { @apply text-xs font-medium text-text-secondary uppercase tracking-wide; }
-  .kpi-value { @apply mono text-2xl font-semibold text-text-primary; }
+  .kpi-label { @apply text-[10px] sm:text-xs font-medium text-text-secondary uppercase tracking-wide leading-tight; }
+  .kpi-value { @apply mono text-lg sm:text-2xl font-semibold text-text-primary leading-tight; }
+
+  /* Tabela responsiva com scroll horizontal suave */
+  .table-scroll {
+    @apply overflow-x-auto -mx-3 sm:mx-0;
+    -webkit-overflow-scrolling: touch;
+  }
 
   /* Scrollbar discreta */
   ::-webkit-scrollbar {

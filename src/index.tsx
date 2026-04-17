@@ -9,15 +9,11 @@ import auth from './api/routes/auth'
 import sync from './api/routes/sync'
 import vendas from './api/routes/vendas'
 import financeiro from './api/routes/financeiro'
-import lucratividade from './api/routes/lucratividade'
 import comissoes from './api/routes/comissoes'
 import ranking from './api/routes/ranking'
 import estatisticas from './api/routes/estatisticas'
-import compras from './api/routes/compras'
-import devolucoes from './api/routes/devolucoes'
 import produtos from './api/routes/produtos'
 import clientes from './api/routes/clientes'
-import log from './api/routes/log'
 
 const app = new Hono<{ Bindings: Bindings; Variables: Variables }>()
 
@@ -47,15 +43,11 @@ const api = new Hono<{ Bindings: Bindings; Variables: Variables }>()
 api.use('*', authMiddleware)
 api.route('/vendas', vendas)
 api.route('/financeiro', financeiro)
-api.route('/lucratividade', lucratividade)
 api.route('/comissoes', comissoes)
 api.route('/ranking', ranking)
 api.route('/estatisticas', estatisticas)
-api.route('/compras', compras)
-api.route('/devolucoes', devolucoes)
 api.route('/produtos', produtos)
 api.route('/clientes', clientes)
-api.route('/log', log)
 
 app.route('/api', api)
 

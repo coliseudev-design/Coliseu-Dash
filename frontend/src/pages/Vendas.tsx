@@ -19,11 +19,11 @@ export default function Vendas() {
   const abertos = usePeriodQuery<any>('/vendas/pedidos-abertos')
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <PeriodFilter />
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4">
         <KPICard
           label="Total Faturado"
           value={formatBRLCompact(kpis.data?.kpis?.total_faturado)}
@@ -86,7 +86,7 @@ export default function Vendas() {
         </div>
       </ChartCard>
 
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Por horário */}
         <ChartCard
           title="Vendas por Horário"

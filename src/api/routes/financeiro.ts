@@ -119,6 +119,129 @@ financeiro.get('/kpis', async (c) => {
   })
 })
 
+// GET /api/financeiro/caixa?period= - resumo de caixa (entradas/saidas pagas no período)
+financeiro.get('/caixa', async (c) => {
+  const period = (c.req.query('period') || 'thisMonth') as Period
+  const { start, end, label } = resolvePeriod(
+    period,
+    c.req.query('start_date') || undefined,
+    c.req.query('end_date') || undefined,
+  )
+
+  // Totais do período (somente pagos)
+  const tot = await c.env.DB.prepare(
+    `SELECT
+        COALESCE(SUM(CASE WHEN tipo = 'RECEBER' AND status_pagamento = 'PAGO'
+                          AND data_pagamento BETWEEN ? AND ? THEN valor_pago ELSE 0 END), 0) AS entradas,
+        COALESCE(SUM(CASE WHEN tipo = 'PAGAR'   AND status_pagamento = 'PAGO'
+                          AND data_pagamento BETWEEN ? AND ? THEN valor_pago ELSE 0 END), 0) AS saidas,
+        COUNT(DISTINCT CASE WHEN tipo = 'RECEBER' AND status_pagamento = 'PAGO'
+                            AND data_pagamento BETWEEN ? AND ? THEN id END) AS qtd_entradas,
+        COUNT(DISTINCT CASE WHEN tipo = 'PAGAR'   AND status_pagamento = 'PAGO'
+                            AND data_pagamento BETWEEN ? AND ? THEN id END) AS qtd_saidas
+       FROM sync_financeiro`
+  ).bind(start, end, start, end, start, end, start, end).first<any>()
+
+  // Movimentações diárias
+  const { results: mov } = await c.env.DB.prepare(
+    `SELECT substr(data_pagamento, 1, 10) AS data,
+            SUM(CASE WHEN tipo = 'RECEBER' THEN valor_pago ELSE 0 END) AS entradas,
+            SUM(CASE WHEN tipo = 'PAGAR'   THEN valor_pago ELSE 0 END) AS saidas
+       FROM sync_financeiro
+      WHERE status_pagamento = 'PAGO'
+        AND data_pagamento BETWEEN ? AND ?
+      GROUP BY substr(data_pagamento, 1, 10)
+      ORDER BY data`
+  ).bind(start, end).all()
+
+  // Saldo acumulado ao longo do período
+  let acc = 0
+  const movimentacoes = (mov as any[]).map((m) => {
+    acc += (m.entradas || 0) - (m.saidas || 0)
+    return { ...m, saldo_acumulado: acc }
+  })
+
+  const entradas = tot?.entradas || 0
+  const saidas = tot?.saidas || 0
+
+  return c.json({
+    period: { start, end, label },
+    kpis: {
+      entradas,
+      saidas,
+      saldo: entradas - saidas,
+      qtd_entradas: tot?.qtd_entradas || 0,
+      qtd_saidas: tot?.qtd_saidas || 0,
+      ticket_medio_entrada: tot?.qtd_entradas > 0 ? entradas / tot.qtd_entradas : 0,
+    },
+    movimentacoes,
+  })
+})
+
+// GET /api/financeiro/especies-vendidas?period= - produtos/categorias mais vendidos
+financeiro.get('/especies-vendidas', async (c) => {
+  const period = (c.req.query('period') || 'thisMonth') as Period
+  const { start, end, label } = resolvePeriod(
+    period,
+    c.req.query('start_date') || undefined,
+    c.req.query('end_date') || undefined,
+  )
+  const limit = Number(c.req.query('limit') || 15)
+
+  // Top produtos (espécies) vendidos no período
+  const { results: produtos } = await c.env.DB.prepare(
+    `SELECT p.id,
+            p.codigo,
+            p.nome,
+            p.categoria,
+            SUM(i.quantidade) AS quantidade_vendida,
+            SUM(i.valor_total) AS total_vendido,
+            COUNT(DISTINCT i.venda_id) AS qtd_vendas,
+            AVG(i.preco_unitario) AS preco_medio
+       FROM sync_vendas_itens i
+       INNER JOIN sync_vendas v ON v.id = i.venda_id
+       INNER JOIN sync_produtos p ON p.id = i.produto_id
+      WHERE v.data_venda BETWEEN ? AND ?
+        AND v.status = 'FINALIZADO'
+      GROUP BY p.id, p.codigo, p.nome, p.categoria
+      ORDER BY total_vendido DESC
+      LIMIT ?`
+  ).bind(start, end, limit).all()
+
+  // Totais por categoria (agrupado)
+  const { results: categorias } = await c.env.DB.prepare(
+    `SELECT COALESCE(NULLIF(p.categoria, ''), 'Sem categoria') AS categoria,
+            SUM(i.quantidade) AS quantidade,
+            SUM(i.valor_total) AS total
+       FROM sync_vendas_itens i
+       INNER JOIN sync_vendas v ON v.id = i.venda_id
+       INNER JOIN sync_produtos p ON p.id = i.produto_id
+      WHERE v.data_venda BETWEEN ? AND ?
+        AND v.status = 'FINALIZADO'
+      GROUP BY categoria
+      ORDER BY total DESC`
+  ).bind(start, end).all()
+
+  // Total geral
+  const totGeral = await c.env.DB.prepare(
+    `SELECT SUM(i.valor_total) AS total, SUM(i.quantidade) AS quantidade
+       FROM sync_vendas_itens i
+       INNER JOIN sync_vendas v ON v.id = i.venda_id
+      WHERE v.data_venda BETWEEN ? AND ?
+        AND v.status = 'FINALIZADO'`
+  ).bind(start, end).first<any>()
+
+  return c.json({
+    period: { start, end, label },
+    total: {
+      valor: totGeral?.total || 0,
+      quantidade: totGeral?.quantidade || 0,
+    },
+    produtos,
+    categorias,
+  })
+})
+
 // GET /api/financeiro/contas - lista detalhada (com filtros)
 financeiro.get('/contas', async (c) => {
   const tipo = c.req.query('tipo') // RECEBER | PAGAR
