@@ -1,22 +1,20 @@
 # Coliseu Dash
 
-Dashboard corporativo para Coliseu / Compensados Mama com sincronização automática Firebird → Cloud e painel gerencial em tempo real.
+Dashboard corporativo para **Compensados Mama** (Coliseu Sistemas) — Firebird → Cloud com painel gerencial responsivo, otimizado para celular.
 
-## Visão Geral do Projeto
-- **Nome**: Coliseu Dash
-- **Objetivo**: Dashboard corporativo (tema branco) com 11 módulos de BI lendo dados sincronizados do Firebird local (`COMPENSADOSMAMA1203.FDB`).
-- **Arquitetura**:
-  1. **Agente local (Windows)** em Python lê o `.FDB` via driver `fdb` e envia batches JSON autenticados.
-  2. **Backend edge (Hono + TypeScript)** em Cloudflare Workers/Pages expõe API REST e ingere os batches.
-  3. **Banco Cloudflare D1** (SQLite serverless) armazena as tabelas `sync_*`, usuários, sessões e auditoria.
-  4. **Frontend React 19 + Vite + Tailwind** consome a API via TanStack Query; gráficos em Recharts.
-- **Stack final**: Hono ^4.12 · TypeScript · Cloudflare D1 · React 19 · Vite 6 · Tailwind CSS · Recharts · Zustand · TanStack Query · Python 3.11 (agente).
+## Visão Geral
+- **Objetivo**: visão gerencial em tempo real a partir do Firebird local (`COMPENSADOSMAMA1203.FDB`) em dashboard responsivo acessível do celular, tablet ou desktop.
+- **Stack**:
+  - **Agente Windows** — Python (`fdb` + `APScheduler` + `requests`) envia batches a cada 5min
+  - **API Edge** — Hono (TypeScript) em Cloudflare Workers/Pages
+  - **Banco** — Cloudflare D1 (SQLite serverless replicando Firebird)
+  - **Frontend** — React 19 + Vite 5 + Tailwind CSS + TanStack Query + Recharts + Zustand
+  - **Deploy** — Cloudflare Pages (edge global)
 
 ## URLs
 - **Local (sandbox)**: http://localhost:3000
-- **Sandbox público**: https://3000-ia2csgsrny43ulehjl75o-2b54fc91.sandbox.novita.ai
+- **Sandbox público**: https://3000-ia2csgsrny43ulehjl75o-00000000.sandbox.novita.ai
 - **API Health**: `/api/health`
-- **Login**: `/login` (usuários abaixo — senha vazia)
 
 ## Credenciais de Demonstração (sem senha)
 | Email                    | Perfil  |
@@ -25,64 +23,34 @@ Dashboard corporativo para Coliseu / Compensados Mama com sincronização autom�
 | gerente@coliseu.com      | gerente |
 | viewer@coliseu.com       | viewer  |
 
-> Para testes, o campo **senha** pode ficar em branco — o login aceita string vazia para qualquer um dos três usuários.
+> Campo **senha** pode ficar vazio (modo de teste).
 
-## Funcionalidades Concluídas
-### Backend (Hono sobre Cloudflare Workers)
-- [x] Autenticação JWT (24h) + refresh (`POST /api/auth/login`, `GET /api/auth/me`, `POST /api/auth/refresh`, `POST /api/auth/logout`)
-- [x] Middleware `authMiddleware` (JWT) e `syncApiKeyMiddleware` (`X-Sync-Api-Key`) — proteção contra SQL‑injection via whitelist de tabelas/colunas
-- [x] Endpoint unificado de ingestão: `POST /api/sync/ingest` (tabela + rows + mode=upsert|truncate)
-- [x] **7 módulos funcionais** com KPIs, séries temporais, filtros por período e busca:
-  - `/api/vendas` · `/api/financeiro` · `/api/comissoes`
-  - `/api/ranking` · `/api/estatisticas` · `/api/produtos` · `/api/clientes`
-- [x] **Financeiro** inclui: Caixa (`/caixa`) + Espécies Vendidas (`/especies-vendidas`) + Contas a Receber/Pagar + Fluxo de Caixa
-- [x] CORS restrito a origens configuradas
-- [x] Healthcheck `/api/health`
+## Módulos (8 páginas)
+1. **Início** — KPIs consolidados, últimas vendas, atalhos
+2. **Vendas** — KPIs, séries temporais, por vendedor, por cliente
+3. **Financeiro** — KPIs gerais + **Caixa** (entradas, saídas, saldo, ticket médio, movimentação acumulada) + **Espécies Vendidas** (top produtos, categorias, qtd, preço médio, total) + contas a receber/pagar + fluxo de caixa + vencidas
+4. **Comissões** — KPIs, ranking, detalhes
+5. **Ranking** — Vendedores, produtos, clientes
+6. **Estatísticas** — Overview, crescimento, distribuição
+7. **Produtos** — Lista, categorias, KPIs (estoque, valor, mais vendidos)
+8. **Clientes** — Lista, KPIs (ativos, top faturamento)
 
-### Frontend (React 19 + Vite + Tailwind)
-- [x] Layout corporativo branco com **logo oficial Coliseu Sistemas** (header escuro na sidebar e na tela de login)
-- [x] **Totalmente responsivo — otimizado para celular**: sidebar vira drawer com overlay, tabelas com scroll horizontal touch, KPIs compactos em 2 colunas no mobile, botões com área tátil ampliada
-- [x] Login com redirect automático e modo teste sem senha
-- [x] 9 páginas: Home, Login + 7 módulos
-- [x] Gráficos Recharts (linha, barra, pizza) — com alturas e fontes adaptativas
-- [x] TanStack Query para cache/refetch automático
-- [x] Zustand para sessão/auth
-- [x] Web Worker de sincronização (`syncWorker.ts`) para polling e cache offline
-- [x] Axios interceptor injeta JWT automaticamente
+> Módulos removidos em v2.1: Devoluções, Log, Compras, Lucratividade.
 
-### Agente Python (Windows)
-- [x] `coliseu_sync_agent.py` — serviço em loop com APScheduler
-- [x] Conecta no Firebird via `fdb` e consulta as 11 tabelas‑fonte
-- [x] Envia batches de até 500 linhas por POST
-- [x] Retries exponenciais + logging em arquivo
-- [x] `.env.example` com todas as variáveis (FDB + API)
-- [x] README com instruções Windows (venv, Task Scheduler, NSSM como serviço)
-
-### Banco D1 / Dados
-- [x] Migration inicial (`migrations/0001_initial_schema.sql`) com 11 tabelas sync + `usuarios_web`, `sessoes`, `auditoria`, `cache_queries`
-- [x] Seed com 3 usuários + 5 vendedores + ~10k linhas transacionais demo (Compensados Mama)
-- [x] Todos os índices de performance criados
-
-## Mapa de Endpoints (com parâmetros principais)
+## Endpoints de API
 
 ### Auth
-- `POST /api/auth/login` → body `{email, senha}` → retorna `{token, user}`
-- `GET  /api/auth/me` → JWT
-- `POST /api/auth/refresh` → JWT
-- `POST /api/auth/logout` → JWT
-- `GET  /api/auth/usuarios` → JWT (lista de usuários cadastrados)
+- `POST /api/auth/login` — body `{email, senha}` (senha vazia aceita)
+- `GET /api/auth/me` · `POST /api/auth/refresh` · `POST /api/auth/logout` · `GET /api/auth/usuarios`
 
-### Sync (para o agente Python)
-- `POST /api/sync/ingest` → header `X-Sync-Api-Key` · body `{tabela, rows[], mode}`
-- `GET  /api/sync/status` → JWT · status de cada tabela sincronizada
-- `GET  /api/sync/metadata` → JWT
-- `GET  /api/sync/log?limit=N` → JWT
-- `POST /api/sync/start` → JWT (registra pedido de sync manual)
+### Sync (para agente Python)
+- `POST /api/sync/ingest` — header `X-Sync-Api-Key` · body `{tabela, rows[], mode}`
+- `GET /api/sync/status` · `/api/sync/metadata` · `/api/sync/log` · `POST /api/sync/start`
 
-### Módulos (todos protegidos por JWT — `?period=today|thisMonth|last30|last12m|custom&start=YYYY-MM-DD&end=...`)
+### Módulos (todos protegidos por JWT — `?period=today|thisMonth|last7|last30|last12m|custom&start_date=&end_date=`)
 | Módulo | Rotas |
 |---|---|
-| **Vendas** | `/kpis`, `/serie-temporal`, `/por-vendedor`, `/por-cliente`, `/detalhes` |
+| **Vendas** | `/kpis`, `/faturadas`, `/recentes`, `/por-vendedor`, `/por-cliente`, `/serie-temporal`, `/detalhes` |
 | **Financeiro** | `/kpis`, `/caixa`, `/especies-vendidas`, `/contas-receber`, `/contas-pagar`, `/fluxo-caixa`, `/contas` |
 | **Comissões** | `/kpis`, `/ranking`, `/detalhes` |
 | **Ranking** | `/vendedores`, `/produtos`, `/clientes` |
@@ -90,142 +58,163 @@ Dashboard corporativo para Coliseu / Compensados Mama com sincronização autom�
 | **Produtos** | `/lista`, `/categorias`, `/kpis` |
 | **Clientes** | `/lista`, `/kpis` |
 
-> Módulos Lucratividade, Compras, Devoluções e Log foram removidos a pedido do cliente nesta versão.
+### Novos endpoints v2.1 (Financeiro)
+
+**`GET /api/financeiro/caixa?period=thisMonth`**
+```json
+{
+  "period": { "start": "...", "end": "...", "label": "Mês atual" },
+  "kpis": {
+    "entradas": 62116.85,          // total recebido no período
+    "saidas": 20482.82,            // total pago no período
+    "saldo": 41634.03,             // entradas - saídas
+    "qtd_entradas": 34,
+    "qtd_saidas": 4,
+    "ticket_medio_entrada": 1826.96
+  },
+  "movimentacoes": [
+    { "data": "2026-04-03", "entradas": 4096.31, "saidas": 0, "saldo_acumulado": 4096.31 },
+    ...
+  ]
+}
+```
+
+**`GET /api/financeiro/especies-vendidas?period=thisMonth&limit=15`**
+```json
+{
+  "period": { "start": "...", "end": "...", "label": "Mês atual" },
+  "total": { "valor": 163164.87, "quantidade": 1391 },
+  "produtos": [
+    { "codigo": "COD-00004", "nome": "Naval 18mm 2.20x1.60", "categoria": "Compensado Naval",
+      "quantidade_vendida": 67, "total_vendido": 23301.93, "qtd_vendas": 7, "preco_medio": 347.79 },
+    ...
+  ],
+  "categorias": [
+    { "categoria": "Compensado Naval", "quantidade": 109, "total": 33675.09 },
+    ...
+  ]
+}
+```
 
 ## Arquitetura de Dados
 
-### Tabelas de Sincronização (D1)
-`sync_clientes`, `sync_produtos`, `sync_vendedores`, `sync_fornecedores`,
-`sync_vendas`, `sync_vendas_itens`, `sync_comissoes`, `sync_financeiro`,
-`sync_compras`, `sync_devolucoes`, `sync_log_atividades`
+### Tabelas D1 (11 sync + 4 app)
+- **Sync (espelho do Firebird)**: `sync_clientes`, `sync_produtos`, `sync_vendedores`, `sync_fornecedores`, `sync_vendas`, `sync_vendas_itens`, `sync_comissoes`, `sync_financeiro`, `sync_compras`, `sync_devolucoes`, `sync_log_atividades`
+- **App**: `usuarios_web`, `sessoes`, `auditoria`, `cache_queries`
 
-Cada uma possui `id` (PK D1) + `id_firebird` (UNIQUE — chave do sistema legado) + `synced_at`.
+> Observação: tabelas `sync_compras`, `sync_devolucoes` e `sync_log_atividades` permanecem no schema/agente Python (o Firebird continua fornecendo os dados), mas não são exibidas na UI.
 
-### Tabelas de Aplicação
-- `usuarios_web` (id, email, senha_hash, nome, perfil, ativo)
-- `sessoes` (id, usuario_id, token_hash, expires_at)
-- `auditoria` (id, usuario_id, acao, recurso, detalhes, ip, data)
-- `cache_queries` (chave, valor_json, expires_at)
-
-### Fluxo de Dados
+### Fluxo
 ```
-Firebird (C:\...\COMPENSADOSMAMA1203.FDB)
-    │   (fdb driver — a cada 5min)
-    ▼
-coliseu_sync_agent.py  —POST JSON (X-Sync-Api-Key)→  /api/sync/ingest
-                                                          │
-                                                          ▼
-                                               Cloudflare D1 (sync_*)
-                                                          │
-                                                          ▼
-            Frontend React  ←— JWT /api/{modulo}/*  ← Hono (queries D1)
+Firebird local → coliseu_sync_agent.py (Python, 5min) → POST /api/sync/ingest
+  → Cloudflare D1 → Hono API (JWT) → React SPA (mobile/desktop)
 ```
 
-## Guia Rápido do Usuário
-1. Abra a URL do dashboard (`/`).
-2. Faça login com `admin@coliseu.com` (senha em branco).
-3. Navegue pelos módulos na sidebar esquerda.
-4. Use o filtro de período no topo de cada página (hoje, mês atual, últimos 30 dias, últimos 12 meses, customizado).
-5. Para **atualizar dados em produção**, rode o agente Python no servidor Windows que tem o Firebird:
-   ```cmd
-   cd python-agent
-   python -m venv venv
-   venv\Scripts\activate
-   pip install -r requirements.txt
-   copy .env.example .env
-   :: edite .env com a URL de produção e chave
-   python coliseu_sync_agent.py
-   ```
+## Design & Responsividade
+- **Mobile-first**: layout projetado para celular como dispositivo principal
+- **Logo oficial**: logo Coliseu Sistemas (azul + grafite) em `public/coliseu-logo.png`
+- **Sidebar**: drawer com backdrop blur em mobile, sticky em desktop, header dark gradient
+- **Cards KPI**: padding e fonte reduzidos em mobile (`p-3 sm:p-5`, `text-lg sm:text-2xl`)
+- **Tabelas**: scroll horizontal touch-friendly (`WebkitOverflowScrolling: touch`), colunas secundárias escondidas em mobile
+- **Gráficos Recharts**: altura adaptativa (`h-64 sm:h-72`), tick font size 10 em mobile
+- **Period filter**: scroll horizontal em mobile com flex-shrink-0
+- **Login**: fundo dark gradient com logo destacado, input com `inputMode="email"` para teclado correto no celular
+- **Breakpoints Tailwind**: mobile (padrão) · sm ≥640px · md ≥768px · lg ≥1024px
 
 ## Como Rodar Localmente (sandbox)
 ```bash
 cd /home/user/webapp
-npm install
-npx wrangler d1 migrations apply coliseu-dash-production --local
+npm install                                                           # primeira vez
+npx wrangler d1 migrations apply coliseu-dash-production --local      # aplica schema
 npx wrangler d1 execute coliseu-dash-production --local --file=./migrations/seed.sql
-npm run build                      # gera dist/ com worker + assets do frontend
-pm2 start ecosystem.config.cjs     # sobe wrangler pages dev na porta 3000
-curl http://localhost:3000/api/health
+
+# Build (frontend + backend)
+cd frontend && npm run build          # ~10s — gera /public/assets
+cd .. && npm run build                # ~1s  — gera /dist/_worker.js
+
+# Start via PM2
+pm2 start ecosystem.config.cjs
+curl http://localhost:3000/api/health  # → {"ok":true,...}
 ```
 
-## Deployment (Cloudflare Pages)
+## Deploy para Cloudflare Pages
+Requer: API token configurado na aba Deploy.
 ```bash
-# 1. Autenticar (já configurado no sandbox)
-npx wrangler whoami
-
-# 2. Criar D1 remoto (uma vez)
-npx wrangler d1 create coliseu-dash-production
-# → copiar database_id para wrangler.jsonc
-
-# 3. Aplicar migrations em produção
+# Após o setup_cloudflare_api_key
+npx wrangler d1 create coliseu-dash-production      # uma vez
 npx wrangler d1 migrations apply coliseu-dash-production
 
-# 4. Criar projeto Pages (uma vez)
 npx wrangler pages project create coliseu-dash \
   --production-branch main --compatibility-date 2026-04-13
 
-# 5. Configurar secrets
 npx wrangler pages secret put JWT_SECRET      --project-name coliseu-dash
 npx wrangler pages secret put SYNC_API_KEY    --project-name coliseu-dash
 
-# 6. Build + Deploy
+cd frontend && npm run build && cd ..
 npm run build
 npx wrangler pages deploy dist --project-name coliseu-dash
 ```
 
-## Segurança
-- JWT HS256 com expiração de 24h + refresh token
-- Agente usa header dedicado `X-Sync-Api-Key` (não expõe JWT)
-- Whitelist de tabelas/colunas em `/api/sync/ingest` (impede SQL injection em nomes)
-- Prepared statements em **todas** as queries D1
-- CORS restrito pelas origens configuradas em `wrangler.jsonc`
-- Tokens nunca logados; auditoria em `auditoria` para operações sensíveis
+## Agente Python (Windows)
+Instalar no servidor que tem o Firebird:
+```cmd
+cd python-agent
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+copy .env.example .env
+:: edite .env com API_URL, SYNC_API_KEY e caminho do .FDB
+python coliseu_sync_agent.py
+```
 
 ## Estrutura de Diretórios
 ```
 webapp/
-├── src/                            # Backend Hono
-│   ├── index.tsx                   # Entry + SPA fallback via c.env.ASSETS
+├── src/                           # Backend Hono
+│   ├── index.tsx                  # Entry + SPA fallback
 │   └── api/
-│       ├── lib/                    # jwt.ts, middleware.ts, types.ts, periodo.ts
-│       └── routes/                 # auth, sync, 11 módulos
-├── frontend/                       # React SPA
+│       ├── lib/                   # jwt, middleware, types, period
+│       └── routes/                # auth, sync, vendas, financeiro, comissoes,
+│                                  # ranking, estatisticas, produtos, clientes
+├── frontend/                      # React SPA
 │   ├── src/
-│   │   ├── pages/                  # Login + 11 módulos + Home
-│   │   ├── components/             # DashboardLayout, Sidebar, Header, KpiCard...
-│   │   ├── hooks/                  # useAuth, usePeriodo, useApi
-│   │   ├── services/               # api.ts (axios), auth.ts
-│   │   ├── store/                  # authStore (zustand)
-│   │   └── workers/                # syncWorker.ts (Web Worker)
-│   └── vite.config.ts              # build para /home/user/webapp/public/
+│   │   ├── pages/                 # Login, Home, Vendas, Financeiro, Comissoes,
+│   │   │                          # Ranking, Estatisticas, Produtos, Clientes
+│   │   ├── components/            # Sidebar, Header, DashboardLayout,
+│   │   │                          # KPICard, ChartCard, DataTable, PeriodFilter
+│   │   ├── hooks/                 # useApi, usePeriodo, useSync, useAuth
+│   │   ├── services/              # api (axios) com interceptor JWT
+│   │   ├── store/                 # authStore, periodStore (zustand)
+│   │   └── workers/               # syncWorker.ts (Web Worker)
+│   └── public/coliseu-logo.png    # Logo oficial (copiado no build)
 ├── migrations/
-│   ├── 0001_initial_schema.sql     # 15 tabelas + índices
-│   └── seed.sql                    # dados demo
-├── public/                         # assets servidos pelo worker
-│   ├── index.html                  # bundle React
-│   ├── assets/                     # js/css com hash
-│   └── _redirects                  # /*  /index.html 200 (fallback SPA)
-├── python-agent/                   # agente Windows
-│   ├── coliseu_sync_agent.py
-│   ├── requirements.txt            # fdb, requests, apscheduler, python-dotenv
-│   ├── .env.example
-│   └── README.md
-├── dist/                           # output do build (worker + assets mesclados)
-├── wrangler.jsonc                  # bindings D1 + vars
-├── ecosystem.config.cjs            # PM2
-└── package.json
+│   ├── 0001_initial_schema.sql    # 15 tabelas
+│   └── seed.sql                   # dados demo Compensados Mama
+├── public/
+│   ├── coliseu-logo.png           # Logo servido em /coliseu-logo.png
+│   ├── index.html                 # Bundle React (entry da SPA)
+│   ├── assets/                    # JS/CSS com hash
+│   └── _redirects                 # /* /index.html 200 (SPA fallback)
+├── python-agent/                  # Agente Windows
+├── dist/                          # Worker compilado
+├── wrangler.jsonc · ecosystem.config.cjs · package.json
 ```
 
-## Pendente / Próximos Passos
-- [ ] Deploy em Cloudflare Pages (precisa API token do usuário na aba Deploy)
-- [ ] Push para GitHub (precisa autorização GitHub na aba #github)
-- [ ] Customização visual fina (cores da marca Coliseu, logo real)
-- [ ] Módulo de exportação PDF/Excel
-- [ ] Sentry/LogRocket no frontend
-- [ ] Roadmap futuro: alertas em tempo real, app mobile (PWA), multi‑filial
+## Status de Deploy
+- **Ambiente local (sandbox)**: ✅ Ativo em http://localhost:3000 (PM2 · coliseu-dash)
+- **Build frontend**: ✅ 2.500 módulos, `index.js` 1.44MB (não minificado para desenvolvimento, prod será ~730kb)
+- **Build backend**: ✅ 41 módulos, `_worker.js` 57.55 KB
+- **Cloudflare Pages**: ⏳ aguardando API token do usuário (aba Deploy)
+- **GitHub**: ⏳ aguardando autorização do usuário (aba #github)
+- **Versão**: v2.1 (17/04/2026)
 
-## Deployment Status
-- **Plataforma**: Cloudflare Pages (config pronta, deploy pendente de autorização)
-- **Ambiente local**: ✅ Ativo (PM2 / porta 3000)
-- **Dados demo**: ✅ Carregados (seed.sql aplicado)
-- **Última atualização**: 2026-04-17
+## Pendentes / Próximos Passos
+- [ ] Configurar API token na aba Deploy para publicar na Cloudflare Pages
+- [ ] Autorizar GitHub na aba #github para enviar código ao repositório
+- [ ] Rodar `coliseu_sync_agent.py` no servidor Windows com Firebird
+- [ ] Customização visual fina (cores exatas da marca, favicon dedicado)
+- [ ] Roadmap futuro: export PDF/Excel, PWA mobile, alertas push
+
+## Changelog
+- **v2.1 (17/04/2026)** — Remove Devoluções/Log/Compras/Lucratividade. Adiciona Caixa e Espécies Vendidas no Financeiro. Logo oficial Coliseu no Sidebar/Login. Layout mobile-first em todos os componentes.
+- **v2.0** — Versão inicial com 11 módulos, backend Hono+D1, frontend React+Tailwind, agente Python para Firebird.
