@@ -83,16 +83,14 @@ Dashboard corporativo para Coliseu / Compensados Mama com sincronização autom�
 | Módulo | Rotas |
 |---|---|
 | **Vendas** | `/kpis`, `/serie-temporal`, `/por-vendedor`, `/por-cliente`, `/detalhes` |
-| **Financeiro** | `/contas-receber`, `/contas-pagar`, `/fluxo-caixa`, `/kpis` |
-| **Lucratividade** | `/kpis`, `/margem-bruta`, `/lucro-liquido`, `/comparativo` |
+| **Financeiro** | `/kpis`, `/caixa`, `/especies-vendidas`, `/contas-receber`, `/contas-pagar`, `/fluxo-caixa`, `/contas` |
 | **Comissões** | `/kpis`, `/ranking`, `/detalhes` |
 | **Ranking** | `/vendedores`, `/produtos`, `/clientes` |
 | **Estatísticas** | `/overview`, `/crescimento`, `/distribuicao` |
-| **Compras** | `/kpis`, `/por-fornecedor`, `/serie-temporal` |
-| **Devoluções** | `/kpis`, `/por-motivo`, `/por-periodo`, `/detalhes` |
 | **Produtos** | `/lista`, `/categorias`, `/kpis` |
 | **Clientes** | `/lista`, `/kpis` |
-| **Log** | `/atividades`, `/usuarios-ativos`, `/operacoes-frequentes`, `/kpis` |
+
+> Módulos Lucratividade, Compras, Devoluções e Log foram removidos a pedido do cliente nesta versão.
 
 ## Arquitetura de Dados
 
