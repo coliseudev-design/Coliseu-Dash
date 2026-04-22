@@ -6,7 +6,6 @@ import Login from './pages/Login'
 import DashboardLayout from './components/DashboardLayout'
 
 import Home from './pages/Home'
-import Vendas from './pages/Vendas'
 import Financeiro from './pages/Financeiro'
 import Comissoes from './pages/Comissoes'
 import Ranking from './pages/Ranking'
@@ -48,13 +47,10 @@ export default function App() {
         }
       >
         <Route index element={<Home />} />
-        <Route path="vendas" element={<Vendas />} />
         <Route path="financeiro" element={<Financeiro />} />
         <Route path="comissoes" element={<Comissoes />} />
         <Route path="ranking" element={<Ranking />} />
         <Route path="estatisticas" element={<Estatisticas />} />
-        <Route path="produtos" element={<Produtos />} />
-        <Route path="clientes" element={<Clientes />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

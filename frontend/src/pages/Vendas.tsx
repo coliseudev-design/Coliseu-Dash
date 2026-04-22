@@ -3,36 +3,38 @@ import KPICard from '../components/KPICard'
 import ChartCard from '../components/ChartCard'
 import PeriodFilter from '../components/PeriodFilter'
 import {
-  ShoppingCart, Receipt, DollarSign, TrendingUp, TrendingDown,
+  ShoppingCart, Receipt, DollarSign
 } from 'lucide-react'
 import {
-  BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
+  BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts'
 import { formatBRL, formatBRLCompact, formatNum } from '../utils/format'
-import { CHART_COLORS, STATUS_COLORS } from '../utils/chartColors'
+import { CHART_COLORS, CHART_PALETTE } from '../utils/chartColors'
 
 export default function Vendas() {
   const kpis = usePeriodQuery<any>('/vendas/kpis')
-  const faturadas = usePeriodQuery<any>('/vendas/faturadas')
-  const horario = usePeriodQuery<any>('/vendas/por-horario')
-  const abertos = usePeriodQuery<any>('/vendas/pedidos-abertos')
+  const ranking = usePeriodQuery<any>('/comissoes/ranking')
+  const estatisticas = usePeriodQuery<any>('/estatisticas/kpis')
+
+  const topVendedores = ranking.data?.data || []
+  const categorias = estatisticas.data?.kpis?.top_categorias || []
 
   return (
     <div className="space-y-4 sm:space-y-6">
       <PeriodFilter />
 
-      {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4">
+      {/* Resumo no Topo */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         <KPICard
-          label="Total Faturado"
+          label="Faturamento Total"
           value={formatBRLCompact(kpis.data?.kpis?.total_faturado)}
           icon={DollarSign}
           iconColor="text-success"
           loading={kpis.isLoading}
         />
         <KPICard
-          label="Pedidos"
+          label="Volume de Pedidos"
           value={formatNum(kpis.data?.kpis?.qtd_pedidos)}
           icon={ShoppingCart}
           loading={kpis.isLoading}
@@ -43,114 +45,74 @@ export default function Vendas() {
           icon={Receipt}
           loading={kpis.isLoading}
         />
-        <KPICard
-          label="Maior Venda"
-          value={formatBRL(kpis.data?.kpis?.maior_venda)}
-          icon={TrendingUp}
-          iconColor="text-success"
-          loading={kpis.isLoading}
-        />
-        <KPICard
-          label="Menor Venda"
-          value={formatBRL(kpis.data?.kpis?.menor_venda)}
-          icon={TrendingDown}
-          iconColor="text-neutral"
-          loading={kpis.isLoading}
-        />
       </div>
 
-      {/* Faturadas por dia */}
-      <ChartCard
-        title="Vendas Faturadas"
-        subtitle="Evolução diária no período"
-        loading={faturadas.isLoading}
-        empty={!faturadas.data?.data?.length}
-      >
-        <div className="h-80">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={faturadas.data?.data || []}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
-              <XAxis
-                dataKey="data"
-                tick={{ fontSize: 11, fill: '#6B7280' }}
-                tickFormatter={(d) => (d?.slice ? d.slice(5) : d)}
-              />
-              <YAxis tick={{ fontSize: 11, fill: '#6B7280' }} tickFormatter={formatBRLCompact} />
-              <Tooltip
-                formatter={(v: any, n: string) => [n === 'total' ? formatBRL(v) : v, n === 'total' ? 'Faturamento' : 'Qtd']}
-                contentStyle={{ fontSize: 12, borderRadius: 8 }}
-              />
-              <Bar dataKey="total" fill={CHART_COLORS.primary} radius={[6, 6, 0, 0]} name="Faturamento" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </ChartCard>
-
       <div className="grid lg:grid-cols-2 gap-4 sm:gap-6">
-        {/* Por horário */}
+        
+        {/* Gráfico de Barras - Vendas por Vendedor */}
         <ChartCard
-          title="Vendas por Horário"
-          subtitle="Padrão de vendas ao longo do dia (últimos 30 dias)"
-          loading={horario.isLoading}
-          empty={!horario.data?.data?.length}
+          title="Performance por Vendedor"
+          subtitle="Comparativo de volume faturado"
+          loading={ranking.isLoading}
+          empty={!topVendedores.length}
         >
-          <div className="h-72">
+          <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={horario.data?.data || []}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                <XAxis
-                  dataKey="hora"
-                  tick={{ fontSize: 11, fill: '#6B7280' }}
-                  tickFormatter={(h) => `${String(h).padStart(2, '0')}h`}
+              <BarChart data={topVendedores.slice(0, 7)} margin={{ left: 10, right: 10 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
+                <XAxis 
+                  dataKey="vendedor" 
+                  tick={{ fontSize: 11, fill: '#6B7280' }} 
+                  tickFormatter={(v) => v.split(' ')[0]} 
                 />
-                <YAxis tick={{ fontSize: 11, fill: '#6B7280' }} />
+                <YAxis tick={{ fontSize: 11, fill: '#6B7280' }} tickFormatter={formatBRLCompact} />
                 <Tooltip
-                  formatter={(v: any) => [formatNum(v), 'Qtd vendas']}
-                  labelFormatter={(l) => `${String(l).padStart(2, '0')}:00`}
+                  formatter={(v: any) => formatBRL(v)}
                   contentStyle={{ fontSize: 12, borderRadius: 8 }}
                 />
-                <Line
-                  type="monotone"
-                  dataKey="quantidade"
-                  stroke={CHART_COLORS.primary}
-                  strokeWidth={2}
-                  dot={{ fill: CHART_COLORS.primary, r: 3 }}
-                />
-              </LineChart>
+                <Bar dataKey="total_vendas" fill={CHART_COLORS.primary} radius={[6, 6, 0, 0]} name="Valor Faturado">
+                  {topVendedores.map((_: any, i: number) => (
+                    <Cell key={i} fill={CHART_PALETTE[i % CHART_PALETTE.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
             </ResponsiveContainer>
           </div>
         </ChartCard>
 
-        {/* Pedidos em aberto */}
+        {/* Gráfico Rosca - Distribuição por Categoria/Marca */}
         <ChartCard
-          title="Pedidos em Aberto"
-          subtitle="Distribuição por status"
-          loading={abertos.isLoading}
-          empty={!abertos.data?.data?.length}
+          title="Distribuição por Categoria"
+          subtitle="Participação (Share) no faturamento"
+          loading={estatisticas.isLoading}
+          empty={!categorias.length}
         >
-          <div className="h-72">
+          <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={abertos.data?.data || []}
-                  dataKey="quantidade"
-                  nameKey="status"
+                  data={categorias}
+                  dataKey="total"
+                  nameKey="categoria"
                   cx="50%"
                   cy="50%"
-                  outerRadius={90}
-                  innerRadius={50}
-                  label={(e: any) => `${e.status}: ${e.quantidade}`}
+                  outerRadius="80%"
+                  innerRadius="50%" /* Formato Donut/Rosca */
                 >
-                  {(abertos.data?.data || []).map((entry: any, i: number) => (
-                    <Cell key={i} fill={STATUS_COLORS[entry.status] || CHART_COLORS.neutral} />
+                  {categorias.map((_: any, i: number) => (
+                    <Cell key={i} fill={CHART_PALETTE[(i + 3) % CHART_PALETTE.length]} />
                   ))}
                 </Pie>
-                <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                <Tooltip 
+                  formatter={(v: any) => formatBRL(v)} 
+                  contentStyle={{ fontSize: 12, borderRadius: 8 }} 
+                />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
               </PieChart>
             </ResponsiveContainer>
           </div>
         </ChartCard>
+
       </div>
     </div>
   )

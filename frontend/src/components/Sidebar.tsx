@@ -1,9 +1,10 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import {
-  LayoutDashboard, ShoppingCart, Wallet, Percent,
-  Trophy, BarChart3, Package, Users, X,
+  LayoutDashboard, ShoppingCart, Wallet,
+  Trophy, BarChart3, Users, X, LogOut
 } from 'lucide-react'
 import clsx from 'clsx'
+import { useAuthStore } from '../store/authStore'
 
 interface Props {
   open: boolean
@@ -12,13 +13,10 @@ interface Props {
 
 const MODULES = [
   { to: '/',              label: 'Início',        icon: LayoutDashboard,  exact: true },
-  { to: '/vendas',        label: 'Vendas',        icon: ShoppingCart },
   { to: '/financeiro',    label: 'Financeiro',    icon: Wallet },
-  { to: '/comissoes',     label: 'Comissões',     icon: Percent },
+  { to: '/comissoes',     label: 'Vendedores',    icon: Users },
   { to: '/ranking',       label: 'Ranking',       icon: Trophy },
-  { to: '/estatisticas',  label: 'Estatísticas',  icon: BarChart3 },
-  { to: '/produtos',      label: 'Produtos',      icon: Package },
-  { to: '/clientes',      label: 'Clientes',      icon: Users },
+  { to: '/estatisticas',  label: 'Estatísticas',  icon: BarChart3 }
 ]
 
 export default function Sidebar({ open, onClose }: Props) {
@@ -42,7 +40,7 @@ export default function Sidebar({ open, onClose }: Props) {
         {/* Logo */}
         <div className="h-20 px-4 flex items-center justify-between border-b border-[#E0E0E0] bg-gradient-to-br from-slate-900 to-slate-800">
           <img
-            src="/coliseu-logo.png"
+            src="/logobranco.jpg"
             alt="Coliseu Sistemas"
             className="h-10 w-auto object-contain"
           />
@@ -78,10 +76,22 @@ export default function Sidebar({ open, onClose }: Props) {
           ))}
         </nav>
 
-        {/* Footer */}
-        <div className="px-4 py-3 border-t border-[#E0E0E0] text-[11px] text-text-secondary">
-          <div className="font-semibold text-text-primary">Coliseu Dash v2.0</div>
-          <div>© 2026 Coliseu Sistemas</div>
+        {/* Footer com Sair */}
+        <div className="px-4 py-3 border-t border-[#E0E0E0] text-[11px] text-text-secondary flex items-center justify-between">
+          <div>
+            <div className="font-semibold text-text-primary">Coliseu Dash v2.0</div>
+            <div>© 2026 Coliseu Sistemas</div>
+          </div>
+          <button
+            onClick={() => {
+              useAuthStore.getState().logout()
+              window.location.href = '/login'
+            }}
+            className="p-2 text-text-secondary hover:text-danger hover:bg-danger/10 rounded-lg transition-colors"
+            title="Sair do sistema"
+          >
+            <LogOut size={16} />
+          </button>
         </div>
       </aside>
     </>

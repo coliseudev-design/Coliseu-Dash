@@ -1,43 +1,54 @@
+import { useMemo } from 'react'
 import { usePeriodQuery } from '../hooks/useApi'
-import KPICard from '../components/KPICard'
-import ChartCard from '../components/ChartCard'
 import PeriodFilter from '../components/PeriodFilter'
-import DataTable from '../components/DataTable'
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
-} from 'recharts'
-import { formatBRL, formatBRLCompact, formatPct, formatDate, formatNum } from '../utils/format'
-import { CHART_PALETTE } from '../utils/chartColors'
-import { Percent, Award, ArrowDownAZ, Hash } from 'lucide-react'
+  Users, Percent, ArrowDownAZ, Hash, Trophy, BarChart3
+} from 'lucide-react'
+import { formatBRL, formatBRLCompact, formatNum } from '../utils/format'
+import KPICard from '../components/KPICard'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 
 export default function Comissoes() {
   const kpis = usePeriodQuery<any>('/comissoes/kpis')
   const ranking = usePeriodQuery<any>('/comissoes/ranking')
-  const detalhes = usePeriodQuery<any>('/comissoes/detalhes', { limit: 100 })
+
+  const dadosVendedores = ranking.data?.data || []
+
+  // Ordena os vendedores por Total Vendido do maior para o menor
+  const sortedData = useMemo(() => {
+    return [...dadosVendedores].sort((a, b) => (b.total_vendas || 0) - (a.total_vendas || 0))
+  }, [dadosVendedores])
+
+  // Custom Tooltip for the chart
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-100 text-sm">
+          <p className="font-semibold text-gray-800 mb-1">{payload[0].payload.vendedor}</p>
+          <p className="text-brand-600 font-medium">Vendido: {formatBRL(payload[0].value)}</p>
+          <p className="text-success font-medium">Comissão: {formatBRL(payload[0].payload.total_comissao)}</p>
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      <PeriodFilter />
+    <div className="space-y-4 sm:space-y-6 pb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h1 className="text-2xl font-semibold font-heading text-text-primary flex items-center gap-2">
+          <Users className="text-brand-600" />
+          Vendedores
+        </h1>
+        <PeriodFilter />
+      </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         <KPICard
-          label="Total de Comissões"
+          label="Total Produzido"
           value={formatBRLCompact(kpis.data?.kpis?.total)}
           icon={Percent}
           iconColor="text-brand-500"
-          loading={kpis.isLoading}
-        />
-        <KPICard
-          label="Comissão Média"
-          value={formatBRL(kpis.data?.kpis?.media)}
-          icon={ArrowDownAZ}
-          loading={kpis.isLoading}
-        />
-        <KPICard
-          label="Maior Comissão"
-          value={formatBRL(kpis.data?.kpis?.maior)}
-          icon={Award}
-          iconColor="text-success"
           loading={kpis.isLoading}
         />
         <KPICard
@@ -48,6 +59,13 @@ export default function Comissoes() {
           loading={kpis.isLoading}
         />
         <KPICard
+          label="Maior Comissão"
+          value={formatBRL(kpis.data?.kpis?.maior)}
+          icon={Trophy}
+          iconColor="text-success"
+          loading={kpis.isLoading}
+        />
+        <KPICard
           label="Qtd. Comissões"
           value={formatNum(kpis.data?.kpis?.qtd)}
           icon={Hash}
@@ -55,51 +73,53 @@ export default function Comissoes() {
         />
       </div>
 
-      {/* Ranking barras horizontal */}
-      <ChartCard
-        title="Ranking de Comissões · Top 10"
-        subtitle="Vendedores com maior comissão no período"
-        loading={ranking.isLoading}
-        empty={!ranking.data?.data?.length}
-      >
-        <div className="h-96">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={(ranking.data?.data || []).slice(0, 10)} layout="vertical" margin={{ left: 80 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 11, fill: '#6B7280' }} tickFormatter={formatBRLCompact} />
-              <YAxis
-                type="category"
-                dataKey="vendedor"
-                tick={{ fontSize: 11, fill: '#374151' }}
-                width={130}
-              />
-              <Tooltip formatter={(v: any) => formatBRL(v)} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-              <Bar dataKey="total_comissao" radius={[0, 6, 6, 0]}>
-                {(ranking.data?.data || []).map((_: any, i: number) => (
-                  <Cell key={i} fill={CHART_PALETTE[i % CHART_PALETTE.length]} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </ChartCard>
+      {ranking.isLoading ? (
+        <div className="py-8 text-center text-text-secondary text-sm">Carregando dados dos vendedores...</div>
+      ) : sortedData.length === 0 ? (
+        <div className="py-8 text-center text-text-secondary text-sm card mt-4">Nenhum dado encontrado no período.</div>
+      ) : (
+        <div className="flex flex-col gap-4 sm:gap-6 mt-4">
+          
+          {/* Lista Resumida de Vendedores */}
+          <div className="card w-full">
+            <div className="flex items-center gap-2 mb-4 border-b border-[#E0E0E0] pb-2">
+              <Trophy size={18} className="text-warning" />
+              <h2 className="font-heading font-semibold text-text-primary">Desempenho Consolidado</h2>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+              {sortedData.map((v: any, i: number) => (
+                <div key={v.vendedor_id} className="border border-gray-100 rounded-xl p-4 bg-white hover:shadow-md transition-shadow relative shadow-sm">
+                  {/* Badge Rank */}
+                  <span className={`absolute -top-3 -left-3 w-8 h-8 flex items-center justify-center text-xs font-bold rounded-full shadow-md text-white ${i === 0 ? 'bg-warning' : i === 1 ? 'bg-gray-400' : 'bg-brand-500'}`}>
+                    {i + 1}º
+                  </span>
+                  
+                  <h3 className="font-semibold text-gray-800 mb-3 pl-3 truncate border-b border-gray-50 pb-2" title={v.vendedor}>
+                    {v.vendedor}
+                  </h3>
+                  
+                  <div className="space-y-2.5">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-gray-500">Qtd. Vendas</span>
+                      <span className="font-medium text-gray-700 bg-gray-100 px-2 py-0.5 rounded-md">{formatNum(v.qtd_vendas)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-gray-500">Total Vendido</span>
+                      <span className="font-medium text-brand-600">{formatBRL(v.total_vendas)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm pt-2">
+                      <span className="font-medium text-gray-800">Comissão</span>
+                      <span className="font-bold text-success">{formatBRL(v.total_comissao)}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
 
-      <div>
-        <h3 className="font-heading font-semibold mb-3">Detalhamento de Comissões</h3>
-        <DataTable
-          loading={detalhes.isLoading}
-          data={detalhes.data?.data || []}
-          empty="Sem comissões no período"
-          columns={[
-            { key: 'data_referencia', label: 'Data', render: (r: any) => formatDate(r.data_referencia) },
-            { key: 'vendedor', label: 'Vendedor' },
-            { key: 'numero_pedido', label: 'Pedido', render: (r: any) => <span className="mono text-brand-600">{r.numero_pedido}</span> },
-            { key: 'valor_vendas', label: 'Vendas', align: 'right', render: (r: any) => formatBRL(r.valor_vendas) },
-            { key: 'percentual', label: '%', align: 'right', render: (r: any) => formatPct(r.percentual) },
-            { key: 'valor_comissao', label: 'Comissão', align: 'right', render: (r: any) => <span className="font-semibold text-success">{formatBRL(r.valor_comissao)}</span> },
-          ]}
-        />
-      </div>
+        </div>
+      )}
     </div>
   )
 }

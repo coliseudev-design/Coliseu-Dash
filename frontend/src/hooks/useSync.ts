@@ -52,12 +52,17 @@ export function useSyncStatus() {
     }
   }, [fetchStatus])
 
-  // Última sync entre todas tabelas
+  // Última sync (ignorando metadados internos)
   const lastSync = statusItems
+    .filter((i) => !i.tabela.startsWith('__'))
     .map((i) => i.ultima)
     .filter(Boolean)
     .sort()
     .pop()
+
+  const heartbeat = statusItems.find((i) => i.tabela === '__heartbeat__')
+  const agentStatus = heartbeat?.status === 'OK' ? 'ONLINE' : (heartbeat?.status === 'FIREBIRD_OFFLINE' ? 'DB OFFLINE' : 'OFFLINE')
+  const agentLastPing = heartbeat?.ultima
 
   const status =
     statusItems.length === 0
@@ -66,5 +71,5 @@ export function useSyncStatus() {
       ? 'ok'
       : 'warn'
 
-  return { statusItems, status, lastSync, lastCheck, isSyncing, triggerSync, refresh: fetchStatus }
+  return { statusItems, status, lastSync, lastCheck, isSyncing, triggerSync, refresh: fetchStatus, agentStatus, agentLastPing }
 }

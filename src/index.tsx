@@ -7,6 +7,7 @@ import { authMiddleware } from './api/lib/middleware'
 
 import auth from './api/routes/auth'
 import sync from './api/routes/sync'
+import devRoute from './api/routes/dev'
 import vendas from './api/routes/vendas'
 import financeiro from './api/routes/financeiro'
 import comissoes from './api/routes/comissoes'
@@ -37,6 +38,9 @@ app.route('/api/auth', auth)
 
 // Sync (usa X-Sync-Api-Key, sem JWT, para agente Python)
 app.route('/api/sync', sync)
+
+// Rota de Dev Local
+app.route('/api/dev', devRoute)
 
 // Rotas protegidas por JWT
 const api = new Hono<{ Bindings: Bindings; Variables: Variables }>()

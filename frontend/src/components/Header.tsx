@@ -12,7 +12,7 @@ interface Props {
 export default function Header({ onMenuClick, title }: Props) {
   const user = useAuthStore((s) => s.user)
   const logout = useAuthStore((s) => s.logout)
-  const { status, lastSync, triggerSync, isSyncing } = useSyncStatus()
+  const { status, lastSync, triggerSync, isSyncing, agentStatus, agentLastPing } = useSyncStatus()
   const [menuOpen, setMenuOpen] = useState(false)
 
   return (
@@ -28,25 +28,32 @@ export default function Header({ onMenuClick, title }: Props) {
       <h1 className="font-heading text-base sm:text-lg font-semibold ml-1 sm:ml-2 lg:ml-0 truncate">{title}</h1>
 
       <div className="ml-auto flex items-center gap-1 sm:gap-3">
+        {/* Badge Agente Desktop */}
+        <div className="hidden lg:flex items-center gap-1.5 px-2 py-1 rounded-md bg-bg-secondary text-xs font-semibold">
+           <div className={`w-2 h-2 rounded-full ${agentStatus === 'ONLINE' ? 'bg-success' : 'bg-danger animate-pulse'}`} />
+           <span className="text-text-secondary">{agentStatus === 'ONLINE' ? 'Agente OK' : 'Falha no Banco'}</span>
+        </div>
+
         {/* Status sync (desktop) */}
-        <div className="hidden md:flex items-center gap-2 text-xs text-text-secondary">
+        <div className="hidden md:flex items-center gap-2 text-xs text-text-secondary border-l border-[#E0E0E0] pl-3">
           {status === 'ok' ? (
             <CheckCircle2 size={14} className="text-success" />
           ) : (
             <AlertCircle size={14} className="text-warning" />
           )}
-          <span>
-            Sync:{' '}
-            <span className="mono">{lastSync ? formatDateTime(lastSync) : 'nunca'}</span>
+          <span className="flex flex-col text-[10px] leading-tight">
+            <span>Última Sync:</span>
+            <span className="mono font-medium">{lastSync ? formatDateTime(lastSync) : 'nunca'}</span>
           </span>
         </div>
 
         {/* Sync indicator mobile (só o ícone) */}
-        <div className="md:hidden flex items-center">
+        <div className="md:hidden flex items-center relative">
+          <div className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border-2 border-white ${agentStatus === 'ONLINE' ? 'bg-success' : 'bg-danger animate-pulse'}`} />
           {status === 'ok' ? (
-            <CheckCircle2 size={16} className="text-success" />
+            <CheckCircle2 size={18} className="text-text-primary" />
           ) : (
-            <AlertCircle size={16} className="text-warning" />
+            <AlertCircle size={18} className="text-warning" />
           )}
         </div>
 
