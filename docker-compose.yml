@@ -10,6 +10,8 @@ services:
     restart: unless-stopped
     ports:
       - "80"  # Permitir que Coolify mapie dinamicamente via Traefik
+    networks:
+      - coolify
     depends_on:
       - dashboard-middleware
 
@@ -20,6 +22,8 @@ services:
       dockerfile: Dockerfile
     container_name: dashboard-middleware
     restart: unless-stopped
+    networks:
+      - coolify
     environment:
       - NODE_ENV=production
       - PORT=3200
@@ -51,3 +55,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+
+networks:
+  coolify:
+    external: true
