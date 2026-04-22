@@ -59,4 +59,3 @@ services:
 networks:
   default:
     name: coliseu_network
-    external: true
