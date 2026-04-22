@@ -37,7 +37,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ loading: true, error: null })
     try {
       // Login via Coliseu Identity Server
-      const identityUrl = import.meta.env.VITE_IDENTITY_URL || 'https://identity.coliseusistemas.com.br/api/auth/login'
+      const identityUrl = import.meta.env.VITE_IDENTITY_URL || 'https://adminlicencas.coliseusistemas.com.br/api/auth/login'
       
       const { data } = await axios.post(identityUrl, { 
           email, 
