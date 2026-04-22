@@ -4,12 +4,24 @@ const app = require('./app');
 const config = require('./config/env');
 const logger = require('./config/logger');
 const db = require('./db/postgres');
+const fs = require('fs');
+const path = require('path');
 
 async function startServer() {
     try {
         const dbOk = await db.checkConnection();
         if (!dbOk) {
             logger.warn('[App] Banco de dados indisponível no boot. Servidor continuará iniciando para health-checks falharem graciosamente.');
+        } else {
+            try {
+                logger.info('[App] Sincronizando tabelas do banco de dados (schema.sql)...');
+                const schemaPath = path.join(__dirname, 'db', 'schema.sql');
+                const schemaSql = fs.readFileSync(schemaPath, 'utf8');
+                await db.query(schemaSql);
+                logger.info('[App] Tabelas inicializadas com sucesso.');
+            } catch (dbErr) {
+                logger.error('[App] Erro ao sincronizar as tabelas do banco:', dbErr);
+            }
         }
 
         const server = app.listen(config.server.port, () => {
