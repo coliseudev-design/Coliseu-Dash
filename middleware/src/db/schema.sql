@@ -254,7 +254,7 @@ VALUES (
     'admin', 
     true, 
     -- bcrypt hash de AdminColiseu2026! 
-    '$2a$10$wOqOM57W.rVlE442bZgKjeK/y0bZ.s8b1f4g7Yp.I3Cqy6ZfO.fRe'
+    '$2b$10$WyhOyq71XTg7APhFkX8TXOR1dXWmPi6WWs4nbeAJk2AMGTCd24.za'
 ) ON CONFLICT (tenant_id, email) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS dash_auditoria (
