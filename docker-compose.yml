@@ -1,6 +1,21 @@
 version: '3.8'
 
 services:
+  # Serviço 1: Frontend SPA (React/Vite + Nginx)
+  dashboard-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: dashboard-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"  # Exposto na porta 3000 ou diretamente via DNS Manager do Coolify
+    depends_on:
+      - dashboard-middleware
+    networks:
+      - default
+
+  # Serviço 2: API Node.js Express (Backend)
   dashboard-middleware:
     build: 
       context: ./middleware
@@ -11,7 +26,7 @@ services:
       - NODE_ENV=production
       - PORT=3200
       
-      # Banco de dados
+      # Banco de dados (passar via secret/env variables no GitHub Actions / Coolify)
       - PG_HOST=${PG_HOST}
       - PG_PORT=5432
       - PG_DATABASE=coliseu_dashboard
@@ -30,7 +45,7 @@ services:
       - RATE_LIMIT_MAX=1000
     
     ports:
-      - "3200:3200"
+      - "3200:3200" # Idealmente em producao só a comunicação interna existe, mas expor permite chamadas do worker caso precise fora da rede.
       
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --spider http://localhost:3200/health/liveness || exit 1"]
@@ -38,8 +53,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
-
-    # Conectar à rede preexistente do ecossistema coliseu
     networks:
       - default
 
