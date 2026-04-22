@@ -12,8 +12,6 @@ services:
       - "80"  # Permitir que Coolify mapie dinamicamente via Traefik
     depends_on:
       - dashboard-middleware
-    networks:
-      - default
 
   # Serviço 2: API Node.js Express (Backend)
   dashboard-middleware:
@@ -53,9 +51,3 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
-    networks:
-      - default
-
-networks:
-  default:
-    name: coliseu_network
