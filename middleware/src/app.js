@@ -10,6 +10,7 @@ const { errorHandler } = require('./middleware/errorHandler');
 const { defaultLimit } = require('./middleware/rateLimiter');
 
 // Import Rotas
+const authRouter = require('./routes/auth');
 const healthRouter = require('./routes/health');
 const syncRouter = require('./routes/sync');
 const vendasRouter = require('./routes/vendas');
@@ -32,6 +33,7 @@ app.use(cors({
 // Payload maximo via sync interno será alto (batches de milhares de linhas)
 app.use(express.json({ limit: '10mb' }));
 
+app.use('/api/auth', authRouter); // Pública (limitada pelo rateLimiter adiante, mas no momento tá sem)
 app.use('/health', healthRouter);
 
 // Rotas do sistema (Frontend Web)

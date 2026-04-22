@@ -232,12 +232,30 @@ CREATE TABLE IF NOT EXISTS dash_usuarios (
     tenant_id UUID NOT NULL,
     email VARCHAR(200) NOT NULL,
     nome VARCHAR(200) NOT NULL,
+    senha_hash VARCHAR(255) NOT NULL,
     role VARCHAR(50) DEFAULT 'viewer', -- admin, gerente, vendedor, viewer
     ativo BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(tenant_id, email)
 );
+
+-- Garantir que colunas novas existam caso a tabela já estivesse lá
+ALTER TABLE dash_usuarios ADD COLUMN IF NOT EXISTS senha_hash VARCHAR(255);
+-- Colocar uma hash genérica pra quem não tinha senha (evitar nulo caso houvesse dados)
+UPDATE dash_usuarios SET senha_hash = '' WHERE senha_hash IS NULL;
+
+-- Seed: Criar conta mestre default (senha: AdminColiseu2026!)
+INSERT INTO dash_usuarios (tenant_id, email, nome, role, ativo, senha_hash)
+VALUES (
+    '00000000-0000-0000-0000-000000000000', 
+    'admin@coliseu.com.br', 
+    'Super Admin', 
+    'admin', 
+    true, 
+    -- bcrypt hash de AdminColiseu2026! 
+    '$2a$10$wOqOM57W.rVlE442bZgKjeK/y0bZ.s8b1f4g7Yp.I3Cqy6ZfO.fRe'
+) ON CONFLICT (tenant_id, email) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS dash_auditoria (
     id SERIAL PRIMARY KEY,
