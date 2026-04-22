@@ -9,7 +9,7 @@ services:
     container_name: dashboard-frontend
     restart: unless-stopped
     ports:
-      - "3000:80"  # Exposto na porta 3000 ou diretamente via DNS Manager do Coolify
+      - "80"  # Permitir que Coolify mapie dinamicamente via Traefik
     depends_on:
       - dashboard-middleware
     networks:
@@ -45,7 +45,7 @@ services:
       - RATE_LIMIT_MAX=1000
     
     ports:
-      - "3200:3200" # Idealmente em producao só a comunicação interna existe, mas expor permite chamadas do worker caso precise fora da rede.
+      - "3200" # Exposto apenas para a rede interna; Nginx/Traefik cuidam do roteamento externo
       
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --spider http://localhost:3200/health/liveness || exit 1"]
