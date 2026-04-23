@@ -22,7 +22,9 @@ const config = {
     security: {
         jwtDeviceKey: required('JWT_DEVICE_KEY'),
         expectedModuleSlug: optional('EXPECTED_MODULE_SLUG', 'dashboard'),
-        internalApiKey: optional('INTERNAL_API_KEY', ''),  // Chave usada pelo Worker (.NET)
+        internalApiKey: optional('INTERNAL_API_KEY', ''),  // Chave de fallback ou depreciada
+        identityApiUrl: optional('IDENTITY_API_URL', 'https://licencas.coliseusistemas.com.br'),
+        identityInternalKey: optional('IDENTITY_INTERNAL_KEY', ''),
         allowedOrigins: optional('ALLOWED_ORIGINS', '')
             .split(',')
             .map(s => s.trim())
