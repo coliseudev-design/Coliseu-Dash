@@ -73,8 +73,6 @@ async function requireWebJwt(req, res, next) {
  * @param {import('express').Response} res
  * @param {import('express').NextFunction} next
  */
-const axios = require('axios');
-
 // Cache em memória (TenantId -> { valid: boolean, expiresAt: number })
 // Usado para evitar sobrecarregar o servidor de licenças nas chamadas frequentes do Worker.
 const validationCache = new Map();
@@ -131,34 +129,39 @@ async function requireInternalAuth(req, res, next) {
     }
 
     try {
-        const response = await axios.post(
-            `${identityApiUrl}/internal/companies/${tenantId}/modules/${expectedModuleSlug}/validate-key`,
-            { apiKey: internalKey },
-            { 
-                headers: { 'X-Internal-Api-Key': identityInternalKey },
-                timeout: 3000
-            }
-        );
+        const response = await fetch(`${identityApiUrl}/internal/companies/${tenantId}/modules/${expectedModuleSlug}/validate-key`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Internal-Api-Key': identityInternalKey
+            },
+            body: JSON.stringify({ apiKey: internalKey }),
+            signal: AbortSignal.timeout(3000)
+        });
 
-        if (response.status === 200 && response.data.valid) {
-            validationCache.set(cacheKey, { valid: true, expiresAt: Date.now() + CACHE_TTL_MS });
-            req.tenant = { id: tenantId };
-            req.device = { id: 'worker' };
-            return next();
-        } else {
-            const reason = response.data.reason || 'Sincronização não autorizada pelo Servidor de Identidade.';
-            validationCache.set(cacheKey, { valid: false, reason, expiresAt: Date.now() + CACHE_TTL_MS });
-            return res.status(403).json({ error: reason, code: 'MODULE_BLOCKED' });
+        if (response.status === 200) {
+            const data = await response.json();
+            if (data.valid) {
+                validationCache.set(cacheKey, { valid: true, expiresAt: Date.now() + CACHE_TTL_MS });
+                req.tenant = { id: tenantId };
+                req.device = { id: 'worker' };
+                return next();
+            }
         }
-    } catch (err) {
-        if (err.response && err.response.status === 403) {
-            const reason = err.response.data?.reason || 'Módulo bloqueado (HTTP 403).';
+
+        if (response.status === 403) {
+            const data = await response.json().catch(() => ({}));
+            const reason = data.reason || 'Módulo bloqueado (HTTP 403).';
             validationCache.set(cacheKey, { valid: false, reason, expiresAt: Date.now() + CACHE_TTL_MS });
             logger.warn('[InternalAuth] Identity rejeitou o módulo', { tenantId, reason });
             return res.status(403).json({ error: reason, code: 'MODULE_BLOCKED' });
         }
 
-        logger.error('[InternalAuth] Erro ao validar no Identity API. Usando fallback temporário.', { err: err.message, tenantId });
+        // Se for outro erro, lançamos para cair no catch e usar fallback
+        throw new Error(`Identity API retornou status ${response.status}`);
+        
+    } catch (err) {
+        logger.error('[InternalAuth] Erro ao validar no Identity API. Usando fallback.', { err: err.message, tenantId });
         
         // Timeout ou queda do Identity: usar fallback estático do .env por precaução
         if (internalApiKey && internalKey === internalApiKey) {
