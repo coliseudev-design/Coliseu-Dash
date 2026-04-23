@@ -48,6 +48,18 @@ async function checkConnection() {
     try {
         await query('SELECT 1 AS ok', []);
         logger.info('[DB] Conectado ao PostgreSQL (coliseu_dashboard)');
+        
+        // Mini-migrator silencioso para garantir colunas recém-adicionadas na v2.4.0
+        // Como o Postgres <= 15 não suporta IF NOT EXISTS para várias colunas de uma vez elegantemente num ALTER padrão, faremos col a col
+        try {
+            await query(`ALTER TABLE dash_produtos ADD COLUMN IF NOT EXISTS preco DECIMAL(15,2) DEFAULT 0;`, []);
+            await query(`ALTER TABLE dash_produtos ADD COLUMN IF NOT EXISTS custo DECIMAL(15,2) DEFAULT 0;`, []);
+            await query(`ALTER TABLE dash_produtos ADD COLUMN IF NOT EXISTS estoque DECIMAL(15,3) DEFAULT 0;`, []);
+            await query(`ALTER TABLE dash_produtos ADD COLUMN IF NOT EXISTS estoque_minimo DECIMAL(15,3) DEFAULT 0;`, []);
+        } catch (migErr) {
+            logger.warn('[DB] Migração silenciosa de produtos falhou ou já executada', { erro: migErr.message });
+        }
+
         return true;
     } catch (err) {
         logger.error('[DB] Falha ao conectar ao PostgreSQL', { error: err.message });

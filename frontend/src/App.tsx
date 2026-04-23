@@ -12,6 +12,7 @@ import Ranking from './pages/Ranking'
 import Estatisticas from './pages/Estatisticas'
 import Produtos from './pages/Produtos'
 import Clientes from './pages/Clientes'
+import Vendas from './pages/Vendas'
 
 function Protected({ children }: { children: JSX.Element }) {
   const user = useAuthStore((s) => s.user)
@@ -51,6 +52,9 @@ export default function App() {
         <Route path="comissoes" element={<Comissoes />} />
         <Route path="ranking" element={<Ranking />} />
         <Route path="estatisticas" element={<Estatisticas />} />
+        <Route path="produtos" element={<Produtos />} />
+        <Route path="clientes" element={<Clientes />} />
+        <Route path="vendas" element={<Vendas />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

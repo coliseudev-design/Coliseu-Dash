@@ -42,9 +42,9 @@ router.get('/overview', async (req, res, next) => {
         
         // Financeiro do período filtrado (usando emissão/vencimento)
         const { rows: fReceber } = await db.query(`SELECT COALESCE(SUM(valor - valor_pago),0) AS v FROM dash_financeiro WHERE tenant_id = $1 AND COALESCE(data_vencimento, data_emissao, NOW()) >= $2 AND COALESCE(data_vencimento, data_emissao, NOW()) <= $3 AND tipo = 'RECEBER' AND status_pagamento = 'ABERTO'`, [tenantId, finRange.start, finRange.end]);
-        const { rows: fRecebido } = await db.query(`SELECT COALESCE(SUM(valor_pago),0) AS v FROM dash_financeiro WHERE tenant_id = $1 AND COALESCE(data_vencimento, data_emissao, NOW()) >= $2 AND COALESCE(data_vencimento, data_emissao, NOW()) <= $3 AND tipo = 'RECEBER' AND status_pagamento = 'PAGO'`, [tenantId, finRange.start, finRange.end]);
-        const { rows: fPagar } = await db.query(`SELECT COALESCE(SUM(valor - valor_pago),0) AS v FROM dash_financeiro WHERE tenant_id = $1 AND COALESCE(data_vencimento, data_emissao, NOW()) >= $2 AND COALESCE(data_vencimento, data_emissao, NOW()) <= $3 AND tipo = 'PAGAR' AND status_pagamento = 'ABERTO'`, [tenantId, finRange.start, finRange.end]);
-        const { rows: fPago } = await db.query(`SELECT COALESCE(SUM(valor_pago),0) AS v FROM dash_financeiro WHERE tenant_id = $1 AND COALESCE(data_vencimento, data_emissao, NOW()) >= $2 AND COALESCE(data_vencimento, data_emissao, NOW()) <= $3 AND tipo = 'PAGAR' AND status_pagamento = 'PAGO'`, [tenantId, finRange.start, finRange.end]);
+        const { rows: fRecebido } = await db.query(`SELECT COALESCE(SUM(COALESCE(NULLIF(valor_pago, 0), valor)),0) AS v FROM dash_financeiro WHERE tenant_id = $1 AND COALESCE(data_vencimento, data_emissao, NOW()) >= $2 AND COALESCE(data_vencimento, data_emissao, NOW()) <= $3 AND tipo = 'RECEBER' AND status_pagamento = 'PAGO'`, [tenantId, finRange.start, finRange.end]);
+        const { rows: fPagar } = await db.query(`SELECT COALESCE(SUM(valor - COALESCE(NULLIF(valor_pago, 0), valor)),0) AS v FROM dash_financeiro WHERE tenant_id = $1 AND COALESCE(data_vencimento, data_emissao, NOW()) >= $2 AND COALESCE(data_vencimento, data_emissao, NOW()) <= $3 AND tipo = 'PAGAR' AND status_pagamento = 'ABERTO'`, [tenantId, finRange.start, finRange.end]);
+        const { rows: fPago } = await db.query(`SELECT COALESCE(SUM(COALESCE(NULLIF(valor_pago, 0), valor)),0) AS v FROM dash_financeiro WHERE tenant_id = $1 AND COALESCE(data_vencimento, data_emissao, NOW()) >= $2 AND COALESCE(data_vencimento, data_emissao, NOW()) <= $3 AND tipo = 'PAGAR' AND status_pagamento = 'PAGO'`, [tenantId, finRange.start, finRange.end]);
         
         // Top Marcas e Categorias no período filtrado
         const { rows: topMarcasItens } = await db.query(`
@@ -121,9 +121,9 @@ router.get('/kpis', async (req, res, next) => {
 
         const { rows: f } = await db.query(`
             SELECT 
-                COALESCE(SUM(CASE WHEN tipo = 'RECEBER' AND status_pagamento = 'ABERTO' THEN valor - valor_pago ELSE 0 END), 0) AS a_receber,
-                COALESCE(SUM(CASE WHEN tipo = 'RECEBER' AND status_pagamento = 'PAGO' THEN valor_pago ELSE 0 END), 0) AS recebido,
-                COALESCE(SUM(CASE WHEN tipo = 'PAGAR' AND status_pagamento = 'ABERTO' THEN valor - valor_pago ELSE 0 END), 0) AS a_pagar
+                COALESCE(SUM(CASE WHEN tipo = 'RECEBER' AND status_pagamento = 'ABERTO' THEN valor - COALESCE(NULLIF(valor_pago, 0), 0) ELSE 0 END), 0) AS a_receber,
+                COALESCE(SUM(CASE WHEN tipo = 'RECEBER' AND status_pagamento = 'PAGO' THEN COALESCE(NULLIF(valor_pago, 0), valor) ELSE 0 END), 0) AS recebido,
+                COALESCE(SUM(CASE WHEN tipo = 'PAGAR' AND status_pagamento = 'ABERTO' THEN valor - COALESCE(NULLIF(valor_pago, 0), 0) ELSE 0 END), 0) AS a_pagar
             FROM dash_financeiro
             WHERE tenant_id = $1 
               AND COALESCE(data_vencimento, data_emissao, NOW()) >= $2 
