@@ -135,6 +135,24 @@ router.get('/status', async (req, res) => {
             ORDER BY tabela
         `, [tenantId]);
         
+        let heartbeatStatus = 'OFFLINE';
+        let ultimaHeartbeat = null;
+        if (rows.length > 0) {
+            // Agente ativo se teve alguma sync nos últimos 30 minutos
+            const lastSyncDate = new Date(Math.max(...rows.map(r => new Date(r.ultima).getTime())));
+            ultimaHeartbeat = lastSyncDate.toISOString();
+            if (Date.now() - lastSyncDate.getTime() < 30 * 60 * 1000) {
+                heartbeatStatus = 'OK';
+            }
+        }
+        
+        rows.push({
+            tabela: '__heartbeat__',
+            ultima: ultimaHeartbeat,
+            status: heartbeatStatus,
+            registros: 0
+        });
+
         return res.json({ status: rows, timestamp: new Date().toISOString() });
     } catch (err) {
         return res.status(500).json({ error: 'Erro ao consultar status' });
