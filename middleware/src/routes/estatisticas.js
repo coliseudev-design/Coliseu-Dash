@@ -9,56 +9,75 @@ const { getPeriodRange } = require('../utils/period');
 router.get('/overview', async (req, res, next) => {
     try {
         const tenantId = req.tenant.id;
+        const period = req.query.period || 'last30'; // default to last 30 if none
+        const { start_date, end_date } = req.query;
         
-        // Obter data máxima da base de vendas (pois a base de teste pode ser muito antiga)
+        // 1) Descobre a data-âncora de VENDAS
         const { rows: rMax } = await db.query(`SELECT COALESCE(MAX(data_venda), CURRENT_DATE) as d FROM dash_vendas WHERE tenant_id = $1`, [tenantId]);
         const maxDate = rMax[0].d;
 
-        // Vendas hoje e mês (Relativos à data mais recente daquele tenant)
-        const { rows: vHoje } = await db.query(`SELECT COALESCE(SUM(valor_total),0) AS total, COUNT(*) AS qtd FROM dash_vendas WHERE tenant_id = $1 AND DATE(data_venda) = DATE($2)`, [tenantId, maxDate]);
-        const { rows: vMes } = await db.query(`SELECT COALESCE(SUM(valor_total),0) AS total, COUNT(*) AS qtd FROM dash_vendas WHERE tenant_id = $1 AND EXTRACT(MONTH FROM data_venda) = EXTRACT(MONTH FROM $2::date) AND EXTRACT(YEAR FROM data_venda) = EXTRACT(YEAR FROM $2::date)`, [tenantId, maxDate]);
+        // 2) Descobre a data-âncora FINANCEIRA (pois nem sempre bate com as vendas)
+        const { rows: rMaxFin } = await db.query(`SELECT COALESCE(MAX(data_emissao), CURRENT_DATE) as d FROM dash_financeiro WHERE tenant_id = $1`, [tenantId]);
+        const maxDateFin = rMaxFin[0].d;
+
+        // Aplica getPeriodRange passando a data-âncora de vendas
+        const { start, end } = getPeriodRange(period, start_date, end_date, maxDate);
         
-        // Pedidos: conta todos (status varia conforme versão do Worker)
-        const { rows: pAbertos } = await db.query(`SELECT COUNT(*) AS qtd FROM dash_vendas WHERE tenant_id = $1 AND status IN ('PENDENTE','ABERTO')`, [tenantId]);
-        const { rows: pProc } = await db.query(`SELECT COUNT(*) AS qtd FROM dash_vendas WHERE tenant_id = $1 AND status IN ('FATURADO','FINALIZADO','CANCELADO')`, [tenantId]);
+        // Para os dados "Hoje", vamos usar sempre o próprio maxDate para não mostrar zerado (se a base legada usar Hoje, será o último dia que teve algo)
+        const startHoje = new Date(maxDate);
+        startHoje.setHours(0,0,0,0);
+        const endHoje = new Date(maxDate);
+        endHoje.setHours(23,59,59,999);
         
-        // Financeiro
-        const { rows: fReceber } = await db.query(`SELECT COALESCE(SUM(valor - valor_pago),0) AS v FROM dash_financeiro WHERE tenant_id = $1 AND tipo = 'RECEBER' AND status_pagamento = 'ABERTO'`, [tenantId]);
-        const { rows: fRecebido } = await db.query(`SELECT COALESCE(SUM(valor_pago),0) AS v FROM dash_financeiro WHERE tenant_id = $1 AND tipo = 'RECEBER' AND status_pagamento = 'PAGO'`, [tenantId]);
-        const { rows: fPagar } = await db.query(`SELECT COALESCE(SUM(valor - valor_pago),0) AS v FROM dash_financeiro WHERE tenant_id = $1 AND tipo = 'PAGAR' AND status_pagamento = 'ABERTO'`, [tenantId]);
-        const { rows: fPago } = await db.query(`SELECT COALESCE(SUM(valor_pago),0) AS v FROM dash_financeiro WHERE tenant_id = $1 AND tipo = 'PAGAR' AND status_pagamento = 'PAGO'`, [tenantId]);
+        // Aplica getPeriodRange passando a data-âncora financeira
+        const finRange = getPeriodRange(period, start_date, end_date, maxDateFin);
+
+        // Vendas hoje (dia mais recente) e período (filtrado)
+        const { rows: vHoje } = await db.query(`SELECT COALESCE(SUM(valor_total),0) AS total, COUNT(*) AS qtd FROM dash_vendas WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3`, [tenantId, startHoje, endHoje]);
+        const { rows: vMes } = await db.query(`SELECT COALESCE(SUM(valor_total),0) AS total, COUNT(*) AS qtd FROM dash_vendas WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3`, [tenantId, start, end]);
         
-        // Top Marcas e Categorias: tenta dash_vendas_itens (com dados de marca/categoria por item)
-        // e cai de volta para dash_vendas se não houver dados
+        // Pedidos do período filtrado
+        const { rows: pAbertos } = await db.query(`SELECT COUNT(*) AS qtd FROM dash_vendas WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3 AND status IN ('PENDENTE','ABERTO')`, [tenantId, start, end]);
+        const { rows: pProc } = await db.query(`SELECT COUNT(*) AS qtd FROM dash_vendas WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3 AND status IN ('FATURADO','FINALIZADO','CANCELADO')`, [tenantId, start, end]);
+        
+        // Financeiro do período filtrado (usando emissão/vencimento)
+        const { rows: fReceber } = await db.query(`SELECT COALESCE(SUM(valor - valor_pago),0) AS v FROM dash_financeiro WHERE tenant_id = $1 AND COALESCE(data_vencimento, data_emissao, NOW()) >= $2 AND COALESCE(data_vencimento, data_emissao, NOW()) <= $3 AND tipo = 'RECEBER' AND status_pagamento = 'ABERTO'`, [tenantId, finRange.start, finRange.end]);
+        const { rows: fRecebido } = await db.query(`SELECT COALESCE(SUM(valor_pago),0) AS v FROM dash_financeiro WHERE tenant_id = $1 AND COALESCE(data_vencimento, data_emissao, NOW()) >= $2 AND COALESCE(data_vencimento, data_emissao, NOW()) <= $3 AND tipo = 'RECEBER' AND status_pagamento = 'PAGO'`, [tenantId, finRange.start, finRange.end]);
+        const { rows: fPagar } = await db.query(`SELECT COALESCE(SUM(valor - valor_pago),0) AS v FROM dash_financeiro WHERE tenant_id = $1 AND COALESCE(data_vencimento, data_emissao, NOW()) >= $2 AND COALESCE(data_vencimento, data_emissao, NOW()) <= $3 AND tipo = 'PAGAR' AND status_pagamento = 'ABERTO'`, [tenantId, finRange.start, finRange.end]);
+        const { rows: fPago } = await db.query(`SELECT COALESCE(SUM(valor_pago),0) AS v FROM dash_financeiro WHERE tenant_id = $1 AND COALESCE(data_vencimento, data_emissao, NOW()) >= $2 AND COALESCE(data_vencimento, data_emissao, NOW()) <= $3 AND tipo = 'PAGAR' AND status_pagamento = 'PAGO'`, [tenantId, finRange.start, finRange.end]);
+        
+        // Top Marcas e Categorias no período filtrado
         const { rows: topMarcasItens } = await db.query(`
             SELECT vi.marca, SUM(vi.valor_total) AS total
             FROM dash_vendas_itens vi
-            WHERE vi.tenant_id = $1 AND vi.marca IS NOT NULL AND vi.marca != ''
+            JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND vi.marca IS NOT NULL AND vi.marca != ''
             GROUP BY vi.marca ORDER BY total DESC LIMIT 10
-        `, [tenantId]);
+        `, [tenantId, start, end]);
 
         const { rows: topMarcasVendas } = await db.query(`
             SELECT marca, SUM(valor_total) AS total
             FROM dash_vendas
-            WHERE tenant_id = $1 AND marca IS NOT NULL AND marca != ''
+            WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3 AND marca IS NOT NULL AND marca != ''
             GROUP BY marca ORDER BY total DESC LIMIT 10
-        `, [tenantId]);
+        `, [tenantId, start, end]);
 
         const topMarcas = topMarcasItens.length > 0 ? topMarcasItens : topMarcasVendas;
 
         const { rows: topCatsItens } = await db.query(`
             SELECT vi.categoria, SUM(vi.valor_total) AS total
             FROM dash_vendas_itens vi
-            WHERE vi.tenant_id = $1 AND vi.categoria IS NOT NULL AND vi.categoria != ''
+            JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND vi.categoria IS NOT NULL AND vi.categoria != ''
             GROUP BY vi.categoria ORDER BY total DESC LIMIT 10
-        `, [tenantId]);
+        `, [tenantId, start, end]);
 
         const { rows: topCatsVendas } = await db.query(`
             SELECT categoria, SUM(valor_total) AS total
             FROM dash_vendas
-            WHERE tenant_id = $1 AND categoria IS NOT NULL AND categoria != ''
+            WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3 AND categoria IS NOT NULL AND categoria != ''
             GROUP BY categoria ORDER BY total DESC LIMIT 10
-        `, [tenantId]);
+        `, [tenantId, start, end]);
 
         const topCats = topCatsItens.length > 0 ? topCatsItens : topCatsVendas;
 
