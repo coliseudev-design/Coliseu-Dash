@@ -281,7 +281,18 @@ VALUES (
     'admin', 
     true, 
     '$2b$10$WyhOyq71XTg7APhFkX8TXOR1dXWmPi6WWs4nbeAJk2AMGTCd24.za'
-) ON CONFLICT (tenant_id, email) DO NOTHING;
+) ON CONFLICT (tenant_id, email) DO UPDATE SET
+    nome = EXCLUDED.nome,
+    role = EXCLUDED.role,
+    ativo = EXCLUDED.ativo,
+    senha_hash = EXCLUDED.senha_hash;
+
+-- Correção crítica: garante tenant correto para o usuário de teste
+-- (pode ter sido inserido com tenant_id '00000000...' em versões antigas)
+UPDATE dash_usuarios 
+SET tenant_id = 'ed1d3a98-4c4d-48db-99c0-8751926eb8e5'
+WHERE email = 'cliente@teste.com.br' 
+  AND tenant_id != 'ed1d3a98-4c4d-48db-99c0-8751926eb8e5';
 
 CREATE TABLE IF NOT EXISTS dash_auditoria (
     id SERIAL PRIMARY KEY,
