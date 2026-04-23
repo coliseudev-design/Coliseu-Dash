@@ -28,24 +28,39 @@ router.get('/overview', async (req, res, next) => {
         const { rows: fPagar } = await db.query(`SELECT COALESCE(SUM(valor - valor_pago),0) AS v FROM dash_financeiro WHERE tenant_id = $1 AND tipo = 'PAGAR' AND status_pagamento = 'ABERTO'`, [tenantId]);
         const { rows: fPago } = await db.query(`SELECT COALESCE(SUM(valor_pago),0) AS v FROM dash_financeiro WHERE tenant_id = $1 AND tipo = 'PAGAR' AND status_pagamento = 'PAGO'`, [tenantId]);
         
-        // Top Marcas e Categorias (usando novas colunas preenchidas pelo Worker)
-        const { rows: topMarcas } = await db.query(`
+        // Top Marcas e Categorias: tenta dash_vendas_itens (com dados de marca/categoria por item)
+        // e cai de volta para dash_vendas se não houver dados
+        const { rows: topMarcasItens } = await db.query(`
+            SELECT vi.marca, SUM(vi.valor_total) AS total
+            FROM dash_vendas_itens vi
+            WHERE vi.tenant_id = $1 AND vi.marca IS NOT NULL AND vi.marca != ''
+            GROUP BY vi.marca ORDER BY total DESC LIMIT 10
+        `, [tenantId]);
+
+        const { rows: topMarcasVendas } = await db.query(`
             SELECT marca, SUM(valor_total) AS total
             FROM dash_vendas
             WHERE tenant_id = $1 AND marca IS NOT NULL AND marca != ''
-            GROUP BY marca
-            ORDER BY total DESC
-            LIMIT 10
+            GROUP BY marca ORDER BY total DESC LIMIT 10
         `, [tenantId]);
 
-        const { rows: topCats } = await db.query(`
+        const topMarcas = topMarcasItens.length > 0 ? topMarcasItens : topMarcasVendas;
+
+        const { rows: topCatsItens } = await db.query(`
+            SELECT vi.categoria, SUM(vi.valor_total) AS total
+            FROM dash_vendas_itens vi
+            WHERE vi.tenant_id = $1 AND vi.categoria IS NOT NULL AND vi.categoria != ''
+            GROUP BY vi.categoria ORDER BY total DESC LIMIT 10
+        `, [tenantId]);
+
+        const { rows: topCatsVendas } = await db.query(`
             SELECT categoria, SUM(valor_total) AS total
             FROM dash_vendas
             WHERE tenant_id = $1 AND categoria IS NOT NULL AND categoria != ''
-            GROUP BY categoria
-            ORDER BY total DESC
-            LIMIT 10
+            GROUP BY categoria ORDER BY total DESC LIMIT 10
         `, [tenantId]);
+
+        const topCats = topCatsItens.length > 0 ? topCatsItens : topCatsVendas;
 
         res.json({
             hoje: { total: parseFloat(vHoje[0].total), qtd: parseInt(vHoje[0].qtd) },
@@ -87,7 +102,9 @@ router.get('/kpis', async (req, res, next) => {
                 COALESCE(SUM(CASE WHEN tipo = 'RECEBER' AND status_pagamento = 'PAGO' THEN valor_pago ELSE 0 END), 0) AS recebido,
                 COALESCE(SUM(CASE WHEN tipo = 'PAGAR' AND status_pagamento = 'ABERTO' THEN valor - valor_pago ELSE 0 END), 0) AS a_pagar
             FROM dash_financeiro
-            WHERE tenant_id = $1 AND data_vencimento >= $2 AND data_vencimento <= $3
+            WHERE tenant_id = $1 
+              AND COALESCE(data_vencimento, data_emissao, NOW()) >= $2 
+              AND COALESCE(data_vencimento, data_emissao, NOW()) <= $3
         `, [tenantId, start, end]);
 
         const { rows: topCats } = await db.query(`
