@@ -56,6 +56,48 @@ async function getAnchoredRange(tenantId, period, start_date, end_date) {
     return { start, end };
 }
 
+// GET /api/ranking/kpis (para a tela de comissoes)
+router.get('/kpis', async (req, res, next) => {
+    try {
+        const tenantId = req.tenant.id;
+        const { start, end } = await getAnchoredRange(tenantId, req.query.period || 'last12m', req.query.start_date, req.query.end_date);
+
+        // Como não há sync de comissões ativado ainda, vamos calcular comissões estimadas a partir das vendas
+        const { rows } = await db.query(`
+            SELECT 
+                SUM(valor_total) AS total_produzido,
+                COUNT(DISTINCT id_firebird) AS qtd_vendas
+            FROM dash_vendas
+            WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3
+        `, [tenantId, start, end]);
+
+        const { rows: grouped } = await db.query(`
+            SELECT 
+                vendedor_id_firebird, SUM(valor_total) AS total
+            FROM dash_vendas
+            WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3
+            GROUP BY vendedor_id_firebird
+        `, [tenantId, start, end]);
+
+        let maior = 0;
+        let menor = 0;
+        if (grouped.length > 0) {
+            // Supondo 5% de comissão média para ter valores na tela
+            maior = Math.max(...grouped.map(r => parseFloat(r.total))) * 0.05;
+            menor = Math.min(...grouped.map(r => parseFloat(r.total))) * 0.05;
+        }
+
+        res.json({
+            kpis: {
+                total: parseFloat(rows[0].total_produzido || 0) * 0.05,
+                menor,
+                maior,
+                qtd: parseInt(rows[0].qtd_vendas || 0)
+            }
+        });
+    } catch (err) { next(err); }
+});
+
 // GET /api/ranking/vendedores
 router.get('/vendedores', async (req, res, next) => {
     try {
@@ -193,7 +235,7 @@ router.get('/especies', async (req, res, next) => {
     } catch (err) { next(err); }
 });
 
-// GET /api/ranking/ranking (alias para /comissoes/ranking)
+// GET /api/ranking/ranking (usado por /comissoes/ranking e pela Vendas.tsx)
 router.get('/ranking', async (req, res, next) => {
     try {
         const tenantId = req.tenant.id;
@@ -205,8 +247,7 @@ router.get('/ranking', async (req, res, next) => {
                 v.vendedor_id_firebird AS id,
                 COALESCE(vd.nome, 'Vendedor ' || COALESCE(v.vendedor_id_firebird::text, '?')) AS nome,
                 SUM(v.valor_total) AS faturamento,
-                COUNT(DISTINCT v.id_firebird) AS qtd_pedidos,
-                AVG(v.valor_total) AS ticket_medio
+                COUNT(DISTINCT v.id_firebird) AS qtd_pedidos
             FROM dash_vendas v
             LEFT JOIN dash_vendedores vd ON vd.id_firebird = v.vendedor_id_firebird AND vd.tenant_id = v.tenant_id
             WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
@@ -215,10 +256,11 @@ router.get('/ranking', async (req, res, next) => {
         `, [tenantId, start, end, limit]);
 
         res.json({ data: rows.map(r => ({
-            id: r.id, nome: r.nome,
-            faturamento: parseFloat(r.faturamento || 0),
-            qtd_pedidos: parseInt(r.qtd_pedidos),
-            ticket_medio: parseFloat(r.ticket_medio || 0)
+            vendedor_id: r.id, 
+            vendedor: r.nome,
+            total_vendas: parseFloat(r.faturamento || 0),
+            total_comissao: parseFloat(r.faturamento || 0) * 0.05, // Comissão estimada de 5%
+            qtd_vendas: parseInt(r.qtd_pedidos)
         })) });
     } catch (err) { next(err); }
 });

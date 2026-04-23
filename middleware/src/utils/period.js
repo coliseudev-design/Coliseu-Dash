@@ -5,8 +5,8 @@
  * Suporta: today, yesterday, last7, thisMonth, lastMonth, last12m, custom
  * e também os legados: hoje, 7d, 30d, 1m, 3m, 6m, 1y, ytd, all
  */
-function getPeriodRange(period, startDate, endDate) {
-    const now = new Date();
+function getPeriodRange(period, startDate, endDate, anchorDate) {
+    const now = anchorDate ? new Date(anchorDate) : new Date();
     let start = new Date(now);
     let end = new Date(now);
 

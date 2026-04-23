@@ -254,10 +254,10 @@ router.get('/caixa', async (req, res, next) => {
 // GET /api/financeiro/especies-vendidas
 router.get('/especies-vendidas', async (req, res, next) => {
     try {
-        const period = req.query.period || '30d';
-        const { start, end } = getPeriodRange(period);
-        const limit = parseInt(req.query.limit, 10) || 15;
         const tenantId = req.tenant.id;
+        const period = req.query.period || '30d';
+        const { start, end } = await getFinanceiroAnchor(tenantId, period, req.query.start_date, req.query.end_date);
+        const limit = parseInt(req.query.limit, 10) || 15;
 
         const prodP = await db.query(`
             SELECT 

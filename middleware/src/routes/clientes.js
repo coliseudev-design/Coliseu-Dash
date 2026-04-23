@@ -64,9 +64,12 @@ router.get('/lista', async (req, res, next) => {
 // GET /api/clientes/kpis
 router.get('/kpis', async (req, res, next) => {
     try {
-        const tenantId = req.tenant.id;
         const period = req.query.period || '30d';
-        const { start, end } = getPeriodRange(period);
+        const tenantId = req.tenant.id;
+        const { start_date, end_date } = req.query;
+        const { rows: rMax } = await db.query(`SELECT COALESCE(MAX(data_venda), CURRENT_DATE) as d FROM dash_vendas WHERE tenant_id = $1`, [tenantId]);
+        const maxDate = rMax[0].d;
+        const { start, end } = getPeriodRange(period, start_date, end_date, maxDate);
 
         const totalP = await db.query(
             'SELECT COUNT(*) AS total FROM dash_clientes WHERE tenant_id = $1 AND ativo = true', 

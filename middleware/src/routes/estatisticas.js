@@ -104,7 +104,10 @@ router.get('/kpis', async (req, res, next) => {
         const tenantId = req.tenant.id;
         const period = req.query.period || 'last12m';
         const { start_date, end_date } = req.query;
-        const { start, end } = getPeriodRange(period, start_date, end_date);
+        
+        const { rows: rMax } = await db.query(`SELECT COALESCE(MAX(data_venda), CURRENT_DATE) as d FROM dash_vendas WHERE tenant_id = $1`, [tenantId]);
+        const maxDate = rMax[0].d;
+        const { start, end } = getPeriodRange(period, start_date, end_date, maxDate);
 
         const { rows: v } = await db.query(`
             SELECT 
@@ -136,6 +139,33 @@ router.get('/kpis', async (req, res, next) => {
             GROUP BY vi.categoria ORDER BY total DESC LIMIT 5
         `, [tenantId, start, end]);
 
+        const { rows: rCli } = await db.query(`SELECT COUNT(DISTINCT cliente_id_firebird) AS ativos FROM dash_vendas WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3`, [tenantId, start, end]);
+        const { rows: rTotCli } = await db.query(`SELECT COUNT(*) AS total FROM dash_clientes WHERE tenant_id = $1 AND ativo = true`, [tenantId]);
+
+        const { rows: topClientes } = await db.query(`
+            SELECT c.nome, SUM(v.valor_total) AS total
+            FROM dash_vendas v
+            JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
+            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
+            GROUP BY c.id, c.nome
+            ORDER BY total DESC LIMIT 5
+        `, [tenantId, start, end]);
+
+        const { rows: rEst } = await db.query(`SELECT COALESCE(SUM(estoque), 0) AS qtd, COALESCE(SUM(estoque * preco), 0) AS valor FROM dash_produtos WHERE tenant_id = $1 AND ativo = true`, [tenantId]);
+
+        const { rows: topProd } = await db.query(`
+            SELECT COALESCE(vi.produto, 'Sem nome') AS nome, SUM(vi.quantidade) AS qtd
+            FROM dash_vendas_itens vi
+            JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND vi.produto IS NOT NULL
+            GROUP BY vi.produto
+            ORDER BY qtd DESC LIMIT 1
+        `, [tenantId, start, end]);
+
+        const clientesAtivos = parseInt(rCli[0].ativos, 10);
+        const totalClientes = parseInt(rTotCli[0].total, 10);
+        const taxa_conversao_pct = totalClientes > 0 ? (clientesAtivos / totalClientes) * 100 : 0;
+
         res.json({
             period: { start, end, label: period },
             vendas: {
@@ -149,7 +179,19 @@ router.get('/kpis', async (req, res, next) => {
                 recebido: parseFloat(f[0].recebido),
                 a_pagar: parseFloat(f[0].a_pagar)
             },
-            top_categorias: topCats.map(r => ({ categoria: r.categoria, total: parseFloat(r.total) }))
+            kpis: {
+                clientes_ativos: clientesAtivos,
+                total_clientes: totalClientes,
+                ticket_medio: parseFloat(v[0].ticket_medio),
+                top_clientes: topClientes.map(c => ({ nome: c.nome, total: parseFloat(c.total) })),
+                estoque: {
+                    qtd: parseFloat(rEst[0].qtd),
+                    valor: parseFloat(rEst[0].valor)
+                },
+                taxa_conversao_pct,
+                produto_mais_vendido: topProd.length > 0 ? topProd[0].nome : '—',
+                top_categorias: topCats.map(r => ({ categoria: r.categoria, total: parseFloat(r.total) }))
+            }
         });
     } catch (err) { next(err); }
 });

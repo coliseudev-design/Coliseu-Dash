@@ -1,4 +1,4 @@
-import { useApiQuery } from '../hooks/useApi'
+import { useApiQuery, usePeriodQuery } from '../hooks/useApi'
 import KPICard from '../components/KPICard'
 import ChartCard from '../components/ChartCard'
 import { Link } from 'react-router-dom'
@@ -32,8 +32,8 @@ export default function Home() {
   const start_date = usePeriodStore((s) => s.startDate)
   const end_date = usePeriodStore((s) => s.endDate)
 
-  const ov = useApiQuery<Overview>('/estatisticas/overview', { period, start_date, end_date })
-  const fatMes = useApiQuery<any>('/vendas/faturadas', { period: 'last7' })
+  const ov = usePeriodQuery<Overview>('/estatisticas/overview')
+  const fatMes = usePeriodQuery<any>('/vendas/faturadas')
   const recentes = useApiQuery<any>('/vendas/recentes', { limit: 8 })
 
   const totalPeriodo = ov.data?.mes?.total || 0
@@ -212,8 +212,8 @@ export default function Home() {
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Gráfico de vendas últimos 7 dias */}
         <ChartCard
-          title="Vendas · Últimos 7 dias"
-          subtitle="Faturamento diário comparativo"
+          title="Faturamento no Período"
+          subtitle="Acompanhamento diário"
           className="lg:col-span-2"
           loading={fatMes.isLoading}
           empty={!fatMes.data?.data?.length}
