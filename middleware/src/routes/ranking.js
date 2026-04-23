@@ -102,7 +102,8 @@ router.get('/produtos', async (req, res, next) => {
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
             WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
-            GROUP BY vi.produto, vi.produto_id_firebird
+              AND COALESCE(vi.produto, vi.produto_id_firebird::text) IS NOT NULL
+            GROUP BY COALESCE(vi.produto, 'Produto ' || COALESCE(vi.produto_id_firebird::text, '?'))
             ORDER BY total DESC LIMIT $4
         `, [tenantId, start, end, limit]);
 
