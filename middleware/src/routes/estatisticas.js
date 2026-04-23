@@ -64,6 +64,59 @@ router.get('/overview', async (req, res, next) => {
     }
 });
 
+// GET /api/estatisticas/kpis - resumo de KPIs agregados para página de Estatísticas
+router.get('/kpis', async (req, res, next) => {
+    try {
+        const tenantId = req.tenant.id;
+        const period = req.query.period || '30d';
+        const { start, end } = getPeriodRange(period);
+
+        const { rows: v } = await db.query(`
+            SELECT 
+                COALESCE(SUM(valor_total), 0) AS faturamento,
+                COUNT(DISTINCT id_firebird) AS qtd_pedidos,
+                COALESCE(AVG(valor_total), 0) AS ticket_medio,
+                COALESCE(SUM(valor_desconto), 0) AS total_descontos
+            FROM dash_vendas
+            WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3 AND status = 'FATURADO'
+        `, [tenantId, start, end]);
+
+        const { rows: f } = await db.query(`
+            SELECT 
+                COALESCE(SUM(CASE WHEN tipo = 'RECEBER' AND status_pagamento = 'ABERTO' THEN valor - valor_pago ELSE 0 END), 0) AS a_receber,
+                COALESCE(SUM(CASE WHEN tipo = 'RECEBER' AND status_pagamento = 'PAGO' THEN valor_pago ELSE 0 END), 0) AS recebido,
+                COALESCE(SUM(CASE WHEN tipo = 'PAGAR' AND status_pagamento = 'ABERTO' THEN valor - valor_pago ELSE 0 END), 0) AS a_pagar
+            FROM dash_financeiro
+            WHERE tenant_id = $1 AND data_vencimento >= $2 AND data_vencimento <= $3
+        `, [tenantId, start, end]);
+
+        const { rows: topCats } = await db.query(`
+            SELECT categoria, SUM(valor_total) AS total
+            FROM dash_vendas_itens vi
+            JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
+              AND vi.categoria IS NOT NULL AND vi.categoria != ''
+            GROUP BY vi.categoria ORDER BY total DESC LIMIT 5
+        `, [tenantId, start, end]);
+
+        res.json({
+            period: { start, end, label: period },
+            vendas: {
+                faturamento: parseFloat(v[0].faturamento),
+                qtd_pedidos: parseInt(v[0].qtd_pedidos),
+                ticket_medio: parseFloat(v[0].ticket_medio),
+                total_descontos: parseFloat(v[0].total_descontos)
+            },
+            financeiro: {
+                a_receber: parseFloat(f[0].a_receber),
+                recebido: parseFloat(f[0].recebido),
+                a_pagar: parseFloat(f[0].a_pagar)
+            },
+            top_categorias: topCats.map(r => ({ categoria: r.categoria, total: parseFloat(r.total) }))
+        });
+    } catch (err) { next(err); }
+});
+
 // GET /api/estatisticas/debug-db
 router.get('/debug-db', async (req, res, next) => {
     try {
