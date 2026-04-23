@@ -119,7 +119,9 @@ CREATE TABLE IF NOT EXISTS dash_vendas (
     valor_total DECIMAL(15,2) NOT NULL DEFAULT 0,
     valor_custo DECIMAL(15,2) NOT NULL DEFAULT 0,
     valor_desconto DECIMAL(15,2) DEFAULT 0,
-    status VARCHAR(50) DEFAULT 'FINALIZADO',
+    status VARCHAR(50) DEFAULT 'FATURADO',
+    marca VARCHAR(100),
+    categoria VARCHAR(100),
     sincronizado_em TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(tenant_id, id_firebird)
 );
@@ -133,14 +135,27 @@ CREATE TABLE IF NOT EXISTS dash_vendas_itens (
     tenant_id UUID NOT NULL,
     id_firebird INTEGER NOT NULL,
     venda_id_firebird INTEGER NOT NULL,
-    produto_id_firebird INTEGER NOT NULL,
+    produto_id_firebird INTEGER,
     quantidade DECIMAL(15,3) NOT NULL DEFAULT 1,
     preco_unitario DECIMAL(15,2) NOT NULL DEFAULT 0,
     custo_unitario DECIMAL(15,2) NOT NULL DEFAULT 0,
     valor_total DECIMAL(15,2) NOT NULL DEFAULT 0,
+    vendedor VARCHAR(150),
+    produto VARCHAR(200),
+    marca VARCHAR(100),
+    categoria VARCHAR(100),
     sincronizado_em TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(tenant_id, id_firebird)
 );
+
+-- Migrações: adiciona colunas que podem não existir em instalações antigas
+ALTER TABLE dash_vendas ADD COLUMN IF NOT EXISTS marca VARCHAR(100);
+ALTER TABLE dash_vendas ADD COLUMN IF NOT EXISTS categoria VARCHAR(100);
+ALTER TABLE dash_vendas_itens ADD COLUMN IF NOT EXISTS vendedor VARCHAR(150);
+ALTER TABLE dash_vendas_itens ADD COLUMN IF NOT EXISTS produto VARCHAR(200);
+ALTER TABLE dash_vendas_itens ADD COLUMN IF NOT EXISTS marca VARCHAR(100);
+ALTER TABLE dash_vendas_itens ADD COLUMN IF NOT EXISTS categoria VARCHAR(100);
+ALTER TABLE dash_vendas_itens ALTER COLUMN produto_id_firebird DROP NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_dash_vend_itens_venda ON dash_vendas_itens(tenant_id, venda_id_firebird);
 CREATE INDEX IF NOT EXISTS idx_dash_vend_itens_prod ON dash_vendas_itens(tenant_id, produto_id_firebird);

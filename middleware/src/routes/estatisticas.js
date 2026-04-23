@@ -28,6 +28,25 @@ router.get('/overview', async (req, res, next) => {
         const { rows: fPagar } = await db.query(`SELECT COALESCE(SUM(valor - valor_pago),0) AS v FROM dash_financeiro WHERE tenant_id = $1 AND tipo = 'PAGAR' AND status_pagamento = 'ABERTO'`, [tenantId]);
         const { rows: fPago } = await db.query(`SELECT COALESCE(SUM(valor_pago),0) AS v FROM dash_financeiro WHERE tenant_id = $1 AND tipo = 'PAGAR' AND status_pagamento = 'PAGO'`, [tenantId]);
         
+        // Top Marcas e Categorias (usando novas colunas preenchidas pelo Worker)
+        const { rows: topMarcas } = await db.query(`
+            SELECT marca, SUM(valor_total) AS total
+            FROM dash_vendas
+            WHERE tenant_id = $1 AND marca IS NOT NULL AND marca != ''
+            GROUP BY marca
+            ORDER BY total DESC
+            LIMIT 10
+        `, [tenantId]);
+
+        const { rows: topCats } = await db.query(`
+            SELECT categoria, SUM(valor_total) AS total
+            FROM dash_vendas
+            WHERE tenant_id = $1 AND categoria IS NOT NULL AND categoria != ''
+            GROUP BY categoria
+            ORDER BY total DESC
+            LIMIT 10
+        `, [tenantId]);
+
         res.json({
             hoje: { total: parseFloat(vHoje[0].total), qtd: parseInt(vHoje[0].qtd) },
             mes: { total: parseFloat(vMes[0].total), qtd: parseInt(vMes[0].qtd) },
@@ -37,8 +56,8 @@ router.get('/overview', async (req, res, next) => {
             total_recebido: parseFloat(fRecebido[0].v),
             total_pagar: parseFloat(fPagar[0].v),
             total_pago: parseFloat(fPago[0].v),
-            top_marcas: [],
-            top_categorias: []
+            top_marcas: topMarcas.map(r => ({ marca: r.marca, total: parseFloat(r.total) })),
+            top_categorias: topCats.map(r => ({ categoria: r.categoria, total: parseFloat(r.total) }))
         });
     } catch (err) {
         next(err);
