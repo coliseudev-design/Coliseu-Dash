@@ -67,8 +67,8 @@ router.get('/contas-receber', async (req, res, next) => {
             FROM dash_financeiro
             WHERE tenant_id = $1 
               AND tipo = 'RECEBER'
-            GROUP BY status
-            ORDER BY status
+            GROUP BY 1
+            ORDER BY 1
         `, [tenantId]);
 
         const formatted = rows.map(r => ({
@@ -95,8 +95,8 @@ router.get('/contas-pagar', async (req, res, next) => {
             FROM dash_financeiro
             WHERE tenant_id = $1 
               AND tipo = 'PAGAR'
-            GROUP BY status
-            ORDER BY status
+            GROUP BY 1
+            ORDER BY 1
         `, [tenantId]);
 
         const formatted = rows.map(r => ({
