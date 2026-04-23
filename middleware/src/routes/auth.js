@@ -48,7 +48,7 @@ router.post('/login', async (req, res) => {
                 email: user.email,
                 tenant: user.tenant_id,
                 tenantId: user.tenant_id,
-                module: 'dashboard',
+                module: config.security.expectedModuleSlug,
                 companyName: user.tenant_id === '00000000-0000-0000-0000-000000000000' ? 'Coliseu Sistemas (Master)' : 'Empresa Cliente',
                 role: user.role
             },
