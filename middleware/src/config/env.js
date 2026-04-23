@@ -21,7 +21,7 @@ const config = {
 
     security: {
         jwtDeviceKey: required('JWT_DEVICE_KEY'),
-        expectedModuleSlug: optional('EXPECTED_MODULE_SLUG', 'coliseu-dash'),
+        expectedModuleSlug: 'coliseu-dash', // FIX: Forced slug to prevent Coolify hardcoded environment conflicts
         internalApiKey: optional('INTERNAL_API_KEY', ''),  // Chave de fallback ou depreciada
         identityApiUrl: optional('IDENTITY_API_URL', 'https://licencas.coliseusistemas.com.br'),
         identityInternalKey: optional('IDENTITY_INTERNAL_KEY', ''),
