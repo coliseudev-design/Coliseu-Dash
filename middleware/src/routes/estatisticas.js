@@ -10,13 +10,17 @@ router.get('/overview', async (req, res, next) => {
     try {
         const tenantId = req.tenant.id;
         
-        // Vendas hoje e mês
-        const { rows: vHoje } = await db.query(`SELECT COALESCE(SUM(valor_total),0) AS total, COUNT(*) AS qtd FROM dash_vendas WHERE tenant_id = $1 AND DATE(data_venda) = CURRENT_DATE`, [tenantId]);
-        const { rows: vMes } = await db.query(`SELECT COALESCE(SUM(valor_total),0) AS total, COUNT(*) AS qtd FROM dash_vendas WHERE tenant_id = $1 AND EXTRACT(MONTH FROM data_venda) = EXTRACT(MONTH FROM CURRENT_DATE) AND EXTRACT(YEAR FROM data_venda) = EXTRACT(YEAR FROM CURRENT_DATE)`, [tenantId]);
+        // Obter data máxima da base de vendas (pois a base de teste pode ser muito antiga)
+        const { rows: rMax } = await db.query(`SELECT COALESCE(MAX(data_venda), CURRENT_DATE) as d FROM dash_vendas WHERE tenant_id = $1`, [tenantId]);
+        const maxDate = rMax[0].d;
+
+        // Vendas hoje e mês (Relativos à data mais recente daquele tenant)
+        const { rows: vHoje } = await db.query(`SELECT COALESCE(SUM(valor_total),0) AS total, COUNT(*) AS qtd FROM dash_vendas WHERE tenant_id = $1 AND DATE(data_venda) = DATE($2)`, [tenantId, maxDate]);
+        const { rows: vMes } = await db.query(`SELECT COALESCE(SUM(valor_total),0) AS total, COUNT(*) AS qtd FROM dash_vendas WHERE tenant_id = $1 AND EXTRACT(MONTH FROM data_venda) = EXTRACT(MONTH FROM $2::date) AND EXTRACT(YEAR FROM data_venda) = EXTRACT(YEAR FROM $2::date)`, [tenantId, maxDate]);
         
-        // Pedidos
-        const { rows: pAbertos } = await db.query(`SELECT COUNT(*) AS qtd FROM dash_vendas WHERE tenant_id = $1 AND status != 'FINALIZADO'`, [tenantId]);
-        const { rows: pProc } = await db.query(`SELECT COUNT(*) AS qtd FROM dash_vendas WHERE tenant_id = $1 AND status = 'FINALIZADO'`, [tenantId]);
+        // Pedidos (Worker do MVP do Coliseu manda "FATURADO" para pedidos concretizados)
+        const { rows: pAbertos } = await db.query(`SELECT COUNT(*) AS qtd FROM dash_vendas WHERE tenant_id = $1 AND status != 'FATURADO'`, [tenantId]);
+        const { rows: pProc } = await db.query(`SELECT COUNT(*) AS qtd FROM dash_vendas WHERE tenant_id = $1 AND status = 'FATURADO'`, [tenantId]);
         
         // Financeiro
         const { rows: fReceber } = await db.query(`SELECT COALESCE(SUM(valor - valor_pago),0) AS v FROM dash_financeiro WHERE tenant_id = $1 AND tipo = 'RECEBER' AND status_pagamento = 'ABERTO'`, [tenantId]);
