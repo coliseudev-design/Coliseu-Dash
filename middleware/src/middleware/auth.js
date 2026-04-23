@@ -151,9 +151,11 @@ async function requireInternalAuth(req, res, next) {
 
         if (response.status === 403) {
             const data = await response.json().catch(() => ({}));
-            const reason = data.reason || 'Módulo bloqueado (HTTP 403).';
+            // Suporta camelCase (.NET Core Default) ou PascalCase
+            const reason = data.reason || data.Reason || data.error || data.Error || 'Módulo bloqueado (HTTP 403).';
+            logger.warn(`[InternalAuth] Resposta real do Identity:`, data);
+            
             validationCache.set(cacheKey, { valid: false, reason, expiresAt: Date.now() + CACHE_TTL_MS });
-            logger.warn('[InternalAuth] Identity rejeitou o módulo', { tenantId, reason });
             return res.status(403).json({ error: reason, code: 'MODULE_BLOCKED' });
         }
 
