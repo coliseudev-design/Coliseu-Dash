@@ -18,9 +18,9 @@ router.get('/overview', async (req, res, next) => {
         const { rows: vHoje } = await db.query(`SELECT COALESCE(SUM(valor_total),0) AS total, COUNT(*) AS qtd FROM dash_vendas WHERE tenant_id = $1 AND DATE(data_venda) = DATE($2)`, [tenantId, maxDate]);
         const { rows: vMes } = await db.query(`SELECT COALESCE(SUM(valor_total),0) AS total, COUNT(*) AS qtd FROM dash_vendas WHERE tenant_id = $1 AND EXTRACT(MONTH FROM data_venda) = EXTRACT(MONTH FROM $2::date) AND EXTRACT(YEAR FROM data_venda) = EXTRACT(YEAR FROM $2::date)`, [tenantId, maxDate]);
         
-        // Pedidos (Worker do MVP do Coliseu manda "FATURADO" para pedidos concretizados)
-        const { rows: pAbertos } = await db.query(`SELECT COUNT(*) AS qtd FROM dash_vendas WHERE tenant_id = $1 AND status != 'FATURADO'`, [tenantId]);
-        const { rows: pProc } = await db.query(`SELECT COUNT(*) AS qtd FROM dash_vendas WHERE tenant_id = $1 AND status = 'FATURADO'`, [tenantId]);
+        // Pedidos: conta todos (status varia conforme versão do Worker)
+        const { rows: pAbertos } = await db.query(`SELECT COUNT(*) AS qtd FROM dash_vendas WHERE tenant_id = $1 AND status IN ('PENDENTE','ABERTO')`, [tenantId]);
+        const { rows: pProc } = await db.query(`SELECT COUNT(*) AS qtd FROM dash_vendas WHERE tenant_id = $1 AND status IN ('FATURADO','FINALIZADO','CANCELADO')`, [tenantId]);
         
         // Financeiro
         const { rows: fReceber } = await db.query(`SELECT COALESCE(SUM(valor - valor_pago),0) AS v FROM dash_financeiro WHERE tenant_id = $1 AND tipo = 'RECEBER' AND status_pagamento = 'ABERTO'`, [tenantId]);
@@ -94,7 +94,7 @@ router.get('/kpis', async (req, res, next) => {
                 COALESCE(AVG(valor_total), 0) AS ticket_medio,
                 COALESCE(SUM(valor_desconto), 0) AS total_descontos
             FROM dash_vendas
-            WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3 AND status = 'FATURADO'
+            WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3
         `, [tenantId, start, end]);
 
         const { rows: f } = await db.query(`

@@ -25,7 +25,6 @@ router.get('/vendedores', async (req, res, next) => {
             LEFT JOIN dash_vendedores vd ON vd.id_firebird = v.vendedor_id_firebird AND vd.tenant_id = v.tenant_id
             WHERE v.tenant_id = $1
               AND v.data_venda >= $2 AND v.data_venda <= $3
-              AND v.status = 'FATURADO'
               AND v.vendedor_id_firebird IS NOT NULL
             GROUP BY v.vendedor_id_firebird, vd.nome
             ORDER BY total DESC
@@ -95,7 +94,6 @@ router.get('/clientes', async (req, res, next) => {
             LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
             WHERE v.tenant_id = $1
               AND v.data_venda >= $2 AND v.data_venda <= $3
-              AND v.status = 'FATURADO'
               AND v.cliente_id_firebird IS NOT NULL
             GROUP BY v.cliente_id_firebird, c.nome
             ORDER BY total DESC
@@ -195,7 +193,6 @@ router.get('/ranking', async (req, res, next) => {
             LEFT JOIN dash_vendedores vd ON vd.id_firebird = v.vendedor_id_firebird AND vd.tenant_id = v.tenant_id
             WHERE v.tenant_id = $1
               AND v.data_venda >= $2 AND v.data_venda <= $3
-              AND v.status = 'FATURADO'
               AND v.vendedor_id_firebird IS NOT NULL
             GROUP BY v.vendedor_id_firebird, vd.nome
             ORDER BY faturamento DESC
