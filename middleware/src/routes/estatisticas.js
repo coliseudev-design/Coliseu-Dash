@@ -83,8 +83,9 @@ router.get('/overview', async (req, res, next) => {
 router.get('/kpis', async (req, res, next) => {
     try {
         const tenantId = req.tenant.id;
-        const period = req.query.period || '30d';
-        const { start, end } = getPeriodRange(period);
+        const period = req.query.period || 'last12m';
+        const { start_date, end_date } = req.query;
+        const { start, end } = getPeriodRange(period, start_date, end_date);
 
         const { rows: v } = await db.query(`
             SELECT 

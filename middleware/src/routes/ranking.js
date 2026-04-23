@@ -9,9 +9,10 @@ const { getPeriodRange } = require('../utils/period');
 router.get('/vendedores', async (req, res, next) => {
     try {
         const tenantId = req.tenant.id;
-        const period = req.query.period || '30d';
+        const period = req.query.period || 'last12m';
+        const { start_date, end_date } = req.query;
         const limit = parseInt(req.query.limit) || 10;
-        const { start, end } = getPeriodRange(period);
+        const { start, end } = getPeriodRange(period, start_date, end_date);
 
         const { rows } = await db.query(`
             SELECT 
@@ -45,9 +46,10 @@ router.get('/vendedores', async (req, res, next) => {
 router.get('/produtos', async (req, res, next) => {
     try {
         const tenantId = req.tenant.id;
-        const period = req.query.period || '30d';
+        const period = req.query.period || 'last12m';
+        const { start_date, end_date } = req.query;
         const limit = parseInt(req.query.limit) || 10;
-        const { start, end } = getPeriodRange(period);
+        const { start, end } = getPeriodRange(period, start_date, end_date);
 
         const { rows } = await db.query(`
             SELECT 
@@ -78,9 +80,10 @@ router.get('/produtos', async (req, res, next) => {
 router.get('/clientes', async (req, res, next) => {
     try {
         const tenantId = req.tenant.id;
-        const period = req.query.period || '30d';
+        const period = req.query.period || 'last12m';
+        const { start_date, end_date } = req.query;
         const limit = parseInt(req.query.limit) || 10;
-        const { start, end } = getPeriodRange(period);
+        const { start, end } = getPeriodRange(period, start_date, end_date);
 
         const { rows } = await db.query(`
             SELECT 
@@ -112,9 +115,10 @@ router.get('/clientes', async (req, res, next) => {
 router.get('/marcas', async (req, res, next) => {
     try {
         const tenantId = req.tenant.id;
-        const period = req.query.period || '30d';
+        const period = req.query.period || 'last12m';
+        const { start_date, end_date } = req.query;
         const limit = parseInt(req.query.limit) || 10;
-        const { start, end } = getPeriodRange(period);
+        const { start, end } = getPeriodRange(period, start_date, end_date);
 
         const { rows } = await db.query(`
             SELECT 
@@ -143,9 +147,10 @@ router.get('/marcas', async (req, res, next) => {
 router.get('/especies', async (req, res, next) => {
     try {
         const tenantId = req.tenant.id;
-        const period = req.query.period || '30d';
+        const period = req.query.period || 'last12m';
+        const { start_date, end_date } = req.query;
         const limit = parseInt(req.query.limit) || 10;
-        const { start, end } = getPeriodRange(period);
+        const { start, end } = getPeriodRange(period, start_date, end_date);
 
         // Usa financeiro para agrupar por espécie de pagamento
         const { rows } = await db.query(`
@@ -174,9 +179,10 @@ router.get('/especies', async (req, res, next) => {
 router.get('/ranking', async (req, res, next) => {
     try {
         const tenantId = req.tenant.id;
-        const period = req.query.period || '30d';
+        const period = req.query.period || 'last12m';
+        const { start_date, end_date } = req.query;
         const limit = parseInt(req.query.limit) || 10;
-        const { start, end } = getPeriodRange(period);
+        const { start, end } = getPeriodRange(period, start_date, end_date);
 
         const { rows } = await db.query(`
             SELECT 

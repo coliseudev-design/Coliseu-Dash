@@ -1,20 +1,54 @@
 'use strict';
 
 /**
- * Converte um qualificador de período (ex: '7d', '1m', 'ytd')
- * em datas de início (start) e fim (end) no formato ISO ou Date para uso em SQL.
+ * Converte um qualificador de período do frontend em datas start/end para SQL.
+ * Suporta: today, yesterday, last7, thisMonth, lastMonth, last12m, custom
+ * e também os legados: hoje, 7d, 30d, 1m, 3m, 6m, 1y, ytd, all
  */
-function getPeriodRange(period) {
+function getPeriodRange(period, startDate, endDate) {
     const now = new Date();
-    const end = new Date(now);
     let start = new Date(now);
+    let end = new Date(now);
 
     switch (period) {
+        // Valores enviados pelo frontend React
+        case 'today':
         case 'hoje':
             start.setHours(0, 0, 0, 0);
+            end.setHours(23, 59, 59, 999);
             break;
+        case 'yesterday':
+            start.setDate(start.getDate() - 1);
+            start.setHours(0, 0, 0, 0);
+            end.setDate(end.getDate() - 1);
+            end.setHours(23, 59, 59, 999);
+            break;
+        case 'last7':
         case '7d':
             start.setDate(start.getDate() - 7);
+            break;
+        case 'thisMonth':
+        case '1m':
+            start = new Date(now.getFullYear(), now.getMonth(), 1);
+            end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+            break;
+        case 'lastMonth':
+            start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+            end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+            break;
+        case 'last12m':
+        case '1y':
+            start.setFullYear(start.getFullYear() - 1);
+            break;
+        case 'custom':
+            if (startDate && endDate) {
+                start = new Date(startDate);
+                end = new Date(endDate);
+                end.setHours(23, 59, 59, 999);
+            } else {
+                // fallback
+                start.setDate(start.getDate() - 30);
+            }
             break;
         case '15d':
             start.setDate(start.getDate() - 15);
@@ -22,28 +56,21 @@ function getPeriodRange(period) {
         case '30d':
             start.setDate(start.getDate() - 30);
             break;
-        case '1m':
-            start.setMonth(start.getMonth() - 1);
-            break;
         case '3m':
             start.setMonth(start.getMonth() - 3);
             break;
         case '6m':
             start.setMonth(start.getMonth() - 6);
             break;
-        case '1y':
-            start.setFullYear(start.getFullYear() - 1);
-            break;
         case 'ytd':
-            // start of current year
             start = new Date(now.getFullYear(), 0, 1);
             break;
         case 'all':
             start = new Date(1970, 0, 1);
             break;
         default:
-            // fallback (30d)
-            start.setDate(start.getDate() - 30);
+            // fallback: último ano para cobrir bases de teste antigas
+            start.setFullYear(start.getFullYear() - 1);
             break;
     }
 
@@ -53,3 +80,4 @@ function getPeriodRange(period) {
 module.exports = {
     getPeriodRange
 };
+
