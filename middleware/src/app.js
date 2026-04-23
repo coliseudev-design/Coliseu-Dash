@@ -17,6 +17,7 @@ const vendasRouter = require('./routes/vendas');
 const produtosRouter = require('./routes/produtos');
 const clientesRouter = require('./routes/clientes');
 const financeiroRouter = require('./routes/financeiro');
+const estatisticasRouter = require('./routes/estatisticas');
 
 const app = express();
 
@@ -44,9 +45,11 @@ app.use('/api/vendas', vendasRouter);
 app.use('/api/produtos', produtosRouter);
 app.use('/api/clientes', clientesRouter);
 app.use('/api/financeiro', financeiroRouter);
+app.use('/api/estatisticas', estatisticasRouter);
+app.use('/api/sync', syncRouter); // Habilita /api/sync/status para o frontend web
 
 app.use('/internal', requireInternalAuth);
-app.use('/internal/sync', syncRouter);
+app.use('/internal/sync', syncRouter); // Mantém /internal/sync para o C# Worker
 
 app.use((req, res) => {
     res.status(404).json({ error: 'Rota não encontrada', code: 'NOT_FOUND' });
