@@ -5,6 +5,45 @@ const router = express.Router();
 const db = require('../db/postgres');
 const { getPeriodRange } = require('../utils/period');
 
+/**
+ * Usa MAX(data_emissao) do financeiro como âncora para filtros de período.
+ * Garante que dados antigos do Firebird sempre apareçam.
+ */
+async function getFinanceiroAnchor(tenantId, period, start_date, end_date) {
+    const { rows } = await db.query(
+        `SELECT COALESCE(MAX(data_emissao), MAX(data_vencimento), NOW()) as anchor FROM dash_financeiro WHERE tenant_id = $1`,
+        [tenantId]
+    );
+    const anchor = new Date(rows[0].anchor);
+    const { getPeriodRange } = require('../utils/period');
+    // Calcula usando a âncora como se fosse 'agora'
+    const fakeNow = anchor;
+    let start = new Date(fakeNow);
+    let end = new Date(fakeNow);
+    end.setHours(23, 59, 59, 999);
+
+    switch (period) {
+        case 'today': case 'hoje': start.setHours(0, 0, 0, 0); break;
+        case 'yesterday':
+            start.setDate(start.getDate() - 1); start.setHours(0, 0, 0, 0);
+            end = new Date(start); end.setHours(23, 59, 59, 999); break;
+        case 'last7': case '7d': start.setDate(start.getDate() - 7); break;
+        case 'thisMonth': case '1m':
+            start = new Date(fakeNow.getFullYear(), fakeNow.getMonth(), 1);
+            end = new Date(fakeNow.getFullYear(), fakeNow.getMonth() + 1, 0, 23, 59, 59); break;
+        case 'lastMonth':
+            start = new Date(fakeNow.getFullYear(), fakeNow.getMonth() - 1, 1);
+            end = new Date(fakeNow.getFullYear(), fakeNow.getMonth(), 0, 23, 59, 59); break;
+        case 'custom':
+            if (start_date && end_date) return { start: new Date(start_date), end: new Date(end_date) };
+            start.setFullYear(start.getFullYear() - 1); break;
+        case 'all': start = new Date(1970, 0, 1); break;
+        case 'last12m': case '1y': default:
+            start.setFullYear(start.getFullYear() - 1); break;
+    }
+    return { start, end };
+}
+
 // Helper: classifica conta 
 const CAT_SQL = `
   CASE
@@ -75,9 +114,9 @@ router.get('/contas-pagar', async (req, res, next) => {
 // GET /api/financeiro/fluxo-caixa
 router.get('/fluxo-caixa', async (req, res, next) => {
     try {
-        const period = req.query.period || '7d';
-        const { start, end } = getPeriodRange(period);
         const tenantId = req.tenant.id;
+        const period = req.query.period || 'last12m';
+        const { start, end } = await getFinanceiroAnchor(tenantId, period, req.query.start_date, req.query.end_date);
 
         const { rows } = await db.query(`
             SELECT 
@@ -149,9 +188,9 @@ router.get('/kpis', async (req, res, next) => {
 // GET /api/financeiro/caixa?period=
 router.get('/caixa', async (req, res, next) => {
     try {
-        const period = req.query.period || '30d';
-        const { start, end } = getPeriodRange(period);
         const tenantId = req.tenant.id;
+        const period = req.query.period || 'last12m';
+        const { start, end } = await getFinanceiroAnchor(tenantId, period, req.query.start_date, req.query.end_date);
 
         const totP = await db.query(`
             SELECT
