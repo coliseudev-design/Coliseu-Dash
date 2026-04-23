@@ -36,7 +36,24 @@ router.get('/overview', async (req, res, next) => {
             total_receber: parseFloat(fReceber[0].v),
             total_recebido: parseFloat(fRecebido[0].v),
             total_pagar: parseFloat(fPagar[0].v),
-            total_pago: parseFloat(fPago[0].v)
+            total_pago: parseFloat(fPago[0].v),
+            top_marcas: [],
+            top_categorias: []
+        });
+// GET /api/estatisticas/debug-db
+router.get('/debug-db', async (req, res, next) => {
+    try {
+        const tenantId = req.tenant.id;
+        const v = await db.query('SELECT COUNT(*) as c FROM dash_vendas WHERE tenant_id = $1', [tenantId]);
+        const f = await db.query('SELECT COUNT(*) as c FROM dash_financeiro WHERE tenant_id = $1', [tenantId]);
+        const p = await db.query('SELECT COUNT(*) as c FROM dash_produtos WHERE tenant_id = $1', [tenantId]);
+        const c = await db.query('SELECT COUNT(*) as c FROM dash_clientes WHERE tenant_id = $1', [tenantId]);
+        res.json({
+            vendas: v.rows[0].c,
+            financeiro: f.rows[0].c,
+            produtos: p.rows[0].c,
+            clientes: c.rows[0].c,
+            tenant_usado: tenantId
         });
     } catch (err) {
         next(err);
