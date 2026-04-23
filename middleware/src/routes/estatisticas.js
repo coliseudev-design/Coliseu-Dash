@@ -40,6 +40,11 @@ router.get('/overview', async (req, res, next) => {
             top_marcas: [],
             top_categorias: []
         });
+    } catch (err) {
+        next(err);
+    }
+});
+
 // GET /api/estatisticas/debug-db
 router.get('/debug-db', async (req, res, next) => {
     try {
