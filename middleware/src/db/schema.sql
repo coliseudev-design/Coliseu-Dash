@@ -257,6 +257,17 @@ VALUES (
     '$2b$10$WyhOyq71XTg7APhFkX8TXOR1dXWmPi6WWs4nbeAJk2AMGTCd24.za'
 ) ON CONFLICT (tenant_id, email) DO NOTHING;
 
+-- Seed: Criar conta para o Tenant do teste (senha: AdminColiseu2026!)
+INSERT INTO dash_usuarios (tenant_id, email, nome, role, ativo, senha_hash)
+VALUES (
+    'ed1d3a98-4c4d-48db-99c0-8751926eb8e5', 
+    'cliente@teste.com.br', 
+    'Empresa Cliente', 
+    'admin', 
+    true, 
+    '$2b$10$WyhOyq71XTg7APhFkX8TXOR1dXWmPi6WWs4nbeAJk2AMGTCd24.za'
+) ON CONFLICT (tenant_id, email) DO NOTHING;
+
 CREATE TABLE IF NOT EXISTS dash_auditoria (
     id SERIAL PRIMARY KEY,
     tenant_id UUID NOT NULL,
