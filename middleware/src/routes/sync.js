@@ -48,8 +48,14 @@ router.post('/:tabela', async (req, res) => {
     try {
         await client.query('BEGIN');
 
-        for (const row of rows) {
+        for (const rawRow of rows) {
             try {
+                // Normalize keys to lowercase to handle Firebird UPPERCASE aliases
+                const row = {};
+                for (const key in rawRow) {
+                    row[key.toLowerCase()] = rawRow[key];
+                }
+
                 // Filtra apenas colunas mapeadas e presentes
                 const usedCols = allowedColumns.filter(c => Object.prototype.hasOwnProperty.call(row, c) && row[c] !== undefined);
                 if (usedCols.length === 0) continue;
