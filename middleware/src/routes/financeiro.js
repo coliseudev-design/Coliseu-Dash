@@ -121,8 +121,8 @@ router.get('/fluxo-caixa', async (req, res, next) => {
         const { rows } = await db.query(`
             SELECT 
                 TO_CHAR(COALESCE(data_pagamento, data_vencimento), 'YYYY-MM-DD') AS data,
-                SUM(CASE WHEN tipo = 'RECEBER' AND status_pagamento = 'PAGO' THEN COALESCE(NULLIF(valor_pago, 0), valor) ELSE 0 END) AS entradas,
-                SUM(CASE WHEN tipo = 'PAGAR' AND status_pagamento = 'PAGO' THEN COALESCE(NULLIF(valor_pago, 0), valor) ELSE 0 END) AS saidas
+                SUM(CASE WHEN tipo = 'RECEBER' AND status_pagamento = 'PAGO' THEN (CASE WHEN valor_pago = 0 THEN valor ELSE valor_pago END) ELSE 0 END) AS entradas,
+                SUM(CASE WHEN tipo = 'PAGAR' AND status_pagamento = 'PAGO' THEN (CASE WHEN valor_pago = 0 THEN valor ELSE valor_pago END) ELSE 0 END) AS saidas
             FROM dash_financeiro
             WHERE tenant_id = $1
               AND COALESCE(data_pagamento, data_vencimento) >= $2
@@ -194,8 +194,8 @@ router.get('/caixa', async (req, res, next) => {
 
         const totP = await db.query(`
             SELECT
-                COALESCE(SUM(CASE WHEN tipo = 'RECEBER' AND status_pagamento = 'PAGO' AND COALESCE(data_pagamento, data_vencimento) >= $2 AND COALESCE(data_pagamento, data_vencimento) <= $3 THEN COALESCE(NULLIF(valor_pago, 0), valor) ELSE 0 END), 0) AS entradas,
-                COALESCE(SUM(CASE WHEN tipo = 'PAGAR' AND status_pagamento = 'PAGO' AND COALESCE(data_pagamento, data_vencimento) >= $2 AND COALESCE(data_pagamento, data_vencimento) <= $3 THEN COALESCE(NULLIF(valor_pago, 0), valor) ELSE 0 END), 0) AS saidas,
+                COALESCE(SUM(CASE WHEN tipo = 'RECEBER' AND status_pagamento = 'PAGO' AND COALESCE(data_pagamento, data_vencimento) >= $2 AND COALESCE(data_pagamento, data_vencimento) <= $3 THEN (CASE WHEN valor_pago = 0 THEN valor ELSE valor_pago END) ELSE 0 END), 0) AS entradas,
+                COALESCE(SUM(CASE WHEN tipo = 'PAGAR' AND status_pagamento = 'PAGO' AND COALESCE(data_pagamento, data_vencimento) >= $2 AND COALESCE(data_pagamento, data_vencimento) <= $3 THEN (CASE WHEN valor_pago = 0 THEN valor ELSE valor_pago END) ELSE 0 END), 0) AS saidas,
                 COUNT(DISTINCT CASE WHEN tipo = 'RECEBER' AND status_pagamento = 'PAGO' AND COALESCE(data_pagamento, data_vencimento) >= $2 AND COALESCE(data_pagamento, data_vencimento) <= $3 THEN id END) AS qtd_entradas,
                 COUNT(DISTINCT CASE WHEN tipo = 'PAGAR' AND status_pagamento = 'PAGO' AND COALESCE(data_pagamento, data_vencimento) >= $2 AND COALESCE(data_pagamento, data_vencimento) <= $3 THEN id END) AS qtd_saidas
             FROM dash_financeiro
@@ -205,8 +205,8 @@ router.get('/caixa', async (req, res, next) => {
         const movP = await db.query(`
             SELECT 
                 TO_CHAR(COALESCE(data_pagamento, data_vencimento), 'YYYY-MM-DD') AS data,
-                SUM(CASE WHEN tipo = 'RECEBER' THEN COALESCE(NULLIF(valor_pago, 0), valor) ELSE 0 END) AS entradas,
-                SUM(CASE WHEN tipo = 'PAGAR' THEN COALESCE(NULLIF(valor_pago, 0), valor) ELSE 0 END) AS saidas
+                SUM(CASE WHEN tipo = 'RECEBER' THEN (CASE WHEN valor_pago = 0 THEN valor ELSE valor_pago END) ELSE 0 END) AS entradas,
+                SUM(CASE WHEN tipo = 'PAGAR' THEN (CASE WHEN valor_pago = 0 THEN valor ELSE valor_pago END) ELSE 0 END) AS saidas
             FROM dash_financeiro
             WHERE tenant_id = $1 
               AND status_pagamento = 'PAGO'
