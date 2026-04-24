@@ -42,13 +42,13 @@ export default function Home() {
 
   return (
     <div className="space-y-6 sm:space-y-8">
-      <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-4">
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
         <div>
           <h2 className="font-heading text-2xl font-bold tracking-tight text-text-primary">Visão Estratégica</h2>
           <p className="text-text-secondary text-base">Resumo consolidado do negócio em tempo real</p>
         </div>
         
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full xl:w-auto min-w-0">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full lg:w-auto min-w-0">
           <PeriodFilter />
           {/* Slim Atalhos Section */}
           <div className="hidden lg:flex items-center gap-2 bg-white px-3 py-2 rounded-xl border border-divider shadow-sm h-[42px] sm:h-[38px]">
@@ -70,10 +70,10 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-stretch">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
         
         {/* SEÇÃO 1: VENDAS E PERFORMANCE COMERCIAL */}
-        <div className="xl:col-span-8 flex flex-col space-y-4">
+        <div className="lg:col-span-8 flex flex-col space-y-4">
           <div className="flex items-center gap-2">
             <h3 className="text-sm font-bold uppercase tracking-wider text-brand-600">Performance Comercial</h3>
             <div className="h-px bg-brand-100 flex-1"></div>
@@ -136,7 +136,7 @@ export default function Home() {
         </div>
 
         {/* SEÇÃO 2: SAÚDE FINANCEIRA */}
-        <div className="xl:col-span-4 flex flex-col space-y-4">
+        <div className="lg:col-span-4 flex flex-col space-y-4">
           <div className="flex items-center gap-2">
             <h3 className="text-sm font-bold uppercase tracking-wider text-success">Saúde Financeira</h3>
             <div className="h-px bg-success/20 flex-1"></div>
