@@ -28,8 +28,12 @@ export default function PeriodFilter() {
   }
 
   return (
-    <div className="card !p-2.5 sm:!p-3">
-      <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1 -mb-1" style={{ WebkitOverflowScrolling: 'touch' }}>
+    <div className="mb-2">
+      <div 
+        className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-2 -mx-3 px-3 sm:mx-0 sm:px-0" 
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}
+      >
+        <style dangerouslySetInnerHTML={{__html: `::-webkit-scrollbar { display: none; }`}} />
         <Calendar size={16} className="text-text-secondary ml-1 flex-shrink-0" />
         {PERIOD_OPTIONS.map((opt) => (
           <button
@@ -39,7 +43,7 @@ export default function PeriodFilter() {
               'px-3 py-2 sm:py-1.5 rounded-lg text-xs font-medium transition-all duration-300 whitespace-nowrap flex-shrink-0',
               period === opt.key
                 ? 'bg-brand-500 text-white shadow-md scale-105'
-                : 'bg-transparent text-text-secondary hover:bg-bg-secondary/50 active:bg-bg-secondary',
+                : 'bg-white border border-gray-200 text-text-secondary hover:bg-gray-50 active:bg-gray-100 shadow-sm',
             )}
           >
             {opt.label}

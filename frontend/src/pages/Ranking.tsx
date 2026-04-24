@@ -133,7 +133,7 @@ export default function Ranking() {
 
       {/* Menu Horizontal de Abas (Mobile First) */}
       <div 
-        className="flex overflow-x-auto pb-0 -mx-4 px-4 sm:mx-0 sm:px-0 gap-1 sm:gap-4 border-b border-gray-100"
+        className="flex overflow-x-auto pb-0 -mx-3 px-3 sm:mx-0 sm:px-0 gap-1 sm:gap-4 border-b border-gray-100"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         <style dangerouslySetInnerHTML={{__html: `::-webkit-scrollbar { display: none; }`}} />
