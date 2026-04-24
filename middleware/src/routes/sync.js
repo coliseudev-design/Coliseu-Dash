@@ -64,7 +64,12 @@ router.post('/:tabela', async (req, res) => {
 
                 // Adiciona o tenantId nas colunas a inserir
                 const insertCols = ['tenant_id', ...usedCols];
-                const insertValues = [tenantId, ...usedCols.map(c => row[c] === '' ? null : row[c])];
+                const insertValues = [tenantId, ...usedCols.map(c => {
+                    let val = row[c];
+                    if (val === '') return null;
+                    if (c === 'ativo') return val == 1 || String(val).toLowerCase() === 'true';
+                    return val;
+                })];
                 
                 // Geração posicional para o Pg (ex: $1, $2, $3)
                 const placeholders = insertCols.map((_, i) => `$${i + 1}`).join(', ');
