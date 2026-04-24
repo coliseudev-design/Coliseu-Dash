@@ -49,6 +49,24 @@ async function checkConnection() {
         await query('SELECT 1 AS ok', []);
         logger.info('[DB] Conectado ao PostgreSQL (coliseu_dashboard)');
         
+        // Auto-migration: Garante que as novas tabelas e colunas existam em produção
+        await query(`
+            CREATE TABLE IF NOT EXISTS dash_caixas (
+                id SERIAL PRIMARY KEY,
+                tenant_id UUID NOT NULL,
+                id_firebird INTEGER NOT NULL,
+                descricao VARCHAR(150),
+                sincronizado_em TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE(tenant_id, id_firebird)
+            );
+        `, []);
+        
+        await query(`
+            ALTER TABLE dash_vendas ADD COLUMN IF NOT EXISTS especie VARCHAR(100);
+        `, []);
+        
+        logger.info('[DB] Auto-migration (dash_caixas e especie) verificada/aplicada com sucesso.');
+        
         // Mini-migrator silencioso para garantir colunas recém-adicionadas na v2.4.0
         // Como o Postgres <= 15 não suporta IF NOT EXISTS para várias colunas de uma vez elegantemente num ALTER padrão, faremos col a col
         try {
