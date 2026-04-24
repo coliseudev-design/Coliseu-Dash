@@ -28,7 +28,7 @@ export default function PeriodFilter() {
   }
 
   return (
-    <div className="mb-2 sm:mb-4 w-full max-w-full min-w-0 sm:bg-white sm:rounded-xl sm:border sm:border-gray-200 sm:shadow-sm sm:p-2 sm:px-3">
+    <div className="mb-2 sm:mb-4 w-full sm:w-fit max-w-full min-w-0 sm:bg-white sm:rounded-xl sm:border sm:border-gray-200 sm:shadow-sm sm:p-2 sm:px-3">
       <div 
         className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto sm:overflow-visible sm:flex-wrap pb-2 sm:pb-0 -mx-3 px-3 sm:mx-0 sm:px-0" 
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}

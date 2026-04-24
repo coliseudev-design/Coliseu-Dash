@@ -27,7 +27,7 @@ export default function Financeiro() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 w-full min-w-0">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap justify-between items-start sm:items-center gap-4 w-full min-w-0">
         <PeriodFilter />
         
         {/* Seletor de Caixa */}
