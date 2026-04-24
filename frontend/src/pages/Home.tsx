@@ -48,7 +48,7 @@ export default function Home() {
           <p className="text-text-secondary text-base">Resumo consolidado do negócio em tempo real</p>
         </div>
         
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full xl:w-auto min-w-0">
           <PeriodFilter />
           {/* Slim Atalhos Section */}
           <div className="hidden lg:flex items-center gap-2 bg-white px-3 py-2 rounded-xl border border-divider shadow-sm h-[42px] sm:h-[38px]">
