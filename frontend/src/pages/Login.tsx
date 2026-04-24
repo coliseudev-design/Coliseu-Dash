@@ -34,7 +34,7 @@ export default function Login() {
         <div className="relative z-10">
           <div className="flex items-center gap-2 mb-12">
             <div className="bg-white/10 p-2 rounded-xl backdrop-blur-md border border-white/20">
-              <img src="/favicon.png" className="w-6 h-6 object-contain" alt="Coliseu Symbol" />
+              <img src="/coliseu-simbolo.png" className="w-6 h-6 object-contain" alt="Coliseu Symbol" />
             </div>
             <span className="text-white font-heading font-bold text-xl tracking-tight">Coliseu Dash</span>
           </div>
@@ -112,7 +112,7 @@ export default function Login() {
         {/* Mobile Header (Sempre visível em mobile, oculto em Desktop porque tem a barra lateral) */}
         <div className="lg:hidden absolute top-8 left-6 sm:left-12 flex items-center gap-2">
           <div className="bg-white shadow-sm border border-slate-200 p-2 rounded-xl">
-            <img src="/favicon.png" className="w-5 h-5 object-contain" alt="Coliseu Symbol" />
+            <img src="/coliseu-simbolo.png" className="w-5 h-5 object-contain" alt="Coliseu Symbol" />
           </div>
           <span className="text-slate-900 font-heading font-bold text-lg">Coliseu Dash</span>
         </div>
@@ -120,9 +120,9 @@ export default function Login() {
         <div className="w-full max-w-sm mx-auto mt-16 lg:mt-0">
           <div className="mb-10 text-left">
             <img 
-              src="/logo-coliseu.png" 
+              src="/coliseu-logo-auth.png" 
               alt="Coliseu Sistemas" 
-              className="h-16 sm:h-20 w-auto object-contain mb-8"
+              className="h-12 sm:h-14 w-auto object-contain mb-8"
               onError={(e) => {
                 e.currentTarget.style.display = 'none';
               }}
