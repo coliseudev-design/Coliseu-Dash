@@ -38,14 +38,14 @@ export default function Sidebar({ open, onClose }: Props) {
         )}
       >
         {/* Logo */}
-        <div className="h-20 px-4 flex items-center justify-between border-b border-[#E0E0E0] bg-gradient-to-br from-slate-900 to-slate-800">
+        <div className="h-20 px-4 flex items-center justify-between border-b border-[#E0E0E0] bg-transparent">
           <img
-            src="/logobranco.jpg"
+            src="/logo-coliseu.png"
             alt="Coliseu Sistemas"
-            className="h-10 w-auto object-contain"
+            className="h-14 w-auto object-contain"
           />
           <button
-            className="lg:hidden p-1.5 text-white/70 hover:bg-white/10 rounded"
+            className="lg:hidden p-1.5 text-text-secondary hover:bg-bg-secondary rounded"
             onClick={onClose}
             aria-label="Fechar menu"
           >
