@@ -14,6 +14,7 @@ export default function PeriodFilter() {
   const handleClick = (p: PeriodKey) => {
     if (p === 'custom') {
       setShowCustom(true)
+      setPeriod('custom')
       if (!startDate || !endDate) {
         const today = new Date().toISOString().slice(0, 10)
         const monthAgo = new Date()
