@@ -86,7 +86,56 @@ router.post('/register', async (req, res) => {
             return res.status(400).json({ error: 'Nome, email, senha e ID da Empresa (CompanyKey) são obrigatórios', code: 'MISSING_FIELDS' });
         }
 
-        // Valida se o email já existe
+        // 1. Validação no Servidor de Licenças (Limite de Dispositivos/Cadastros)
+        const { identityApiUrl, identityInternalKey, expectedModuleSlug } = config.security;
+
+        if (!identityApiUrl || !identityInternalKey) {
+            logger.warn('[Auth] Falta configuração do IDENTITY_API_URL/KEY. Bloqueando cadastro por segurança.');
+            return res.status(500).json({ error: 'Erro de infraestrutura do sistema de licenças', code: 'CONFIG_ERROR' });
+        }
+
+        try {
+            const url = `${identityApiUrl}/internal/companies/${companyKey}/modules/${expectedModuleSlug}/info`;
+            
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 3000);
+
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Internal-Api-Key': identityInternalKey
+                },
+                signal: controller.signal
+            });
+            clearTimeout(timeout);
+
+            if (response.status !== 200) {
+                const data = await response.json().catch(() => ({}));
+                const reason = data.reason || data.error || 'Empresa inativa ou módulo bloqueado.';
+                return res.status(403).json({ error: reason, code: 'MODULE_BLOCKED' });
+            }
+
+            const data = await response.json();
+            const deviceLimit = data.deviceLimit || 0;
+
+            // Checar a quantidade atual de usuários para este tenant
+            const countQuery = `SELECT COUNT(*) as total FROM dash_usuarios WHERE tenant_id = $1`;
+            const countResult = await db.query(countQuery, [companyKey]);
+            const currentUsersCount = parseInt(countResult.rows[0].total, 10);
+
+            if (currentUsersCount >= deviceLimit) {
+                return res.status(403).json({ 
+                    error: `O limite de licenças (${deviceLimit}) para esta empresa foi atingido. Nenhuma nova conta pode ser criada.`, 
+                    code: 'LICENSE_LIMIT_REACHED' 
+                });
+            }
+        } catch (err) {
+            logger.error('[Auth] Erro ao comunicar com o servidor de licenças durante cadastro', err);
+            return res.status(503).json({ error: 'Servidor de licenças temporariamente indisponível. Não foi possível validar sua licença.', code: 'LICENSE_API_ERROR' });
+        }
+
+        // 2. Valida se o email já existe
         const checkQuery = `SELECT id FROM dash_usuarios WHERE email = $1`;
         const checkResult = await db.query(checkQuery, [email]);
         
