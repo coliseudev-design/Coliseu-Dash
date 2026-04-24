@@ -1,5 +1,5 @@
+import { useState } from 'react'
 import { usePeriodQuery } from '../hooks/useApi'
-import ChartCard from '../components/ChartCard'
 import PeriodFilter from '../components/PeriodFilter'
 import DataTable from '../components/DataTable'
 import {
@@ -9,71 +9,87 @@ import { formatBRL, formatBRLCompact } from '../utils/format'
 import { CHART_PALETTE } from '../utils/chartColors'
 import { Trophy, Package, Tag, Layers, Users, CreditCard } from 'lucide-react'
 
-// Componente local para padronizar todas as linhas de Ranking (Lista + Gráfico de Barras)
+// Componente Unificado Moderno (Card de Ranking)
 function RankingSection({ title, subtitle, icon: Icon, data, loading }: any) {
-//... same as before => wait, I shouldn't replace lines 13-44 with this, because RankingSection is in lines 11-49!
-// I'll re-specify the start/end lines properly.
   return (
-    <div className="grid lg:grid-cols-2 gap-4 sm:gap-6 pt-6 border-t border-gray-100 mt-6 first:border-0 first:pt-0 first:mt-0">
-      
-      {/* Lado Esquerdo: Listagem (DataTable) */}
-      <div className="flex flex-col">
-        <div className="flex items-center gap-2 mb-4">
-          <Icon size={20} className="text-brand-500" />
-          <div>
-            <h3 className="font-heading font-semibold text-lg text-text-primary">{title}</h3>
-            <p className="text-sm text-text-secondary">{subtitle}</p>
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden animate-fade-in">
+      {/* Cabeçalho Unificado */}
+      <div className="p-4 sm:p-5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between bg-gray-50/50 gap-3">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 bg-brand-50 text-brand-600 rounded-xl">
+            <Icon size={24} strokeWidth={2.5} />
           </div>
-        </div>
-        
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden flex-1 shadow-sm">
-          <DataTable
-            loading={loading}
-            data={data || []}
-            empty="Sem dados no período"
-            columns={[
-              { key: '#', label: 'RANK', width: '60px', render: (_: any, i: number) => <span className="text-text-muted mono font-semibold">{i + 1}º</span> },
-              { key: 'nome', label: 'DESCRIÇÃO', render: (r: any) => <span className="font-medium text-text-primary capitalize truncate block max-w-[200px]" title={r.nome}>{r.nome}</span> },
-              { key: 'total', label: 'FATURAMENTO', align: 'right', render: (r: any) => <span className="font-semibold text-brand-600">{formatBRL(r.total)}</span> },
-            ]}
-          />
+          <div>
+            <h2 className="text-lg font-bold text-gray-900">{title}</h2>
+            <p className="text-sm text-gray-500">{subtitle}</p>
+          </div>
         </div>
       </div>
 
-      {/* Lado Direito: Gráfico de Barras */}
-      <ChartCard
-        title={`Gráfico: ${title}`}
-        subtitle="Visualização de performance"
-        loading={loading}
-        empty={!data?.length}
-      >
-        <div className="h-64 sm:h-[320px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data || []} layout="vertical" margin={{ left: 80, right: 30, top: 10, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 11, fill: '#6B7280' }} tickFormatter={formatBRLCompact} />
-              <YAxis 
-                type="category" 
-                dataKey="nome" 
-                tick={{ fontSize: 11, fill: '#374151', textTransform: 'capitalize' }} 
-                width={140}
-                tickFormatter={(val) => val.length > 20 ? val.substring(0, 18) + '...' : val}
-              />
-              <Tooltip formatter={(v: any) => formatBRL(v)} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-              <Bar dataKey="total" radius={[0, 4, 4, 0]} barSize={22}>
-                {(data || []).map((_: any, i: number) => (
-                  <Cell key={i} fill={CHART_PALETTE[i % CHART_PALETTE.length]} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+      {/* Grid de Conteúdo */}
+      <div className="p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-10">
+        
+        {/* Lado Esquerdo: Tabela */}
+        <div className="flex flex-col">
+          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Tabela de Desempenho</h3>
+          <div className="flex-1 w-full overflow-x-auto rounded-xl border border-gray-100">
+            <DataTable
+              loading={loading}
+              data={data || []}
+              empty="Sem dados no período"
+              columns={[
+                { key: '#', label: 'RANK', width: '60px', render: (_: any, i: number) => <span className="text-text-muted mono font-semibold">{i + 1}º</span> },
+                { key: 'nome', label: 'DESCRIÇÃO', render: (r: any) => <span className="font-medium text-text-primary capitalize truncate block max-w-[140px] sm:max-w-[220px]" title={r.nome}>{r.nome}</span> },
+                { key: 'total', label: 'FATURAMENTO', align: 'right', render: (r: any) => <span className="font-semibold text-brand-600">{formatBRL(r.total)}</span> },
+              ]}
+            />
+          </div>
         </div>
-      </ChartCard>
+
+        {/* Lado Direito: Gráfico de Barras */}
+        <div className="flex flex-col">
+          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Visualização de Impacto</h3>
+          <div className="h-[280px] sm:h-[320px] w-full relative">
+            {!loading && (!data || data.length === 0) ? (
+              <div className="absolute inset-0 flex items-center justify-center border border-gray-100 rounded-xl bg-gray-50/50">
+                <span className="text-sm text-gray-400 font-medium">Sem dados para desenhar o gráfico</span>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={data || []} layout="vertical" margin={{ left: 0, right: 30, top: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 11, fill: '#6B7280' }} tickFormatter={formatBRLCompact} />
+                  <YAxis 
+                    type="category" 
+                    dataKey="nome" 
+                    tick={{ fontSize: 11, fill: '#374151', textTransform: 'capitalize' }} 
+                    width={90}
+                    tickFormatter={(val) => val.length > 12 ? val.substring(0, 11) + '...' : val}
+                  />
+                  <Tooltip 
+                    formatter={(v: any) => formatBRL(v)} 
+                    contentStyle={{ fontSize: 12, borderRadius: '12px', border: '1px solid #f3f4f6', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} 
+                    cursor={{ fill: '#f9fafb' }} 
+                  />
+                  <Bar dataKey="total" radius={[0, 6, 6, 0]} barSize={22} animationDuration={1000}>
+                    {(data || []).map((_: any, i: number) => (
+                      <Cell key={i} fill={CHART_PALETTE[i % CHART_PALETTE.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+        
+      </div>
     </div>
   )
 }
 
 export default function Ranking() {
+  const [activeTab, setActiveTab] = useState('vendedores')
+
   const vendedores = usePeriodQuery<any>('/ranking/vendedores', { limit: 10 })
   const produtos = usePeriodQuery<any>('/ranking/produtos', { limit: 10 })
   const clientes = usePeriodQuery<any>('/ranking/clientes', { limit: 10 })
@@ -93,31 +109,64 @@ export default function Ranking() {
   const pData = getNorm(produtos.data?.data, 'produto', 'nome', 'total', 'faturamento')
   const cData = getNorm(clientes.data?.data, 'cliente', 'nome', 'total', 'faturamento')
   const mData = getNorm(marcas.data?.data, 'nome', 'marca', 'faturamento', 'total')
-  
   const catData = getNorm(categorias.data?.data, 'nome', 'categoria', 'faturamento', 'total')
-  
   const eData = getNorm(especies.data?.data, 'especie', 'nome', 'total', 'faturamento')
+
+  const tabs = [
+    { id: 'vendedores', label: 'Vendedores', icon: Trophy, data: vData, loading: vendedores.isLoading, subtitle: 'Volume faturado por usuário' },
+    { id: 'produtos', label: 'Produtos', icon: Package, data: pData, loading: produtos.isLoading, subtitle: 'SKUs de maior rentabilidade' },
+    { id: 'marcas', label: 'Marcas', icon: Tag, data: mData, loading: marcas.isLoading, subtitle: 'Marcas que lideram faturamento' },
+    { id: 'categorias', label: 'Categorias', icon: Layers, data: catData, loading: categorias.isLoading, subtitle: 'Segmentos mais fortes' },
+    { id: 'clientes', label: 'Clientes', icon: Users, data: cData, loading: clientes.isLoading, subtitle: 'Principais compradores' },
+    { id: 'especies', label: 'Espécies', icon: CreditCard, data: eData, loading: especies.isLoading, subtitle: 'Formas de Pagamento' },
+  ]
+
+  const currentTab = tabs.find(t => t.id === activeTab) || tabs[0]
 
   return (
     <div className="space-y-6 sm:space-y-8">
       <div>
         <h2 className="font-heading text-xl font-semibold text-text-primary">Super Guia de Rankings</h2>
-        <p className="text-text-secondary text-sm mb-4">Listagens e gráficos lado a lado para todas as métricas.</p>
+        <p className="text-text-secondary text-sm mb-4">Métricas detalhadas separadas por categorias.</p>
         <PeriodFilter />
       </div>
 
-      <div className="flex flex-col gap-8 pb-10">
-        <RankingSection title="Top 10 Vendedores" subtitle="Volume faturado por usuário" icon={Trophy} data={vData} loading={vendedores.isLoading} />
+      {/* Menu Horizontal de Abas (Mobile First) */}
+      <div 
+        className="flex overflow-x-auto pb-0 -mx-4 px-4 sm:mx-0 sm:px-0 gap-1 sm:gap-4 border-b border-gray-100"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      >
+        <style dangerouslySetInnerHTML={{__html: `::-webkit-scrollbar { display: none; }`}} />
         
-        <RankingSection title="Top 10 Produtos" subtitle="SKUs de maior rentabilidade" icon={Package} data={pData} loading={produtos.isLoading} />
-        
-        <RankingSection title="Top 10 Marcas" subtitle="Marcas que lideram faturamento" icon={Tag} data={mData} loading={marcas.isLoading} />
-        
-        <RankingSection title="Top 10 Categorias" subtitle="Segmentos mais fortes" icon={Layers} data={catData} loading={categorias.isLoading} />
-        
-        <RankingSection title="Top 10 Clientes" subtitle="Principais compradores" icon={Users} data={cData} loading={clientes.isLoading} />
-        
-        <RankingSection title="Vendas por Espécie" subtitle="Ranking de Formas de Pagamento" icon={CreditCard} data={eData} loading={especies.isLoading} />
+        {tabs.map(tab => {
+          const Icon = tab.icon
+          const isActive = activeTab === tab.id
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-3 sm:px-4 py-3 border-b-2 whitespace-nowrap transition-colors outline-none cursor-pointer ${
+                isActive 
+                  ? 'border-brand-500 text-brand-600 font-bold' 
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-200 font-medium'
+              }`}
+            >
+              <Icon size={18} className={isActive ? 'text-brand-500' : 'text-gray-400'} strokeWidth={isActive ? 2.5 : 2} />
+              {tab.label}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Card Unificado com a Tabela e Gráfico */}
+      <div className="pb-10 min-h-[500px]">
+        <RankingSection 
+          title={`Top 10 ${currentTab.label}`} 
+          subtitle={currentTab.subtitle} 
+          icon={currentTab.icon} 
+          data={currentTab.data} 
+          loading={currentTab.loading} 
+        />
       </div>
     </div>
   )
