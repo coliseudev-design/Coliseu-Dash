@@ -28,7 +28,8 @@ export default function Vendas() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         <KPICard
           label="Faturamento Total"
-          value={formatBRLCompact(kpis.data?.kpis?.total_faturado)}
+          value={formatBRL(kpis.data?.kpis?.total_faturado || 0)}
+          compactValue={formatBRLCompact(kpis.data?.kpis?.total_faturado)}
           icon={DollarSign}
           iconColor="text-success"
           loading={kpis.isLoading}

@@ -10,11 +10,12 @@ interface Props {
   trend?: 'up' | 'down' | 'neutral'
   trendValue?: string
   loading?: boolean
+  compactValue?: string | number
 }
 
 export default function KPICard({
   label, value, icon: Icon, iconColor = 'text-brand-500',
-  hint, trend, trendValue, loading,
+  hint, trend, trendValue, loading, compactValue,
 }: Props) {
   return (
     <div className="card h-full flex flex-col justify-between hover:shadow-md transition-shadow">
@@ -30,11 +31,18 @@ export default function KPICard({
         {loading ? (
           <div className="h-6 sm:h-8 w-24 bg-bg-tertiary animate-pulse rounded" />
         ) : (
-          <div 
-            className="text-lg sm:text-2xl font-bold tracking-tight text-text-primary truncate" 
-            title={value.toString()}
-          >
-            {value}
+          <div className="flex items-baseline gap-2 truncate">
+            <div 
+              className="text-lg sm:text-2xl font-bold tracking-tight text-text-primary truncate" 
+              title={value.toString()}
+            >
+              {value}
+            </div>
+            {compactValue && (
+              <div className="text-xs font-medium text-text-tertiary hidden sm:block">
+                ({compactValue})
+              </div>
+            )}
           </div>
         )}
         {(hint || trendValue) && (

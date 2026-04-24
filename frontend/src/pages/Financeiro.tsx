@@ -61,7 +61,8 @@ export default function Financeiro() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 mb-4">
           <KPICard
             label="Entradas"
-            value={formatBRLCompact(caixa.data?.kpis?.entradas)}
+            value={formatBRL(caixa.data?.kpis?.entradas || 0)}
+            compactValue={formatBRLCompact(caixa.data?.kpis?.entradas)}
             icon={ArrowDownCircle}
             iconColor="text-success"
             hint={`${caixa.data?.kpis?.qtd_entradas || 0} movimentos`}
@@ -69,7 +70,8 @@ export default function Financeiro() {
           />
           <KPICard
             label="Saídas"
-            value={formatBRLCompact(caixa.data?.kpis?.saidas)}
+            value={formatBRL(caixa.data?.kpis?.saidas || 0)}
+            compactValue={formatBRLCompact(caixa.data?.kpis?.saidas)}
             icon={ArrowUpCircle}
             iconColor="text-danger"
             hint={`${caixa.data?.kpis?.qtd_saidas || 0} movimentos`}
@@ -77,7 +79,8 @@ export default function Financeiro() {
           />
           <KPICard
             label="Saldo Líquido"
-            value={formatBRLCompact(caixa.data?.kpis?.saldo)}
+            value={formatBRL(caixa.data?.kpis?.saldo || 0)}
+            compactValue={formatBRLCompact(caixa.data?.kpis?.saldo)}
             icon={Scale}
             iconColor={(caixa.data?.kpis?.saldo || 0) >= 0 ? 'text-success' : 'text-danger'}
             loading={caixa.isLoading}
