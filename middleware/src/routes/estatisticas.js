@@ -4,95 +4,72 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db/postgres');
 const { getPeriodRange } = require('../utils/period');
+const { getCache, setCache } = require('../config/cache');
 
 // GET /api/estatisticas/overview
 router.get('/overview', async (req, res, next) => {
     try {
         const tenantId = req.tenant.id;
-        const period = req.query.period || 'last30'; // default to last 30 if none
+        const period = req.query.period || 'last30'; // default to last 30 se nenhum for passado
         const { start_date, end_date } = req.query;
         
-        // 1) Descobre a data-âncora de VENDAS
-        const { rows: rMax } = await db.query(`SELECT COALESCE(MAX(data_venda), CURRENT_DATE) as d FROM dash_vendas WHERE tenant_id = $1`, [tenantId]);
-        const maxDate = rMax[0].d;
+        const cacheKey = `overview:${tenantId}:${period}:${start_date || 'null'}:${end_date || 'null'}`;
+        const cached = getCache(cacheKey);
+        if (cached) return res.json(cached);
 
-        // 2) Descobre a data-âncora FINANCEIRA (pois nem sempre bate com as vendas)
-        const { rows: rMaxFin } = await db.query(`SELECT COALESCE(MAX(data_emissao), CURRENT_DATE) as d FROM dash_financeiro WHERE tenant_id = $1`, [tenantId]);
-        const maxDateFin = rMaxFin[0].d;
+        // 1) Data-âncora
+        const [rMax, rMaxFin] = await Promise.all([
+            db.query(`SELECT COALESCE(MAX(data_venda), CURRENT_DATE) as d FROM dash_vendas WHERE tenant_id = $1`, [tenantId]),
+            db.query(`SELECT COALESCE(MAX(data_emissao), CURRENT_DATE) as d FROM dash_financeiro WHERE tenant_id = $1`, [tenantId])
+        ]);
+        
+        const maxDate = rMax.rows[0].d;
+        const maxDateFin = rMaxFin.rows[0].d;
 
-        // Aplica getPeriodRange passando a data-âncora de vendas
         const { start, end } = getPeriodRange(period, start_date, end_date, maxDate);
-        
-        // Para os dados "Hoje", vamos usar sempre o próprio maxDate para não mostrar zerado (se a base legada usar Hoje, será o último dia que teve algo)
-        const startHoje = new Date(maxDate);
-        startHoje.setHours(0,0,0,0);
-        const endHoje = new Date(maxDate);
-        endHoje.setHours(23,59,59,999);
-        
-        // Aplica getPeriodRange passando a data-âncora financeira
         const finRange = getPeriodRange(period, start_date, end_date, maxDateFin);
 
-        // Vendas hoje (dia mais recente) e período (filtrado)
-        const { rows: vHoje } = await db.query(`SELECT COALESCE(SUM(valor_total),0) AS total, COUNT(*) AS qtd FROM dash_vendas WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3`, [tenantId, startHoje, endHoje]);
-        const { rows: vMes } = await db.query(`SELECT COALESCE(SUM(valor_total),0) AS total, COUNT(*) AS qtd FROM dash_vendas WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3`, [tenantId, start, end]);
-        
-        // Pedidos do período filtrado
-        const { rows: pAbertos } = await db.query(`SELECT COUNT(*) AS qtd FROM dash_vendas WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3 AND status IN ('PENDENTE','ABERTO')`, [tenantId, start, end]);
-        const { rows: pProc } = await db.query(`SELECT COUNT(*) AS qtd FROM dash_vendas WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3 AND status IN ('FATURADO','FINALIZADO','CANCELADO')`, [tenantId, start, end]);
-        
-        // Financeiro do período filtrado (usando emissão/vencimento)
-        const { rows: fReceber } = await db.query(`SELECT COALESCE(SUM(valor - valor_pago),0) AS v FROM dash_financeiro WHERE tenant_id = $1 AND COALESCE(data_vencimento, data_emissao, NOW()) >= $2 AND COALESCE(data_vencimento, data_emissao, NOW()) <= $3 AND tipo = 'RECEBER' AND status_pagamento = 'ABERTO'`, [tenantId, finRange.start, finRange.end]);
-        const { rows: fRecebido } = await db.query(`SELECT COALESCE(SUM((CASE WHEN valor_pago = 0 THEN valor ELSE valor_pago END)),0) AS v FROM dash_financeiro WHERE tenant_id = $1 AND COALESCE(data_vencimento, data_emissao, NOW()) >= $2 AND COALESCE(data_vencimento, data_emissao, NOW()) <= $3 AND tipo = 'RECEBER' AND status_pagamento = 'PAGO'`, [tenantId, finRange.start, finRange.end]);
-        const { rows: fPagar } = await db.query(`SELECT COALESCE(SUM(valor - (CASE WHEN valor_pago = 0 THEN valor ELSE valor_pago END)),0) AS v FROM dash_financeiro WHERE tenant_id = $1 AND COALESCE(data_vencimento, data_emissao, NOW()) >= $2 AND COALESCE(data_vencimento, data_emissao, NOW()) <= $3 AND tipo = 'PAGAR' AND status_pagamento = 'ABERTO'`, [tenantId, finRange.start, finRange.end]);
-        const { rows: fPago } = await db.query(`SELECT COALESCE(SUM((CASE WHEN valor_pago = 0 THEN valor ELSE valor_pago END)),0) AS v FROM dash_financeiro WHERE tenant_id = $1 AND COALESCE(data_vencimento, data_emissao, NOW()) >= $2 AND COALESCE(data_vencimento, data_emissao, NOW()) <= $3 AND tipo = 'PAGAR' AND status_pagamento = 'PAGO'`, [tenantId, finRange.start, finRange.end]);
-        
-        // Top Marcas e Categorias no período filtrado
-        const { rows: topMarcasItens } = await db.query(`
-            SELECT vi.marca, SUM(vi.valor_total) AS total
-            FROM dash_vendas_itens vi
-            JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
-            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND vi.marca IS NOT NULL AND vi.marca != ''
-            GROUP BY vi.marca ORDER BY total DESC LIMIT 10
-        `, [tenantId, start, end]);
+        const startHoje = new Date(maxDate); startHoje.setHours(0,0,0,0);
+        const endHoje = new Date(maxDate); endHoje.setHours(23,59,59,999);
 
-        const { rows: topMarcasVendas } = await db.query(`
-            SELECT marca, SUM(valor_total) AS total
-            FROM dash_vendas
-            WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3 AND marca IS NOT NULL AND marca != ''
-            GROUP BY marca ORDER BY total DESC LIMIT 10
-        `, [tenantId, start, end]);
+        // Paralelizando todas as consultas pesadas para o banco compilar simultaneamente
+        const [
+            vHoje, vMes, pAbertos, pProc, fReceber, fRecebido, fPagar, fPago, topMarcasItens, topMarcasVendas, topCatsItens, topCatsVendas
+        ] = await Promise.all([
+            db.query(`SELECT COALESCE(SUM(valor_total),0) AS total, COUNT(*) AS qtd FROM dash_vendas WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3`, [tenantId, startHoje, endHoje]),
+            db.query(`SELECT COALESCE(SUM(valor_total),0) AS total, COUNT(*) AS qtd FROM dash_vendas WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3`, [tenantId, start, end]),
+            db.query(`SELECT COUNT(*) AS qtd FROM dash_vendas WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3 AND status IN ('PENDENTE','ABERTO')`, [tenantId, start, end]),
+            db.query(`SELECT COUNT(*) AS qtd FROM dash_vendas WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3 AND status IN ('FATURADO','FINALIZADO','CANCELADO')`, [tenantId, start, end]),
+            db.query(`SELECT COALESCE(SUM(valor - valor_pago),0) AS v FROM dash_financeiro WHERE tenant_id = $1 AND COALESCE(data_vencimento, data_emissao, NOW()) >= $2 AND COALESCE(data_vencimento, data_emissao, NOW()) <= $3 AND tipo = 'RECEBER' AND status_pagamento = 'ABERTO'`, [tenantId, finRange.start, finRange.end]),
+            db.query(`SELECT COALESCE(SUM((CASE WHEN valor_pago = 0 THEN valor ELSE valor_pago END)),0) AS v FROM dash_financeiro WHERE tenant_id = $1 AND COALESCE(data_vencimento, data_emissao, NOW()) >= $2 AND COALESCE(data_vencimento, data_emissao, NOW()) <= $3 AND tipo = 'RECEBER' AND status_pagamento = 'PAGO'`, [tenantId, finRange.start, finRange.end]),
+            db.query(`SELECT COALESCE(SUM(valor - (CASE WHEN valor_pago = 0 THEN valor ELSE valor_pago END)),0) AS v FROM dash_financeiro WHERE tenant_id = $1 AND COALESCE(data_vencimento, data_emissao, NOW()) >= $2 AND COALESCE(data_vencimento, data_emissao, NOW()) <= $3 AND tipo = 'PAGAR' AND status_pagamento = 'ABERTO'`, [tenantId, finRange.start, finRange.end]),
+            db.query(`SELECT COALESCE(SUM((CASE WHEN valor_pago = 0 THEN valor ELSE valor_pago END)),0) AS v FROM dash_financeiro WHERE tenant_id = $1 AND COALESCE(data_vencimento, data_emissao, NOW()) >= $2 AND COALESCE(data_vencimento, data_emissao, NOW()) <= $3 AND tipo = 'PAGAR' AND status_pagamento = 'PAGO'`, [tenantId, finRange.start, finRange.end]),
+            db.query(`SELECT vi.marca, SUM(vi.valor_total) AS total FROM dash_vendas_itens vi JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND vi.marca IS NOT NULL AND vi.marca != '' GROUP BY vi.marca ORDER BY total DESC LIMIT 10`, [tenantId, start, end]),
+            db.query(`SELECT marca, SUM(valor_total) AS total FROM dash_vendas WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3 AND marca IS NOT NULL AND marca != '' GROUP BY marca ORDER BY total DESC LIMIT 10`, [tenantId, start, end]),
+            db.query(`SELECT vi.categoria, SUM(vi.valor_total) AS total FROM dash_vendas_itens vi JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND vi.categoria IS NOT NULL AND vi.categoria != '' GROUP BY vi.categoria ORDER BY total DESC LIMIT 10`, [tenantId, start, end]),
+            db.query(`SELECT categoria, SUM(valor_total) AS total FROM dash_vendas WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3 AND categoria IS NOT NULL AND categoria != '' GROUP BY categoria ORDER BY total DESC LIMIT 10`, [tenantId, start, end])
+        ]);
 
-        const topMarcas = topMarcasItens.length > 0 ? topMarcasItens : topMarcasVendas;
+        const topMarcas = topMarcasItens.rows.length > 0 ? topMarcasItens.rows : topMarcasVendas.rows;
+        const topCats = topCatsItens.rows.length > 0 ? topCatsItens.rows : topCatsVendas.rows;
 
-        const { rows: topCatsItens } = await db.query(`
-            SELECT vi.categoria, SUM(vi.valor_total) AS total
-            FROM dash_vendas_itens vi
-            JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
-            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND vi.categoria IS NOT NULL AND vi.categoria != ''
-            GROUP BY vi.categoria ORDER BY total DESC LIMIT 10
-        `, [tenantId, start, end]);
-
-        const { rows: topCatsVendas } = await db.query(`
-            SELECT categoria, SUM(valor_total) AS total
-            FROM dash_vendas
-            WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3 AND categoria IS NOT NULL AND categoria != ''
-            GROUP BY categoria ORDER BY total DESC LIMIT 10
-        `, [tenantId, start, end]);
-
-        const topCats = topCatsItens.length > 0 ? topCatsItens : topCatsVendas;
-
-        res.json({
-            hoje: { total: parseFloat(vHoje[0].total), qtd: parseInt(vHoje[0].qtd) },
-            mes: { total: parseFloat(vMes[0].total), qtd: parseInt(vMes[0].qtd) },
-            pedidos_abertos: parseInt(pAbertos[0].qtd),
-            pedidos_processados: parseInt(pProc[0].qtd),
-            total_receber: parseFloat(fReceber[0].v),
-            total_recebido: parseFloat(fRecebido[0].v),
-            total_pagar: parseFloat(fPagar[0].v),
-            total_pago: parseFloat(fPago[0].v),
+        const result = {
+            hoje: { total: parseFloat(vHoje.rows[0].total), qtd: parseInt(vHoje.rows[0].qtd) },
+            mes: { total: parseFloat(vMes.rows[0].total), qtd: parseInt(vMes.rows[0].qtd) },
+            pedidos_abertos: parseInt(pAbertos.rows[0].qtd),
+            pedidos_processados: parseInt(pProc.rows[0].qtd),
+            total_receber: parseFloat(fReceber.rows[0].v),
+            total_recebido: parseFloat(fRecebido.rows[0].v),
+            total_pagar: parseFloat(fPagar.rows[0].v),
+            total_pago: parseFloat(fPago.rows[0].v),
             top_marcas: topMarcas.map(r => ({ marca: r.marca, total: parseFloat(r.total) })),
             top_categorias: topCats.map(r => ({ categoria: r.categoria, total: parseFloat(r.total) }))
-        });
+        };
+
+        // Cache por 2 minutos (120 seg)
+        setCache(cacheKey, result, 120);
+
+        res.json(result);
     } catch (err) {
         next(err);
     }

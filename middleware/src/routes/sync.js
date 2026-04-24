@@ -4,6 +4,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db/postgres');
 const logger = require('../config/logger');
+const { invalidateTenant } = require('../config/cache');
 
 const TABELAS_MAP = {
     'dash_clientes': ['id_firebird', 'nome', 'documento', 'email', 'telefone', 'cidade', 'estado', 'data_cadastro', 'ativo'],
@@ -110,6 +111,22 @@ router.post('/:tabela', async (req, res) => {
         ]);
 
         await client.query('COMMIT');
+
+        // Pós-Processamento: Atualizar Cache e Materialized Views
+        if (['dash_vendas', 'dash_vendas_itens', 'dash_financeiro'].includes(tabela)) {
+            invalidateTenant(tenantId);
+            
+            // Tenta dar refresh na visão de forma assíncrona para não prender o Worker
+            const viewName = tabela === 'dash_financeiro' ? 'mv_dash_financeiro_diario' : 'mv_dash_vendas_diario';
+            db.query(`REFRESH MATERIALIZED VIEW CONCURRENTLY ${viewName}`)
+                .then(() => logger.info(`[Sync] Visão materializada ${viewName} atualizada com sucesso.`))
+                .catch(err => {
+                    // Se falhar por não ter índice único ainda ou tabela vazia, ignora graciosamente
+                    if (err.code !== '42P01') {
+                        logger.error(`[Sync] Erro ao atualizar visão ${viewName}:`, err.message);
+                    }
+                });
+        }
 
     } catch (globalErr) {
         await client.query('ROLLBACK');
