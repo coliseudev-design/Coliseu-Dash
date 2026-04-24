@@ -25,7 +25,7 @@ export default function DataTable<T>({
     <div className="card !p-0 overflow-hidden">
       <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
         <table className="w-full text-xs sm:text-sm min-w-[500px]">
-          <thead className="bg-bg-secondary border-b border-[#E0E0E0]">
+          <thead className="bg-bg-secondary/90 backdrop-blur-md sticky top-0 z-10 border-b border-[#E0E0E0]/80">
             <tr>
               {columns.map((c) => (
                 <th
@@ -64,7 +64,7 @@ export default function DataTable<T>({
               data.map((row, idx) => (
                 <tr
                   key={rowKey ? rowKey(row, idx) : idx}
-                  className="border-b border-[#E0E0E0] last:border-0 hover:bg-bg-secondary transition-colors"
+                  className="border-b border-[#E0E0E0]/50 last:border-0 hover:bg-bg-secondary/50 transition-colors"
                 >
                   {columns.map((c) => (
                     <td

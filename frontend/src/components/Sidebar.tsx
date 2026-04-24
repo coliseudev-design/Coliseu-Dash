@@ -25,13 +25,13 @@ export default function Sidebar({ open, onClose }: Props) {
       {/* Backdrop mobile */}
       {open && (
         <div
-          className="fixed inset-0 bg-black/40 z-30 lg:hidden backdrop-blur-[1px]"
+          className="fixed inset-0 bg-slate-900/40 z-30 lg:hidden backdrop-blur-sm transition-opacity duration-300"
           onClick={onClose}
         />
       )}
       <aside
         className={clsx(
-          'fixed lg:sticky top-0 left-0 h-screen w-64 bg-white border-r border-[#E0E0E0] z-40',
+          'fixed lg:sticky top-0 left-0 h-screen w-64 bg-white/95 backdrop-blur-xl border-r border-[#E0E0E0]/50 z-40',
           'transform transition-transform duration-200 ease-out lg:translate-x-0',
           'flex flex-col shadow-xl lg:shadow-none',
           open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',

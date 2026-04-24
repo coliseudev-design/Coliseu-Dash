@@ -35,10 +35,10 @@ export default function PeriodFilter() {
             key={opt.key}
             onClick={() => handleClick(opt.key)}
             className={clsx(
-              'px-3 py-2 sm:py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap flex-shrink-0',
+              'px-3 py-2 sm:py-1.5 rounded-lg text-xs font-medium transition-all duration-300 whitespace-nowrap flex-shrink-0',
               period === opt.key
-                ? 'bg-brand-500 text-white'
-                : 'bg-bg-secondary text-text-secondary hover:bg-bg-tertiary active:bg-[#E5E7EB]',
+                ? 'bg-brand-500 text-white shadow-md scale-105'
+                : 'bg-transparent text-text-secondary hover:bg-bg-secondary/50 active:bg-bg-secondary',
             )}
           >
             {opt.label}

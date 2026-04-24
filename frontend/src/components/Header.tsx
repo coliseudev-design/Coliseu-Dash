@@ -16,7 +16,7 @@ export default function Header({ onMenuClick, title }: Props) {
   const [menuOpen, setMenuOpen] = useState(false)
 
   return (
-    <header className="h-14 sm:h-16 bg-white border-b border-[#E0E0E0] sticky top-0 z-20 flex items-center px-3 sm:px-4 lg:px-6">
+    <header className="h-14 sm:h-16 bg-white/80 backdrop-blur-md border-b border-[#E0E0E0]/50 sticky top-0 z-20 flex items-center px-3 sm:px-4 lg:px-6 transition-all duration-300">
       <button
         className="lg:hidden p-2 -ml-2 text-text-secondary hover:bg-bg-secondary rounded-lg active:bg-bg-tertiary"
         onClick={onMenuClick}
