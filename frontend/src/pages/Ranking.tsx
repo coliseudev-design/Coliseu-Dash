@@ -30,9 +30,9 @@ function RankingSection({ title, subtitle, icon: Icon, data, loading }: any) {
       <div className="p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10">
         
         {/* Lado Esquerdo: Tabela */}
-        <div className="flex flex-col lg:col-span-5 min-w-0">
+        <div className="flex flex-col lg:col-span-6 min-w-0">
           <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Tabela de Desempenho</h3>
-          <div className="flex-1 w-full overflow-x-auto rounded-xl border border-gray-100">
+          <div className="flex-1 w-full">
             <DataTable
               loading={loading}
               data={data || []}
@@ -47,7 +47,7 @@ function RankingSection({ title, subtitle, icon: Icon, data, loading }: any) {
         </div>
 
         {/* Lado Direito: Gráfico de Barras */}
-        <div className="flex flex-col lg:col-span-7 min-w-0">
+        <div className="flex flex-col lg:col-span-6 min-w-0">
           <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Visualização de Impacto</h3>
           <div className="h-[280px] sm:h-[320px] w-full relative">
             {!loading && (!data || data.length === 0) ? (

@@ -24,7 +24,7 @@ export default function DataTable<T>({
   return (
     <div className="card !p-0 overflow-hidden">
       <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
-        <table className="w-full text-xs sm:text-sm min-w-[500px]">
+        <table className="w-full text-xs sm:text-sm min-w-[500px] lg:min-w-0">
           <thead className="bg-bg-secondary/90 backdrop-blur-md sticky top-0 z-10 border-b border-[#E0E0E0]/80">
             <tr>
               {columns.map((c) => (
