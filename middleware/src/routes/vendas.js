@@ -23,7 +23,7 @@ router.get('/faturadas', async (req, res, next) => {
             WHERE tenant_id = $1 
               AND data_venda >= $2 
               AND data_venda <= $3
-              AND status = 'FATURADO'
+              AND TRIM(status) = 'FATURADO'
             GROUP BY TO_CHAR(data_venda, 'YYYY-MM-DD')
             ORDER BY data
         `, [tenantId, start, end]);
@@ -58,7 +58,7 @@ router.get('/por-horario', async (req, res, next) => {
                 FROM dash_vendas
                 WHERE tenant_id = $1
                   AND TO_CHAR(data_venda, 'YYYY-MM-DD') = $2
-                  AND status = 'FATURADO'
+                  AND TRIM(status) = 'FATURADO'
                 GROUP BY EXTRACT(HOUR FROM data_venda)
                 ORDER BY hora
             `;
@@ -73,7 +73,7 @@ router.get('/por-horario', async (req, res, next) => {
                 FROM dash_vendas
                 WHERE tenant_id = $1
                   AND data_venda >= NOW() - INTERVAL '30 days'
-                  AND status = 'FATURADO'
+                  AND TRIM(status) = 'FATURADO'
                 GROUP BY EXTRACT(HOUR FROM data_venda)
                 ORDER BY hora
             `;
@@ -102,13 +102,13 @@ router.get('/pedidos-abertos', async (req, res, next) => {
         const tenantId = req.tenant.id;
         const { rows } = await db.query(`
             SELECT 
-                status, 
+                TRIM(status) as status, 
                 COUNT(*) AS quantidade, 
                 SUM(valor_total) AS total
             FROM dash_vendas
             WHERE tenant_id = $1 
-              AND status != 'FATURADO'
-            GROUP BY status
+              AND TRIM(status) != 'FATURADO'
+            GROUP BY TRIM(status)
             ORDER BY quantidade DESC
         `, [tenantId]);
 
@@ -145,7 +145,7 @@ router.get('/kpis', async (req, res, next) => {
             WHERE tenant_id = $1
               AND data_venda >= $2
               AND data_venda <= $3
-              AND status = 'FATURADO'
+              AND TRIM(status) = 'FATURADO'
         `, [tenantId, start, end]);
 
         const kpis = {

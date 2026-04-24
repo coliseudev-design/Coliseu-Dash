@@ -225,7 +225,7 @@ router.get('/especies', async (req, res, next) => {
             WHERE f.tenant_id = $1
               AND COALESCE(f.data_pagamento, f.data_vencimento) >= $2
               AND COALESCE(f.data_pagamento, f.data_vencimento) <= $3
-              AND f.status_pagamento = 'PAGO'
+              AND TRIM(f.status_pagamento) = 'PAGO'
             GROUP BY f.descricao ORDER BY total DESC LIMIT $4
         `, [tenantId, start, end, limit]);
 

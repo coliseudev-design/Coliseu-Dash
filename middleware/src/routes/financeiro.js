@@ -47,8 +47,8 @@ async function getFinanceiroAnchor(tenantId, period, start_date, end_date) {
 // Helper: classifica conta 
 const CAT_SQL = `
   CASE
-    WHEN status_pagamento = 'PAGO' THEN 'PAGA'
-    WHEN status_pagamento = 'CANCELADO' THEN 'CANCELADA'
+    WHEN TRIM(status_pagamento) = 'PAGO' THEN 'PAGA'
+    WHEN TRIM(status_pagamento) = 'CANCELADO' THEN 'CANCELADA'
     WHEN data_vencimento < NOW() THEN 'VENCIDA'
     WHEN data_vencimento <= NOW() + INTERVAL '30 days' THEN 'A_VENCER'
     ELSE 'FUTURA'
@@ -66,7 +66,7 @@ router.get('/contas-receber', async (req, res, next) => {
                 SUM(valor) AS total
             FROM dash_financeiro
             WHERE tenant_id = $1 
-              AND tipo = 'RECEBER'
+              AND TRIM(tipo) = 'RECEBER'
             GROUP BY 1
             ORDER BY 1
         `, [tenantId]);
@@ -94,7 +94,7 @@ router.get('/contas-pagar', async (req, res, next) => {
                 SUM(valor) AS total
             FROM dash_financeiro
             WHERE tenant_id = $1 
-              AND tipo = 'PAGAR'
+              AND TRIM(tipo) = 'PAGAR'
             GROUP BY 1
             ORDER BY 1
         `, [tenantId]);
@@ -121,8 +121,8 @@ router.get('/fluxo-caixa', async (req, res, next) => {
         const { rows } = await db.query(`
             SELECT 
                 TO_CHAR(COALESCE(data_pagamento, data_vencimento), 'YYYY-MM-DD') AS data,
-                SUM(CASE WHEN tipo = 'RECEBER' AND status_pagamento = 'PAGO' THEN (CASE WHEN valor_pago = 0 THEN valor ELSE valor_pago END) ELSE 0 END) AS entradas,
-                SUM(CASE WHEN tipo = 'PAGAR' AND status_pagamento = 'PAGO' THEN (CASE WHEN valor_pago = 0 THEN valor ELSE valor_pago END) ELSE 0 END) AS saidas
+                SUM(CASE WHEN TRIM(tipo) = 'RECEBER' AND TRIM(status_pagamento) = 'PAGO' THEN (CASE WHEN valor_pago = 0 THEN valor ELSE valor_pago END) ELSE 0 END) AS entradas,
+                SUM(CASE WHEN TRIM(tipo) = 'PAGAR' AND TRIM(status_pagamento) = 'PAGO' THEN (CASE WHEN valor_pago = 0 THEN valor ELSE valor_pago END) ELSE 0 END) AS saidas
             FROM dash_financeiro
             WHERE tenant_id = $1
               AND COALESCE(data_pagamento, data_vencimento) >= $2
@@ -156,11 +156,11 @@ router.get('/kpis', async (req, res, next) => {
         const tenantId = req.tenant.id;
 
         const [rReceber, rPagar, rVencidas, rGeral, rDmp] = await Promise.all([
-            db.query(`SELECT COALESCE(SUM(valor - valor_pago), 0) AS v FROM dash_financeiro WHERE tenant_id = $1 AND tipo = 'RECEBER' AND status_pagamento = 'ABERTO'`, [tenantId]),
-            db.query(`SELECT COALESCE(SUM(valor - valor_pago), 0) AS v FROM dash_financeiro WHERE tenant_id = $1 AND tipo = 'PAGAR' AND status_pagamento = 'ABERTO'`, [tenantId]),
-            db.query(`SELECT COALESCE(SUM(valor - valor_pago), 0) AS vencidas_valor, COUNT(*) AS vencidas_qtd FROM dash_financeiro WHERE tenant_id = $1 AND tipo = 'RECEBER' AND status_pagamento = 'ABERTO' AND data_vencimento < NOW()`, [tenantId]),
-            db.query(`SELECT COALESCE(SUM(valor), 0) AS total_geral FROM dash_financeiro WHERE tenant_id = $1 AND tipo = 'RECEBER'`, [tenantId]),
-            db.query(`SELECT AVG(EXTRACT(EPOCH FROM (data_pagamento - data_emissao))/86400) AS dias FROM dash_financeiro WHERE tenant_id = $1 AND tipo = 'RECEBER' AND status_pagamento = 'PAGO' AND data_pagamento IS NOT NULL AND data_emissao IS NOT NULL`, [tenantId])
+            db.query(`SELECT COALESCE(SUM(valor - valor_pago), 0) AS v FROM dash_financeiro WHERE tenant_id = $1 AND TRIM(tipo) = 'RECEBER' AND TRIM(status_pagamento) = 'ABERTO'`, [tenantId]),
+            db.query(`SELECT COALESCE(SUM(valor - valor_pago), 0) AS v FROM dash_financeiro WHERE tenant_id = $1 AND TRIM(tipo) = 'PAGAR' AND TRIM(status_pagamento) = 'ABERTO'`, [tenantId]),
+            db.query(`SELECT COALESCE(SUM(valor - valor_pago), 0) AS vencidas_valor, COUNT(*) AS vencidas_qtd FROM dash_financeiro WHERE tenant_id = $1 AND TRIM(tipo) = 'RECEBER' AND TRIM(status_pagamento) = 'ABERTO' AND data_vencimento < NOW()`, [tenantId]),
+            db.query(`SELECT COALESCE(SUM(valor), 0) AS total_geral FROM dash_financeiro WHERE tenant_id = $1 AND TRIM(tipo) = 'RECEBER'`, [tenantId]),
+            db.query(`SELECT AVG(EXTRACT(EPOCH FROM (data_pagamento - data_emissao))/86400) AS dias FROM dash_financeiro WHERE tenant_id = $1 AND TRIM(tipo) = 'RECEBER' AND TRIM(status_pagamento) = 'PAGO' AND data_pagamento IS NOT NULL AND data_emissao IS NOT NULL`, [tenantId])
         ]);
 
         const totalReceberGeral = parseFloat(rGeral.rows[0]?.total_geral || 0);
@@ -194,10 +194,10 @@ router.get('/caixa', async (req, res, next) => {
 
         const totP = await db.query(`
             SELECT
-                COALESCE(SUM(CASE WHEN tipo = 'RECEBER' AND status_pagamento = 'PAGO' AND COALESCE(data_pagamento, data_vencimento) >= $2 AND COALESCE(data_pagamento, data_vencimento) <= $3 THEN (CASE WHEN valor_pago = 0 THEN valor ELSE valor_pago END) ELSE 0 END), 0) AS entradas,
-                COALESCE(SUM(CASE WHEN tipo = 'PAGAR' AND status_pagamento = 'PAGO' AND COALESCE(data_pagamento, data_vencimento) >= $2 AND COALESCE(data_pagamento, data_vencimento) <= $3 THEN (CASE WHEN valor_pago = 0 THEN valor ELSE valor_pago END) ELSE 0 END), 0) AS saidas,
-                COUNT(DISTINCT CASE WHEN tipo = 'RECEBER' AND status_pagamento = 'PAGO' AND COALESCE(data_pagamento, data_vencimento) >= $2 AND COALESCE(data_pagamento, data_vencimento) <= $3 THEN id END) AS qtd_entradas,
-                COUNT(DISTINCT CASE WHEN tipo = 'PAGAR' AND status_pagamento = 'PAGO' AND COALESCE(data_pagamento, data_vencimento) >= $2 AND COALESCE(data_pagamento, data_vencimento) <= $3 THEN id END) AS qtd_saidas
+                COALESCE(SUM(CASE WHEN TRIM(tipo) = 'RECEBER' AND TRIM(status_pagamento) = 'PAGO' AND COALESCE(data_pagamento, data_vencimento) >= $2 AND COALESCE(data_pagamento, data_vencimento) <= $3 THEN (CASE WHEN valor_pago = 0 THEN valor ELSE valor_pago END) ELSE 0 END), 0) AS entradas,
+                COALESCE(SUM(CASE WHEN TRIM(tipo) = 'PAGAR' AND TRIM(status_pagamento) = 'PAGO' AND COALESCE(data_pagamento, data_vencimento) >= $2 AND COALESCE(data_pagamento, data_vencimento) <= $3 THEN (CASE WHEN valor_pago = 0 THEN valor ELSE valor_pago END) ELSE 0 END), 0) AS saidas,
+                COUNT(DISTINCT CASE WHEN TRIM(tipo) = 'RECEBER' AND TRIM(status_pagamento) = 'PAGO' AND COALESCE(data_pagamento, data_vencimento) >= $2 AND COALESCE(data_pagamento, data_vencimento) <= $3 THEN id END) AS qtd_entradas,
+                COUNT(DISTINCT CASE WHEN TRIM(tipo) = 'PAGAR' AND TRIM(status_pagamento) = 'PAGO' AND COALESCE(data_pagamento, data_vencimento) >= $2 AND COALESCE(data_pagamento, data_vencimento) <= $3 THEN id END) AS qtd_saidas
             FROM dash_financeiro
             WHERE tenant_id = $1
         `, [tenantId, start, end]);
@@ -205,11 +205,11 @@ router.get('/caixa', async (req, res, next) => {
         const movP = await db.query(`
             SELECT 
                 TO_CHAR(COALESCE(data_pagamento, data_vencimento), 'YYYY-MM-DD') AS data,
-                SUM(CASE WHEN tipo = 'RECEBER' THEN (CASE WHEN valor_pago = 0 THEN valor ELSE valor_pago END) ELSE 0 END) AS entradas,
-                SUM(CASE WHEN tipo = 'PAGAR' THEN (CASE WHEN valor_pago = 0 THEN valor ELSE valor_pago END) ELSE 0 END) AS saidas
+                SUM(CASE WHEN TRIM(tipo) = 'RECEBER' THEN (CASE WHEN valor_pago = 0 THEN valor ELSE valor_pago END) ELSE 0 END) AS entradas,
+                SUM(CASE WHEN TRIM(tipo) = 'PAGAR' THEN (CASE WHEN valor_pago = 0 THEN valor ELSE valor_pago END) ELSE 0 END) AS saidas
             FROM dash_financeiro
             WHERE tenant_id = $1 
-              AND status_pagamento = 'PAGO'
+              AND TRIM(status_pagamento) = 'PAGO'
               AND COALESCE(data_pagamento, data_vencimento) >= $2 
               AND COALESCE(data_pagamento, data_vencimento) <= $3
             GROUP BY TO_CHAR(COALESCE(data_pagamento, data_vencimento), 'YYYY-MM-DD')
@@ -332,15 +332,15 @@ router.get('/contas', async (req, res, next) => {
         let pIndex = 2;
 
         if (tipo) {
-            where.push(`f.tipo = $${pIndex++}`);
-            binds.push(tipo);
+            where.push(`TRIM(f.tipo) = $${pIndex++}`);
+            binds.push(tipo.trim());
         }
         
         if (statusPg === 'VENCIDA') {
-            where.push(`f.status_pagamento = 'ABERTO' AND f.data_vencimento < NOW()`);
+            where.push(`TRIM(f.status_pagamento) = 'ABERTO' AND f.data_vencimento < NOW()`);
         } else if (statusPg) {
-            where.push(`f.status_pagamento = $${pIndex++}`);
-            binds.push(statusPg);
+            where.push(`TRIM(f.status_pagamento) = $${pIndex++}`);
+            binds.push(statusPg.trim());
         }
 
         binds.push(limit);
