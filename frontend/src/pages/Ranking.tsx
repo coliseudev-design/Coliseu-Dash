@@ -78,8 +78,8 @@ export default function Ranking() {
   const produtos = usePeriodQuery<any>('/ranking/produtos', { limit: 10 })
   const clientes = usePeriodQuery<any>('/ranking/clientes', { limit: 10 })
   const marcas = usePeriodQuery<any>('/ranking/marcas', { limit: 10 })
+  const categorias = usePeriodQuery<any>('/ranking/categorias', { limit: 10 })
   const especies = usePeriodQuery<any>('/ranking/especies', { limit: 10 })
-  const estatisticas = usePeriodQuery<any>('/estatisticas/kpis')
   
   // Normalização de Dados para o formato padronizado { nome, total }
   const getNorm = (arr: any[], nameKey1: string, nameKey2: string, valKey1: string, valKey2: string) => {
@@ -94,7 +94,7 @@ export default function Ranking() {
   const cData = getNorm(clientes.data?.data, 'cliente', 'nome', 'total', 'faturamento')
   const mData = getNorm(marcas.data?.data, 'nome', 'marca', 'faturamento', 'total')
   
-  const catData = getNorm(estatisticas.data?.kpis?.top_categorias, 'categoria', 'nome', 'total', 'faturamento')
+  const catData = getNorm(categorias.data?.data, 'nome', 'categoria', 'faturamento', 'total')
   
   const eData = getNorm(especies.data?.data, 'especie', 'nome', 'total', 'faturamento')
 
@@ -113,7 +113,7 @@ export default function Ranking() {
         
         <RankingSection title="Top 10 Marcas" subtitle="Marcas que lideram faturamento" icon={Tag} data={mData} loading={marcas.isLoading} />
         
-        <RankingSection title="Top 10 Categorias" subtitle="Segmentos mais fortes" icon={Layers} data={catData} loading={estatisticas.isLoading} />
+        <RankingSection title="Top 10 Categorias" subtitle="Segmentos mais fortes" icon={Layers} data={catData} loading={categorias.isLoading} />
         
         <RankingSection title="Top 10 Clientes" subtitle="Principais compradores" icon={Users} data={cData} loading={clientes.isLoading} />
         

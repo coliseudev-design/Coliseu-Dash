@@ -16,9 +16,10 @@ export default function Vendas() {
   const kpis = usePeriodQuery<any>('/vendas/kpis')
   const ranking = usePeriodQuery<any>('/comissoes/ranking')
   const estatisticas = usePeriodQuery<any>('/estatisticas/kpis')
+  const categoriasReq = usePeriodQuery<any>('/ranking/categorias', { limit: 10 })
 
   const topVendedores = ranking.data?.data || []
-  const categorias = estatisticas.data?.kpis?.top_categorias || []
+  const categorias = categoriasReq.data?.data || []
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -85,7 +86,7 @@ export default function Vendas() {
         <ChartCard
           title="Distribuição por Categoria"
           subtitle="Participação (Share) no faturamento"
-          loading={estatisticas.isLoading}
+          loading={categoriasReq.isLoading}
           empty={!categorias.length}
         >
           <div className="h-80">
@@ -94,7 +95,7 @@ export default function Vendas() {
                 <Pie
                   data={categorias}
                   dataKey="total"
-                  nameKey="categoria"
+                  nameKey="nome"
                   cx="50%"
                   cy="50%"
                   outerRadius="80%"

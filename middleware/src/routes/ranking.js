@@ -265,4 +265,27 @@ router.get('/ranking', async (req, res, next) => {
     } catch (err) { next(err); }
 });
 
+// GET /api/ranking/categorias
+router.get('/categorias', async (req, res, next) => {
+    try {
+        const tenantId = req.tenant.id;
+        const { start, end } = await getAnchoredRange(tenantId, req.query.period || 'last12m', req.query.start_date, req.query.end_date);
+        const limit = parseInt(req.query.limit) || 10;
+
+        const { rows } = await db.query(`
+            SELECT COALESCE(vi.categoria, v.categoria) AS categoria, SUM(vi.valor_total) AS total
+            FROM dash_vendas_itens vi
+            JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
+              AND COALESCE(vi.categoria, v.categoria) IS NOT NULL AND COALESCE(vi.categoria, v.categoria) != ''
+            GROUP BY COALESCE(vi.categoria, v.categoria)
+            ORDER BY total DESC LIMIT $4
+        `, [tenantId, start, end, limit]);
+
+        res.json({ data: rows.map(r => ({
+            nome: r.categoria, total: parseFloat(r.total || 0)
+        })) });
+    } catch (err) { next(err); }
+});
+
 module.exports = router;
