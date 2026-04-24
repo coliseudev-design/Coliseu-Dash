@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, ShoppingCart, Wallet,
-  Trophy, BarChart3, Users, X, LogOut
+  Trophy, BarChart3, Users, X, LogOut, Shield
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useAuthStore } from '../store/authStore'
@@ -16,7 +16,8 @@ const MODULES = [
   { to: '/financeiro',    label: 'Financeiro',    icon: Wallet },
   { to: '/comissoes',     label: 'Vendedores',    icon: Users },
   { to: '/ranking',       label: 'Ranking',       icon: Trophy },
-  { to: '/estatisticas',  label: 'Estatísticas',  icon: BarChart3 }
+  { to: '/estatisticas',  label: 'Estatísticas',  icon: BarChart3 },
+  { to: '/usuarios',      label: 'Usuários',      icon: Shield }
 ]
 
 export default function Sidebar({ open, onClose }: Props) {
