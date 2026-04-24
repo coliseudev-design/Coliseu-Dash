@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { usePeriodQuery } from '../hooks/useApi'
+import { usePeriodQuery, useApiQuery } from '../hooks/useApi'
 import KPICard from '../components/KPICard'
 import ChartCard from '../components/ChartCard'
 import PeriodFilter from '../components/PeriodFilter'
@@ -14,18 +14,23 @@ import { formatBRL, formatBRLCompact } from '../utils/format'
 import { CHART_COLORS } from '../utils/chartColors'
 
 export default function Financeiro() {
-  const caixa = usePeriodQuery<any>('/financeiro/caixa')
-  const fluxo = usePeriodQuery<any>('/financeiro/fluxo-caixa')
-
-  // Mock do Seletor de Caixas conforme diretriz de Design
+  // Seletor de Caixas Real
   const [selectedCaixa, setSelectedCaixa] = useState('todos')
+  
+  // Lista de caixas
+  const { data: caixasRes } = useApiQuery<any>('/financeiro/caixas')
+  const caixas = caixasRes?.data || []
+
+  const extraParams = selectedCaixa !== 'todos' ? { caixa_id: selectedCaixa } : {}
+  const caixa = usePeriodQuery<any>('/financeiro/caixa', extraParams)
+  const fluxo = usePeriodQuery<any>('/financeiro/fluxo-caixa', extraParams)
 
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <PeriodFilter />
         
-        {/* Seletor de Caixa Simplificado */}
+        {/* Seletor de Caixa */}
         <div className="flex items-center gap-2 bg-white rounded-lg border border-[#E0E0E0] p-1.5 shadow-sm">
           <Filter size={16} className="text-text-secondary ml-2" />
           <select 
@@ -34,8 +39,9 @@ export default function Financeiro() {
             className="bg-transparent border-none text-sm font-medium text-text-primary focus:ring-0 cursor-pointer pr-8"
           >
             <option value="todos">Todos os Caixas</option>
-            <option value="loja1">Caixa Físico - Matriz</option>
-            <option value="banco1">Banco Itaú</option>
+            {caixas.map((c: any) => (
+              <option key={c.id} value={c.id}>{c.nome}</option>
+            ))}
           </select>
         </div>
       </div>
