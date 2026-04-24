@@ -34,7 +34,7 @@ export default function Login() {
         <div className="relative z-10">
           <div className="flex items-center gap-2 mb-12">
             <div className="bg-white/10 p-2 rounded-xl backdrop-blur-md border border-white/20">
-              <LayoutDashboard className="text-white w-6 h-6" />
+              <img src="/favicon.png" className="w-6 h-6 object-contain" alt="Coliseu Symbol" />
             </div>
             <span className="text-white font-heading font-bold text-xl tracking-tight">Coliseu Dash</span>
           </div>
@@ -111,8 +111,8 @@ export default function Login() {
         
         {/* Mobile Header (Sempre visível em mobile, oculto em Desktop porque tem a barra lateral) */}
         <div className="lg:hidden absolute top-8 left-6 sm:left-12 flex items-center gap-2">
-          <div className="bg-brand-600 p-2 rounded-xl">
-            <LayoutDashboard className="text-white w-5 h-5" />
+          <div className="bg-white shadow-sm border border-slate-200 p-2 rounded-xl">
+            <img src="/favicon.png" className="w-5 h-5 object-contain" alt="Coliseu Symbol" />
           </div>
           <span className="text-slate-900 font-heading font-bold text-lg">Coliseu Dash</span>
         </div>
