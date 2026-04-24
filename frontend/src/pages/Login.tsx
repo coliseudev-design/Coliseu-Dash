@@ -120,9 +120,9 @@ export default function Login() {
         <div className="w-full max-w-sm mx-auto mt-16 lg:mt-0">
           <div className="mb-10 text-left">
             <img 
-              src="/coliseu-logo.png" 
+              src="/logo-coliseu.png" 
               alt="Coliseu Sistemas" 
-              className="h-10 sm:h-12 w-auto object-contain mb-8 filter brightness-0 opacity-90"
+              className="h-16 sm:h-20 w-auto object-contain mb-8"
               onError={(e) => {
                 e.currentTarget.style.display = 'none';
               }}
