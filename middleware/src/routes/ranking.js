@@ -220,14 +220,13 @@ router.get('/especies', async (req, res, next) => {
         const limit = parseInt(req.query.limit) || 10;
 
         const { rows } = await db.query(`
-            SELECT COALESCE(c.descricao, 'Não Informado') AS nome, SUM(f.valor_pago) AS total, COUNT(*) AS qtd
-            FROM dash_financeiro f
-            LEFT JOIN dash_caixas c ON c.id_firebird = f.caixa_id_firebird AND c.tenant_id = f.tenant_id
-            WHERE f.tenant_id = $1
-              AND COALESCE(f.data_pagamento, f.data_vencimento) >= $2
-              AND COALESCE(f.data_pagamento, f.data_vencimento) <= $3
-              AND TRIM(f.status_pagamento) = 'PAGO'
-            GROUP BY c.descricao ORDER BY total DESC LIMIT $4
+            SELECT COALESCE(v.especie, 'Não Informada') AS nome, SUM(v.valor_total) AS total, COUNT(*) AS qtd
+            FROM dash_vendas v
+            WHERE v.tenant_id = $1
+              AND v.data_venda >= $2
+              AND v.data_venda <= $3
+              AND v.status = 'FATURADO'
+            GROUP BY v.especie ORDER BY total DESC LIMIT $4
         `, [tenantId, start, end, limit]);
 
         res.json({ data: rows.map(r => ({

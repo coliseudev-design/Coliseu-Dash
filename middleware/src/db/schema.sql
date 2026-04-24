@@ -122,6 +122,7 @@ CREATE TABLE IF NOT EXISTS dash_vendas (
     status VARCHAR(50) DEFAULT 'FATURADO',
     marca VARCHAR(100),
     categoria VARCHAR(100),
+    especie VARCHAR(100),
     sincronizado_em TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(tenant_id, id_firebird)
 );
@@ -151,6 +152,7 @@ CREATE TABLE IF NOT EXISTS dash_vendas_itens (
 -- Migrações: adiciona colunas que podem não existir em instalações antigas
 ALTER TABLE dash_vendas ADD COLUMN IF NOT EXISTS marca VARCHAR(100);
 ALTER TABLE dash_vendas ADD COLUMN IF NOT EXISTS categoria VARCHAR(100);
+ALTER TABLE dash_vendas ADD COLUMN IF NOT EXISTS especie VARCHAR(100);
 ALTER TABLE dash_vendas_itens ADD COLUMN IF NOT EXISTS vendedor VARCHAR(150);
 ALTER TABLE dash_vendas_itens ADD COLUMN IF NOT EXISTS produto VARCHAR(200);
 ALTER TABLE dash_vendas_itens ADD COLUMN IF NOT EXISTS marca VARCHAR(100);
