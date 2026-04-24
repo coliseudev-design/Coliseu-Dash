@@ -111,7 +111,7 @@ router.get('/kpis', async (req, res, next) => {
         `, [tenantId, start, end]);
 
         const { rows: topCats } = await db.query(`
-            SELECT categoria, SUM(valor_total) AS total
+            SELECT vi.categoria as categoria, SUM(vi.valor_total) AS total
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
             WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
