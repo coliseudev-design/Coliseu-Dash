@@ -62,9 +62,9 @@ function RankingSection({ title, subtitle, icon: Icon, data, loading }: any) {
                   <YAxis 
                     type="category" 
                     dataKey="nome" 
-                    tick={{ fontSize: 11, fill: '#374151', textTransform: 'capitalize' }} 
-                    width={150}
-                    tickFormatter={(val) => val.length > 22 ? val.substring(0, 21) + '...' : val}
+                    tick={{ fontSize: 11, fill: '#374151', textTransform: 'capitalize', textAnchor: 'start', dx: -170 }} 
+                    width={180}
+                    tickFormatter={(val) => val.length > 28 ? val.substring(0, 27) + '...' : val}
                   />
                   <Tooltip 
                     formatter={(v: any) => formatBRL(v)} 
