@@ -79,8 +79,8 @@ export default function Home() {
             <div className="h-px bg-brand-100 flex-1"></div>
           </div>
           
-          <div className="grid grid-cols-2 md:grid-cols-4 md:grid-rows-2 gap-3 sm:gap-4 flex-1">
-            <div className="col-span-2 md:col-span-4">
+          <div className="grid grid-cols-2 2xl:grid-cols-4 gap-3 sm:gap-4 flex-1">
+            <div className="col-span-2 2xl:col-span-4">
               <KPICard
                 label="Faturamento do Período"
                 value={formatBRL(ov.data?.mes?.total)}
@@ -142,7 +142,7 @@ export default function Home() {
             <div className="h-px bg-success/20 flex-1"></div>
           </div>
           
-          <div className="grid grid-cols-2 md:grid-rows-2 gap-3 sm:gap-4 flex-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 2xl:grid-cols-2 gap-3 sm:gap-4 flex-1">
             <KPICard
               label="A Receber"
               value={formatBRL(ov.data?.total_receber)}
