@@ -32,8 +32,11 @@ export default function Login() {
         
         {/* Topo da área criativa */}
         <div className="relative z-10">
-          <div className="mb-12">
-            <img src="/coliseu-logo-auth.png" className="h-10 w-auto object-contain" alt="Coliseu Dash" />
+          <div className="flex items-center gap-2 mb-12">
+            <div className="bg-white/10 p-2 rounded-xl backdrop-blur-md border border-white/20">
+              <img src="/coliseu-simbolo.png" className="w-6 h-6 object-contain" alt="Coliseu Symbol" />
+            </div>
+            <span className="text-white font-heading font-bold text-xl tracking-tight">Coliseu Dash</span>
           </div>
           
           <h1 className="text-4xl xl:text-5xl font-heading font-bold text-white leading-tight mb-6 max-w-2xl">
@@ -107,8 +110,11 @@ export default function Login() {
       <div className="w-full lg:w-2/5 bg-white flex flex-col justify-center px-6 sm:px-12 lg:px-16 xl:px-24 relative">
         
         {/* Mobile Header (Sempre visível em mobile, oculto em Desktop porque tem a barra lateral) */}
-        <div className="lg:hidden absolute top-6 left-6 sm:left-12">
-          <img src="/coliseu-logo-auth.png" className="h-8 w-auto object-contain" alt="Coliseu Dash" />
+        <div className="lg:hidden absolute top-8 left-6 sm:left-12 flex items-center gap-2">
+          <div className="bg-white shadow-sm border border-slate-200 p-2 rounded-xl">
+            <img src="/coliseu-simbolo.png" className="w-5 h-5 object-contain" alt="Coliseu Symbol" />
+          </div>
+          <span className="text-slate-900 font-heading font-bold text-lg">Coliseu Dash</span>
         </div>
 
         <div className="w-full max-w-sm mx-auto mt-16 lg:mt-0">
