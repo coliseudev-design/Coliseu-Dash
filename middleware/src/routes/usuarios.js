@@ -16,9 +16,9 @@ router.get('/', async (req, res) => {
         let query = `SELECT id, tenant_id, email, nome, role, ativo, created_at FROM dash_usuarios`;
         let params = [];
         
-        if (req.user.tenant !== '00000000-0000-0000-0000-000000000000') {
+        if (req.tenant.id !== '00000000-0000-0000-0000-000000000000') {
             query += ` WHERE tenant_id = $1`;
-            params.push(req.user.tenant);
+            params.push(req.tenant.id);
         }
         
         query += ` ORDER BY created_at DESC`;
@@ -44,7 +44,7 @@ router.post('/', async (req, res) => {
         }
 
         // Segurança: Se não for master, só pode criar usuário para a própria empresa
-        if (req.user.tenant !== '00000000-0000-0000-0000-000000000000' && companyKey !== req.user.tenant) {
+        if (req.tenant.id !== '00000000-0000-0000-0000-000000000000' && companyKey !== req.tenant.id) {
             return res.status(403).json({ error: 'Você só pode criar usuários para a sua própria empresa.' });
         }
 
@@ -148,9 +148,9 @@ router.put('/:id/status', async (req, res) => {
         let query = `UPDATE dash_usuarios SET ativo = $1 WHERE id = $2`;
         let params = [ativo, targetId];
 
-        if (req.user.tenant !== '00000000-0000-0000-0000-000000000000') {
+        if (req.tenant.id !== '00000000-0000-0000-0000-000000000000') {
             query += ` AND tenant_id = $3`;
-            params.push(req.user.tenant);
+            params.push(req.tenant.id);
         }
 
         query += ` RETURNING id, ativo`;
