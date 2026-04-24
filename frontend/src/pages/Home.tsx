@@ -70,17 +70,17 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-stretch">
         
         {/* SEÇÃO 1: VENDAS E PERFORMANCE COMERCIAL */}
-        <div className="xl:col-span-7 space-y-4">
+        <div className="xl:col-span-8 flex flex-col space-y-4">
           <div className="flex items-center gap-2">
             <h3 className="text-sm font-bold uppercase tracking-wider text-brand-600">Performance Comercial</h3>
             <div className="h-px bg-brand-100 flex-1"></div>
           </div>
           
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4">
-            <div className="col-span-2 md:col-span-5">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 flex-1 content-start">
+            <div className="col-span-2 md:col-span-4">
               <KPICard
                 label="Faturamento do Período"
                 value={formatBRL(ov.data?.mes?.total)}
@@ -91,7 +91,7 @@ export default function Home() {
               />
             </div>
             
-            <div className="col-span-1 md:col-span-2">
+            <div className="col-span-1">
               <KPICard
                 label="Faturamento Hoje"
                 value={formatBRL(ov.data?.hoje?.total)}
@@ -102,39 +102,47 @@ export default function Home() {
               />
             </div>
             
-            <KPICard
-              label="Ticket Médio"
-              value={formatBRL(ticketMedio)}
-              icon={Calculator}
-              iconColor="text-brand-400"
-              hint="Do período"
-              loading={ov.isLoading}
-            />
-            <KPICard
-              label="Em Aberto"
-              value={formatNum(ov.data?.pedidos_abertos)}
-              icon={ShoppingBag}
-              iconColor="text-warning"
-              loading={ov.isLoading}
-            />
-            <KPICard
-              label="Processados"
-              value={formatNum(ov.data?.pedidos_processados)}
-              icon={ShoppingBag}
-              iconColor="text-success"
-              loading={ov.isLoading}
-            />
+            <div className="col-span-1">
+              <KPICard
+                label="Ticket Médio"
+                value={formatBRL(ticketMedio)}
+                icon={Calculator}
+                iconColor="text-brand-400"
+                hint="Do período"
+                loading={ov.isLoading}
+              />
+            </div>
+
+            <div className="col-span-1">
+              <KPICard
+                label="Em Aberto"
+                value={formatNum(ov.data?.pedidos_abertos)}
+                icon={ShoppingBag}
+                iconColor="text-warning"
+                loading={ov.isLoading}
+              />
+            </div>
+
+            <div className="col-span-1">
+              <KPICard
+                label="Processados"
+                value={formatNum(ov.data?.pedidos_processados)}
+                icon={ShoppingBag}
+                iconColor="text-success"
+                loading={ov.isLoading}
+              />
+            </div>
           </div>
         </div>
 
         {/* SEÇÃO 2: SAÚDE FINANCEIRA */}
-        <div className="xl:col-span-5 space-y-4">
+        <div className="xl:col-span-4 flex flex-col space-y-4">
           <div className="flex items-center gap-2">
             <h3 className="text-sm font-bold uppercase tracking-wider text-success">Saúde Financeira</h3>
             <div className="h-px bg-success/20 flex-1"></div>
           </div>
           
-          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 flex-1 content-start">
             <KPICard
               label="A Receber"
               value={formatBRL(ov.data?.total_receber)}
