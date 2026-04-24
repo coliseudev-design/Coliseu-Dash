@@ -75,4 +75,53 @@ router.post('/login', async (req, res) => {
     }
 });
 
+/**
+ * Cadastro de novo usuário.
+ */
+router.post('/register', async (req, res) => {
+    try {
+        const { nome, email, password, companyKey } = req.body;
+
+        if (!nome || !email || !password || !companyKey) {
+            return res.status(400).json({ error: 'Nome, email, senha e ID da Empresa (CompanyKey) são obrigatórios', code: 'MISSING_FIELDS' });
+        }
+
+        // Valida se o email já existe
+        const checkQuery = `SELECT id FROM dash_usuarios WHERE email = $1`;
+        const checkResult = await db.query(checkQuery, [email]);
+        
+        if (checkResult.rowCount > 0) {
+            return res.status(409).json({ error: 'Este email já está em uso', code: 'EMAIL_IN_USE' });
+        }
+
+        // Hash da senha
+        const salt = await bcrypt.genSalt(10);
+        const senhaHash = await bcrypt.hash(password, salt);
+
+        // Insere o usuário (default role: viewer)
+        const insertQuery = `
+            INSERT INTO dash_usuarios (tenant_id, email, nome, role, ativo, senha_hash)
+            VALUES ($1, $2, $3, 'viewer', true, $4)
+            RETURNING id, tenant_id, email, nome, role
+        `;
+        const result = await db.query(insertQuery, [companyKey, email, nome, senhaHash]);
+        const user = result.rows[0];
+
+        logger.info('[Auth] Novo usuário cadastrado', { email: user.email, tenant: user.tenant_id });
+
+        // Retorna sucesso. O front pode fazer auto-login depois.
+        res.status(201).json({
+            message: 'Usuário cadastrado com sucesso',
+            user
+        });
+    } catch (err) {
+        logger.error('[Auth] Erro na rota de cadastro', err);
+        // Tratar erro de UUID mal formatado (caso o usuário digite texto comum em vez de CompanyKey válida)
+        if (err.code === '22P02') {
+            return res.status(400).json({ error: 'ID da Empresa inválido. O CompanyKey deve ser um UUID válido.', code: 'INVALID_UUID' });
+        }
+        res.status(500).json({ error: 'Erro interno no servidor ao cadastrar', code: 'INTERNAL_ERROR' });
+    }
+});
+
 module.exports = router;

@@ -15,6 +15,7 @@ interface AuthState {
   loading: boolean
   error: string | null
   login: (email: string, senha?: string) => Promise<boolean>
+  register: (nome: string, email: string, senha: string, companyKey: string) => Promise<boolean>
   logout: () => Promise<void>
   init: () => void
 }
@@ -54,6 +55,18 @@ export const useAuthStore = create<AuthState>((set) => ({
       return true
     } catch (e: any) {
       const msg = e?.response?.data?.error || e?.response?.data?.message || 'Email ou senha incorretos, ou módulo não contratado'
+      set({ error: msg, loading: false })
+      return false
+    }
+  },
+  register: async (nome, email, senha, companyKey) => {
+    set({ loading: true, error: null })
+    try {
+      await api.post('/auth/register', { nome, email, password: senha, companyKey })
+      // Se sucesso no cadastro, faz o login logo em seguida
+      return await useAuthStore.getState().login(email, senha)
+    } catch (e: any) {
+      const msg = e?.response?.data?.error || e?.response?.data?.message || 'Erro ao cadastrar'
       set({ error: msg, loading: false })
       return false
     }
