@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, Navigate, Link } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
-import { LogIn } from 'lucide-react'
+import { LogIn, TrendingUp, BarChart3, Users, LayoutDashboard } from 'lucide-react'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -13,7 +13,6 @@ export default function Login() {
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
 
-  // Se já logado, redireciona
   if (user) return <Navigate to="/" replace />
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -23,82 +22,186 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 px-4 py-8">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-6 sm:mb-8">
-          <div className="inline-flex items-center justify-center mb-4">
-            <img
-              src="/coliseu-logo.png"
-              alt="Coliseu Sistemas"
-              className="h-14 sm:h-16 w-auto object-contain"
-            />
+    <div className="min-h-screen flex w-full">
+      
+      {/* Esquerda: Showcase / Criativo (Escondido no Mobile) */}
+      <div className="hidden lg:flex w-3/5 bg-gradient-to-br from-slate-900 via-brand-900 to-slate-900 relative overflow-hidden flex-col justify-between p-12">
+        {/* Efeitos de fundo (Círculos desfocados) */}
+        <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-brand-500/30 rounded-full blur-3xl" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-blue-500/20 rounded-full blur-3xl" />
+        
+        {/* Topo da área criativa */}
+        <div className="relative z-10">
+          <div className="flex items-center gap-2 mb-12">
+            <div className="bg-white/10 p-2 rounded-xl backdrop-blur-md border border-white/20">
+              <LayoutDashboard className="text-white w-6 h-6" />
+            </div>
+            <span className="text-white font-heading font-bold text-xl tracking-tight">Coliseu Dash</span>
           </div>
-          <h1 className="font-heading text-xl sm:text-2xl font-semibold text-white">Coliseu Dash</h1>
-          <p className="text-white/60 text-sm mt-1">
-            Dashboard Gerencial · Ecossistema Coliseu
+          
+          <h1 className="text-4xl xl:text-5xl font-heading font-bold text-white leading-tight mb-6 max-w-2xl">
+            Seus resultados,<br/>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300">em tempo real.</span>
+          </h1>
+          <p className="text-slate-300 text-lg max-w-xl leading-relaxed">
+            A plataforma gerencial definitiva do ecossistema Coliseu. Transforme os dados do seu ERP em decisões estratégicas de qualquer lugar.
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-2xl p-5 sm:p-6 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-text-primary mb-1.5">Email</label>
-            <input
-              type="email"
-              className="input text-base w-full p-2 border rounded"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="ex: admin@coliseusistemas.com.br"
-              required
-              autoFocus
-              autoComplete="email"
-              inputMode="email"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-text-primary mb-1.5">Senha</label>
-            <input
-              type="password"
-              className="input text-base w-full p-2 border rounded"
-              value={senha}
-              onChange={(e) => setSenha(e.target.value)}
-              placeholder="Sua senha"
-              required
-              autoComplete="current-password"
-            />
-          </div>
-
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3">
-              {error}
+        {/* Centro/Widgets de Demonstração */}
+        <div className="relative z-10 mt-12 grid grid-cols-2 gap-6 max-w-2xl">
+          {/* Card 1 */}
+          <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-6 transform transition-transform hover:-translate-y-1">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="bg-green-500/20 p-2 rounded-lg">
+                <TrendingUp className="text-green-400 w-5 h-5" />
+              </div>
+              <span className="text-slate-300 font-medium">Faturamento Diário</span>
             </div>
-          )}
+            <div className="text-white font-bold text-2xl">R$ 12.450,00</div>
+            <div className="text-green-400 text-sm font-medium mt-2 flex items-center gap-1">
+              +15.2% <span className="text-slate-400 font-normal">vs ontem</span>
+            </div>
+          </div>
 
-          <button type="submit" className="btn-primary w-full justify-center py-3 text-base flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium transition-colors" disabled={loading}>
-            {loading ? (
-              <>
-                <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Entrando...
-              </>
-            ) : (
-              <>
-                <LogIn size={18} />
-                Entrar no Dashboard
-              </>
+          {/* Card 2 */}
+          <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-6 transform transition-transform hover:-translate-y-1">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="bg-blue-500/20 p-2 rounded-lg">
+                <Users className="text-blue-400 w-5 h-5" />
+              </div>
+              <span className="text-slate-300 font-medium">Clientes Ativos</span>
+            </div>
+            <div className="text-white font-bold text-2xl">4.861</div>
+            <div className="text-blue-400 text-sm font-medium mt-2 flex items-center gap-1">
+              +42 <span className="text-slate-400 font-normal">esta semana</span>
+            </div>
+          </div>
+          
+          {/* Card 3 (Span 2) */}
+          <div className="col-span-2 bg-gradient-to-r from-white/10 to-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-6 flex items-center justify-between transform transition-transform hover:-translate-y-1">
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <BarChart3 className="text-cyan-400 w-5 h-5" />
+                <span className="text-slate-300 font-medium">Ticket Médio Geral</span>
+              </div>
+              <div className="text-white font-bold text-3xl">R$ 643,27</div>
+            </div>
+            <div className="hidden sm:flex items-end gap-1 h-12">
+               {/* Barras decorativas */}
+               {[40, 70, 45, 90, 65, 80, 100].map((h, i) => (
+                 <div key={i} className="w-3 bg-cyan-400/80 rounded-t-sm" style={{ height: `${h}%` }} />
+               ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Rodapé da área criativa */}
+        <div className="relative z-10 mt-12 flex items-center justify-between text-slate-400 text-sm">
+          <span>© 2026 Coliseu Sistemas</span>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            Sistemas Operacionais
+          </div>
+        </div>
+      </div>
+
+      {/* Direita: Formulário de Login */}
+      <div className="w-full lg:w-2/5 bg-white flex flex-col justify-center px-6 sm:px-12 lg:px-16 xl:px-24 relative">
+        
+        {/* Mobile Header (Sempre visível em mobile, oculto em Desktop porque tem a barra lateral) */}
+        <div className="lg:hidden absolute top-8 left-6 sm:left-12 flex items-center gap-2">
+          <div className="bg-brand-600 p-2 rounded-xl">
+            <LayoutDashboard className="text-white w-5 h-5" />
+          </div>
+          <span className="text-slate-900 font-heading font-bold text-lg">Coliseu Dash</span>
+        </div>
+
+        <div className="w-full max-w-sm mx-auto mt-16 lg:mt-0">
+          <div className="mb-10 text-left">
+            <img 
+              src="/coliseu-logo.png" 
+              alt="Coliseu Sistemas" 
+              className="h-10 sm:h-12 w-auto object-contain mb-8 filter brightness-0 opacity-90"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+              }}
+            />
+            <h2 className="font-heading text-3xl font-bold text-slate-900 tracking-tight">Bem-vindo de volta.</h2>
+            <p className="text-slate-500 mt-2 text-base">
+              Entre para acessar seus dashboards gerenciais.
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">E-mail de Acesso</label>
+              <input
+                type="email"
+                className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none transition-all text-slate-900 bg-white"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="email@coliseusistemas.com.br"
+                required
+                autoFocus
+                autoComplete="email"
+                inputMode="email"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Senha de Segurança</label>
+              <input
+                type="password"
+                className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none transition-all text-slate-900 bg-white"
+                value={senha}
+                onChange={(e) => setSenha(e.target.value)}
+                placeholder="••••••••"
+                required
+                autoComplete="current-password"
+              />
+              <div className="flex justify-end mt-2">
+                <a href="#" className="text-sm font-medium text-brand-600 hover:text-brand-700 transition-colors">
+                  Esqueceu a senha?
+                </a>
+              </div>
+            </div>
+
+            {error && (
+              <div className="bg-red-50 border border-red-100 text-red-600 text-sm rounded-lg p-3.5 flex items-center gap-2">
+                <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" /></svg>
+                {error}
+              </div>
             )}
-          </button>
 
-          <div className="text-center pt-2">
-            <Link to="/register" className="text-sm text-brand-600 hover:text-brand-700 font-medium transition-colors">
-              Não tem uma conta? Cadastre-se
+            <button 
+              type="submit" 
+              className="w-full py-3.5 px-4 bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white rounded-lg font-medium shadow-sm shadow-brand-500/30 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed mt-4" 
+              disabled={loading}
+            >
+              {loading ? (
+                <>
+                  <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Autenticando...</span>
+                </>
+              ) : (
+                <>
+                  <span>Avançar</span>
+                  <LogIn className="w-5 h-5" />
+                </>
+              )}
+            </button>
+          </form>
+
+          <div className="mt-10 text-center text-sm text-slate-500">
+            Ainda não tem conta?{' '}
+            <Link to="/register" className="font-semibold text-brand-600 hover:text-brand-700 transition-colors">
+              Criar acesso ✨
             </Link>
           </div>
-        </form>
-
-        <p className="text-center text-xs text-white/50 mt-4">
-          © 2026 Coliseu Sistemas · v2.0 API Integrada
-        </p>
+        </div>
       </div>
+
     </div>
   )
 }
