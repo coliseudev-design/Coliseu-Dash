@@ -238,6 +238,15 @@ CREATE TABLE IF NOT EXISTS dash_compras (
 
 CREATE INDEX IF NOT EXISTS idx_dash_compras_data ON dash_compras(tenant_id, data_pedido);
 
+CREATE TABLE IF NOT EXISTS dash_caixas (
+    id SERIAL PRIMARY KEY,
+    tenant_id UUID NOT NULL,
+    id_firebird INTEGER NOT NULL,
+    descricao VARCHAR(150),
+    sincronizado_em TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(tenant_id, id_firebird)
+);
+
 -- ------------------------------------------------------------
 -- SISTEMA WEB (Autenticação/Auditoria internas)
 -- ------------------------------------------------------------
