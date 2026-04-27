@@ -48,11 +48,11 @@ export default function Estatisticas() {
             {kpis.isLoading ? (
               <div className="text-center text-sm text-text-secondary">Carregando...</div>
             ) : k?.top_clientes?.length > 0 ? (
-              <div className="space-y-2">
+              <div className="space-y-0.5">
                 {k.top_clientes.map((c: any, i: number) => (
-                  <div key={i} className="flex justify-between items-center bg-bg-secondary p-2 rounded text-sm">
-                    <span className="font-medium text-text-primary truncate">{i + 1}. {c.nome}</span>
-                    <span className="font-semibold text-success flex-shrink-0">{formatBRL(c.total)}</span>
+                  <div key={i} className="flex justify-between items-center py-2 border-b border-border last:border-0 text-sm hover:bg-bg-secondary transition-colors px-1 rounded-sm">
+                    <span className="font-medium text-text-secondary truncate pr-4"><span className="text-text-tertiary mr-2 w-4 inline-block">{i + 1}.</span> {c.nome}</span>
+                    <span className="font-bold text-text-primary flex-shrink-0">{formatBRL(c.total)}</span>
                   </div>
                 ))}
               </div>
@@ -92,11 +92,11 @@ export default function Estatisticas() {
             {kpis.isLoading ? (
               <div className="text-center text-sm text-text-secondary">Carregando...</div>
             ) : k?.top_categorias?.length > 0 ? (
-              <div className="space-y-2">
+              <div className="space-y-0.5">
                 {k.top_categorias.map((c: any, i: number) => (
-                  <div key={i} className="flex justify-between items-center bg-bg-secondary p-2 rounded text-sm">
-                    <span className="font-medium text-text-primary capitalize truncate">{i + 1}. {c.categoria?.toLowerCase() || 'Sem categoria'}</span>
-                    <span className="font-semibold text-text-primary flex-shrink-0">{formatBRL(c.total)}</span>
+                  <div key={i} className="flex justify-between items-center py-2 border-b border-border last:border-0 text-sm hover:bg-bg-secondary transition-colors px-1 rounded-sm">
+                    <span className="font-medium text-text-secondary capitalize truncate pr-4"><span className="text-text-tertiary mr-2 w-4 inline-block">{i + 1}.</span> {c.categoria?.toLowerCase() || 'Sem categoria'}</span>
+                    <span className="font-bold text-text-primary flex-shrink-0">{formatBRL(c.total)}</span>
                   </div>
                 ))}
               </div>

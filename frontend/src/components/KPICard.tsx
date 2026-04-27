@@ -45,14 +45,16 @@ export default function KPICard({
             )}
           </div>
         )}
-        {(hint || trendValue) && (
-          <div className="mt-1 text-[10px] sm:text-xs text-text-secondary flex items-center gap-1 truncate">
-            {trend === 'up' && <span className="text-success">▲</span>}
-            {trend === 'down' && <span className="text-danger">▼</span>}
-            {trendValue && <span>{trendValue}</span>}
-            {hint && <span className="truncate" title={hint}>{hint}</span>}
-          </div>
-        )}
+        <div className="mt-1 min-h-[16px] sm:min-h-[18px] text-[10px] sm:text-xs text-text-secondary flex items-center gap-1 truncate">
+          {(hint || trendValue) ? (
+            <>
+              {trend === 'up' && <span className="text-success">▲</span>}
+              {trend === 'down' && <span className="text-danger">▼</span>}
+              {trendValue && <span>{trendValue}</span>}
+              {hint && <span className="truncate" title={hint}>{hint}</span>}
+            </>
+          ) : null}
+        </div>
       </div>
     </div>
   )
