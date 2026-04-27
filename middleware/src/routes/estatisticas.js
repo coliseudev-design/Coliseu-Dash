@@ -34,12 +34,13 @@ router.get('/overview', async (req, res, next) => {
 
         // Paralelizando todas as consultas pesadas para o banco compilar simultaneamente
         const [
-            vHoje, vMes, pAbertos, pProc, fReceber, fRecebido, fPagar, fPago, topMarcasItens, topMarcasVendas, topCatsItens, topCatsVendas
+            vHoje, vMes, pAbertos, pProc, pCanc, fReceber, fRecebido, fPagar, fPago, topMarcasItens, topMarcasVendas, topCatsItens, topCatsVendas
         ] = await Promise.all([
             db.query(`SELECT COALESCE(SUM(valor_total),0) AS total, COUNT(*) AS qtd FROM dash_vendas WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3 AND status IS DISTINCT FROM 'CANCELADO'`, [tenantId, startHoje, endHoje]),
             db.query(`SELECT COALESCE(SUM(valor_total),0) AS total, COUNT(*) AS qtd FROM dash_vendas WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3 AND status IS DISTINCT FROM 'CANCELADO'`, [tenantId, start, end]),
             db.query(`SELECT COUNT(*) AS qtd FROM dash_vendas WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3 AND TRIM(status) IN ('PENDENTE','ABERTO')`, [tenantId, start, end]),
-            db.query(`SELECT COUNT(*) AS qtd FROM dash_vendas WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3 AND TRIM(status) IN ('FATURADO','FINALIZADO','CANCELADO')`, [tenantId, start, end]),
+            db.query(`SELECT COUNT(*) AS qtd FROM dash_vendas WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3 AND TRIM(status) IN ('FATURADO','FINALIZADO')`, [tenantId, start, end]),
+            db.query(`SELECT COUNT(*) AS qtd FROM dash_vendas WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3 AND TRIM(status) = 'CANCELADO'`, [tenantId, start, end]),
             db.query(`SELECT COALESCE(SUM(valor - valor_pago),0) AS v FROM dash_financeiro WHERE tenant_id = $1 AND COALESCE(data_vencimento, data_emissao, NOW()) >= $2 AND COALESCE(data_vencimento, data_emissao, NOW()) <= $3 AND TRIM(tipo) = 'RECEBER' AND TRIM(status_pagamento) = 'ABERTO'`, [tenantId, finRange.start, finRange.end]),
             db.query(`SELECT COALESCE(SUM((CASE WHEN valor_pago = 0 THEN valor ELSE valor_pago END)),0) AS v FROM dash_financeiro WHERE tenant_id = $1 AND COALESCE(data_pagamento, data_vencimento, NOW()) >= $2 AND COALESCE(data_pagamento, data_vencimento, NOW()) <= $3 AND TRIM(tipo) = 'RECEBER' AND TRIM(status_pagamento) = 'PAGO'`, [tenantId, finRange.start, finRange.end]),
             db.query(`SELECT COALESCE(SUM(valor - valor_pago),0) AS v FROM dash_financeiro WHERE tenant_id = $1 AND COALESCE(data_vencimento, data_emissao, NOW()) >= $2 AND COALESCE(data_vencimento, data_emissao, NOW()) <= $3 AND TRIM(tipo) = 'PAGAR' AND TRIM(status_pagamento) = 'ABERTO'`, [tenantId, finRange.start, finRange.end]),
@@ -58,6 +59,7 @@ router.get('/overview', async (req, res, next) => {
             mes: { total: parseFloat(vMes.rows[0].total), qtd: parseInt(vMes.rows[0].qtd) },
             pedidos_abertos: parseInt(pAbertos.rows[0].qtd),
             pedidos_processados: parseInt(pProc.rows[0].qtd),
+            pedidos_cancelados: parseInt(pCanc.rows[0].qtd),
             total_receber: parseFloat(fReceber.rows[0].v),
             total_recebido: parseFloat(fRecebido.rows[0].v),
             total_pagar: parseFloat(fPagar.rows[0].v),

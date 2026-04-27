@@ -19,6 +19,7 @@ interface Overview {
   mes: { total: number; qtd: number }
   pedidos_abertos: number
   pedidos_processados: number
+  pedidos_cancelados: number
   total_receber: number
   total_recebido: number
   total_pagar: number
@@ -79,8 +80,8 @@ export default function Home() {
             <div className="h-px bg-brand-100 flex-1"></div>
           </div>
           
-          <div className="grid grid-cols-2 2xl:grid-cols-4 gap-3 sm:gap-4 flex-1">
-            <div className="col-span-2 2xl:col-span-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4 flex-1">
+            <div className="col-span-2 md:col-span-3 xl:col-span-5">
               <KPICard
                 label="Faturamento do Período"
                 value={formatBRL(ov.data?.mes?.total)}
@@ -129,6 +130,16 @@ export default function Home() {
                 value={formatNum(ov.data?.pedidos_processados)}
                 icon={ShoppingBag}
                 iconColor="text-success"
+                loading={ov.isLoading}
+              />
+            </div>
+
+            <div className="col-span-1">
+              <KPICard
+                label="Cancelados"
+                value={formatNum(ov.data?.pedidos_cancelados)}
+                icon={AlertCircle}
+                iconColor="text-danger"
                 loading={ov.isLoading}
               />
             </div>
