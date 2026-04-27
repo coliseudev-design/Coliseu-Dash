@@ -68,14 +68,14 @@ router.get('/kpis', async (req, res, next) => {
                 SUM(valor_total) AS total_produzido,
                 COUNT(DISTINCT id_firebird) AS qtd_vendas
             FROM dash_vendas
-            WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3 AND status IS DISTINCT FROM 'CANCELADO'
+            WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3 AND TRIM(status) IN ('FATURADO', 'FINALIZADO')
         `, [tenantId, start, end]);
 
         const { rows: grouped } = await db.query(`
             SELECT 
                 vendedor_id_firebird, SUM(valor_total) AS total
             FROM dash_vendas
-            WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3 AND status IS DISTINCT FROM 'CANCELADO'
+            WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3 AND TRIM(status) IN ('FATURADO', 'FINALIZADO')
             GROUP BY vendedor_id_firebird
         `, [tenantId, start, end]);
 
@@ -114,7 +114,7 @@ router.get('/vendedores', async (req, res, next) => {
                 AVG(v.valor_total) AS ticket_medio
             FROM dash_vendas v
             LEFT JOIN dash_vendedores vd ON vd.id_firebird = v.vendedor_id_firebird AND vd.tenant_id = v.tenant_id
-            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND v.status IS DISTINCT FROM 'CANCELADO'
+            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
             GROUP BY v.vendedor_id_firebird, vd.nome
             ORDER BY total DESC LIMIT $4
         `, [tenantId, start, end, limit]);
@@ -143,7 +143,7 @@ router.get('/produtos', async (req, res, next) => {
                 AVG(vi.preco_unitario) AS preco_medio
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
-            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND v.status IS DISTINCT FROM 'CANCELADO'
+            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
               AND COALESCE(vi.produto, vi.produto_id_firebird::text) IS NOT NULL
             GROUP BY COALESCE(vi.produto, 'Produto ' || COALESCE(vi.produto_id_firebird::text, '?'))
             ORDER BY total DESC LIMIT $4
@@ -172,7 +172,7 @@ router.get('/clientes', async (req, res, next) => {
                 COUNT(DISTINCT v.id_firebird) AS qtd_pedidos
             FROM dash_vendas v
             LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
-            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND v.status IS DISTINCT FROM 'CANCELADO'
+            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
             GROUP BY v.cliente_id_firebird, c.nome
             ORDER BY total DESC LIMIT $4
         `, [tenantId, start, end, limit]);
@@ -199,7 +199,7 @@ router.get('/marcas', async (req, res, next) => {
                 COUNT(*) AS qtd_itens
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
-            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND v.status IS DISTINCT FROM 'CANCELADO'
+            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
               AND COALESCE(vi.marca, v.marca) IS NOT NULL AND COALESCE(vi.marca, v.marca) != ''
             GROUP BY COALESCE(vi.marca, v.marca)
             ORDER BY total DESC LIMIT $4
@@ -225,7 +225,7 @@ router.get('/especies', async (req, res, next) => {
             WHERE v.tenant_id = $1
               AND v.data_venda >= $2
               AND v.data_venda <= $3
-              AND v.status IS DISTINCT FROM 'CANCELADO'
+              AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
             GROUP BY v.especie ORDER BY total DESC LIMIT $4
         `, [tenantId, start, end, limit]);
 
@@ -250,7 +250,7 @@ router.get('/ranking', async (req, res, next) => {
                 COUNT(DISTINCT v.id_firebird) AS qtd_pedidos
             FROM dash_vendas v
             LEFT JOIN dash_vendedores vd ON vd.id_firebird = v.vendedor_id_firebird AND vd.tenant_id = v.tenant_id
-            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND v.status IS DISTINCT FROM 'CANCELADO'
+            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
             GROUP BY v.vendedor_id_firebird, vd.nome
             ORDER BY faturamento DESC LIMIT $4
         `, [tenantId, start, end, limit]);
@@ -276,7 +276,7 @@ router.get('/categorias', async (req, res, next) => {
             SELECT COALESCE(vi.categoria, v.categoria) AS categoria, SUM(vi.valor_total) AS total
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
-            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND v.status IS DISTINCT FROM 'CANCELADO'
+            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
               AND COALESCE(vi.categoria, v.categoria) IS NOT NULL AND COALESCE(vi.categoria, v.categoria) != ''
             GROUP BY COALESCE(vi.categoria, v.categoria)
             ORDER BY total DESC LIMIT $4

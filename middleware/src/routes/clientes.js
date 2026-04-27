@@ -37,7 +37,7 @@ router.get('/lista', async (req, res, next) => {
                 c.data_cadastro,
                 (SELECT COUNT(*) FROM dash_vendas v WHERE v.cliente_id_firebird = c.id_firebird AND v.tenant_id = c.tenant_id) AS qtd_pedidos,
                 (SELECT MAX(v.data_venda) FROM dash_vendas v WHERE v.cliente_id_firebird = c.id_firebird AND v.tenant_id = c.tenant_id) AS ultimo_pedido,
-                (SELECT COALESCE(SUM(v.valor_total), 0) FROM dash_vendas v WHERE v.cliente_id_firebird = c.id_firebird AND v.tenant_id = c.tenant_id AND v.status IS DISTINCT FROM 'CANCELADO') AS total_gasto
+                (SELECT COALESCE(SUM(v.valor_total), 0) FROM dash_vendas v WHERE v.cliente_id_firebird = c.id_firebird AND v.tenant_id = c.tenant_id AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')) AS total_gasto
             FROM dash_clientes c
             ${whereSql}
             ORDER BY c.nome
@@ -81,7 +81,7 @@ router.get('/kpis', async (req, res, next) => {
             FROM dash_vendas
             WHERE tenant_id = $1 
               AND data_venda >= $2 AND data_venda <= $3
-              AND status IS DISTINCT FROM 'CANCELADO'
+              AND TRIM(status) IN ('FATURADO', 'FINALIZADO')
         `, [tenantId, start, end]);
 
         const topP = await db.query(`
@@ -90,7 +90,7 @@ router.get('/kpis', async (req, res, next) => {
             JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
             WHERE v.tenant_id = $1
               AND v.data_venda >= $2 AND v.data_venda <= $3
-              AND v.status IS DISTINCT FROM 'CANCELADO'
+              AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
             GROUP BY c.id, c.nome
             ORDER BY total DESC LIMIT 1
         `, [tenantId, start, end]);
@@ -102,7 +102,7 @@ router.get('/kpis', async (req, res, next) => {
                 FROM dash_vendas
                 WHERE tenant_id = $1
                   AND data_venda >= $2 AND data_venda <= $3
-                  AND status IS DISTINCT FROM 'CANCELADO'
+                  AND TRIM(status) IN ('FATURADO', 'FINALIZADO')
                 GROUP BY cliente_id_firebird
             ) totais
         `, [tenantId, start, end]);
