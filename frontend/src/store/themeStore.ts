@@ -9,7 +9,7 @@ interface ThemeState {
 }
 
 export const useThemeStore = create<ThemeState>((set, get) => ({
-  theme: 'system',
+  theme: 'light',
   setTheme: (theme) => {
     set({ theme })
     localStorage.setItem('coliseu_theme', theme)
