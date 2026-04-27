@@ -85,7 +85,7 @@ export default function Usuarios() {
         </button>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+      <div className="bg-bg-primary rounded-2xl shadow-sm border border-border overflow-hidden">
         <DataTable
           loading={isLoading}
           data={users || []}
@@ -147,10 +147,10 @@ export default function Usuarios() {
       {/* Modal de Criação */}
       {modalOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl border border-gray-200 w-full max-w-md overflow-hidden animate-fade-in">
-            <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-              <h3 className="font-semibold text-lg text-gray-900">Novo Acesso</h3>
-              <button onClick={() => setModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+          <div className="bg-bg-primary rounded-2xl shadow-xl border border-border w-full max-w-md overflow-hidden animate-fade-in">
+            <div className="p-5 border-b border-border flex justify-between items-center bg-bg-secondary/50">
+              <h3 className="font-semibold text-lg text-text-primary">Novo Acesso</h3>
+              <button onClick={() => setModalOpen(false)} className="text-text-secondary hover:text-text-primary">
                 <XCircle size={24} />
               </button>
             </div>
@@ -163,45 +163,45 @@ export default function Usuarios() {
               )}
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nome Completo</label>
+                <label className="block text-sm font-medium text-text-primary mb-1">Nome Completo</label>
                 <input
                   type="text"
                   required
-                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-shadow outline-none"
+                  className="w-full px-4 py-2 border border-border rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-shadow outline-none bg-bg-primary text-text-primary"
                   value={nome}
                   onChange={(e) => setNome(e.target.value)}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
+                <label className="block text-sm font-medium text-text-primary mb-1">E-mail</label>
                 <input
                   type="email"
                   required
-                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-shadow outline-none"
+                  className="w-full px-4 py-2 border border-border rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-shadow outline-none bg-bg-primary text-text-primary"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">CompanyKey (Identity Vault Hash)</label>
+                <label className="block text-sm font-medium text-text-primary mb-1">CompanyKey (Identity Vault Hash)</label>
                 <input
                   type="text"
                   required
                   placeholder="Ex: 123e4567-e89b-12d3-a456-426614174000"
-                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-shadow outline-none font-mono text-sm"
+                  className="w-full px-4 py-2 border border-border rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-shadow outline-none font-mono text-sm bg-bg-primary text-text-primary"
                   value={companyKey}
                   onChange={(e) => setCompanyKey(e.target.value)}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Senha Inicial</label>
+                <label className="block text-sm font-medium text-text-primary mb-1">Senha Inicial</label>
                 <input
                   type="password"
                   required
-                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-shadow outline-none"
+                  className="w-full px-4 py-2 border border-border rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-shadow outline-none bg-bg-primary text-text-primary"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
@@ -211,7 +211,7 @@ export default function Usuarios() {
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 text-gray-600 font-medium hover:bg-gray-50 transition-colors"
+                  className="flex-1 px-4 py-2.5 rounded-xl border border-border text-text-secondary font-medium hover:bg-bg-secondary transition-colors"
                 >
                   Cancelar
                 </button>

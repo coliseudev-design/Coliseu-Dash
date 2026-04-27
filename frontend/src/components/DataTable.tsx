@@ -25,7 +25,7 @@ export default function DataTable<T>({
     <div className="card !p-0 overflow-hidden">
       <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
         <table className="w-full text-xs sm:text-sm min-w-[500px] lg:min-w-0">
-          <thead className="bg-bg-secondary/90 backdrop-blur-md sticky top-0 z-10 border-b border-[#E0E0E0]/80">
+          <thead className="bg-bg-secondary/90 backdrop-blur-md sticky top-0 z-10 border-b border-border/80">
             <tr>
               {columns.map((c) => (
                 <th
@@ -46,7 +46,7 @@ export default function DataTable<T>({
           <tbody>
             {loading ? (
               Array.from({ length: 5 }).map((_, i) => (
-                <tr key={i} className="border-b border-[#E0E0E0] last:border-0">
+                <tr key={i} className="border-b border-divider last:border-0">
                   {columns.map((c) => (
                     <td key={String(c.key)} className="px-3 sm:px-4 py-2.5 sm:py-3">
                       <div className="h-3 sm:h-4 bg-bg-tertiary animate-pulse rounded" />
@@ -64,7 +64,7 @@ export default function DataTable<T>({
               data.map((row, idx) => (
                 <tr
                   key={rowKey ? rowKey(row, idx) : idx}
-                  className="border-b border-[#E0E0E0]/50 last:border-0 hover:bg-bg-secondary/50 transition-colors"
+                  className="border-b border-divider last:border-0 hover:bg-bg-secondary/50 transition-colors"
                 >
                   {columns.map((c) => (
                     <td

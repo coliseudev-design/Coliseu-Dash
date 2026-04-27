@@ -3,22 +3,59 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --color-bg-primary: #FFFFFF;
+    --color-bg-secondary: #F8F9FA;
+    --color-bg-tertiary: #F0F2F5;
+    --color-text-primary: #1A1A1A;
+    --color-text-secondary: #666666;
+    --color-text-muted: #9CA3AF;
+    --color-brand-50: #E6F0FA;
+    --color-brand-100: #CCE0F5;
+    --color-brand-500: #0066CC;
+    --color-brand-600: #0052A3;
+    --color-brand-700: #003D7A;
+    --color-border: #E0E0E0;
+    --color-divider: rgba(224, 224, 224, 0.5);
+    --shadow-card: 0 1px 3px 0 rgba(0,0,0,0.05), 0 1px 2px 0 rgba(0,0,0,0.03);
+    --shadow-card-hover: 0 4px 12px 0 rgba(0,0,0,0.08);
+  }
+
+  .dark {
+    --color-bg-primary: #1E293B;      /* Slate 800 */
+    --color-bg-secondary: #0F172A;    /* Slate 900 */
+    --color-bg-tertiary: #334155;     /* Slate 700 */
+    --color-text-primary: #F8FAFC;    /* Slate 50 */
+    --color-text-secondary: #94A3B8;  /* Slate 400 */
+    --color-text-muted: #64748B;      /* Slate 500 */
+    --color-brand-50: #1E3A8A;        /* Blue 900 */
+    --color-brand-100: #1D4ED8;       /* Blue 700 */
+    --color-brand-500: #3B82F6;       /* Blue 500 */
+    --color-brand-600: #2563EB;       /* Blue 600 */
+    --color-brand-700: #1D4ED8;       /* Blue 700 */
+    --color-border: #334155;          /* Slate 700 */
+    --color-divider: rgba(51, 65, 85, 0.5);
+    --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+    --shadow-card-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.7), 0 4px 6px -2px rgba(0, 0, 0, 0.5);
+  }
+
   html, body, #root {
     height: 100%;
     overflow-x: hidden;
   }
   body {
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    background-color: #F8F9FA;
-    color: #1A1A1A;
+    background-color: var(--color-bg-secondary);
+    color: var(--color-text-primary);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Poppins', 'Inter', sans-serif;
     font-weight: 600;
-    color: #1A1A1A;
+    color: var(--color-text-primary);
   }
   .mono {
     font-family: 'Fira Code', ui-monospace, monospace;
@@ -28,10 +65,10 @@
 
 @layer components {
   .card {
-    @apply bg-white/95 backdrop-blur-md border border-[#E0E0E0] rounded-xl shadow-sm p-3 sm:p-5 transition-all duration-300 relative overflow-hidden;
+    @apply bg-bg-primary backdrop-blur-md border border-divider rounded-xl shadow-card p-3 sm:p-5 transition-all duration-300 relative overflow-hidden;
   }
   .card:hover {
-    @apply shadow-lg -translate-y-0.5 border-[#D1D5DB];
+    @apply shadow-card-hover -translate-y-0.5 border-border;
   }
   .btn {
     @apply inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-lg font-medium text-sm transition-all duration-300 cursor-pointer;
@@ -40,24 +77,24 @@
     @apply btn bg-brand-500 text-white hover:bg-brand-600 active:bg-brand-700 disabled:opacity-60;
   }
   .btn-secondary {
-    @apply btn bg-white border border-[#E0E0E0] text-text-primary hover:bg-bg-secondary active:bg-bg-tertiary;
+    @apply btn bg-bg-primary border border-border text-text-primary hover:bg-bg-secondary active:bg-bg-tertiary;
   }
   .btn-ghost {
     @apply btn text-text-secondary hover:bg-bg-tertiary hover:text-text-primary active:bg-bg-secondary;
   }
   .input {
-    @apply w-full px-3 py-2.5 text-sm rounded-lg border border-[#E0E0E0] bg-white/80 backdrop-blur-sm
+    @apply w-full px-3 py-2.5 text-sm rounded-lg border border-border bg-bg-primary backdrop-blur-sm
            focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500
-           placeholder:text-text-muted transition-all duration-300;
+           placeholder:text-text-muted transition-all duration-300 text-text-primary;
   }
   .badge {
     @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] sm:text-xs font-medium whitespace-nowrap;
   }
-  .badge-success { @apply badge bg-green-50 text-green-700; }
-  .badge-warning { @apply badge bg-amber-50 text-amber-700; }
-  .badge-danger  { @apply badge bg-red-50 text-red-700; }
-  .badge-info    { @apply badge bg-blue-50 text-blue-700; }
-  .badge-neutral { @apply badge bg-gray-100 text-gray-700; }
+  .badge-success { @apply badge bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400; }
+  .badge-warning { @apply badge bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400; }
+  .badge-danger  { @apply badge bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400; }
+  .badge-info    { @apply badge bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400; }
+  .badge-neutral { @apply badge bg-bg-tertiary text-text-secondary; }
 
   .kpi-label { @apply text-[10px] sm:text-xs font-medium text-text-secondary uppercase tracking-wide leading-tight; }
   .kpi-value { @apply mono text-lg sm:text-2xl font-semibold text-text-primary leading-tight; }

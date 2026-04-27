@@ -31,7 +31,7 @@ export default function Financeiro() {
         <PeriodFilter />
         
         {/* Seletor de Caixa */}
-        <div className="flex items-center gap-2 bg-white rounded-lg border border-[#E0E0E0] p-1.5 shadow-sm">
+        <div className="flex items-center gap-2 bg-bg-primary rounded-lg border border-border p-1.5 shadow-sm">
           <Filter size={16} className="text-text-secondary ml-2" />
           <select 
             value={selectedCaixa}

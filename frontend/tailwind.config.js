@@ -1,32 +1,33 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
-        // Paleta Coliseu Dash (tema branco corporativo)
         bg: {
-          primary: '#FFFFFF',
-          secondary: '#F8F9FA',
-          tertiary: '#F0F2F5',
+          primary: 'var(--color-bg-primary)',
+          secondary: 'var(--color-bg-secondary)',
+          tertiary: 'var(--color-bg-tertiary)',
         },
         text: {
-          primary: '#1A1A1A',
-          secondary: '#666666',
-          muted: '#9CA3AF',
+          primary: 'var(--color-text-primary)',
+          secondary: 'var(--color-text-secondary)',
+          muted: 'var(--color-text-muted)',
         },
         brand: {
-          DEFAULT: '#0066CC',
-          50: '#E6F0FA',
-          100: '#CCE0F5',
-          500: '#0066CC',
-          600: '#0052A3',
-          700: '#003D7A',
+          DEFAULT: 'var(--color-brand-500)',
+          50: 'var(--color-brand-50)',
+          100: 'var(--color-brand-100)',
+          500: 'var(--color-brand-500)',
+          600: 'var(--color-brand-600)',
+          700: 'var(--color-brand-700)',
         },
         success: '#28A745',
         warning: '#FFC107',
         danger: '#DC3545',
         neutral: '#6C757D',
+        divider: 'var(--color-divider)',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
@@ -34,11 +35,11 @@ export default {
         mono: ['"Fira Code"', 'ui-monospace', 'monospace'],
       },
       boxShadow: {
-        card: '0 1px 3px 0 rgba(0,0,0,0.05), 0 1px 2px 0 rgba(0,0,0,0.03)',
-        'card-hover': '0 4px 12px 0 rgba(0,0,0,0.08)',
+        card: 'var(--shadow-card)',
+        'card-hover': 'var(--shadow-card-hover)',
       },
       borderColor: {
-        DEFAULT: '#E0E0E0',
+        DEFAULT: 'var(--color-border)',
       },
     },
   },

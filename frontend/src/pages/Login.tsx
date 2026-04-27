@@ -107,14 +107,14 @@ export default function Login() {
       </div>
 
       {/* Direita: Formulário de Login */}
-      <div className="w-full lg:w-2/5 bg-white flex flex-col justify-center px-6 sm:px-12 lg:px-16 xl:px-24 relative">
+      <div className="w-full lg:w-2/5 bg-bg-primary flex flex-col justify-center px-6 sm:px-12 lg:px-16 xl:px-24 relative">
         
         {/* Mobile Header (Sempre visível em mobile, oculto em Desktop porque tem a barra lateral) */}
         <div className="lg:hidden absolute top-8 left-6 sm:left-12 flex items-center gap-2">
-          <div className="bg-white shadow-sm border border-slate-200 p-2 rounded-xl">
+          <div className="bg-bg-primary shadow-sm border border-border p-2 rounded-xl">
             <img src="/coliseu-simbolo.png" className="w-5 h-5 object-contain" alt="Coliseu Symbol" />
           </div>
-          <span className="text-slate-900 font-heading font-bold text-lg">Coliseu Dash</span>
+          <span className="text-text-primary font-heading font-bold text-lg">Coliseu Dash</span>
         </div>
 
         <div className="w-full max-w-sm mx-auto mt-16 lg:mt-0">
@@ -127,18 +127,18 @@ export default function Login() {
                 e.currentTarget.style.display = 'none';
               }}
             />
-            <h2 className="font-heading text-3xl font-bold text-slate-900 tracking-tight">Bem-vindo de volta.</h2>
-            <p className="text-slate-500 mt-2 text-base">
+            <h2 className="font-heading text-3xl font-bold text-text-primary tracking-tight">Bem-vindo de volta.</h2>
+            <p className="text-text-secondary mt-2 text-base">
               Entre para acessar seus dashboards gerenciais.
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">E-mail de Acesso</label>
+              <label className="block text-sm font-medium text-text-primary mb-1.5">E-mail de Acesso</label>
               <input
                 type="email"
-                className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none transition-all text-slate-900 bg-white"
+                className="w-full px-4 py-3 rounded-lg border border-border focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none transition-all text-text-primary bg-bg-primary"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="email@coliseusistemas.com.br"
@@ -150,10 +150,10 @@ export default function Login() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Senha de Segurança</label>
+              <label className="block text-sm font-medium text-text-primary mb-1.5">Senha de Segurança</label>
               <input
                 type="password"
-                className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none transition-all text-slate-900 bg-white"
+                className="w-full px-4 py-3 rounded-lg border border-border focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none transition-all text-text-primary bg-bg-primary"
                 value={senha}
                 onChange={(e) => setSenha(e.target.value)}
                 placeholder="••••••••"
@@ -193,7 +193,7 @@ export default function Login() {
             </button>
           </form>
 
-          <div className="mt-10 text-center text-sm text-slate-500">
+          <div className="mt-10 text-center text-sm text-text-secondary">
             Ainda não tem conta?{' '}
             <Link to="/register" className="font-semibold text-brand-600 hover:text-brand-700 transition-colors">
               Criar acesso ✨

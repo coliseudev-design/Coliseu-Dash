@@ -12,16 +12,16 @@ import { Trophy, Package, Tag, Layers, Users, CreditCard } from 'lucide-react'
 // Componente Unificado Moderno (Card de Ranking)
 function RankingSection({ title, subtitle, icon: Icon, data, loading }: any) {
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden animate-fade-in">
+    <div className="bg-bg-primary rounded-2xl shadow-sm border border-border overflow-hidden animate-fade-in">
       {/* Cabeçalho Unificado */}
-      <div className="p-4 sm:p-5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between bg-gray-50/50 gap-3">
+      <div className="p-4 sm:p-5 border-b border-divider flex flex-col sm:flex-row sm:items-center justify-between bg-bg-secondary/50 gap-3">
         <div className="flex items-center gap-3">
           <div className="p-2.5 bg-brand-50 text-brand-600 rounded-xl">
             <Icon size={24} strokeWidth={2.5} />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-gray-900">{title}</h2>
-            <p className="text-sm text-gray-500">{subtitle}</p>
+            <h2 className="text-lg font-bold text-text-primary">{title}</h2>
+            <p className="text-sm text-text-secondary">{subtitle}</p>
           </div>
         </div>
       </div>
@@ -31,7 +31,7 @@ function RankingSection({ title, subtitle, icon: Icon, data, loading }: any) {
         
         {/* Lado Esquerdo: Tabela */}
         <div className="flex flex-col lg:col-span-6 min-w-0">
-          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Tabela de Desempenho</h3>
+          <h3 className="text-xs font-bold text-text-muted uppercase tracking-wider mb-3">Tabela de Desempenho</h3>
           <div className="flex-1 w-full">
             <DataTable
               loading={loading}
@@ -48,11 +48,11 @@ function RankingSection({ title, subtitle, icon: Icon, data, loading }: any) {
 
         {/* Lado Direito: Gráfico de Barras */}
         <div className="flex flex-col lg:col-span-6 min-w-0">
-          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Visualização de Impacto</h3>
+          <h3 className="text-xs font-bold text-text-muted uppercase tracking-wider mb-3">Visualização de Impacto</h3>
           <div className="h-[280px] sm:h-[320px] w-full relative">
             {!loading && (!data || data.length === 0) ? (
-              <div className="absolute inset-0 flex items-center justify-center border border-gray-100 rounded-xl bg-gray-50/50">
-                <span className="text-sm text-gray-400 font-medium">Sem dados para desenhar o gráfico</span>
+              <div className="absolute inset-0 flex items-center justify-center border border-border rounded-xl bg-bg-secondary/50">
+                <span className="text-sm text-text-muted font-medium">Sem dados para desenhar o gráfico</span>
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
@@ -132,7 +132,7 @@ export default function Ranking() {
       </div>
 
       <div 
-        className="flex overflow-x-auto sm:overflow-visible sm:flex-wrap pb-0 -mx-3 px-3 sm:mx-0 sm:px-0 gap-1 sm:gap-4 border-b border-gray-100"
+        className="flex overflow-x-auto sm:overflow-visible sm:flex-wrap pb-0 -mx-3 px-3 sm:mx-0 sm:px-0 gap-1 sm:gap-4 border-b border-divider"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         <style dangerouslySetInnerHTML={{__html: `::-webkit-scrollbar { display: none; }`}} />
@@ -147,10 +147,10 @@ export default function Ranking() {
               className={`flex items-center gap-2 px-3 sm:px-4 py-3 border-b-2 whitespace-nowrap transition-colors outline-none cursor-pointer ${
                 isActive 
                   ? 'border-brand-500 text-brand-600 font-bold' 
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-200 font-medium'
+                  : 'border-transparent text-text-secondary hover:text-text-primary hover:border-border font-medium'
               }`}
             >
-              <Icon size={18} className={isActive ? 'text-brand-500' : 'text-gray-400'} strokeWidth={isActive ? 2.5 : 2} />
+              <Icon size={18} className={isActive ? 'text-brand-500' : 'text-text-muted'} strokeWidth={isActive ? 2.5 : 2} />
               {tab.label}
             </button>
           )

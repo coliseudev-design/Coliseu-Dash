@@ -32,14 +32,14 @@ export default function Sidebar({ open, onClose }: Props) {
       )}
       <aside
         className={clsx(
-          'fixed lg:sticky top-0 left-0 h-screen w-64 bg-white/95 backdrop-blur-xl border-r border-[#E0E0E0]/50 z-40',
+          'fixed lg:sticky top-0 left-0 h-screen w-64 bg-bg-primary/95 backdrop-blur-xl border-r border-divider z-40',
           'transform transition-transform duration-200 ease-out lg:translate-x-0',
-          'flex flex-col shadow-xl lg:shadow-none',
+          'flex flex-col shadow-card lg:shadow-none',
           open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
         )}
       >
         {/* Logo */}
-        <div className="h-20 px-4 flex items-center justify-between border-b border-[#E0E0E0] bg-transparent">
+        <div className="h-20 px-4 flex items-center justify-between border-b border-divider bg-transparent">
           <img
             src="/logo-coliseu.png"
             alt="Coliseu Sistemas"
@@ -66,7 +66,7 @@ export default function Sidebar({ open, onClose }: Props) {
                 clsx(
                   'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors mb-1',
                   isActive
-                    ? 'bg-brand-50 text-brand-700'
+                    ? 'bg-brand-500/10 text-brand-500'
                     : 'text-text-secondary hover:bg-bg-secondary hover:text-text-primary',
                 )
               }
@@ -78,7 +78,7 @@ export default function Sidebar({ open, onClose }: Props) {
         </nav>
 
         {/* Footer com Sair */}
-        <div className="px-4 py-3 border-t border-[#E0E0E0] text-[11px] text-text-secondary flex items-center justify-between">
+        <div className="px-4 py-3 border-t border-divider text-[11px] text-text-secondary flex items-center justify-between">
           <div>
             <div className="font-semibold text-text-primary">Coliseu Dash v2.0</div>
             <div>© 2026 Coliseu Sistemas</div>

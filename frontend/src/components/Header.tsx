@@ -3,6 +3,7 @@ import { Menu, LogOut, RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react
 import { useAuthStore } from '../store/authStore'
 import { useSyncStatus } from '../hooks/useSync'
 import { formatDateTime } from '../utils/format'
+import ThemeToggle from './ThemeToggle'
 
 interface Props {
   onMenuClick: () => void
@@ -65,6 +66,10 @@ export default function Header({ onMenuClick, title }: Props) {
         >
           <RefreshCw size={16} className={isSyncing ? 'animate-spin' : ''} />
         </button>
+
+        {/* Separador e Toggle de Tema */}
+        <div className="w-px h-6 bg-divider mx-1"></div>
+        <ThemeToggle />
 
         {/* Usuário */}
         <div className="relative">

@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from './store/authStore'
+import { useThemeStore } from './store/themeStore'
 
 import Login from './pages/Login'
 import Register from './pages/Register'
@@ -24,9 +25,11 @@ function Protected({ children }: { children: JSX.Element }) {
 
 export default function App() {
   const init = useAuthStore((s) => s.init)
+  const initTheme = useThemeStore((s) => s.initTheme)
 
   useEffect(() => {
     init()
+    initTheme()
     // Inicializa Web Worker de sincronização (opcional em dev)
     if (typeof Worker !== 'undefined') {
       try {

@@ -41,7 +41,7 @@ export default function Register() {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl p-5 sm:p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="bg-bg-primary backdrop-blur-md rounded-2xl shadow-2xl p-5 sm:p-6 space-y-4">
           <div>
             <label className="block text-sm font-medium text-text-primary mb-1.5">Nome Completo</label>
             <input
