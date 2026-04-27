@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import api from '../services/api'
+import { useQueryClient } from '@tanstack/react-query'
 
 interface SyncStatusItem {
   tabela: string
@@ -12,6 +13,7 @@ export function useSyncStatus() {
   const [statusItems, setStatusItems] = useState<SyncStatusItem[]>([])
   const [isSyncing, setIsSyncing] = useState(false)
   const [lastCheck, setLastCheck] = useState<Date | null>(null)
+  const queryClient = useQueryClient()
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -47,10 +49,11 @@ export function useSyncStatus() {
     try {
       await api.post('/sync/start')
       await fetchStatus()
+      await queryClient.invalidateQueries()
     } finally {
       setTimeout(() => setIsSyncing(false), 800)
     }
-  }, [fetchStatus])
+  }, [fetchStatus, queryClient])
 
   // Última sync (ignorando metadados internos)
   const lastSync = statusItems
