@@ -10,7 +10,7 @@ router.get('/faturadas', async (req, res, next) => {
     try {
         const period = req.query.period || '7d';
         const tenantId = req.tenant.id;
-        const { rows: rMax } = await db.query(`SELECT COALESCE(MAX(data_venda), CURRENT_DATE) as d FROM dash_vendas WHERE tenant_id = $1`, [tenantId]);
+        const { rows: rMax } = await db.query(`SELECT LEAST(COALESCE(MAX(data_venda), CURRENT_DATE), CURRENT_DATE) as d FROM dash_vendas WHERE tenant_id = $1`, [tenantId]);
         const maxDate = rMax[0].d;
         const { start, end } = getPeriodRange(period, null, null, maxDate);
 
@@ -23,7 +23,7 @@ router.get('/faturadas', async (req, res, next) => {
             WHERE tenant_id = $1 
               AND data_venda >= $2 
               AND data_venda <= $3
-              AND TRIM(status) = 'FATURADO'
+              AND TRIM(status) IN ('FATURADO', 'FINALIZADO')
             GROUP BY TO_CHAR(data_venda, 'YYYY-MM-DD')
             ORDER BY data
         `, [tenantId, start, end]);
@@ -58,7 +58,7 @@ router.get('/por-horario', async (req, res, next) => {
                 FROM dash_vendas
                 WHERE tenant_id = $1
                   AND TO_CHAR(data_venda, 'YYYY-MM-DD') = $2
-                  AND TRIM(status) = 'FATURADO'
+                  AND TRIM(status) IN ('FATURADO', 'FINALIZADO')
                 GROUP BY EXTRACT(HOUR FROM data_venda)
                 ORDER BY hora
             `;
@@ -73,7 +73,7 @@ router.get('/por-horario', async (req, res, next) => {
                 FROM dash_vendas
                 WHERE tenant_id = $1
                   AND data_venda >= NOW() - INTERVAL '30 days'
-                  AND TRIM(status) = 'FATURADO'
+                  AND TRIM(status) IN ('FATURADO', 'FINALIZADO')
                 GROUP BY EXTRACT(HOUR FROM data_venda)
                 ORDER BY hora
             `;
@@ -107,7 +107,7 @@ router.get('/pedidos-abertos', async (req, res, next) => {
                 SUM(valor_total) AS total
             FROM dash_vendas
             WHERE tenant_id = $1 
-              AND TRIM(status) != 'FATURADO'
+              AND TRIM(status) NOT IN ('FATURADO', 'FINALIZADO', 'CANCELADO')
             GROUP BY TRIM(status)
             ORDER BY quantidade DESC
         `, [tenantId]);
@@ -130,7 +130,7 @@ router.get('/kpis', async (req, res, next) => {
         const period = req.query.period || 'hoje';
         const tenantId = req.tenant.id;
         const { start_date, end_date } = req.query;
-        const { rows: rMax } = await db.query(`SELECT COALESCE(MAX(data_venda), CURRENT_DATE) as d FROM dash_vendas WHERE tenant_id = $1`, [tenantId]);
+        const { rows: rMax } = await db.query(`SELECT LEAST(COALESCE(MAX(data_venda), CURRENT_DATE), CURRENT_DATE) as d FROM dash_vendas WHERE tenant_id = $1`, [tenantId]);
         const maxDate = rMax[0].d;
         const { start, end } = getPeriodRange(period, start_date, end_date, maxDate);
 
@@ -145,7 +145,7 @@ router.get('/kpis', async (req, res, next) => {
             WHERE tenant_id = $1
               AND data_venda >= $2
               AND data_venda <= $3
-              AND TRIM(status) = 'FATURADO'
+              AND TRIM(status) IN ('FATURADO', 'FINALIZADO')
         `, [tenantId, start, end]);
 
         const kpis = {
