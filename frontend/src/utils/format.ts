@@ -16,8 +16,6 @@ export const formatBRL = (v: unknown) => {
 export const formatBRLCompact = (v: unknown) => {
   const n = Number(v ?? 0)
   if (!Number.isFinite(n)) return 'R$ 0'
-  if (Math.abs(n) >= 1_000_000) return `R$ ${(n / 1_000_000).toFixed(1)}M`
-  if (Math.abs(n) >= 1_000) return `R$ ${(n / 1_000).toFixed(1)}K`
   return BRL.format(n)
 }
 
