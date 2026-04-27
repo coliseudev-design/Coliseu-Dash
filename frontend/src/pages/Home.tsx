@@ -52,7 +52,7 @@ export default function Home() {
         <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-3 w-full lg:w-auto min-w-0">
           <PeriodFilter />
           {/* Slim Atalhos Section */}
-          <div className="hidden lg:flex items-center gap-2 bg-bg-primary px-3 py-2 rounded-xl border border-divider shadow-card h-[42px] sm:h-[38px]">
+          <div className="hidden lg:flex items-center gap-2 bg-bg-primary p-2 px-3 rounded-xl border border-border shadow-card">
             <LayoutDashboard size={14} className="text-text-secondary ml-1" />
             {[
               { to: '/financeiro', label: 'Financeiro' },
