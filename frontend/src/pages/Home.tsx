@@ -273,10 +273,10 @@ export default function Home() {
         <ChartCard title="Últimos Pedidos" subtitle="Recentes finalizados" loading={recentes.isLoading} className="hidden lg:flex flex-col">
           <div className="flex-1 overflow-y-auto pr-2 -mr-2 space-y-3">
             {((recentes.data?.data || []) as any[])
-              .filter((r) => r.status === 'FINALIZADO' || r.status === 'PROCESSADO' || r.status === '2')
+              .filter((r) => ['FINALIZADO', 'PROCESSADO', '2', 'FATURADO'].includes(r.status))
               .slice(0, 7)
               .map((r: any) => (
-              <div key={r.id} className="flex justify-between items-center p-3 rounded-xl border border-divider hover:shadow-sm hover:border-brand-200 transition-all">
+              <div key={r.id} className="flex justify-between items-center p-3 rounded-xl border border-border hover:shadow-card-hover transition-all bg-bg-primary">
                 <div className="space-y-1">
                   <div className="text-xs font-semibold text-text-primary truncate max-w-[120px]" title={r.cliente}>{r.cliente || 'Consumidor Final'}</div>
                   <div className="text-[10px] text-text-secondary mono">#{r.numero_pedido} - {formatDateTime(r.data_venda)?.split(' ')[0]}</div>
