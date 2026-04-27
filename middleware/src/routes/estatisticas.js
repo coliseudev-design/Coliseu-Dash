@@ -19,8 +19,8 @@ router.get('/overview', async (req, res, next) => {
 
         // 1) Data-âncora
         const [rMax, rMaxFin] = await Promise.all([
-            db.query(`SELECT COALESCE(MAX(data_venda), CURRENT_DATE) as d FROM dash_vendas WHERE tenant_id = $1`, [tenantId]),
-            db.query(`SELECT COALESCE(MAX(data_emissao), CURRENT_DATE) as d FROM dash_financeiro WHERE tenant_id = $1`, [tenantId])
+            db.query(`SELECT LEAST(COALESCE(MAX(data_venda), CURRENT_DATE), CURRENT_DATE) as d FROM dash_vendas WHERE tenant_id = $1`, [tenantId]),
+            db.query(`SELECT LEAST(COALESCE(MAX(data_emissao), CURRENT_DATE), CURRENT_DATE) as d FROM dash_financeiro WHERE tenant_id = $1`, [tenantId])
         ]);
         
         const maxDate = rMax.rows[0].d;
