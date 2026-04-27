@@ -28,6 +28,7 @@ export default {
         danger: '#DC3545',
         neutral: '#6C757D',
         divider: 'var(--color-divider)',
+        border: 'var(--color-border)',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
@@ -37,9 +38,6 @@ export default {
       boxShadow: {
         card: 'var(--shadow-card)',
         'card-hover': 'var(--shadow-card-hover)',
-      },
-      borderColor: {
-        DEFAULT: 'var(--color-border)',
       },
     },
   },

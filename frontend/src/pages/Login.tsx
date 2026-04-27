@@ -138,7 +138,7 @@ export default function Login() {
               <label className="block text-sm font-medium text-text-primary mb-1.5">E-mail de Acesso</label>
               <input
                 type="email"
-                className="w-full px-4 py-3 rounded-lg border border-border focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none transition-all text-text-primary bg-bg-primary"
+                className="w-full px-4 py-3 rounded-lg border border-border focus:border-brand-500 focus:ring-2 focus:ring-brand-500 outline-none transition-all text-text-primary bg-bg-primary"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="email@coliseusistemas.com.br"
@@ -153,7 +153,7 @@ export default function Login() {
               <label className="block text-sm font-medium text-text-primary mb-1.5">Senha de Segurança</label>
               <input
                 type="password"
-                className="w-full px-4 py-3 rounded-lg border border-border focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none transition-all text-text-primary bg-bg-primary"
+                className="w-full px-4 py-3 rounded-lg border border-border focus:border-brand-500 focus:ring-2 focus:ring-brand-500 outline-none transition-all text-text-primary bg-bg-primary"
                 value={senha}
                 onChange={(e) => setSenha(e.target.value)}
                 placeholder="••••••••"
