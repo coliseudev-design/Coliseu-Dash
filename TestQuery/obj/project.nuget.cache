@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "UmfWVnGFPKM=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\rober\\.gemini\\antigravity\\scratch\\Coliseu Dash\\TestQuery\\TestQuery.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\rober\\.nuget\\packages\\firebirdsql.data.firebirdclient\\10.3.4\\firebirdsql.data.firebirdclient.10.3.4.nupkg.sha512"
+  ],
+  "logs": []
+}
