@@ -3,7 +3,7 @@ import { usePeriodQuery } from '../hooks/useApi'
 import PeriodFilter from '../components/PeriodFilter'
 import {
   Users, Percent, ArrowDownAZ, Hash, Trophy, BarChart3,
-  ShoppingCart, Receipt, Tag, User, DollarSign
+  ShoppingCart, Receipt, Tag, User, DollarSign, BadgePercent
 } from 'lucide-react'
 import { formatBRL, formatBRLCompact, formatNum } from '../utils/format'
 import KPICard from '../components/KPICard'
@@ -123,8 +123,11 @@ export default function Comissoes() {
                       </div>
                       
                       {v.qtd_descontos > 0 && (
-                        <div className="flex justify-between items-center text-xs bg-error/10 text-error px-2 py-1.5 rounded-md mt-1">
-                          <span className="font-medium">Descontos ({v.qtd_descontos})</span>
+                        <div className="flex justify-between items-center text-xs bg-danger/10 text-danger px-2 py-1.5 rounded-md mt-1 border border-danger/20">
+                          <span className="font-medium flex items-center gap-1">
+                            <BadgePercent size={12} className="shrink-0" />
+                            Descontos ({v.qtd_descontos})
+                          </span>
                           <span className="font-bold">{formatBRL(v.total_desconto)}</span>
                         </div>
                       )}
