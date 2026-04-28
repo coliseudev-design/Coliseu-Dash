@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { usePeriodQuery } from '../hooks/useApi'
 import PeriodFilter from '../components/PeriodFilter'
 import DataTable from '../components/DataTable'
@@ -11,6 +11,14 @@ import { Trophy, Package, Tag, Layers, Users, CreditCard } from 'lucide-react'
 
 // Componente Unificado Moderno (Card de Ranking)
 function RankingSection({ title, subtitle, icon: Icon, data, loading }: any) {
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
   return (
     <div className="bg-bg-primary rounded-2xl shadow-sm border border-border overflow-hidden animate-fade-in">
       {/* Cabeçalho Unificado */}
@@ -27,7 +35,7 @@ function RankingSection({ title, subtitle, icon: Icon, data, loading }: any) {
       </div>
 
       {/* Grid de Conteúdo */}
-      <div className="p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10">
+      <div className="p-2 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10">
         
         {/* Lado Esquerdo: Tabela */}
         <div className="flex flex-col lg:col-span-6 min-w-0">
@@ -38,8 +46,8 @@ function RankingSection({ title, subtitle, icon: Icon, data, loading }: any) {
               data={data || []}
               empty="Sem dados no período"
               columns={[
-                { key: '#', label: 'RANK', width: '60px', render: (_: any, i: number) => <span className="text-text-muted mono font-semibold">{i + 1}º</span> },
-                { key: 'nome', label: 'DESCRIÇÃO', render: (r: any) => <span className="font-medium text-text-primary capitalize truncate block max-w-[140px] sm:max-w-[220px]" title={r.nome}>{r.nome}</span> },
+                { key: '#', label: 'RANK', width: isMobile ? '40px' : '60px', render: (_: any, i: number) => <span className="text-text-muted mono font-semibold">{i + 1}º</span> },
+                { key: 'nome', label: 'DESCRIÇÃO', render: (r: any) => <span className="font-medium text-text-primary capitalize truncate block max-w-[100px] sm:max-w-[220px]" title={r.nome}>{r.nome}</span> },
                 { key: 'total', label: 'FATURAMENTO', align: 'right', render: (r: any) => <span className="font-semibold text-brand-600">{formatBRL(r.total)}</span> },
               ]}
             />
@@ -62,9 +70,12 @@ function RankingSection({ title, subtitle, icon: Icon, data, loading }: any) {
                   <YAxis 
                     type="category" 
                     dataKey="nome" 
-                    tick={{ fontSize: 11, fill: '#374151', textTransform: 'capitalize', textAnchor: 'start', dx: -190 }} 
-                    width={200}
-                    tickFormatter={(val) => val.length > 50 ? val.substring(0, 49) + '...' : val}
+                    tick={{ fontSize: 11, fill: '#374151', textTransform: 'capitalize', textAnchor: 'start', dx: isMobile ? -85 : -190 }} 
+                    width={isMobile ? 95 : 200}
+                    tickFormatter={(val) => {
+                      const maxLen = isMobile ? 12 : 50;
+                      return val.length > maxLen ? val.substring(0, maxLen - 1) + '...' : val;
+                    }}
                   />
                   <Tooltip 
                     formatter={(v: any) => formatBRL(v)} 

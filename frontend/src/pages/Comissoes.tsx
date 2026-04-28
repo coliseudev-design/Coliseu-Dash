@@ -43,36 +43,6 @@ export default function Comissoes() {
         <PeriodFilter />
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-        <KPICard
-          label="Total de comissão"
-          value={formatBRL(kpis.data?.kpis?.total)}
-          icon={Percent}
-          iconColor="text-brand-500"
-          loading={kpis.isLoading}
-        />
-        <KPICard
-          label="Menor Comissão"
-          value={formatBRL(kpis.data?.kpis?.menor)}
-          icon={ArrowDownAZ}
-          iconColor="text-neutral"
-          loading={kpis.isLoading}
-        />
-        <KPICard
-          label="Maior Comissão"
-          value={formatBRL(kpis.data?.kpis?.maior)}
-          icon={Trophy}
-          iconColor="text-success"
-          loading={kpis.isLoading}
-        />
-        <KPICard
-          label="Qtd. Comissões"
-          value={formatNum(kpis.data?.kpis?.qtd)}
-          icon={Hash}
-          loading={kpis.isLoading}
-        />
-      </div>
-
       {ranking.isLoading ? (
         <div className="py-8 text-center text-text-secondary text-sm">Carregando dados dos vendedores...</div>
       ) : sortedData.length === 0 ? (
@@ -120,6 +90,36 @@ export default function Comissoes() {
 
         </div>
       )}
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mt-6">
+        <KPICard
+          label="Total de comissão"
+          value={formatBRL(kpis.data?.kpis?.total)}
+          icon={Percent}
+          iconColor="text-brand-500"
+          loading={kpis.isLoading}
+        />
+        <KPICard
+          label="Menor Comissão"
+          value={formatBRL(kpis.data?.kpis?.menor)}
+          icon={ArrowDownAZ}
+          iconColor="text-neutral"
+          loading={kpis.isLoading}
+        />
+        <KPICard
+          label="Maior Comissão"
+          value={formatBRL(kpis.data?.kpis?.maior)}
+          icon={Trophy}
+          iconColor="text-success"
+          loading={kpis.isLoading}
+        />
+        <KPICard
+          label="Qtd. Comissões"
+          value={formatNum(kpis.data?.kpis?.qtd)}
+          icon={Hash}
+          loading={kpis.isLoading}
+        />
+      </div>
     </div>
   )
 }

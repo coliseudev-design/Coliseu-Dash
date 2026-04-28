@@ -232,12 +232,14 @@ router.get('/caixa', async (req, res, next) => {
         `, [tenantId, start, end]);
 
         const especieP = await db.query(`
-            SELECT COALESCE(SUM(valor_total), 0) AS total_especie
+            SELECT TRIM(UPPER(especie)) as nome_especie, COALESCE(SUM(valor_total), 0) AS total_especie
             FROM dash_vendas
             WHERE tenant_id = $1
               AND data_venda >= $2 AND data_venda <= $3
               AND TRIM(UPPER(status)) IN ('FATURADO', 'FINALIZADO')
-              AND TRIM(UPPER(especie)) = 'DINHEIRO'
+              AND especie IS NOT NULL AND TRIM(especie) != ''
+            GROUP BY TRIM(UPPER(especie))
+            ORDER BY total_especie DESC
         `, [tenantId, start, end]);
 
         let acc = 0;
@@ -257,7 +259,10 @@ router.get('/caixa', async (req, res, next) => {
         const saidas = parseFloat(totP.rows[0].saidas || 0);
         const qtd_entradas = parseInt(totP.rows[0].qtd_entradas || 0, 10);
         const qtd_saidas = parseInt(totP.rows[0].qtd_saidas || 0, 10);
-        const total_especie = parseFloat(especieP.rows[0].total_especie || 0);
+        const especies = especieP.rows.map(r => ({
+            nome: r.nome_especie,
+            total: parseFloat(r.total_especie || 0)
+        }));
 
         res.json({
             period: { start, end, label: period },
@@ -267,7 +272,7 @@ router.get('/caixa', async (req, res, next) => {
                 saldo: entradas - saidas,
                 qtd_entradas,
                 qtd_saidas,
-                total_especie,
+                especies,
                 ticket_medio_entrada: qtd_entradas > 0 ? (entradas / qtd_entradas) : 0
             },
             movimentacoes

@@ -93,16 +93,21 @@ export default function Financeiro() {
           />
         </div>
 
-        <div className="mb-4">
-          <KPICard
-            label="Total em Espécie (Dinheiro)"
-            value={formatBRL(caixa.data?.kpis?.total_especie || 0)}
-            compactValue={formatBRLCompact(caixa.data?.kpis?.total_especie)}
-            icon={Banknote}
-            iconColor="text-brand-500"
-            loading={caixa.isLoading}
-          />
-        </div>
+        {caixa.data?.kpis?.especies && caixa.data.kpis.especies.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 mb-4">
+            {caixa.data.kpis.especies.map((esp: any) => (
+              <KPICard
+                key={esp.nome}
+                label={`Vendas em ${esp.nome}`}
+                value={formatBRL(esp.total || 0)}
+                compactValue={formatBRLCompact(esp.total)}
+                icon={Banknote}
+                iconColor="text-brand-500"
+                loading={caixa.isLoading}
+              />
+            ))}
+          </div>
+        )}
 
         <ChartCard
           title="Fluxo de Movimentações"
