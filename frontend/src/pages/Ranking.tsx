@@ -143,11 +143,8 @@ export default function Ranking() {
       </div>
 
       <div 
-        className="flex overflow-x-auto sm:overflow-visible sm:flex-wrap pb-0 -mx-3 px-3 sm:mx-0 sm:px-0 gap-1 sm:gap-4 border-b border-divider"
-        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        className="grid grid-cols-3 sm:flex sm:overflow-visible sm:flex-wrap pb-2 sm:pb-0 gap-2 sm:gap-4 sm:border-b sm:border-divider w-full"
       >
-        <style dangerouslySetInnerHTML={{__html: `::-webkit-scrollbar { display: none; }`}} />
-        
         {tabs.map(tab => {
           const Icon = tab.icon
           const isActive = activeTab === tab.id
@@ -155,14 +152,14 @@ export default function Ranking() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-3 sm:px-4 py-3 border-b-2 whitespace-nowrap transition-colors outline-none cursor-pointer ${
+              className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-1 py-2 sm:px-4 sm:py-3 rounded-lg sm:rounded-none sm:border-b-2 transition-all duration-300 outline-none cursor-pointer ${
                 isActive 
-                  ? 'border-brand-500 text-brand-600 font-bold' 
-                  : 'border-transparent text-text-secondary hover:text-text-primary hover:border-border font-medium'
+                  ? 'bg-brand-500 text-white sm:bg-transparent sm:border-brand-500 sm:text-brand-600 font-bold shadow-md sm:shadow-none scale-105 sm:scale-100' 
+                  : 'bg-bg-primary border border-border sm:border-0 sm:bg-transparent sm:border-transparent text-text-secondary hover:bg-bg-secondary sm:hover:bg-transparent sm:hover:text-text-primary sm:hover:border-border font-medium shadow-sm sm:shadow-none'
               }`}
             >
-              <Icon size={18} className={isActive ? 'text-brand-500' : 'text-text-muted'} strokeWidth={isActive ? 2.5 : 2} />
-              {tab.label}
+              <Icon size={16} className={isActive ? 'text-white sm:text-brand-500' : 'text-text-muted'} strokeWidth={isActive ? 2.5 : 2} />
+              <span className="text-[10.5px] sm:text-sm whitespace-nowrap">{tab.label}</span>
             </button>
           )
         })}

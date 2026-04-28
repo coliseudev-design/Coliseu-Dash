@@ -20,7 +20,7 @@ export default function KPICard({
   return (
     <div className="card h-full flex flex-col justify-between hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between gap-2">
-        <div className="text-xs sm:text-sm font-semibold text-text-secondary uppercase tracking-wider flex-1 truncate" title={label}>{label}</div>
+        <div className="text-[10px] sm:text-xs font-bold text-text-secondary uppercase tracking-tight sm:tracking-normal flex-1 truncate" title={label}>{label}</div>
         {Icon && (
           <div className={clsx('w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-bg-tertiary flex items-center justify-center flex-shrink-0', iconColor)}>
             <Icon size={14} className="sm:w-4 sm:h-4" />

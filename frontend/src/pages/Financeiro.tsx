@@ -94,18 +94,23 @@ export default function Financeiro() {
         </div>
 
         {caixa.data?.kpis?.especies && caixa.data.kpis.especies.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 mb-4">
-            {caixa.data.kpis.especies.map((esp: any) => (
-              <KPICard
-                key={esp.nome}
-                label={`Vendas em ${esp.nome}`}
-                value={formatBRL(esp.total || 0)}
-                compactValue={formatBRLCompact(esp.total)}
-                icon={Banknote}
-                iconColor="text-brand-500"
-                loading={caixa.isLoading}
-              />
-            ))}
+          <div className="bg-bg-primary rounded-xl border border-border p-4 mb-6 shadow-sm">
+            <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-tight sm:tracking-wider mb-4 flex items-center gap-2">
+              <Banknote size={16} className="text-brand-500" />
+              Composição por Espécie
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+              {caixa.data.kpis.especies.map((esp: any) => (
+                <div key={esp.nome} className="flex flex-col p-3 rounded-lg bg-bg-secondary border border-transparent hover:border-brand-200 transition-colors">
+                  <span className="text-[10px] sm:text-xs font-medium text-text-secondary mb-1 truncate capitalize">
+                    {esp.nome.toLowerCase()}
+                  </span>
+                  <span className="font-bold text-text-primary text-sm sm:text-base truncate" title={formatBRL(esp.total || 0)}>
+                    {formatBRL(esp.total || 0)}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
