@@ -13,8 +13,8 @@ interface Props {
 
 const MODULES = [
   { to: '/',              label: 'Início',        icon: LayoutDashboard,  exact: true },
-  { to: '/financeiro',    label: 'Financeiro',    icon: Wallet },
   { to: '/comissoes',     label: 'Vendedores',    icon: Users },
+  { to: '/financeiro',    label: 'Fluxo de Caixa',icon: Wallet },
   { to: '/ranking',       label: 'Ranking',       icon: Trophy },
   { to: '/estatisticas',  label: 'Estatísticas',  icon: BarChart3 },
   { to: '/usuarios',      label: 'Usuários',      icon: Shield }

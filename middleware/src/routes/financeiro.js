@@ -231,8 +231,23 @@ router.get('/caixa', async (req, res, next) => {
             ORDER BY data
         `, [tenantId, start, end]);
 
-        let especieP = { rows: [] };
+        let showEspecies = false;
         if (!caixaId) {
+            showEspecies = true;
+        } else {
+            // Verifica o nome do caixa selecionado
+            const caixaRes = await db.query('SELECT UPPER(descricao) as desc FROM dash_caixas WHERE tenant_id = $1 AND id_firebird = $2', [tenantId, parseInt(caixaId)]);
+            if (caixaRes.rowCount > 0) {
+                const desc = caixaRes.rows[0].desc || '';
+                // Se o caixa for o diário/principal de vendas, mostramos as espécies (que vêm da dash_vendas global)
+                if (desc.includes('DIARI') || desc.includes('DIÁRI') || desc.includes('GERAL') || desc.includes('VENDA') || desc.includes('LOJA')) {
+                    showEspecies = true;
+                }
+            }
+        }
+
+        let especieP = { rows: [] };
+        if (showEspecies) {
             especieP = await db.query(`
                 SELECT TRIM(UPPER(especie)) as nome_especie, COALESCE(SUM(valor_total), 0) AS total_especie
                 FROM dash_vendas
@@ -243,24 +258,6 @@ router.get('/caixa', async (req, res, next) => {
                 GROUP BY TRIM(UPPER(especie))
                 ORDER BY total_especie DESC
             `, [tenantId, start, end]);
-        } else {
-            // Tenta filtrar por caixa_id_firebird na dash_vendas (se a coluna existir)
-            try {
-                especieP = await db.query(`
-                    SELECT TRIM(UPPER(especie)) as nome_especie, COALESCE(SUM(valor_total), 0) AS total_especie
-                    FROM dash_vendas
-                    WHERE tenant_id = $1
-                      AND data_venda >= $2 AND data_venda <= $3
-                      AND TRIM(UPPER(status)) IN ('FATURADO', 'FINALIZADO')
-                      AND especie IS NOT NULL AND TRIM(especie) != ''
-                      AND caixa_id_firebird = ${parseInt(caixaId)}
-                    GROUP BY TRIM(UPPER(especie))
-                    ORDER BY total_especie DESC
-                `, [tenantId, start, end]);
-            } catch (e) {
-                // Se a coluna não existir, não retorna espécies para não misturar dados de outros caixas
-                especieP = { rows: [] };
-            }
         }
 
         let acc = 0;
