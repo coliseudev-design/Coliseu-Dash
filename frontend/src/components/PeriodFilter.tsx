@@ -34,17 +34,17 @@ export default function PeriodFilter({ excludePeriods = [] }: Props) {
   return (
     <div className="w-full sm:w-auto sm:inline-block max-w-full min-w-0 sm:bg-bg-primary sm:rounded-xl sm:border sm:border-border sm:shadow-card sm:p-2 sm:px-3">
       <div 
-        className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto sm:overflow-visible sm:flex-wrap pb-2 sm:pb-0 -mx-3 px-3 sm:mx-0 sm:px-0 w-full" 
+        className="grid grid-cols-3 sm:flex items-center gap-1.5 sm:gap-2 sm:overflow-visible sm:flex-wrap pb-2 sm:pb-0 w-full" 
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}
       >
         <style dangerouslySetInnerHTML={{__html: `::-webkit-scrollbar { display: none; }`}} />
-        <Calendar size={16} className="text-text-secondary ml-1 flex-shrink-0" />
+        <Calendar size={16} className="text-text-secondary ml-1 hidden sm:block flex-shrink-0" />
         {PERIOD_OPTIONS.filter(opt => !excludePeriods.includes(opt.key)).map((opt) => (
           <button
             key={opt.key}
             onClick={() => handleClick(opt.key)}
             className={clsx(
-              'px-3 py-2 sm:py-1.5 rounded-lg text-xs font-medium transition-all duration-300 whitespace-nowrap flex-shrink-0',
+              'px-2 py-2 sm:py-1.5 rounded-lg text-[10.5px] sm:text-xs font-medium transition-all duration-300 whitespace-nowrap flex items-center justify-center flex-shrink-0',
               period === opt.key
                 ? 'bg-brand-500 text-white shadow-md scale-105'
                 : 'bg-bg-primary border border-border text-text-secondary hover:bg-bg-secondary active:bg-bg-tertiary shadow-sm',

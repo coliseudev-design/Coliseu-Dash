@@ -47,7 +47,7 @@ function RankingSection({ title, subtitle, icon: Icon, data, loading }: any) {
               empty="Sem dados no período"
               columns={[
                 { key: '#', label: 'RANK', width: isMobile ? '40px' : '60px', render: (_: any, i: number) => <span className="text-text-muted mono font-semibold">{i + 1}º</span> },
-                { key: 'nome', label: 'DESCRIÇÃO', render: (r: any) => <span className="font-medium text-text-primary capitalize truncate block max-w-[100px] sm:max-w-[220px]" title={r.nome}>{r.nome}</span> },
+                { key: 'nome', label: 'DESCRIÇÃO', render: (r: any) => <span className="font-medium text-text-primary capitalize truncate block max-w-[100px] text-[10px] sm:text-[14px] sm:max-w-[220px]" title={r.nome}>{r.nome}</span> },
                 { key: 'total', label: 'FATURAMENTO', align: 'right', render: (r: any) => <span className="font-semibold text-brand-600">{formatBRL(r.total)}</span> },
               ]}
             />
@@ -139,7 +139,7 @@ export default function Ranking() {
       <div>
         <h2 className="font-heading text-xl font-semibold text-text-primary">Super Guia de Rankings</h2>
         <p className="text-text-secondary text-sm mb-4">Métricas detalhadas separadas por categorias.</p>
-        <PeriodFilter />
+        <PeriodFilter excludePeriods={['last7d']} />
       </div>
 
       <div 
