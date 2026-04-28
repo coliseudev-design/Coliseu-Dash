@@ -29,7 +29,6 @@ export default function Financeiro() {
 
   const extraParams = selectedCaixa !== 'todos' ? { caixa_id: selectedCaixa } : {}
   const caixa = usePeriodQuery<any>('/financeiro/caixa', extraParams)
-  const fluxo = usePeriodQuery<any>('/financeiro/fluxo-caixa', extraParams)
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -117,12 +116,12 @@ export default function Financeiro() {
         <ChartCard
           title="Fluxo de Movimentações"
           subtitle="Acompanhamento diário das entradas e saídas de capital"
-          loading={fluxo.isLoading}
-          empty={!fluxo.data?.data?.length}
+          loading={caixa.isLoading}
+          empty={!caixa.data?.kpis?.movimentacoes?.length}
         >
           <div className="h-64 sm:h-80 -mx-1 sm:mx-0">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={fluxo.data?.data || []}>
+              <AreaChart data={caixa.data?.kpis?.movimentacoes || []}>
                 <defs>
                   <linearGradient id="colorEntrCaixa" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor={CHART_COLORS.success} stopOpacity={0.5} />
