@@ -9,7 +9,6 @@ import KPICard from '../components/KPICard'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 
 export default function Comissoes() {
-  const kpis = usePeriodQuery<any>('/comissoes/kpis')
   const ranking = usePeriodQuery<any>('/comissoes/ranking')
 
   const dadosVendedores = ranking.data?.data || []
@@ -70,7 +69,7 @@ export default function Comissoes() {
                   </h3>
                   
                   <div className="space-y-2.5">
-                    <div className="flex justify-between items-center text-sm">
+                    <div className="flex justify-between items-center text-sm pt-2 border-t border-divider">
                       <span className="text-text-secondary">Qtd. Vendas</span>
                       <span className="font-medium text-text-primary bg-bg-secondary px-2 py-0.5 rounded-md">{formatNum(v.qtd_vendas)}</span>
                     </div>
@@ -78,9 +77,25 @@ export default function Comissoes() {
                       <span className="text-text-secondary">Total Vendido</span>
                       <span className="font-medium text-brand-600">{formatBRL(v.total_vendas)}</span>
                     </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-text-secondary">Ticket Médio</span>
+                      <span className="font-medium text-text-primary">{formatBRL(v.ticket_medio)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-text-secondary">Descontos ({formatNum(v.qtd_descontos)})</span>
+                      <span className="font-medium text-error">{formatBRL(v.total_desconto)}</span>
+                    </div>
                     <div className="flex justify-between items-center text-sm pt-2 border-t border-divider">
-                      <span className="font-medium text-text-primary">Comissão</span>
-                      <span className="font-bold text-success">{formatBRL(v.total_comissao)}</span>
+                      <span className="text-text-secondary">Maior Venda</span>
+                      <span className="font-medium text-text-primary">{formatBRL(v.maior_venda)}</span>
+                    </div>
+                    <div className="flex flex-col text-sm">
+                      <span className="text-text-secondary text-xs">Cliente (Maior Venda)</span>
+                      <span className="font-medium text-text-primary truncate" title={v.cliente_maior_venda}>{v.cliente_maior_venda}</span>
+                    </div>
+                    <div className="flex flex-col text-sm pt-2 border-t border-divider">
+                      <span className="text-text-secondary text-xs">Produto Mais Vendido</span>
+                      <span className="font-medium text-text-primary truncate" title={v.melhor_produto}>{v.melhor_produto}</span>
                     </div>
                   </div>
                 </div>
@@ -91,35 +106,6 @@ export default function Comissoes() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mt-6">
-        <KPICard
-          label="Total de comissão"
-          value={formatBRL(kpis.data?.kpis?.total)}
-          icon={Percent}
-          iconColor="text-brand-500"
-          loading={kpis.isLoading}
-        />
-        <KPICard
-          label="Menor Comissão"
-          value={formatBRL(kpis.data?.kpis?.menor)}
-          icon={ArrowDownAZ}
-          iconColor="text-neutral"
-          loading={kpis.isLoading}
-        />
-        <KPICard
-          label="Maior Comissão"
-          value={formatBRL(kpis.data?.kpis?.maior)}
-          icon={Trophy}
-          iconColor="text-success"
-          loading={kpis.isLoading}
-        />
-        <KPICard
-          label="Qtd. Comissões"
-          value={formatNum(kpis.data?.kpis?.qtd)}
-          icon={Hash}
-          loading={kpis.isLoading}
-        />
-      </div>
     </div>
   )
 }

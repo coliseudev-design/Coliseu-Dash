@@ -181,7 +181,7 @@ router.get('/recentes', async (req, res, next) => {
             FROM dash_vendas v
             LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
             LEFT JOIN dash_vendedores vd ON vd.id_firebird = v.vendedor_id_firebird AND vd.tenant_id = v.tenant_id
-            WHERE v.tenant_id = $1
+            WHERE v.tenant_id = $1 AND TRIM(v.status) != 'CANCELADO'
             ORDER BY v.data_venda DESC
             LIMIT $2
         `, [tenantId, limit]);

@@ -247,7 +247,10 @@ router.get('/ranking', async (req, res, next) => {
                 v.vendedor_id_firebird AS id,
                 COALESCE(vd.nome, 'Vendedor ' || COALESCE(v.vendedor_id_firebird::text, '?')) AS nome,
                 SUM(v.valor_total) AS faturamento,
-                COUNT(DISTINCT v.id_firebird) AS qtd_pedidos
+                COUNT(DISTINCT v.id_firebird) AS qtd_pedidos,
+                AVG(v.valor_total) AS ticket_medio,
+                SUM(COALESCE(v.valor_desconto, 0)) AS total_desconto,
+                SUM(CASE WHEN COALESCE(v.valor_desconto, 0) > 0 THEN 1 ELSE 0 END) AS qtd_descontos
             FROM dash_vendas v
             LEFT JOIN dash_vendedores vd ON vd.id_firebird = v.vendedor_id_firebird AND vd.tenant_id = v.tenant_id
             WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
@@ -255,13 +258,43 @@ router.get('/ranking', async (req, res, next) => {
             ORDER BY faturamento DESC LIMIT $4
         `, [tenantId, start, end, limit]);
 
-        res.json({ data: rows.map(r => ({
-            vendedor_id: r.id, 
-            vendedor: r.nome,
-            total_vendas: parseFloat(r.faturamento || 0),
-            total_comissao: parseFloat(r.faturamento || 0) * 0.05, // Comissão estimada de 5%
-            qtd_vendas: parseInt(r.qtd_pedidos)
-        })) });
+        const result = [];
+        for (const seller of rows) {
+            // Find biggest sale
+            const { rows: rMaxSale } = await db.query(`
+                SELECT v.valor_total, COALESCE(c.nome, 'Consumidor Final') as cliente_nome
+                FROM dash_vendas v
+                LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
+                WHERE v.tenant_id = $1 AND v.vendedor_id_firebird = $2 AND v.data_venda >= $3 AND v.data_venda <= $4 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
+                ORDER BY v.valor_total DESC LIMIT 1
+            `, [tenantId, seller.id, start, end]);
+
+            // Find best selling product
+            const { rows: rBestProduct } = await db.query(`
+                SELECT COALESCE(vi.produto, 'Sem nome') as produto_nome, SUM(vi.valor_total) as total
+                FROM dash_vendas_itens vi
+                JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+                WHERE v.tenant_id = $1 AND v.vendedor_id_firebird = $2 AND v.data_venda >= $3 AND v.data_venda <= $4 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
+                  AND vi.produto IS NOT NULL
+                GROUP BY vi.produto
+                ORDER BY total DESC LIMIT 1
+            `, [tenantId, seller.id, start, end]);
+
+            result.push({
+                vendedor_id: seller.id,
+                vendedor: seller.nome,
+                total_vendas: parseFloat(seller.faturamento || 0),
+                qtd_vendas: parseInt(seller.qtd_pedidos),
+                ticket_medio: parseFloat(seller.ticket_medio || 0),
+                total_desconto: parseFloat(seller.total_desconto || 0),
+                qtd_descontos: parseInt(seller.qtd_descontos || 0),
+                maior_venda: rMaxSale.length > 0 ? parseFloat(rMaxSale[0].valor_total || 0) : 0,
+                cliente_maior_venda: rMaxSale.length > 0 ? rMaxSale[0].cliente_nome : '-',
+                melhor_produto: rBestProduct.length > 0 ? rBestProduct[0].produto_nome : '-'
+            });
+        }
+
+        res.json({ data: result });
     } catch (err) { next(err); }
 });
 
