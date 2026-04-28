@@ -45,7 +45,7 @@ export default function Comissoes() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         <KPICard
-          label="Total Produzido"
+          label="Total de comissão"
           value={formatBRL(kpis.data?.kpis?.total)}
           icon={Percent}
           iconColor="text-brand-500"
