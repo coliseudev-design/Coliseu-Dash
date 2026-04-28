@@ -2,7 +2,8 @@ import { useMemo } from 'react'
 import { usePeriodQuery } from '../hooks/useApi'
 import PeriodFilter from '../components/PeriodFilter'
 import {
-  Users, Percent, ArrowDownAZ, Hash, Trophy, BarChart3
+  Users, Percent, ArrowDownAZ, Hash, Trophy, BarChart3,
+  ShoppingCart, Receipt, Tag, User, DollarSign
 } from 'lucide-react'
 import { formatBRL, formatBRLCompact, formatNum } from '../utils/format'
 import KPICard from '../components/KPICard'
@@ -68,34 +69,65 @@ export default function Comissoes() {
                     {v.vendedor}
                   </h3>
                   
-                  <div className="space-y-2.5">
-                    <div className="flex justify-between items-center text-sm pt-2 border-t border-divider">
-                      <span className="text-text-secondary">Qtd. Vendas</span>
-                      <span className="font-medium text-text-primary bg-bg-secondary px-2 py-0.5 rounded-md">{formatNum(v.qtd_vendas)}</span>
+                  <div className="space-y-4">
+                    {/* Faturamento em Destaque */}
+                    <div className="flex flex-col gap-1 items-center justify-center p-3 bg-brand-50 rounded-lg border border-brand-100">
+                      <span className="text-brand-600 text-[10px] font-bold uppercase tracking-wider">Total Faturado</span>
+                      <span className="text-2xl font-bold text-brand-700">{formatBRL(v.total_vendas)}</span>
                     </div>
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-text-secondary">Total Vendido</span>
-                      <span className="font-medium text-brand-600">{formatBRL(v.total_vendas)}</span>
+
+                    {/* Secundário: Vendas e Ticket */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex items-center gap-2">
+                        <div className="bg-bg-secondary p-1.5 rounded-md text-text-secondary">
+                          <ShoppingCart size={14} />
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-text-secondary leading-none mb-1 uppercase font-semibold">Vendas</p>
+                          <p className="font-semibold text-text-primary text-sm leading-none">{formatNum(v.qtd_vendas)}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="bg-bg-secondary p-1.5 rounded-md text-text-secondary">
+                          <Receipt size={14} />
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-text-secondary leading-none mb-1 uppercase font-semibold">Ticket Médio</p>
+                          <p className="font-semibold text-text-primary text-sm leading-none">{formatBRL(v.ticket_medio)}</p>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-text-secondary">Ticket Médio</span>
-                      <span className="font-medium text-text-primary">{formatBRL(v.ticket_medio)}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-text-secondary">Descontos ({formatNum(v.qtd_descontos)})</span>
-                      <span className="font-medium text-error">{formatBRL(v.total_desconto)}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-sm pt-2 border-t border-divider">
-                      <span className="text-text-secondary">Maior Venda</span>
-                      <span className="font-medium text-text-primary">{formatBRL(v.maior_venda)}</span>
-                    </div>
-                    <div className="flex flex-col text-sm">
-                      <span className="text-text-secondary text-xs">Cliente (Maior Venda)</span>
-                      <span className="font-medium text-text-primary truncate" title={v.cliente_maior_venda}>{v.cliente_maior_venda}</span>
-                    </div>
-                    <div className="flex flex-col text-sm pt-2 border-t border-divider">
-                      <span className="text-text-secondary text-xs">Produto Mais Vendido</span>
-                      <span className="font-medium text-text-primary truncate" title={v.melhor_produto}>{v.melhor_produto}</span>
+
+                    {/* Destaques Inferiores */}
+                    <div className="space-y-2.5 pt-3 border-t border-divider">
+                      <div className="flex flex-col gap-1 text-sm">
+                        <div className="flex justify-between items-center">
+                          <span className="text-text-secondary text-xs flex items-center gap-1">
+                            <Trophy size={12} className="text-warning"/> Maior Venda
+                          </span>
+                          <span className="font-bold text-text-primary">{formatBRL(v.maior_venda)}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs text-text-secondary bg-bg-secondary px-2 py-1 rounded-md">
+                          <User size={12} className="shrink-0" />
+                          <span className="truncate font-medium" title={v.cliente_maior_venda}>{v.cliente_maior_venda}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-1 text-sm">
+                        <span className="text-text-secondary text-xs flex items-center gap-1">
+                          <Tag size={12} className="text-brand-500" /> Produto Mais Vendido
+                        </span>
+                        <div className="text-xs text-text-primary font-medium bg-bg-secondary px-2 py-1 rounded-md truncate" title={v.melhor_produto}>
+                          {v.melhor_produto}
+                        </div>
+                      </div>
+                      
+                      {v.qtd_descontos > 0 && (
+                        <div className="flex justify-between items-center text-xs bg-error/10 text-error px-2 py-1.5 rounded-md mt-1">
+                          <span className="font-medium">Descontos ({v.qtd_descontos})</span>
+                          <span className="font-bold">{formatBRL(v.total_desconto)}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
