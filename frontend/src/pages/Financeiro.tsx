@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { usePeriodQuery, useApiQuery } from '../hooks/useApi'
 import KPICard from '../components/KPICard'
 import ChartCard from '../components/ChartCard'
@@ -21,6 +21,12 @@ export default function Financeiro() {
   const { data: caixasRes } = useApiQuery<any>('/financeiro/caixas')
   const caixas = caixasRes?.data || []
 
+  useEffect(() => {
+    if (caixas.length > 0 && selectedCaixa === 'todos') {
+      setSelectedCaixa(String(caixas[0].id))
+    }
+  }, [caixas, selectedCaixa])
+
   const extraParams = selectedCaixa !== 'todos' ? { caixa_id: selectedCaixa } : {}
   const caixa = usePeriodQuery<any>('/financeiro/caixa', extraParams)
   const fluxo = usePeriodQuery<any>('/financeiro/fluxo-caixa', extraParams)
@@ -28,7 +34,7 @@ export default function Financeiro() {
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:flex-wrap justify-between items-start sm:items-center gap-4 w-full min-w-0">
-        <PeriodFilter />
+        <PeriodFilter excludePeriods={['lastMonth', 'last12m']} />
         
         {/* Seletor de Caixa */}
         <div className="flex items-center gap-2 bg-bg-primary rounded-lg border border-border p-1.5 shadow-sm">
@@ -83,6 +89,17 @@ export default function Financeiro() {
             compactValue={formatBRLCompact(caixa.data?.kpis?.saldo)}
             icon={Scale}
             iconColor={(caixa.data?.kpis?.saldo || 0) >= 0 ? 'text-success' : 'text-danger'}
+            loading={caixa.isLoading}
+          />
+        </div>
+
+        <div className="mb-4">
+          <KPICard
+            label="Total em Espécie (Dinheiro)"
+            value={formatBRL(caixa.data?.kpis?.total_especie || 0)}
+            compactValue={formatBRLCompact(caixa.data?.kpis?.total_especie)}
+            icon={Banknote}
+            iconColor="text-brand-500"
             loading={caixa.isLoading}
           />
         </div>

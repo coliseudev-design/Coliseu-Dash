@@ -3,7 +3,11 @@ import { Calendar } from 'lucide-react'
 import clsx from 'clsx'
 import { useState } from 'react'
 
-export default function PeriodFilter() {
+interface Props {
+  excludePeriods?: PeriodKey[]
+}
+
+export default function PeriodFilter({ excludePeriods = [] }: Props) {
   const period = usePeriodStore((s) => s.period)
   const startDate = usePeriodStore((s) => s.startDate)
   const endDate = usePeriodStore((s) => s.endDate)
@@ -35,7 +39,7 @@ export default function PeriodFilter() {
       >
         <style dangerouslySetInnerHTML={{__html: `::-webkit-scrollbar { display: none; }`}} />
         <Calendar size={16} className="text-text-secondary ml-1 flex-shrink-0" />
-        {PERIOD_OPTIONS.map((opt) => (
+        {PERIOD_OPTIONS.filter(opt => !excludePeriods.includes(opt.key)).map((opt) => (
           <button
             key={opt.key}
             onClick={() => handleClick(opt.key)}
