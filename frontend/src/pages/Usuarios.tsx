@@ -11,11 +11,26 @@ interface UserRow {
   role: string
   ativo: boolean
   created_at: string
+  permissions: string[] | null
 }
+
+const AVAILABLE_MODULES = [
+  { id: 'inicio', label: 'Início' },
+  { id: 'vendedores', label: 'Vendedores' },
+  { id: 'fluxo_caixa', label: 'Fluxo de Caixa' },
+  { id: 'financeiro', label: 'Financeiro' },
+  { id: 'estoque', label: 'Estoque' },
+  { id: 'ranking', label: 'Ranking' },
+  { id: 'estatisticas', label: 'Estatísticas' },
+  { id: 'usuarios', label: 'Usuários (Configurações)' }
+]
 
 export default function Usuarios() {
   const queryClient = useQueryClient()
   const [modalOpen, setModalOpen] = useState(false)
+  const [permissionsModalOpen, setPermissionsModalOpen] = useState(false)
+  const [selectedUser, setSelectedUser] = useState<UserRow | null>(null)
+  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([])
 
   // Form states
   const [nome, setNome] = useState('')
@@ -67,6 +82,38 @@ export default function Usuarios() {
     e.preventDefault()
     setErrorMsg('')
     createUser.mutate()
+  }
+
+  const updatePermissions = useMutation({
+    mutationFn: async ({ id, permissions }: { id: number, permissions: string[] | null }) => {
+      const res = await api.put(`/usuarios/${id}/permissions`, { permissions })
+      return res.data
+    },
+    onSuccess: () => {
+      setPermissionsModalOpen(false)
+      setSelectedUser(null)
+      queryClient.invalidateQueries({ queryKey: ['usuarios'] })
+    },
+    onError: (err: any) => {
+      alert(err.response?.data?.error || 'Erro ao alterar permissões')
+    }
+  })
+
+  const openPermissionsModal = (user: UserRow) => {
+    setSelectedUser(user)
+    setSelectedPermissions(user.permissions || AVAILABLE_MODULES.map(m => m.id))
+    setPermissionsModalOpen(true)
+  }
+
+  const handleSavePermissions = () => {
+    if (!selectedUser) return
+    updatePermissions.mutate({ id: selectedUser.id, permissions: selectedPermissions })
+  }
+
+  const togglePermission = (id: string) => {
+    setSelectedPermissions(prev => 
+      prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
+    )
   }
 
   return (
@@ -125,19 +172,28 @@ export default function Usuarios() {
               label: 'AÇÕES',
               align: 'right',
               render: (r: UserRow) => (
-                <button
-                  onClick={() => toggleStatus.mutate({ id: r.id, ativo: !r.ativo })}
-                  disabled={toggleStatus.isPending}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ml-auto ${
-                    r.ativo 
-                      ? 'text-red-600 hover:bg-red-50' 
-                      : 'text-green-600 hover:bg-green-50'
-                  }`}
-                  title={r.ativo ? "Inativar Usuário" : "Ativar Usuário"}
-                >
-                  {r.ativo ? <XCircle size={16} /> : <CheckCircle size={16} />}
-                  <span>{r.ativo ? 'Inativar' : 'Ativar'}</span>
-                </button>
+                <div className="flex items-center justify-end gap-2">
+                  <button
+                    onClick={() => openPermissionsModal(r)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-brand-600 hover:bg-brand-50 transition-colors"
+                  >
+                    <Shield size={16} />
+                    <span>Acessos</span>
+                  </button>
+                  <button
+                    onClick={() => toggleStatus.mutate({ id: r.id, ativo: !r.ativo })}
+                    disabled={toggleStatus.isPending}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                      r.ativo 
+                        ? 'text-red-600 hover:bg-red-50' 
+                        : 'text-green-600 hover:bg-green-50'
+                    }`}
+                    title={r.ativo ? "Inativar Usuário" : "Ativar Usuário"}
+                  >
+                    {r.ativo ? <XCircle size={16} /> : <CheckCircle size={16} />}
+                    <span>{r.ativo ? 'Inativar' : 'Ativar'}</span>
+                  </button>
+                </div>
               )
             }
           ]}
@@ -224,6 +280,59 @@ export default function Usuarios() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Permissões */}
+      {permissionsModalOpen && selectedUser && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-bg-primary rounded-2xl shadow-xl border border-border w-full max-w-md overflow-hidden animate-fade-in">
+            <div className="p-5 border-b border-border flex justify-between items-center bg-bg-secondary/50">
+              <h3 className="font-semibold text-lg text-text-primary">
+                Acessos: <span className="font-bold text-brand-500">{selectedUser.nome}</span>
+              </h3>
+              <button onClick={() => setPermissionsModalOpen(false)} className="text-text-secondary hover:text-text-primary">
+                <XCircle size={24} />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-text-secondary mb-4">
+                Selecione quais abas do sistema este usuário poderá visualizar e interagir.
+              </p>
+
+              <div className="space-y-3 max-h-60 overflow-y-auto">
+                {AVAILABLE_MODULES.map(mod => (
+                  <label key={mod.id} className="flex items-center gap-3 p-3 rounded-xl border border-border cursor-pointer hover:bg-bg-secondary transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={selectedPermissions.includes(mod.id)}
+                      onChange={() => togglePermission(mod.id)}
+                      className="w-5 h-5 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
+                    />
+                    <span className="text-sm font-medium text-text-primary">{mod.label}</span>
+                  </label>
+                ))}
+              </div>
+
+              <div className="pt-4 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setPermissionsModalOpen(false)}
+                  className="flex-1 px-4 py-2.5 rounded-xl border border-border text-text-secondary font-medium hover:bg-bg-secondary transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleSavePermissions}
+                  disabled={updatePermissions.isPending}
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-medium transition-colors disabled:opacity-50 flex items-center justify-center"
+                >
+                  {updatePermissions.isPending ? 'Salvando...' : 'Salvar Acessos'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

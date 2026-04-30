@@ -13,7 +13,7 @@ const logger = require('../config/logger');
  */
 router.get('/', async (req, res) => {
     try {
-        let query = `SELECT id, tenant_id, email, nome, role, ativo, created_at FROM dash_usuarios`;
+        let query = `SELECT id, tenant_id, email, nome, role, ativo, created_at, permissions FROM dash_usuarios`;
         let params = [];
         
         if (req.tenant.id !== '00000000-0000-0000-0000-000000000000') {
@@ -108,9 +108,9 @@ router.post('/', async (req, res) => {
 
         // Insere o usuário
         const insertQuery = `
-            INSERT INTO dash_usuarios (tenant_id, email, nome, role, ativo, senha_hash)
-            VALUES ($1, $2, $3, 'viewer', true, $4)
-            RETURNING id, tenant_id, email, nome, role, ativo, created_at
+            INSERT INTO dash_usuarios (tenant_id, email, nome, role, ativo, senha_hash, permissions)
+            VALUES ($1, $2, $3, 'viewer', true, $4, NULL)
+            RETURNING id, tenant_id, email, nome, role, ativo, created_at, permissions
         `;
         const result = await db.query(insertQuery, [companyKey, email, nome, senhaHash]);
         const user = result.rows[0];
@@ -167,6 +167,49 @@ router.put('/:id/status', async (req, res) => {
     } catch (err) {
         logger.error('[Usuarios] Erro ao alterar status', err);
         res.status(500).json({ error: 'Erro ao alterar status do usuário' });
+    }
+});
+
+
+
+/**
+ * PUT /api/usuarios/:id/permissions
+ * Atualiza as permissões (abas/módulos) do usuário
+ */
+router.put('/:id/permissions', async (req, res) => {
+    try {
+        const { permissions } = req.body;
+        const targetId = req.params.id;
+
+        if (permissions !== null && !Array.isArray(permissions)) {
+            return res.status(400).json({ error: 'O campo "permissions" deve ser um array de strings ou nulo.' });
+        }
+
+        // Apenas master pode editar permissões? Ou usuários admin do tenant.
+        // O frontend passará um array como ['inicio', 'financeiro']
+
+        let query = `UPDATE dash_usuarios SET permissions = $1 WHERE id = $2`;
+        let params = [permissions ? JSON.stringify(permissions) : null, targetId];
+
+        if (req.tenant.id !== '00000000-0000-0000-0000-000000000000') {
+            query += ` AND tenant_id = $3`;
+            params.push(req.tenant.id);
+        }
+
+        query += ` RETURNING id, permissions`;
+
+        const result = await db.query(query, params);
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: 'Usuário não encontrado ou você não tem permissão para editá-lo.' });
+        }
+
+        logger.info('[Usuarios] Permissões alteradas', { targetId, permissions, by: req.user.email });
+
+        res.json({ message: 'Permissões atualizadas com sucesso', user: result.rows[0] });
+    } catch (err) {
+        logger.error('[Usuarios] Erro ao alterar permissões', err);
+        res.status(500).json({ error: 'Erro ao alterar permissões do usuário' });
     }
 });
 

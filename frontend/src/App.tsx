@@ -9,11 +9,13 @@ import DashboardLayout from './components/DashboardLayout'
 
 import Home from './pages/Home'
 import Financeiro from './pages/Financeiro'
+import FluxoCaixa from './pages/Financeiro' // Usaremos a mesma página por enquanto ou podemos separar futuramente
 import Comissoes from './pages/Comissoes'
 import Ranking from './pages/Ranking'
 import Estatisticas from './pages/Estatisticas'
 import Produtos from './pages/Produtos'
 import Clientes from './pages/Clientes'
+import Estoque from './pages/Estoque'
 import Vendas from './pages/Vendas'
 import Usuarios from './pages/Usuarios'
 
@@ -55,6 +57,8 @@ export default function App() {
       >
         <Route index element={<Home />} />
         <Route path="financeiro" element={<Financeiro />} />
+        <Route path="fluxo-caixa" element={<FluxoCaixa />} />
+        <Route path="estoque" element={<Estoque />} />
         <Route path="comissoes" element={<Comissoes />} />
         <Route path="ranking" element={<Ranking />} />
         <Route path="estatisticas" element={<Estatisticas />} />

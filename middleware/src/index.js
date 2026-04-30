@@ -18,6 +18,26 @@ async function startServer() {
                 const schemaPath = path.join(__dirname, 'db', 'schema.sql');
                 const schemaSql = fs.readFileSync(schemaPath, 'utf8');
                 await db.query(schemaSql);
+                
+                logger.info('[App] Executando migração de permissões e admin...');
+                await db.query('ALTER TABLE dash_usuarios ADD COLUMN IF NOT EXISTS permissions JSONB DEFAULT NULL;');
+                
+                const bcrypt = require('bcryptjs');
+                const adminEmail = 'admin@silenus.com.br';
+                const adminPass = '13894645.';
+                const salt = await bcrypt.genSalt(10);
+                const hash = await bcrypt.hash(adminPass, salt);
+                
+                const checkAdmin = await db.query('SELECT id FROM dash_usuarios WHERE email = $1', [adminEmail]);
+                if (checkAdmin.rowCount > 0) {
+                    await db.query('UPDATE dash_usuarios SET senha_hash = $1, role = $2, permissions = NULL, ativo = true WHERE email = $3', [hash, 'master', adminEmail]);
+                } else {
+                    await db.query(
+                        `INSERT INTO dash_usuarios (tenant_id, email, nome, role, ativo, senha_hash, permissions)
+                         VALUES ($1, $2, $3, $4, true, $5, NULL)`,
+                        ['00000000-0000-0000-0000-000000000000', adminEmail, 'Admin Silenus', 'master', hash]
+                    );
+                }
                 logger.info('[App] Tabelas inicializadas com sucesso.');
             } catch (dbErr) {
                 logger.error('[App] Erro ao sincronizar as tabelas do banco:', dbErr);

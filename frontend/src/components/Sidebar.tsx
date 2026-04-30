@@ -5,6 +5,7 @@ import {
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useAuthStore } from '../store/authStore'
+import { Package } from 'lucide-react'
 
 interface Props {
   open: boolean
@@ -12,15 +13,32 @@ interface Props {
 }
 
 const MODULES = [
-  { to: '/',              label: 'Início',        icon: LayoutDashboard,  exact: true },
-  { to: '/comissoes',     label: 'Vendedores',    icon: Users },
-  { to: '/financeiro',    label: 'Fluxo de Caixa',icon: Wallet },
-  { to: '/ranking',       label: 'Ranking',       icon: Trophy },
-  { to: '/estatisticas',  label: 'Estatísticas',  icon: BarChart3 },
-  { to: '/usuarios',      label: 'Usuários',      icon: Shield }
+  { to: '/',              label: 'Início',        icon: LayoutDashboard,  exact: true,  id: 'inicio' },
+  { to: '/comissoes',     label: 'Vendedores',    icon: Users,                          id: 'vendedores' },
+  { to: '/fluxo-caixa',   label: 'Fluxo de Caixa',icon: Wallet,                         id: 'fluxo_caixa' },
+  { to: '/financeiro',    label: 'Financeiro',    icon: BarChart3,                      id: 'financeiro' },
+  { to: '/estoque',       label: 'Estoque',       icon: Package,                        id: 'estoque' },
+  { to: '/ranking',       label: 'Ranking',       icon: Trophy,                         id: 'ranking' },
+  { to: '/estatisticas',  label: 'Estatísticas',  icon: BarChart3,                      id: 'estatisticas' }
+]
+
+const CONFIG_MODULES = [
+  { to: '/usuarios',      label: 'Usuários',      icon: Shield,                         id: 'usuarios' }
 ]
 
 export default function Sidebar({ open, onClose }: Props) {
+  const user = useAuthStore((s) => s.user)
+
+  // Filtra as rotas se o usuário não for master e tiver permissions configurado
+  const hasAccess = (moduleId: string) => {
+    if (!user) return false
+    if (user.role === 'master' || !user.permissions) return true
+    return user.permissions.includes(moduleId)
+  }
+
+  const allowedModules = MODULES.filter((m) => hasAccess(m.id))
+  const allowedConfigModules = CONFIG_MODULES.filter((m) => hasAccess(m.id))
+
   return (
     <>
       {/* Backdrop mobile */}
@@ -55,26 +73,58 @@ export default function Sidebar({ open, onClose }: Props) {
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 overflow-y-auto py-3 px-2">
-          {MODULES.map(({ to, label, icon: Icon, exact }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={exact}
-              onClick={onClose}
-              className={({ isActive }) =>
-                clsx(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors mb-1',
-                  isActive
-                    ? 'bg-brand-500/10 text-brand-500'
-                    : 'text-text-secondary hover:bg-bg-secondary hover:text-text-primary',
-                )
-              }
-            >
-              <Icon size={18} className="flex-shrink-0" />
-              <span className="truncate">{label}</span>
-            </NavLink>
-          ))}
+        <nav className="flex-1 overflow-y-auto py-3 px-2 flex flex-col gap-6">
+          <div>
+            <div className="px-3 mb-2 text-xs font-semibold text-text-secondary uppercase tracking-wider">
+              Menu Principal
+            </div>
+            {allowedModules.map(({ to, label, icon: Icon, exact }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end={exact}
+                onClick={onClose}
+                className={({ isActive }) =>
+                  clsx(
+                    'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors mb-1',
+                    isActive
+                      ? 'bg-brand-500/10 text-brand-500'
+                      : 'text-text-secondary hover:bg-bg-secondary hover:text-text-primary',
+                  )
+                }
+              >
+                <Icon size={18} className="flex-shrink-0" />
+                <span className="truncate">{label}</span>
+              </NavLink>
+            ))}
+          </div>
+
+          {allowedConfigModules.length > 0 && (
+            <div>
+              <div className="px-3 mb-2 text-xs font-semibold text-text-secondary uppercase tracking-wider">
+                Configurações
+              </div>
+              {allowedConfigModules.map(({ to, label, icon: Icon, exact }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  end={exact}
+                  onClick={onClose}
+                  className={({ isActive }) =>
+                    clsx(
+                      'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors mb-1',
+                      isActive
+                        ? 'bg-brand-500/10 text-brand-500'
+                        : 'text-text-secondary hover:bg-bg-secondary hover:text-text-primary',
+                    )
+                  }
+                >
+                  <Icon size={18} className="flex-shrink-0" />
+                  <span className="truncate">{label}</span>
+                </NavLink>
+              ))}
+            </div>
+          )}
         </nav>
 
         {/* Footer com Sair */}

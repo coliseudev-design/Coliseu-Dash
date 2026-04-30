@@ -7,6 +7,7 @@ export interface User {
   email: string
   nome: string
   role?: string
+  permissions?: string[] | null
 }
 
 interface AuthState {

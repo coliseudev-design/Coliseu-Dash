@@ -20,7 +20,7 @@ router.post('/login', async (req, res) => {
         }
 
         // Buscar usuário localmente
-        const query = `SELECT id, tenant_id, email, nome, role, ativo, senha_hash FROM dash_usuarios WHERE email = $1`;
+        const query = `SELECT id, tenant_id, email, nome, role, ativo, senha_hash, permissions FROM dash_usuarios WHERE email = $1`;
         const result = await db.query(query, [email]);
 
         if (result.rowCount === 0) {
@@ -65,7 +65,8 @@ router.post('/login', async (req, res) => {
                 email: user.email,
                 nome: user.nome,
                 role: user.role,
-                tenant_id: user.tenant_id
+                tenant_id: user.tenant_id,
+                permissions: user.permissions
             }
         });
 
@@ -149,9 +150,9 @@ router.post('/register', async (req, res) => {
 
         // Insere o usuário (default role: viewer)
         const insertQuery = `
-            INSERT INTO dash_usuarios (tenant_id, email, nome, role, ativo, senha_hash)
-            VALUES ($1, $2, $3, 'viewer', true, $4)
-            RETURNING id, tenant_id, email, nome, role
+            INSERT INTO dash_usuarios (tenant_id, email, nome, role, ativo, senha_hash, permissions)
+            VALUES ($1, $2, $3, 'viewer', true, $4, NULL)
+            RETURNING id, tenant_id, email, nome, role, permissions
         `;
         const result = await db.query(insertQuery, [companyKey, email, nome, senhaHash]);
         const user = result.rows[0];
