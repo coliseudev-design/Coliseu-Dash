@@ -5,7 +5,8 @@ import {
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useAuthStore } from '../store/authStore'
-import { Package } from 'lucide-react'
+import { Package, Settings, ChevronDown, ChevronUp } from 'lucide-react'
+import { useState } from 'react'
 
 interface Props {
   open: boolean
@@ -28,6 +29,7 @@ const CONFIG_MODULES = [
 
 export default function Sidebar({ open, onClose }: Props) {
   const user = useAuthStore((s) => s.user)
+  const [configOpen, setConfigOpen] = useState(false)
 
   // Filtra as rotas se o usuário não for master e tiver permissions configurado
   const hasAccess = (moduleId: string) => {
@@ -73,8 +75,8 @@ export default function Sidebar({ open, onClose }: Props) {
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 overflow-y-auto py-3 px-2 flex flex-col gap-6">
-          <div>
+        <nav className="flex-1 overflow-y-auto py-3 px-2 flex flex-col">
+          <div className="flex-1">
             <div className="px-3 mb-2 text-xs font-semibold text-text-secondary uppercase tracking-wider">
               Menu Principal
             </div>
@@ -100,29 +102,41 @@ export default function Sidebar({ open, onClose }: Props) {
           </div>
 
           {allowedConfigModules.length > 0 && (
-            <div>
-              <div className="px-3 mb-2 text-xs font-semibold text-text-secondary uppercase tracking-wider">
-                Configurações
-              </div>
-              {allowedConfigModules.map(({ to, label, icon: Icon, exact }) => (
-                <NavLink
-                  key={to}
-                  to={to}
-                  end={exact}
-                  onClick={onClose}
-                  className={({ isActive }) =>
-                    clsx(
-                      'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors mb-1',
-                      isActive
-                        ? 'bg-brand-500/10 text-brand-500'
-                        : 'text-text-secondary hover:bg-bg-secondary hover:text-text-primary',
-                    )
-                  }
-                >
-                  <Icon size={18} className="flex-shrink-0" />
-                  <span className="truncate">{label}</span>
-                </NavLink>
-              ))}
+            <div className="mt-auto pt-4 border-t border-divider">
+              <button
+                onClick={() => setConfigOpen(!configOpen)}
+                className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium text-text-secondary hover:bg-bg-secondary hover:text-text-primary transition-colors mb-1"
+              >
+                <div className="flex items-center gap-3">
+                  <Settings size={18} className="flex-shrink-0" />
+                  <span className="truncate">Configurações</span>
+                </div>
+                {configOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              </button>
+              
+              {configOpen && (
+                <div className="pl-4 mt-1 space-y-1 border-l-2 border-divider ml-3">
+                  {allowedConfigModules.map(({ to, label, icon: Icon, exact }) => (
+                    <NavLink
+                      key={to}
+                      to={to}
+                      end={exact}
+                      onClick={onClose}
+                      className={({ isActive }) =>
+                        clsx(
+                          'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                          isActive
+                            ? 'bg-brand-500/10 text-brand-500'
+                            : 'text-text-secondary hover:bg-bg-secondary hover:text-text-primary',
+                        )
+                      }
+                    >
+                      <Icon size={16} className="flex-shrink-0" />
+                      <span className="truncate">{label}</span>
+                    </NavLink>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </nav>

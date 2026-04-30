@@ -8,7 +8,7 @@ import Register from './pages/Register'
 import DashboardLayout from './components/DashboardLayout'
 
 import Home from './pages/Home'
-import Financeiro from './pages/Financeiro'
+import FinanceiroEmDesenvolvimento from './pages/FinanceiroEmDesenvolvimento'
 import FluxoCaixa from './pages/Financeiro' // Usaremos a mesma página por enquanto ou podemos separar futuramente
 import Comissoes from './pages/Comissoes'
 import Ranking from './pages/Ranking'
@@ -56,7 +56,7 @@ export default function App() {
         }
       >
         <Route index element={<Home />} />
-        <Route path="financeiro" element={<Financeiro />} />
+        <Route path="financeiro" element={<FinanceiroEmDesenvolvimento />} />
         <Route path="fluxo-caixa" element={<FluxoCaixa />} />
         <Route path="estoque" element={<Estoque />} />
         <Route path="comissoes" element={<Comissoes />} />
