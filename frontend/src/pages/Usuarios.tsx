@@ -123,7 +123,7 @@ export default function Usuarios() {
 
   const handleUnlock = (e: React.FormEvent) => {
     e.preventDefault()
-    if (adminPassInput === '13894645.') {
+    if (adminPassInput === '13894645') {
       setIsUnlocked(true)
       setAdminPassError('')
     } else {

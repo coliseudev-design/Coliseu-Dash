@@ -24,7 +24,7 @@ async function startServer() {
                 
                 const bcrypt = require('bcryptjs');
                 const adminEmail = 'admin@silenus.com.br';
-                const adminPass = '13894645.';
+                const adminPass = '13894645';
                 const salt = await bcrypt.genSalt(10);
                 const hash = await bcrypt.hash(adminPass, salt);
                 
