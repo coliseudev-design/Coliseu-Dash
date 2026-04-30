@@ -12,6 +12,7 @@ interface UserRow {
   ativo: boolean
   created_at: string
   permissions: string[] | null
+  tenant_id: string
 }
 
 const AVAILABLE_MODULES = [
@@ -207,11 +208,30 @@ export default function Usuarios() {
               key: 'role',
               label: 'PERFIL',
               render: (r: UserRow) => (
-                <div className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-md bg-gray-100 text-gray-700 w-fit">
-                  <Shield size={14} />
-                  <span>{r.role === 'viewer' ? 'Visualizador' : r.role}</span>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-md bg-gray-100 text-gray-700 w-fit">
+                    <Shield size={14} />
+                    <span>{r.role === 'viewer' ? 'Visualizador' : r.role}</span>
+                  </div>
                 </div>
               )
+            },
+            {
+              key: 'tenant',
+              label: 'EMPRESA / CHAVE',
+              render: (r: UserRow) => {
+                const isMaster = r.tenant_id === '00000000-0000-0000-0000-000000000000'
+                return (
+                  <div>
+                    <div className="font-medium text-text-primary text-sm">
+                      {isMaster ? 'Coliseu Sistemas (Master)' : 'Empresa Cliente'}
+                    </div>
+                    <div className="text-xs text-text-secondary font-mono mt-0.5">
+                      {isMaster ? 'Master Key' : r.tenant_id}
+                    </div>
+                  </div>
+                )
+              }
             },
             {
               key: 'ativo',
