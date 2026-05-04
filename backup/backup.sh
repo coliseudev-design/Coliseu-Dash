@@ -3,7 +3,7 @@
 
 echo "[$(date)] Iniciando rotina de backup do banco de dados..."
 
-BACKUP_NAME="coliseu_backup_$(date +%Y-%m-%d_%H-%M-%S).sql.gz"
+BACKUP_NAME="${PG_DATABASE}_backup_$(date +%Y-%m-%d_%H-%M-%S).sql.gz"
 BACKUP_FILE="/backups/$BACKUP_NAME"
 
 # 1. Fazendo o dump (usa as env vars do docker-compose)
@@ -18,7 +18,7 @@ fi
 
 # 2. Limpeza Local (Mantém 7 dias)
 echo "[$(date)] Limpando backups locais mais antigos que 7 dias..."
-find /backups -name "coliseu_backup_*.sql.gz" -type f -mtime +7 -delete
+find /backups -name "${PG_DATABASE}_backup_*.sql.gz" -type f -mtime +7 -delete
 
 # 3. Verificando configuração do Rclone
 if [ ! -f "/root/.config/rclone/rclone.conf" ]; then
