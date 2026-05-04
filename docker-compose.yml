@@ -56,6 +56,23 @@ services:
       retries: 3
       start_period: 10s
 
+  db-backup:
+    build:
+      context: ./backup
+      dockerfile: Dockerfile
+    restart: always
+    environment:
+      - PG_HOST=${PG_HOST}
+      - PG_USER=${PG_USER}
+      - PG_PASSWORD=${PG_PASSWORD}
+      - PG_DATABASE=coliseu_dashboard
+      - CRON_SCHEDULE=0 2 * * *
+    volumes:
+      - ./backup/data:/backups
+      - ./backup/rclone.conf:/root/.config/rclone/rclone.conf:ro
+    networks:
+      - coolify
+
 networks:
   coolify:
     external: true
