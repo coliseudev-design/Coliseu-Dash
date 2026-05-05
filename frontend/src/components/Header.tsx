@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Menu, LogOut, RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import { useSyncStatus } from '../hooks/useSync'
 import { formatDateTime } from '../utils/format'
 import ThemeToggle from './ThemeToggle'
+import api from '../services/api'
 
 interface Props {
   onMenuClick: () => void
@@ -13,8 +14,23 @@ interface Props {
 export default function Header({ onMenuClick, title }: Props) {
   const user = useAuthStore((s) => s.user)
   const logout = useAuthStore((s) => s.logout)
-  const { status, lastSync, triggerSync, isSyncing, agentStatus, agentLastPing } = useSyncStatus()
+  const { status, lastSync, triggerSync, isSyncing, agentStatus } = useSyncStatus()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [empresaNome, setEmpresaNome] = useState<string>('')
+
+  useEffect(() => {
+    const fetchEmpresa = async () => {
+      try {
+        const { data } = await api.get('/configuracoes/empresa')
+        if (data && data.name) {
+          setEmpresaNome(data.name)
+        }
+      } catch (err) {
+        console.error('Erro ao buscar nome da empresa', err)
+      }
+    }
+    fetchEmpresa()
+  }, [])
 
   return (
     <header className="h-14 sm:h-16 bg-white/80 backdrop-blur-md border-b border-[#E0E0E0]/50 sticky top-0 z-20 flex items-center px-3 sm:px-4 lg:px-6 transition-all duration-300">
@@ -67,8 +83,17 @@ export default function Header({ onMenuClick, title }: Props) {
           <RefreshCw size={16} className={isSyncing ? 'animate-spin' : ''} />
         </button>
 
-        {/* Separador e Toggle de Tema */}
+        {/* Separador */}
         <div className="w-px h-6 bg-divider mx-1"></div>
+
+        {empresaNome && (
+          <div className="hidden sm:flex items-center px-2 border-r border-[#E0E0E0] mr-1 pr-3">
+            <span className="text-sm font-bold text-slate-700 uppercase tracking-wide">
+              {empresaNome}
+            </span>
+          </div>
+        )}
+
         <ThemeToggle />
 
         {/* Usuário */}

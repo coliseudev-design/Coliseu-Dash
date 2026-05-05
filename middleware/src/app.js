@@ -20,6 +20,7 @@ const financeiroRouter = require('./routes/financeiro');
 const estatisticasRouter = require('./routes/estatisticas');
 const rankingRouter = require('./routes/ranking');
 const usuariosRouter = require('./routes/usuarios');
+const configuracoesRouter = require('./routes/configuracoes');
 
 const app = express();
 
@@ -51,6 +52,7 @@ app.use('/api/estatisticas', estatisticasRouter);
 app.use('/api/ranking', rankingRouter);
 app.use('/api/comissoes', rankingRouter); // comissoes/ranking mapeia para ranking/vendedores
 app.use('/api/usuarios', usuariosRouter);
+app.use('/api/configuracoes', configuracoesRouter);
 app.use('/api/sync', syncRouter); // Habilita /api/sync/status para o frontend web
 
 app.use('/internal', requireInternalAuth);
