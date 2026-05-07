@@ -9,11 +9,7 @@ const db = require('../db/postgres');
  * Garante que bases Firebird antigas sempre apareçam nos filtros.
  */
 async function getAnchoredRange(tenantId, period, start_date, end_date) {
-    const { rows } = await db.query(
-        `SELECT LEAST(COALESCE(MAX(data_venda), CURRENT_DATE), CURRENT_DATE) as anchor FROM dash_vendas WHERE tenant_id = $1`,
-        [tenantId]
-    );
-    const anchor = new Date(rows[0].anchor);
+    const anchor = new Date();
     let start = new Date(anchor);
     let end = new Date(anchor);
     end.setHours(23, 59, 59, 999);

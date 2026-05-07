@@ -17,14 +17,8 @@ router.get('/overview', async (req, res, next) => {
         const cached = getCache(cacheKey);
         if (cached) return res.json(cached);
 
-        // 1) Data-âncora
-        const [rMax, rMaxFin] = await Promise.all([
-            db.query(`SELECT LEAST(COALESCE(MAX(data_venda), CURRENT_DATE), CURRENT_DATE) as d FROM dash_vendas WHERE tenant_id = $1`, [tenantId]),
-            db.query(`SELECT LEAST(COALESCE(MAX(data_emissao), CURRENT_DATE), CURRENT_DATE) as d FROM dash_financeiro WHERE tenant_id = $1`, [tenantId])
-        ]);
-        
-        const maxDate = rMax.rows[0].d;
-        const maxDateFin = rMaxFin.rows[0].d;
+        const maxDate = new Date();
+        const maxDateFin = new Date();
 
         const { start, end } = getPeriodRange(period, start_date, end_date, maxDate);
         const finRange = getPeriodRange(period, start_date, end_date, maxDateFin);
@@ -84,8 +78,7 @@ router.get('/kpis', async (req, res, next) => {
         const period = req.query.period || 'last12m';
         const { start_date, end_date } = req.query;
         
-        const { rows: rMax } = await db.query(`SELECT LEAST(COALESCE(MAX(data_venda), CURRENT_DATE), CURRENT_DATE) as d FROM dash_vendas WHERE tenant_id = $1`, [tenantId]);
-        const maxDate = rMax[0].d;
+        const maxDate = new Date();
         const { start, end } = getPeriodRange(period, start_date, end_date, maxDate);
 
         const { rows: v } = await db.query(`

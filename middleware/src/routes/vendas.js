@@ -10,8 +10,7 @@ router.get('/faturadas', async (req, res, next) => {
     try {
         const period = req.query.period || '7d';
         const tenantId = req.tenant.id;
-        const { rows: rMax } = await db.query(`SELECT LEAST(COALESCE(MAX(data_venda), CURRENT_DATE), CURRENT_DATE) as d FROM dash_vendas WHERE tenant_id = $1`, [tenantId]);
-        const maxDate = rMax[0].d;
+        const maxDate = new Date();
         const { start, end } = getPeriodRange(period, null, null, maxDate);
 
         const { rows } = await db.query(`
@@ -130,8 +129,7 @@ router.get('/kpis', async (req, res, next) => {
         const period = req.query.period || 'hoje';
         const tenantId = req.tenant.id;
         const { start_date, end_date } = req.query;
-        const { rows: rMax } = await db.query(`SELECT LEAST(COALESCE(MAX(data_venda), CURRENT_DATE), CURRENT_DATE) as d FROM dash_vendas WHERE tenant_id = $1`, [tenantId]);
-        const maxDate = rMax[0].d;
+        const maxDate = new Date();
         const { start, end } = getPeriodRange(period, start_date, end_date, maxDate);
 
         const { rows } = await db.query(`
