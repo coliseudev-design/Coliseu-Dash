@@ -51,9 +51,9 @@ router.post('/:tabela', async (req, res) => {
         await client.query('BEGIN');
 
         for (const rawRow of rows) {
+            let row = {};
             try {
                 // Normalize keys to lowercase to handle Firebird UPPERCASE aliases
-                const row = {};
                 for (const key in rawRow) {
                     row[key.toLowerCase()] = rawRow[key];
                 }
@@ -94,8 +94,9 @@ router.post('/:tabela', async (req, res) => {
                 await client.query(sql, insertValues);
                 inserted++;
             } catch (err) {
-                errors.push(`Row ID ${row.id_firebird}: ${err.message}`);
-                logger.error('[Sync] Falha em linha', { error: err.message, tenantId, rowId: row.id_firebird });
+                const idFirebird = row.id_firebird || rawRow.id_firebird || rawRow.ID_FIREBIRD || 'Unknown';
+                errors.push(`Row ID ${idFirebird}: ${err.message}`);
+                logger.error('[Sync] Falha em linha', { error: err.message, tenantId, rowId: idFirebird });
             }
         }
 
