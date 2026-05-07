@@ -39,6 +39,8 @@ services:
       # Identity Server / Segurança
       - JWT_DEVICE_KEY=${JWT_DEVICE_KEY}
       - EXPECTED_MODULE_SLUG=dashboard
+      - IDENTITY_API_URL=https://adminlicencas.coliseusistemas.com.br
+      - IDENTITY_INTERNAL_KEY=${INTERNAL_API_KEY}
       
       # Comunicação com o Worker
       - INTERNAL_API_KEY=${INTERNAL_API_KEY}
