@@ -86,6 +86,11 @@ export default function Header({ onMenuClick, title }: Props) {
         {/* Separador */}
         <div className="w-px h-6 bg-divider mx-1"></div>
 
+        {/* Layout Version */}
+        <div className="hidden sm:flex items-center px-1.5 h-5 rounded-md border border-divider bg-bg-tertiary/30 text-[10px] font-mono text-text-muted cursor-default" title="Versão do Layout Ativo">
+          {user?.layout_version || 'v1.0'}
+        </div>
+
         {empresaNome && (
           <div className="hidden sm:flex items-center px-2 border-r border-[#E0E0E0] mr-1 pr-3">
             <span className="text-sm font-bold text-slate-700 uppercase tracking-wide">
