@@ -1,7 +1,25 @@
 import React from 'react'
 import { Wallet } from 'lucide-react'
+import { useAuthStore } from '../store/authStore'
+import Titulos from './Titulos'
 
 export default function FinanceiroEmDesenvolvimento() {
+  const layoutVersion = useAuthStore((s) => s.user?.layout_version || 'v1.0')
+
+  if (layoutVersion === 'v2.0' || layoutVersion === 'v3.0') {
+    return (
+      <div className="space-y-6 sm:space-y-8 animate-fade-in">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
+          <div>
+            <h2 className="font-heading text-xl font-semibold text-text-primary">Financeiro</h2>
+            <p className="text-text-secondary text-sm">Gestão de contas a pagar e a receber.</p>
+          </div>
+        </div>
+        <Titulos />
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6 sm:space-y-8 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

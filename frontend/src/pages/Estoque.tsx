@@ -1,7 +1,25 @@
 import React from 'react'
 import { Package } from 'lucide-react'
+import { useAuthStore } from '../store/authStore'
+import Produtos from './Produtos'
 
 export default function Estoque() {
+  const layoutVersion = useAuthStore((s) => s.user?.layout_version || 'v1.0')
+
+  if (layoutVersion === 'v2.0' || layoutVersion === 'v3.0') {
+    return (
+      <div className="space-y-6 sm:space-y-8 animate-fade-in">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
+          <div>
+            <h2 className="font-heading text-xl font-semibold text-text-primary">Estoque</h2>
+            <p className="text-text-secondary text-sm">Controle de inventário e lista de produtos.</p>
+          </div>
+        </div>
+        <Produtos />
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6 sm:space-y-8 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
