@@ -4,7 +4,7 @@ import {
   Trophy, BarChart3, Users, X, LogOut, Shield
 } from 'lucide-react'
 import clsx from 'clsx'
-import { useAuthStore } from '../store/authStore'
+import { useAuthStore } from '../../store/authStore'
 import { Package, Settings, ChevronDown, ChevronUp } from 'lucide-react'
 import { useState } from 'react'
 

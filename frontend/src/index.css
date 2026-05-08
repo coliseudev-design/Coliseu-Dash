@@ -19,6 +19,7 @@
     --color-divider: rgba(224, 224, 224, 0.5);
     --shadow-card: 0 1px 3px 0 rgba(0,0,0,0.05), 0 1px 2px 0 rgba(0,0,0,0.03);
     --shadow-card-hover: 0 4px 12px 0 rgba(0,0,0,0.08);
+    --border-radius-base: 0.75rem; /* 12px default for rounded-xl */
   }
 
   .dark {
@@ -37,6 +38,47 @@
     --color-divider: rgba(51, 65, 85, 0.5);
     --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
     --shadow-card-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.7), 0 4px 6px -2px rgba(0, 0, 0, 0.5);
+    --border-radius-base: 0.75rem;
+  }
+
+  /* Estilos para Layout v2.0 (Moderno e Minimalista) */
+  .layout-v2-0 {
+    --color-bg-primary: #FDFDFD;
+    --color-bg-secondary: #F0F4F8;
+    --color-bg-tertiary: #E0E7EF;
+    --color-text-primary: #2C3E50;
+    --color-text-secondary: #7F8C8D;
+    --color-text-muted: #BDC3C7;
+    --color-brand-50: #D4EDF7;
+    --color-brand-100: #A9D9EE;
+    --color-brand-500: #3498DB; /* Azul mais claro */
+    --color-brand-600: #2980B9;
+    --color-brand-700: #21618C;
+    --color-border: #EAECEE;
+    --color-divider: rgba(234, 236, 238, 0.7);
+    --shadow-card: none; /* Sem sombra */
+    --shadow-card-hover: 0 2px 8px rgba(0,0,0,0.05);
+    --border-radius-base: 4px;
+  }
+
+  /* Estilos para Layout v3.0 (Escuro e Elegante) */
+  .layout-v3-0 {
+    --color-bg-primary: #1A202C;
+    --color-bg-secondary: #2D3748;
+    --color-bg-tertiary: #4A5568;
+    --color-text-primary: #E2E8F0;
+    --color-text-secondary: #A0AEC0;
+    --color-text-muted: #718096;
+    --color-brand-50: #EDE9FE;
+    --color-brand-100: #DDD6FE;
+    --color-brand-500: #8B5CF6; /* Roxo vibrante */
+    --color-brand-600: #7C3AED;
+    --color-brand-700: #6D28D9;
+    --color-border: #4A5568;
+    --color-divider: rgba(74, 85, 104, 0.6);
+    --shadow-card: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+    --shadow-card-hover: 0 20px 25px -5px rgba(0, 0, 0, 0.7), 0 10px 10px -5px rgba(0, 0, 0, 0.5);
+    --border-radius-base: 16px;
   }
 
   html, body, #root {
@@ -65,7 +107,8 @@
 
 @layer components {
   .card {
-    @apply bg-bg-primary backdrop-blur-md border border-divider rounded-xl shadow-card p-3 sm:p-5 transition-all duration-300 relative overflow-hidden;
+    @apply bg-bg-primary backdrop-blur-md border border-divider shadow-card p-3 sm:p-5 transition-all duration-300 relative overflow-hidden;
+    border-radius: var(--border-radius-base, 0.75rem);
   }
   .card:hover {
     @apply shadow-card-hover -translate-y-0.5 border-border;

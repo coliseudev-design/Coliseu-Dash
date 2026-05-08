@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '../services/api'
 import DataTable from '../components/DataTable'
 import { Shield, UserPlus, CheckCircle, XCircle, Lock } from 'lucide-react'
+import { useAuthStore } from '../store/authStore'
 
 interface UserRow {
   id: number
@@ -13,6 +14,7 @@ interface UserRow {
   created_at: string
   permissions: string[] | null
   tenant_id: string
+  layout_version?: string
 }
 
 const AVAILABLE_MODULES = [
@@ -115,6 +117,25 @@ export default function Usuarios() {
     if (!selectedUser) return
     updatePermissions.mutate({ id: selectedUser.id, permissions: selectedPermissions })
   }
+
+  const updateLayout = useMutation({
+    mutationFn: async ({ id, layout_version }: { id: number, layout_version: string }) => {
+      const res = await api.put(`/usuarios/${id}/layout`, { layout_version })
+      return res.data
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['usuarios'] })
+      const currentUser = useAuthStore.getState().user;
+      if (currentUser && data.user && data.user.id === currentUser.id) {
+         const user = { ...currentUser, layout_version: data.user.layout_version };
+         useAuthStore.setState({ user });
+         localStorage.setItem('coliseu_user', JSON.stringify(user));
+      }
+    },
+    onError: (err: any) => {
+      alert(err.response?.data?.error || 'Erro ao alterar layout')
+    }
+  })
 
   const togglePermission = (id: string) => {
     setSelectedPermissions(prev => 
@@ -232,6 +253,24 @@ export default function Usuarios() {
                   </div>
                 )
               }
+            },
+            {
+              key: 'layout',
+              label: 'LAYOUT',
+              render: (r: UserRow) => (
+                <div className="flex items-center">
+                  <select
+                    className="bg-bg-secondary text-text-primary border border-border rounded-lg px-2 py-1 text-sm outline-none focus:border-brand-500 transition-colors"
+                    value={r.layout_version || 'v1.0'}
+                    onChange={(e) => updateLayout.mutate({ id: r.id, layout_version: e.target.value })}
+                    disabled={updateLayout.isPending}
+                  >
+                    <option value="v1.0">v1.0 (Padrão)</option>
+                    <option value="v2.0">v2.0 (Moderno)</option>
+                    <option value="v3.0">v3.0 (Escuro)</option>
+                  </select>
+                </div>
+              )
             },
             {
               key: 'ativo',

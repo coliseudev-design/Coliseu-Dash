@@ -260,6 +260,7 @@ CREATE TABLE IF NOT EXISTS dash_usuarios (
     nome VARCHAR(200) NOT NULL,
     senha_hash VARCHAR(255) NOT NULL,
     role VARCHAR(50) DEFAULT 'viewer', -- admin, gerente, vendedor, viewer
+    layout_version VARCHAR(10) DEFAULT 'v1.0',
     ativo BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
@@ -268,6 +269,7 @@ CREATE TABLE IF NOT EXISTS dash_usuarios (
 
 -- Garantir que colunas novas existam caso a tabela já estivesse lá
 ALTER TABLE dash_usuarios ADD COLUMN IF NOT EXISTS senha_hash VARCHAR(255);
+ALTER TABLE dash_usuarios ADD COLUMN IF NOT EXISTS layout_version VARCHAR(10) DEFAULT 'v1.0';
 -- Colocar uma hash genérica pra quem não tinha senha (evitar nulo caso houvesse dados)
 UPDATE dash_usuarios SET senha_hash = '' WHERE senha_hash IS NULL;
 

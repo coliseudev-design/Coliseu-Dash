@@ -13,7 +13,7 @@ const logger = require('../config/logger');
  */
 router.get('/', async (req, res) => {
     try {
-        let query = `SELECT id, tenant_id, email, nome, role, ativo, created_at, permissions FROM dash_usuarios`;
+        let query = `SELECT id, tenant_id, email, nome, role, ativo, created_at, permissions, layout_version FROM dash_usuarios`;
         let params = [];
         
         if (req.tenant.id !== '00000000-0000-0000-0000-000000000000') {
@@ -108,9 +108,9 @@ router.post('/', async (req, res) => {
 
         // Insere o usuário
         const insertQuery = `
-            INSERT INTO dash_usuarios (tenant_id, email, nome, role, ativo, senha_hash, permissions)
-            VALUES ($1, $2, $3, 'viewer', true, $4, NULL)
-            RETURNING id, tenant_id, email, nome, role, ativo, created_at, permissions
+            INSERT INTO dash_usuarios (tenant_id, email, nome, role, ativo, senha_hash, permissions, layout_version)
+            VALUES ($1, $2, $3, 'viewer', true, $4, NULL, 'v1.0')
+            RETURNING id, tenant_id, email, nome, role, ativo, created_at, permissions, layout_version
         `;
         const result = await db.query(insertQuery, [companyKey, email, nome, senhaHash]);
         const user = result.rows[0];
@@ -210,6 +210,43 @@ router.put('/:id/permissions', async (req, res) => {
     } catch (err) {
         logger.error('[Usuarios] Erro ao alterar permissões', err);
         res.status(500).json({ error: 'Erro ao alterar permissões do usuário' });
+    }
+});
+
+/**
+ * PUT /api/usuarios/:id/layout
+ * Altera a versão do layout para um usuário
+ */
+router.put('/:id/layout', async (req, res) => {
+    try {
+        const { layout_version } = req.body;
+        const targetId = req.params.id;
+
+        if (!['v1.0', 'v2.0', 'v3.0'].includes(layout_version)) {
+            return res.status(400).json({ error: 'Versão de layout inválida. Opções: v1.0, v2.0, v3.0' });
+        }
+
+        let query = `UPDATE dash_usuarios SET layout_version = $1 WHERE id = $2`;
+        let params = [layout_version, targetId];
+
+        if (req.tenant.id !== '00000000-0000-0000-0000-000000000000') {
+            query += ` AND tenant_id = $3`;
+            params.push(req.tenant.id);
+        }
+
+        query += ` RETURNING id, layout_version`;
+
+        const result = await db.query(query, params);
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: 'Usuário não encontrado ou sem permissão.' });
+        }
+
+        logger.info('[Usuarios] Layout version alterado', { targetId, layout_version, by: req.user.email });
+        res.json({ message: 'Versão do layout atualizada com sucesso', user: result.rows[0] });
+    } catch (err) {
+        logger.error('[Usuarios] Erro ao alterar layout version', err);
+        res.status(500).json({ error: 'Erro interno ao alterar versão do layout.' });
     }
 });
 

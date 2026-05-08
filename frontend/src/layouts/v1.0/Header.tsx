@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
 import { Menu, LogOut, RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react'
-import { useAuthStore } from '../store/authStore'
-import { useSyncStatus } from '../hooks/useSync'
-import { formatDateTime } from '../utils/format'
-import ThemeToggle from './ThemeToggle'
-import api from '../services/api'
+import { useAuthStore } from '../../store/authStore'
+import { useSyncStatus } from '../../hooks/useSync'
+import { formatDateTime } from '../../utils/format'
+import ThemeToggle from '../../components/ThemeToggle'
+import api from '../../services/api'
 
 interface Props {
   onMenuClick: () => void
