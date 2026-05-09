@@ -100,6 +100,10 @@ export default function VisaoEstrategicaV3() {
   
   const ov = usePeriodQuery<any>('/estatisticas/overview')
   const fatMes = usePeriodQuery<any>('/vendas/faturadas')
+  const vd = usePeriodQuery<any>('/ranking/vendedores')
+  const prod = usePeriodQuery<any>('/ranking/produtos')
+  const cli = usePeriodQuery<any>('/ranking/clientes')
+  const marcas = usePeriodQuery<any>('/ranking/marcas')
 
   const period = usePeriodStore((s) => s.period)
   const faturamentoAtual = ov.data?.mes?.total || 240116.50;
@@ -143,39 +147,11 @@ export default function VisaoEstrategicaV3() {
         { data: 'Ago', total: 240116 },
       ];
 
-  const mockTopSellers = [
-    { name: 'FABIOLA', value: 89600 },
-    { name: 'JOÃO', value: 75000 },
-    { name: 'MARIA', value: 68000 },
-    { name: 'CARLOS', value: 54000 },
-    { name: 'ANA', value: 42000 },
-  ];
+  const mockTopSellers = vd.data?.data?.map((s: any) => ({ name: s.vendedor, value: s.total_vendas })) || [];
 
-  const mockTopBrands = ov.data?.top_marcas?.map((m: any) => ({ name: m.marca, value: m.total })) || [
-    { name: 'TVH-TRACTOR IMP...', value: 125000 },
-    { name: 'JACTO MAQUINAS', value: 98000 },
-    { name: 'CAMBUCI METALURGICA', value: 85000 },
-    { name: 'DURAN LUBRIFICANTES', value: 65000 },
-    { name: 'CUNHA MAQUINAS', value: 55000 },
-    { name: 'WS EIRELI IND...', value: 45000 },
-    { name: 'SAMSUNG', value: 38000 },
-    { name: 'APPLE', value: 35000 },
-    { name: 'LG', value: 25000 },
-    { name: 'MOTOROLA', value: 18000 },
-  ];
+  const mockTopBrands = marcas.data?.data?.map((m: any) => ({ name: m.nome, value: m.total })) || [];
 
-  const mockTopProducts = [
-    { name: 'COMP NAVAL 10MM', value: 15106.10 },
-    { name: 'ÓLEO LUBRIF. 15W40', value: 12500.00 },
-    { name: 'FILTRO DE AR JD', value: 9800.50 },
-    { name: 'CORREIA DENTADA', value: 8400.00 },
-    { name: 'BOMBA DAGUA 3P', value: 7600.00 },
-    { name: 'ENGRENAGEM 12D', value: 6500.00 },
-    { name: 'BATERIA 150AH', value: 5400.00 },
-    { name: 'PNEU AGR. 12.4-24', value: 4800.00 },
-    { name: 'FAROL DE MILHA', value: 3500.00 },
-    { name: 'CABO DE AÇO 8MM', value: 2200.00 },
-  ];
+  const mockTopProducts = prod.data?.data?.map((p: any) => ({ name: p.nome, value: p.total })) || [];
 
   const mockTopCities = [
     { name: 'DOURADOS - MS', value: 103432.05 },
@@ -190,18 +166,7 @@ export default function VisaoEstrategicaV3() {
     { name: 'AMAMBAI - MS', value: 5000.00 },
   ];
 
-  const mockTopClients = [
-    { rank: 1, name: 'AO CONSUMIDOR', value: 45281.41 },
-    { rank: 2, name: 'AGROPECUARIA JD SA', value: 38500.00 },
-    { rank: 3, name: 'FAZENDA BOA VISTA', value: 32400.00 },
-    { rank: 4, name: 'TRANSPORTES DOURADOS', value: 28900.00 },
-    { rank: 5, name: 'USINA SÃO FERNANDO', value: 25600.00 },
-    { rank: 6, name: 'OFICINA DO JOAO', value: 21500.00 },
-    { rank: 7, name: 'CONSTRUTORA ALPHA', value: 18400.00 },
-    { rank: 8, name: 'COOPERATIVA AGRICOLA', value: 15200.00 },
-    { rank: 9, name: 'PREFEITURA MUNICIPAL', value: 12800.00 },
-    { rank: 10, name: 'AUTO PECAS BRASIL', value: 10500.00 },
-  ];
+  const mockTopClients = cli.data?.data?.map((c: any, i: number) => ({ rank: i + 1, name: c.nome, value: c.total })) || [];
 
   const barColors = [
     '#3B82F6', '#10B981', '#8B5CF6', '#F59E0B', '#EF4444', 

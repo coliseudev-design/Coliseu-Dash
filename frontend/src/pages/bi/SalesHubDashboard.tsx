@@ -43,14 +43,7 @@ export default function SalesHubDashboard() {
     );
   }
 
-  // Mocks explicitly matching the requested layout image
-  const mockSellers = [
-    { name: 'PAULA', value: 84120.00, share: 35.0, color: '#10B981' },
-    { name: 'FABIOLA', value: 72840.00, share: 30.3, color: '#10B981' },
-    { name: 'ANA', value: 51040.00, share: 21.2, color: '#10B981' },
-    { name: 'MARCOS', value: 26678.43, share: 11.1, color: '#10B981' },
-    { name: 'COLOGE', value: 5438.00, share: 2.2, color: '#10B981' }
-  ];
+  const mockSellers = data?.top_sellers || [];
 
   const generateOrders = () => {
     const orders = [];

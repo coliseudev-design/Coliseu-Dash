@@ -89,6 +89,7 @@ export default function SalesIntelligenceDashboard() {
   const brandsList = data?.top_brands || [];
   const regionsList = data?.top_regions || [];
   const categoriesList = data?.top_categories || [];
+  const clientsList = data?.top_clients || [];
 
   // Helper colors for treemap/seller brands
   const brandColors = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6'];
@@ -350,12 +351,12 @@ export default function SalesIntelligenceDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-divider/30 text-xs">
-                {regionsList.map((client) => (
+                {clientsList.map((client) => (
                   <tr key={client.rank} className="hover:bg-bg-secondary transition-colors">
                     <td className="py-3 text-center text-text-muted">{client.rank}</td>
                     <td className="py-3 font-semibold text-text-primary truncate max-w-[180px]">{client.name}</td>
-                    <td className="py-3 text-right font-mono font-bold text-text-primary">{formatBRL(client.current)}</td>
-                    <td className="py-3 text-right text-text-muted font-bold">{client.share}%</td>
+                    <td className="py-3 text-right font-mono font-bold text-text-primary">{formatBRL(client.value)}</td>
+                    <td className="py-3 text-right text-text-muted font-bold">-</td>
                   </tr>
                 ))}
               </tbody>
