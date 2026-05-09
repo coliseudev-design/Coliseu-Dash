@@ -20,14 +20,14 @@ const MODULES = [
 
 const BI_MODULES = [
   { to: '/bi',            label: 'Inteligência de Vendas',   icon: BarChart3,        exact: true,  id: 'bi_sales' },
-  { to: '/bi/hub',        label: 'Sales Hub',     icon: ShoppingCart,                   id: 'bi_hub' },
+  { to: '/bi/hub',        label: 'Hub de Vendas',     icon: ShoppingCart,                   id: 'bi_hub' },
+  { to: '/bi/supplier',   label: 'Hub do Fornecedor', icon: Truck,                          id: 'bi_supplier' },
   { to: '/bi/abc',        label: 'Análise ABC',   icon: Package,                        id: 'bi_abc' },
   { to: '/bi/finance',    label: 'Financeiro',    icon: Wallet,                         id: 'bi_finance' },
   { to: '/bi/customer',   label: 'Radar 360',     icon: Users,                          id: 'bi_customer' },
   { to: '/bi/comparative',label: 'Comparativo',   icon: BarChart3,                      id: 'bi_comparative' },
   { to: '/bi/customer-analytics',label: 'Análise de Clientes', icon: Users,             id: 'bi_customer_analytics' },
   { to: '/bi/goals',      label: 'Análise de Metas',icon: Trophy,                       id: 'bi_goals' },
-  { to: '/bi/supplier',   label: 'Fornecedores',  icon: Truck,                          id: 'bi_supplier' },
   { to: '/bi/heatmap',    label: 'Mapa de Calor', icon: Map,                            id: 'bi_heatmap' },
   { to: '/bi/ai-insights',label: 'Coliseu AI',    icon: BrainCircuit,                   id: 'bi_ai_insights' },
 ]

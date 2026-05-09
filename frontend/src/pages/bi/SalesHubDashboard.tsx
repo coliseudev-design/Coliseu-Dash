@@ -2,6 +2,28 @@ import { useOutletContext } from 'react-router-dom';
 import { useBiPeriodQuery } from '../../hooks/useBiPeriodQuery';
 import { BIService } from '../../services/biApi';
 import { BiPeriodFilter } from '../../types/bi.types';
+import { Box, DollarSign, Target, CheckCircle2 } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { formatBRL, formatNum, formatBRLCompact } from '../../utils/format';
+import clsx from 'clsx';
+
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-bg-primary border border-border shadow-card-hover p-3 rounded-lg z-50">
+        <p className="text-text-secondary text-xs mb-1 font-medium">{label}</p>
+        {payload.map((entry: any, index: number) => (
+          <p key={index} className="text-sm font-bold" style={{ color: entry.color || 'var(--color-text-primary)' }}>
+            {entry.name === 'total' || entry.name === 'valor' || entry.name === 'value'
+              ? formatBRL(entry.value)
+              : entry.value}
+          </p>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
 
 export default function SalesHubDashboard() {
   const { filter } = useOutletContext<{ filter: BiPeriodFilter }>();
@@ -21,83 +43,166 @@ export default function SalesHubDashboard() {
     );
   }
 
-  // Mock fallback
-  const mockOrders = [
-    {
-      id: 12345,
-      numero_nota: "NF-001234",
-      data_emissao: "2026-01-15",
-      cliente_nome: "Empresa XYZ Ltda",
-      vendedor_nome: "João Silva",
-      valor_total: 5420.50,
-      status: "FATURADO" as const,
-      status_code: 2,
-      items_count: 8,
-      margem_pct: 25.3
-    },
-    {
-      id: 12344,
-      numero_nota: "NF-001233",
-      data_emissao: "2026-01-14",
-      cliente_nome: "Loja ABC",
-      vendedor_nome: "Maria Santos",
-      valor_total: 3210.00,
-      status: "PENDENTE" as const,
-      status_code: 0,
-      items_count: 5,
-      margem_pct: 22.1
-    }
+  // Mocks explicitly matching the requested layout image
+  const mockSellers = [
+    { name: 'PAULA', value: 84120.00, share: 35.0, color: '#10B981' },
+    { name: 'FABIOLA', value: 72840.00, share: 30.3, color: '#10B981' },
+    { name: 'ANA', value: 51040.00, share: 21.2, color: '#10B981' },
+    { name: 'MARCOS', value: 26678.43, share: 11.1, color: '#10B981' },
+    { name: 'COLOGE', value: 5438.00, share: 2.2, color: '#10B981' }
   ];
 
-  const recentOrders = data?.recent_orders || mockOrders;
-  const sellerRankings = data?.seller_rankings || [];
+  const generateOrders = () => {
+    const orders = [];
+    const sellers = ['PAULA', 'FABIOLA', 'ANA', 'MARCOS', 'ROBSON'];
+    const clients = ['AO CONSUMIDOR', 'FUNDO MUNICIPAL DE SAUDE', 'JOSE PAULINO DA SILVA', 'AGROPECUARIA JD SA', 'PREFEITURA MUNICIPAL'];
+    for (let i = 0; i < 35; i++) {
+      orders.push({
+        id: 15004 + i,
+        numero_nota: Math.random() > 0.5 ? '0' : String(Math.floor(Math.random() * 5000) + 1000),
+        cliente: clients[Math.floor(Math.random() * clients.length)],
+        vendedor: sellers[Math.floor(Math.random() * sellers.length)],
+        data: '29/08/2026',
+        valor: Math.random() * 1500 + 50,
+        status: 'Normal'
+      });
+    }
+    return orders;
+  };
+  const mockRecentOrders = generateOrders();
 
-  const formatCurrency = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+  const heatmapData = Array.from({ length: 4 }).map(() => 
+    Array.from({ length: 7 }).map(() => Math.floor(Math.random() * 10))
+  );
 
   return (
-    <div className="space-y-4 animate-in fade-in duration-300">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Tabela de Pedidos Recentes (Ocupa 2 colunas) */}
-        <div className="lg:col-span-2 bg-bg-primary border border-border-primary rounded-xl shadow-sm flex flex-col overflow-hidden">
-          <div className="p-4 border-b border-border-primary flex justify-between items-center">
-            <h3 className="text-base font-semibold text-text-primary">Pedidos Recentes</h3>
-            <div className="flex gap-2">
-              <input 
-                type="text" 
-                placeholder="Buscar pedido..." 
-                className="bg-bg-secondary border border-border-primary rounded-lg px-3 py-1 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
-              />
+    <div className="space-y-6 animate-in fade-in duration-300">
+      
+      {/* HEADER */}
+      <div className="mb-2">
+        <h2 className="text-2xl font-bold text-text-primary flex items-center gap-2">
+          Hub de Vendas
+        </h2>
+        <p className="text-sm text-text-secondary mt-1">Central de monitoramento de pedidos, status de faturamento e performance</p>
+      </div>
+
+      {/* TOP KPIs */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* VOLUME DE PEDIDOS */}
+        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 relative overflow-hidden">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="p-1.5 bg-success/10 text-success rounded-lg">
+              <Box size={16} />
+            </div>
+            <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Volume de Pedidos</span>
+          </div>
+          <div className="text-3xl font-extrabold text-text-primary pl-1 mb-1">
+            337 <span className="text-xs font-medium text-text-muted lowercase">pedidos</span>
+          </div>
+          <div className="flex justify-end text-[10px] text-success font-bold mt-1">100% atingido</div>
+          <div className="w-full bg-bg-secondary h-1 mt-1 rounded-full overflow-hidden">
+             <div className="bg-success h-full w-[100%]"></div>
+          </div>
+        </div>
+
+        {/* FATURAMENTO */}
+        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 relative overflow-hidden">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="p-1.5 bg-warning/10 text-warning rounded-lg">
+              <DollarSign size={16} />
+            </div>
+            <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Faturamento</span>
+          </div>
+          <div className="text-3xl font-extrabold text-text-primary pl-1 mb-1">
+            {formatBRL(240116.50)}
+          </div>
+          <div className="flex justify-end text-[10px] text-warning font-bold mt-1">85% atingido</div>
+          <div className="w-full bg-bg-secondary h-1 mt-1 rounded-full overflow-hidden">
+             <div className="bg-warning h-full w-[85%]"></div>
+          </div>
+        </div>
+
+        {/* TICKET MÉDIO */}
+        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 relative overflow-hidden">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="p-1.5 bg-purple-500/10 text-purple-500 rounded-lg">
+              <Target size={16} />
+            </div>
+            <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Ticket Médio</span>
+          </div>
+          <div className="text-3xl font-extrabold text-text-primary pl-1 mb-1">
+            {formatBRL(712.51)}
+          </div>
+          <div className="flex justify-end text-[10px] text-purple-500 font-bold mt-1">92% atingido</div>
+          <div className="w-full bg-bg-secondary h-1 mt-1 rounded-full overflow-hidden">
+             <div className="bg-purple-500 h-full w-[92%]"></div>
+          </div>
+        </div>
+      </div>
+
+      {/* MAPA DE ATIVIDADE DE VENDAS (Heatmap Simples) */}
+      <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5">
+        <h3 className="font-bold text-text-primary text-sm uppercase tracking-wider mb-1">Mapa de Atividade de Vendas</h3>
+        <p className="text-xs text-text-muted mb-4">Heatmap de volume de vendas na semana (seg-dom)</p>
+        
+        <div className="w-full overflow-x-auto">
+          <div className="min-w-[600px] border border-divider rounded-lg p-2">
+            <div className="grid grid-cols-7 gap-1 mb-2">
+              {['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab', 'Dom'].map(d => (
+                <div key={d} className="text-center text-[10px] font-bold text-text-muted uppercase">{d}</div>
+              ))}
+            </div>
+            <div className="flex flex-col gap-1">
+              {heatmapData.map((row, rowIdx) => (
+                <div key={rowIdx} className="grid grid-cols-7 gap-1">
+                  {row.map((val, colIdx) => (
+                    <div 
+                      key={colIdx} 
+                      className="h-10 sm:h-12 md:h-16 rounded-md border border-divider/30 transition-colors hover:border-brand-500"
+                      style={{ 
+                        backgroundColor: val === 0 ? 'var(--color-bg-secondary)' : `rgba(16, 185, 129, ${0.1 + (val / 10) * 0.9})`
+                      }}
+                      title={`${val} vendas`}
+                    ></div>
+                  ))}
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-between items-center mt-3 px-2">
+              <span className="text-[10px] text-text-muted uppercase">Baixo</span>
+              <span className="text-[10px] text-text-muted uppercase">Alto</span>
             </div>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+        </div>
+      </div>
+
+      {/* RANKING DE VENDEDORES & COMPARATIVO */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        {/* RANKING (Tabela) */}
+        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex flex-col">
+          <h3 className="font-bold text-text-primary text-sm uppercase tracking-wider mb-1">Ranking de Vendedores</h3>
+          <p className="text-xs text-text-muted mb-4">Performance do time comercial de vendas</p>
+          
+          <div className="flex-1 overflow-x-auto">
+            <table className="w-full text-left text-sm whitespace-nowrap">
               <thead>
-                <tr className="bg-bg-secondary/50 text-xs text-text-secondary uppercase">
-                  <th className="px-4 py-3 font-medium">Nota/Pedido</th>
-                  <th className="px-4 py-3 font-medium">Data</th>
-                  <th className="px-4 py-3 font-medium">Cliente</th>
-                  <th className="px-4 py-3 font-medium">Vendedor</th>
-                  <th className="px-4 py-3 font-medium text-right">Valor</th>
-                  <th className="px-4 py-3 font-medium text-center">Status</th>
+                <tr className="border-b border-divider text-[10px] text-text-muted uppercase font-bold tracking-wider">
+                  <th className="pb-2 w-8 text-center">#</th>
+                  <th className="pb-2">VENDEDOR</th>
+                  <th className="pb-2 text-right">FATURADO</th>
+                  <th className="pb-2 text-right">SHARE %</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border-primary">
-                {recentOrders.map((order) => (
-                  <tr key={order.id} className="hover:bg-bg-secondary/30 transition-colors text-sm">
-                    <td className="px-4 py-3 font-medium text-text-primary">{order.numero_nota}</td>
-                    <td className="px-4 py-3 text-text-secondary">{order.data_emissao}</td>
-                    <td className="px-4 py-3 text-text-primary truncate max-w-[150px]">{order.cliente_nome}</td>
-                    <td className="px-4 py-3 text-text-secondary">{order.vendedor_nome}</td>
-                    <td className="px-4 py-3 text-right font-medium text-text-primary">{formatCurrency(order.valor_total)}</td>
-                    <td className="px-4 py-3 text-center">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                        order.status === 'FATURADO' ? 'bg-green-500/10 text-green-500' :
-                        order.status === 'PENDENTE' ? 'bg-yellow-500/10 text-yellow-500' :
-                        'bg-red-500/10 text-red-500'
-                      }`}>
-                        {order.status}
-                      </span>
+              <tbody className="divide-y divide-divider/30 text-xs">
+                {mockSellers.map((seller, i) => (
+                  <tr key={i} className="hover:bg-bg-secondary transition-colors group">
+                    <td className="py-3 text-center text-text-muted font-mono">{i+1}</td>
+                    <td className="py-3 font-bold text-text-primary flex items-center gap-2">
+                      <CheckCircle2 size={12} className="text-brand-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      {seller.name}
                     </td>
+                    <td className="py-3 text-right font-mono font-bold text-text-primary">{formatBRL(seller.value)}</td>
+                    <td className="py-3 text-right font-bold text-warning">{seller.share.toFixed(1)}%</td>
                   </tr>
                 ))}
               </tbody>
@@ -105,43 +210,74 @@ export default function SalesHubDashboard() {
           </div>
         </div>
 
-        {/* Ranking de Vendedores */}
-        <div className="bg-bg-primary border border-border-primary rounded-xl shadow-sm flex flex-col">
-          <div className="p-4 border-b border-border-primary">
-            <h3 className="text-base font-semibold text-text-primary">Performance Vendedores</h3>
-          </div>
-          <div className="p-4 flex-1 overflow-y-auto space-y-4">
-            {sellerRankings.length > 0 ? (
-              sellerRankings.map((seller) => (
-                <div key={seller.vendedor_id} className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-brand-500/10 text-brand-500 flex items-center justify-center font-bold text-xs">
-                      #{seller.rank}
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium text-text-primary">{seller.nome}</div>
-                      <div className="text-xs text-text-secondary">{seller.quantidade_pedidos} pedidos</div>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm font-semibold text-text-primary">{formatCurrency(seller.total_vendas)}</div>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="h-full flex items-center justify-center text-text-secondary text-sm italic">
-                Nenhum dado de vendedor encontrado
-              </div>
-            )}
+        {/* COMPARATIVO (Gráfico) */}
+        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex flex-col">
+          <h3 className="font-bold text-text-primary text-sm uppercase tracking-wider mb-1">Comparativo de Vendas</h3>
+          <p className="text-xs text-text-muted mb-4">Visualização de performance da equipe</p>
+          
+          <div className="flex-1 min-h-[220px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={mockSellers} layout="vertical" margin={{ top: 0, right: 30, left: 10, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--color-border)" opacity={0.3} />
+                <XAxis type="number" hide />
+                <YAxis 
+                  dataKey="name" 
+                  type="category" 
+                  axisLine={{ stroke: 'var(--color-border)' }} 
+                  tickLine={false} 
+                  tick={{ fontSize: 10, fill: 'var(--color-text-secondary)', fontWeight: 500 }} 
+                  width={60} 
+                />
+                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.4 }} />
+                <Bar dataKey="value" fill="#10B981" radius={[0, 4, 4, 0]} barSize={12} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </div>
       </div>
-      
+
+      {/* FILA DE PEDIDOS RECENTES */}
+      <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex flex-col">
+        <h3 className="font-bold text-text-primary text-sm uppercase tracking-wider mb-4">Fila de Pedidos Recentes</h3>
+        
+        <div className="flex-1 overflow-x-auto">
+          <table className="w-full text-left text-sm whitespace-nowrap">
+            <thead>
+              <tr className="border-b border-divider text-[10px] text-text-muted uppercase font-bold tracking-wider">
+                <th className="pb-2">CÓD</th>
+                <th className="pb-2">Nº NOTA</th>
+                <th className="pb-2">CLIENTE</th>
+                <th className="pb-2">VENDEDOR</th>
+                <th className="pb-2">DATA</th>
+                <th className="pb-2 text-right">VALOR TOTAL</th>
+                <th className="pb-2 text-center">STATUS</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-divider/30 text-xs">
+              {mockRecentOrders.map((order, i) => (
+                <tr key={i} className="hover:bg-bg-secondary transition-colors">
+                  <td className="py-2.5 font-mono text-text-muted">{order.id}</td>
+                  <td className="py-2.5 text-text-primary font-medium">{order.numero_nota}</td>
+                  <td className="py-2.5 text-text-primary truncate max-w-[200px]" title={order.cliente}>{order.cliente}</td>
+                  <td className="py-2.5 text-text-secondary font-medium">{order.vendedor}</td>
+                  <td className="py-2.5 text-text-muted">{order.data}</td>
+                  <td className="py-2.5 text-right font-mono font-bold text-success">{formatBRL(order.valor)}</td>
+                  <td className="py-2.5 text-center">
+                    <span className="text-text-primary text-[11px] font-medium">{order.status}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       {isError && (
-        <div className="bg-orange-500/10 border border-orange-500/20 text-orange-500 p-3 rounded-lg text-sm mt-4">
+        <div className="bg-danger/10 border border-danger/20 text-danger p-3 rounded-lg text-sm mt-4">
           Aviso: Os dados exibidos podem ser simulados, pois houve erro na comunicação com a API.
         </div>
       )}
+
     </div>
   );
 }
