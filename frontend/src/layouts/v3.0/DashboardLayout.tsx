@@ -4,7 +4,7 @@ import Sidebar from './Sidebar'
 import Header from './Header'
 
 const TITLES: Record<string, string> = {
-  '/': 'Início',
+  '/': 'Visão Estratégica',
   '/vendas': 'Vendas',
   '/financeiro': 'Fluxo de Caixa',
   '/comissoes': 'Vendas',

@@ -15,7 +15,7 @@ interface Props {
 }
 
 const MODULES = [
-  { to: '/',              label: 'Início',        icon: LayoutDashboard,  exact: true,  id: 'inicio' },
+  { to: '/',              label: 'Visão Estratégica',        icon: LayoutDashboard,  exact: true,  id: 'inicio' },
 ]
 
 const BI_MODULES = [
