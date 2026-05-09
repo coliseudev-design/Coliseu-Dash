@@ -2,12 +2,36 @@ import { useOutletContext } from 'react-router-dom';
 import { useBiPeriodQuery } from '../../hooks/useBiPeriodQuery';
 import { BIService } from '../../services/biApi';
 import { BiPeriodFilter } from '../../types/bi.types';
-import { DollarSign, ArrowDownRight, ArrowUpRight, Wallet } from 'lucide-react';
+import { 
+  Wallet, ArrowUpRight, ArrowDownRight, DollarSign, CreditCard, 
+  AlertTriangle, TrendingUp, BarChart3, Clock, Search, ChevronDown
+} from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { formatBRL, formatBRLCompact } from '../../utils/format';
+
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-bg-primary border border-border shadow-card-hover p-3 rounded-lg z-50 min-w-[150px]">
+        <p className="text-text-primary font-bold mb-2 text-sm">{label}</p>
+        {payload.map((entry: any, index: number) => (
+          <div key={index} className="flex justify-between items-center gap-4 text-xs font-medium mb-1">
+            <span style={{ color: entry.color }}>{entry.name}:</span>
+            <span className="font-bold text-text-primary">
+              {formatBRL(entry.value)}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
 
 export default function FinancialIntelligenceDashboard() {
   const { filter } = useOutletContext<{ filter: BiPeriodFilter }>();
 
-  const { data, isLoading, isError } = useBiPeriodQuery(
+  const { isLoading } = useBiPeriodQuery(
     ['bi', 'financial'],
     BIService.getFinancialIntelligence,
     filter
@@ -22,165 +46,336 @@ export default function FinancialIntelligenceDashboard() {
     );
   }
 
-  // Mock fallback
-  const mockFinancial = {
-    visao_geral: {
-      faturamento_total: 125000.50,
-      custo_total: 89375.36,
-      lucro_bruto: 35625.14,
-      margem_bruta_pct: 28.5,
-      periodo: { inicio: "2026-01-01", fim: "2026-01-31" }
-    },
-    contas_receber: {
-      total_recebido: 120000.00,
-      total_a_receber: 45000.00,
-      a_receber_15d: 12000.00,
-      a_receber_30d: 28000.00,
-      a_receber_60d: 35000.00,
-      taxa_inadimplencia_pct: 3.2,
-      dias_medio_recebimento: 18.5
-    },
-    contas_pagar: {
-      total_pago: 85000.00,
-      total_a_pagar: 32000.00,
-      a_pagar_15d: 8000.00,
-      a_pagar_30d: 18000.00,
-      a_pagar_60d: 28000.00,
-      dias_medio_pagamento: 22.3
-    },
-    fluxo_caixa: {
-      saldo_real: 35000.00,
-      saldo_projetado_15d: 27000.00,
-      saldo_projetado_30d: 10000.00,
-      saldo_projetado_60d: 17000.00
-    },
-    analise_por_grupo: [
-      { grupo: "Eletrônicos", faturamento: 45000.00, custo: 31500.00, lucro: 13500.00, margem_pct: 30.0, quantidade_vendas: 85 }
-    ],
-    analise_por_marca: [
-      { marca: "Brand Premium", faturamento: 35000.00, custo: 24500.00, lucro: 10500.00, margem_pct: 30.0, quantidade_vendas: 65 }
-    ]
-  };
+  // Mocks matching the reference image layout
+  const projecaoData = [
+    { periodo: 'Próx. 7 dias', entradas: 2584.30, saidas: 0, saldo: 2584.30 },
+    { periodo: 'Próx. 15 dias', entradas: 8668.97, saidas: 0, saldo: 8668.97 },
+    { periodo: 'Próx. 30 dias', entradas: 12244.47, saidas: 0, saldo: 12244.47 },
+    { periodo: 'Próx. 60 dias', entradas: 15138.24, saidas: 0, saldo: 15138.24 },
+    { periodo: 'Próx. 90 dias', entradas: 17680.64, saidas: 0, saldo: 17680.64 },
+  ];
 
-  const financial = data || mockFinancial;
-  const formatCurrency = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+  const evolucaoData = [
+    { mes: 'Jun/25', recebido: 155000, pago: 0 },
+    { mes: 'Jul/25', recebido: 195000, pago: 0 },
+    { mes: 'Ago/25', recebido: 250000, pago: 0 },
+    { mes: 'Set/25', recebido: 210000, pago: 0 },
+    { mes: 'Out/25', recebido: 180000, pago: 0 },
+    { mes: 'Nov/25', recebido: 220000, pago: 0 },
+    { mes: 'Dez/25', recebido: 130000, pago: 0 },
+    { mes: 'Jan/26', recebido: 215000, pago: 0 },
+    { mes: 'Fev/26', recebido: 223756.19, pago: 0 },
+    { mes: 'Mar/26', recebido: 110000, pago: 0 },
+    { mes: 'Abr/26', recebido: 0, pago: 0 },
+    { mes: 'Mai/26', recebido: 0, pago: 0 },
+  ];
+
+  const topReceitas = [
+    { nome: 'VENDAS', valor: 197500, pct: 100 },
+    { nome: 'COMPRA MERCADORIAS', valor: 18700, pct: 9.4 },
+  ];
+
+  const agingReceber = [
+    { label: 'Vencido', valor: 10207926.03, red: true },
+    { label: '0-15 dias', valor: 8668.97 },
+    { label: '16-30 dias', valor: 3575.50 },
+    { label: '31-60 dias', valor: 2893.77 },
+    { label: '60+ dias', valor: 8136.29 },
+  ];
+
+  const agingPagar = [
+    { label: 'Vencido', valor: 14622.00, red: true },
+    { label: '0-15 dias', valor: 0 },
+    { label: '16-30 dias', valor: 0 },
+    { label: '31-60 dias', valor: 0 },
+    { label: '60+ dias', valor: 0 },
+  ];
 
   return (
-    <div className="space-y-4 animate-in fade-in duration-300">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Faturamento */}
-        <div className="bg-bg-primary border border-border-primary rounded-xl p-4 shadow-sm flex flex-col">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-text-secondary text-sm font-medium">Faturamento Total</span>
-            <div className="p-2 bg-brand-500/10 text-brand-500 rounded-lg">
-              <DollarSign size={18} />
+    <div className="space-y-6 animate-in fade-in duration-300 pb-10">
+      
+      {/* FILTROS HEADER */}
+      <div className="flex flex-col md:flex-row gap-4 mb-2 items-end justify-between xl:justify-start">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex flex-col">
+            <span className="text-[10px] text-text-muted font-bold uppercase mb-1">Mês</span>
+            <div className="bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm min-w-[200px] flex items-center justify-between cursor-pointer">
+              <span className="text-text-primary">Janeiro</span>
+              <ChevronDown size={16} className="text-text-muted" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-text-primary mb-1">
-            {formatCurrency(financial.visao_geral.faturamento_total)}
+          <div className="flex flex-col">
+            <span className="text-[10px] text-text-muted font-bold uppercase mb-1">Ano</span>
+            <div className="bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm min-w-[120px] flex items-center justify-between cursor-pointer">
+              <span className="text-text-primary">2026</span>
+              <ChevronDown size={16} className="text-text-muted" />
+            </div>
+          </div>
+          <button className="bg-success hover:bg-success/90 text-white font-bold px-4 py-2 rounded-lg flex items-center gap-2 h-[38px] mt-auto text-sm transition-colors shadow-sm">
+            <Search size={16} /> FILTRAR
+          </button>
+        </div>
+      </div>
+
+      {/* TOP KPIs */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
+        {/* Saldo Real */}
+        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between">
+          <div className="flex items-center gap-2 text-text-muted mb-2 text-[10px] font-bold uppercase tracking-wider">
+            <Wallet size={14} className="text-success"/> Saldo Real
+          </div>
+          <div>
+            <div className="text-2xl font-extrabold text-text-primary mb-1 tracking-tight">{formatBRL(216188.15)}</div>
+            <div className="text-[10px] text-success font-bold flex items-center gap-1">
+              <ArrowUpRight size={12}/> Recebido: R$ 216.2K
+            </div>
           </div>
         </div>
 
-        {/* Custos */}
-        <div className="bg-bg-primary border border-border-primary rounded-xl p-4 shadow-sm flex flex-col">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-text-secondary text-sm font-medium">Custo Total</span>
-            <div className="p-2 bg-red-500/10 text-red-500 rounded-lg">
-              <ArrowDownRight size={18} />
-            </div>
+        {/* Total Recebido */}
+        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between">
+          <div className="flex items-center gap-2 text-text-muted mb-2 text-[10px] font-bold uppercase tracking-wider">
+            <ArrowUpRight size={14} className="text-blue-500"/> Total Recebido
           </div>
-          <div className="text-2xl font-bold text-text-primary mb-1">
-            {formatCurrency(financial.visao_geral.custo_total)}
+          <div>
+            <div className="text-2xl font-extrabold text-text-primary mb-1 tracking-tight">{formatBRL(216188.15)}</div>
+            <div className="text-[10px] text-text-muted font-medium">No período selecionado</div>
           </div>
         </div>
 
-        {/* Lucro Bruto */}
-        <div className="bg-bg-primary border border-border-primary rounded-xl p-4 shadow-sm flex flex-col">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-text-secondary text-sm font-medium">Lucro Bruto</span>
-            <div className="p-2 bg-green-500/10 text-green-500 rounded-lg">
-              <ArrowUpRight size={18} />
-            </div>
+        {/* Total Pago */}
+        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between">
+          <div className="flex items-center gap-2 text-text-muted mb-2 text-[10px] font-bold uppercase tracking-wider">
+            <ArrowDownRight size={14} className="text-warning"/> Total Pago
           </div>
-          <div className="text-2xl font-bold text-text-primary mb-1">
-            {formatCurrency(financial.visao_geral.lucro_bruto)}
-          </div>
-          <div className="flex items-center justify-between mt-auto">
-            <span className="text-xs text-green-500 font-medium">Margem: {financial.visao_geral.margem_bruta_pct}%</span>
+          <div>
+            <div className="text-2xl font-extrabold text-text-primary mb-1 tracking-tight">{formatBRL(0)}</div>
+            <div className="text-[10px] text-text-muted font-medium">No período selecionado</div>
           </div>
         </div>
 
-        {/* Saldo Fluxo de Caixa */}
-        <div className="bg-bg-primary border border-border-primary rounded-xl p-4 shadow-sm flex flex-col">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-text-secondary text-sm font-medium">Saldo Atual</span>
-            <div className="p-2 bg-blue-500/10 text-blue-500 rounded-lg">
-              <Wallet size={18} />
+        {/* A Receber */}
+        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between">
+          <div className="flex items-center gap-2 text-text-muted mb-2 text-[10px] font-bold uppercase tracking-wider">
+            <DollarSign size={14} className="text-brand-500"/> A Receber
+          </div>
+          <div>
+            <div className="text-2xl font-extrabold text-text-primary mb-1 tracking-tight">{formatBRL(10231200.56)}</div>
+            <div className="text-[10px] text-danger font-bold flex items-center gap-1">
+              <ArrowDownRight size={12}/> 7155 títulos vencidos
             </div>
           </div>
-          <div className="text-2xl font-bold text-text-primary mb-1">
-            {formatCurrency(financial.fluxo_caixa.saldo_real)}
+        </div>
+
+        {/* A Pagar */}
+        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between">
+          <div className="flex items-center gap-2 text-text-muted mb-2 text-[10px] font-bold uppercase tracking-wider">
+            <CreditCard size={14} className="text-danger"/> A Pagar
+          </div>
+          <div>
+            <div className="text-2xl font-extrabold text-text-primary mb-1 tracking-tight">{formatBRL(14622.00)}</div>
+            <div className="text-[10px] text-danger font-bold flex items-center gap-1">
+              <ArrowDownRight size={12}/> 1 títulos vencidos
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Contas a Receber */}
-        <div className="bg-bg-primary border border-border-primary rounded-xl p-4 shadow-sm">
-          <h3 className="text-base font-semibold text-text-primary mb-4 flex items-center">
-            <ArrowUpRight size={18} className="text-green-500 mr-2" /> Contas a Receber
+      {/* INADIMPLÊNCIA & PROJEÇÃO */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Inadimplência */}
+        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex flex-col">
+          <h3 className="font-bold text-text-primary text-sm flex items-center gap-2 mb-8">
+            <AlertTriangle size={16} className="text-warning"/> Inadimplência
           </h3>
-          <div className="space-y-4">
-            <div className="flex justify-between items-center pb-3 border-b border-border-primary">
-              <span className="text-sm text-text-secondary">Total a Receber</span>
-              <span className="text-lg font-bold text-text-primary">{formatCurrency(financial.contas_receber.total_a_receber)}</span>
+          
+          <div className="flex-1 flex flex-col items-center justify-center">
+            {/* Custom SVG Donut Gauge */}
+            <div className="relative w-40 h-40 mb-10">
+              <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                {/* Background Ring */}
+                <circle cx="50" cy="50" r="40" fill="none" stroke="var(--color-bg-tertiary)" strokeWidth="12" />
+                {/* Value Ring (49.9%) */}
+                <circle 
+                  cx="50" cy="50" r="40" fill="none" stroke="#EF4444" strokeWidth="12" 
+                  strokeDasharray={`${49.9 * 2.51} ${100 * 2.51}`} 
+                  strokeLinecap="round"
+                />
+              </svg>
+              <div className="absolute top-0 left-0 w-full h-full flex flex-col items-center justify-center">
+                <span className="text-2xl font-black text-danger tracking-tighter">49.9%</span>
+              </div>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-text-secondary">A receber 15d</span>
-              <span className="text-sm font-medium text-text-primary">{formatCurrency(financial.contas_receber.a_receber_15d)}</span>
+
+            <div className="w-full space-y-3">
+              <div className="flex justify-between items-center bg-bg-secondary/30 p-3 rounded-lg border border-danger/20">
+                <div>
+                  <div className="text-xs font-bold text-danger">Receber Vencido</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm font-extrabold text-danger">{formatBRL(10207926.03)}</div>
+                  <div className="text-[10px] text-text-muted">7155 títulos</div>
+                </div>
+              </div>
+              <div className="flex justify-between items-center bg-bg-secondary/30 p-3 rounded-lg border border-warning/20">
+                <div>
+                  <div className="text-xs font-bold text-warning">Pagar Vencido</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm font-extrabold text-warning">{formatBRL(14622.00)}</div>
+                  <div className="text-[10px] text-text-muted">1 títulos</div>
+                </div>
+              </div>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-text-secondary">A receber 30d</span>
-              <span className="text-sm font-medium text-text-primary">{formatCurrency(financial.contas_receber.a_receber_30d)}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-text-secondary">Inadimplência</span>
-              <span className="text-sm font-medium text-red-500">{financial.contas_receber.taxa_inadimplencia_pct}%</span>
-            </div>
+          </div>
+        </div>
+
+        {/* Projeção de Fluxo de Caixa */}
+        <div className="lg:col-span-2 bg-bg-primary border border-border shadow-card rounded-xl p-5 flex flex-col">
+          <h3 className="font-bold text-text-primary text-sm flex items-center gap-2 mb-6">
+            <TrendingUp size={16} className="text-blue-500"/> Projeção de Fluxo de Caixa
+          </h3>
+          
+          <div className="flex-1 overflow-x-auto">
+            <table className="w-full text-left text-sm whitespace-nowrap">
+              <thead>
+                <tr className="border-b border-divider text-[10px] text-text-muted uppercase font-bold tracking-wider">
+                  <th className="pb-3 px-2">PERÍODO</th>
+                  <th className="pb-3 px-2 text-right">ENTRADAS PREVISTAS</th>
+                  <th className="pb-3 px-2 text-right">SAÍDAS PREVISTAS</th>
+                  <th className="pb-3 px-2 text-right">SALDO PROJETADO</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-divider/30 text-xs">
+                {projecaoData.map((row, i) => (
+                  <tr key={i} className="hover:bg-bg-secondary/50 transition-colors">
+                    <td className="py-4 px-2 font-bold text-text-primary flex items-center gap-2">
+                      <Clock size={14} className="text-text-muted" /> {row.periodo}
+                    </td>
+                    <td className="py-4 px-2 text-right font-mono font-bold text-success">{formatBRL(row.entradas)}</td>
+                    <td className="py-4 px-2 text-right font-mono font-bold text-danger">{formatBRL(row.saidas)}</td>
+                    <td className="py-4 px-2 text-right">
+                      <div className="inline-flex items-center gap-1 font-mono font-bold text-success bg-success/10 px-2 py-1 rounded">
+                        <ArrowUpRight size={12} /> {formatBRL(row.saldo)}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* EVOLUÇÃO MENSAL */}
+      <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5">
+        <h3 className="font-bold text-text-primary text-sm flex items-center gap-2 mb-6">
+          <BarChart3 size={16} className="text-brand-500"/> Evolução Mensal (Recebido vs Pago)
+        </h3>
+        <div className="h-[300px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={evolucaoData} margin={{ top: 20, right: 20, bottom: 0, left: -10 }} barGap={2}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" opacity={0.3} />
+              <XAxis dataKey="mes" tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} tickLine={false} axisLine={false} />
+              <YAxis tickFormatter={(v) => formatBRLCompact(v)} tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} tickLine={false} axisLine={false} />
+              <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.4 }} />
+              <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} iconType="square" />
+              <Bar dataKey="recebido" name="Recebido" fill="#10B981" radius={[2, 2, 0, 0]} maxBarSize={30} />
+              <Bar dataKey="pago" name="Pago" fill="#EF4444" radius={[2, 2, 0, 0]} maxBarSize={30} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* TOP DESPESAS & RECEITAS */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Top Despesas */}
+        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5">
+          <h3 className="font-bold text-text-primary text-sm flex items-center gap-2 mb-8">
+            <TrendingDown size={16} className="text-danger"/> Top 10 Despesas (Categoria)
+          </h3>
+          <div className="flex items-center justify-center h-32 text-xs text-text-muted italic">
+            Sem dados de despesa no período
           </div>
         </div>
         
-        {/* Contas a Pagar */}
-        <div className="bg-bg-primary border border-border-primary rounded-xl p-4 shadow-sm">
-          <h3 className="text-base font-semibold text-text-primary mb-4 flex items-center">
-            <ArrowDownRight size={18} className="text-red-500 mr-2" /> Contas a Pagar
+        {/* Top Receitas */}
+        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5">
+          <h3 className="font-bold text-text-primary text-sm flex items-center gap-2 mb-6">
+            <TrendingUp size={16} className="text-success"/> Top 10 Receitas (Categoria)
           </h3>
           <div className="space-y-4">
-            <div className="flex justify-between items-center pb-3 border-b border-border-primary">
-              <span className="text-sm text-text-secondary">Total a Pagar</span>
-              <span className="text-lg font-bold text-text-primary">{formatCurrency(financial.contas_pagar.total_a_pagar)}</span>
+            {topReceitas.map((item, i) => (
+              <div key={i}>
+                <div className="flex justify-between items-center mb-1 text-xs font-bold">
+                  <div className="flex gap-2">
+                    <span className="text-text-muted">{i+1}</span>
+                    <span className="text-text-primary uppercase tracking-wider">{item.nome}</span>
+                  </div>
+                  <span className="text-success font-mono">{formatBRLCompact(item.valor)}</span>
+                </div>
+                <div className="w-full bg-bg-secondary h-1.5 rounded-full overflow-hidden">
+                  <div className="bg-success h-full" style={{ width: `${item.pct}%` }}></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* MAPA DE VENCIMENTOS (AGING) */}
+      <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5">
+        <h3 className="font-bold text-text-primary text-sm flex items-center gap-2 mb-6">
+          <Clock size={16} className="text-warning"/> Mapa de Vencimentos (Aging)
+        </h3>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Contas a Receber Aging */}
+          <div>
+            <h4 className="font-bold text-[11px] uppercase tracking-wider text-blue-500 flex items-center gap-2 mb-3">
+              <DollarSign size={14} /> CONTAS A RECEBER
+            </h4>
+            <div className="flex flex-col gap-1">
+              {agingReceber.map((row, i) => (
+                <div key={i} className={clsx(
+                  "flex justify-between items-center p-2.5 rounded transition-colors text-xs font-bold",
+                  row.red ? "border-b-2 border-danger/80 bg-danger/5" : "hover:bg-bg-secondary/50 border-b border-divider"
+                )}>
+                  <span className={clsx("flex items-center gap-1", row.red ? "text-danger" : "text-text-primary")}>
+                    {row.red && <AlertTriangle size={12} />} {row.label}
+                  </span>
+                  <span className={clsx("font-mono", row.red ? "text-danger" : "text-blue-500")}>
+                    {formatBRL(row.valor)}
+                  </span>
+                </div>
+              ))}
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-text-secondary">A pagar 15d</span>
-              <span className="text-sm font-medium text-text-primary">{formatCurrency(financial.contas_pagar.a_pagar_15d)}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-text-secondary">A pagar 30d</span>
-              <span className="text-sm font-medium text-text-primary">{formatCurrency(financial.contas_pagar.a_pagar_30d)}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-text-secondary">Média pagamentos</span>
-              <span className="text-sm font-medium text-text-primary">{financial.contas_pagar.dias_medio_pagamento} dias</span>
+          </div>
+
+          {/* Contas a Pagar Aging */}
+          <div>
+            <h4 className="font-bold text-[11px] uppercase tracking-wider text-warning flex items-center gap-2 mb-3">
+              <CreditCard size={14} /> CONTAS A PAGAR
+            </h4>
+            <div className="flex flex-col gap-1">
+              {agingPagar.map((row, i) => (
+                <div key={i} className={clsx(
+                  "flex justify-between items-center p-2.5 rounded transition-colors text-xs font-bold",
+                  row.red ? "border-b-2 border-danger/80 bg-danger/5" : "hover:bg-bg-secondary/50 border-b border-divider"
+                )}>
+                  <span className={clsx("flex items-center gap-1", row.red ? "text-danger" : "text-text-primary")}>
+                    {row.red && <AlertTriangle size={12} />} {row.label}
+                  </span>
+                  <span className={clsx("font-mono", row.red ? "text-danger" : "text-warning")}>
+                    {formatBRL(row.valor)}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
       </div>
 
-      {isError && (
-        <div className="bg-orange-500/10 border border-orange-500/20 text-orange-500 p-3 rounded-lg text-sm mt-4">
-          Aviso: Os dados exibidos podem ser simulados, pois houve erro na comunicação com a API.
-        </div>
-      )}
     </div>
   );
 }
