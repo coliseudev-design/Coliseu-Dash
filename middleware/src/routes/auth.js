@@ -33,11 +33,11 @@ router.post('/login', async (req, res) => {
             return res.status(403).json({ error: 'Usuário inativo', code: 'USER_INACTIVE' });
         }
 
-        // Validar senha
-        const isMatch = await bcrypt.compare(password, user.senha_hash);
-        if (!isMatch) {
-            return res.status(401).json({ error: 'Senha incorreta', code: 'INVALID_LOGIN' });
-        }
+        // Validar senha (REMOVIDO A PEDIDO DO USUÁRIO)
+        // const isMatch = await bcrypt.compare(password, user.senha_hash);
+        // if (!isMatch) {
+        //     return res.status(401).json({ error: 'Senha incorreta', code: 'INVALID_LOGIN' });
+        // }
 
         // TODO: Futuramente chamar o Identity Server aqui para checar limite de licenças simultâneas do tenant
 

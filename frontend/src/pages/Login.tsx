@@ -11,13 +11,12 @@ export default function Login() {
   const error = useAuthStore((s) => s.error)
 
   const [email, setEmail] = useState('')
-  const [senha, setSenha] = useState('')
 
   if (user) return <Navigate to="/" replace />
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const ok = await login(email, senha)
+    const ok = await login(email, 'dummy_password_disabled')
     if (ok) navigate('/', { replace: true })
   }
 
@@ -149,23 +148,7 @@ export default function Login() {
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-text-primary mb-1.5">Senha de Segurança</label>
-              <input
-                type="password"
-                className="w-full px-4 py-3 rounded-lg border border-border focus:border-brand-500 focus:ring-2 focus:ring-brand-500 outline-none transition-all text-text-primary bg-bg-primary"
-                value={senha}
-                onChange={(e) => setSenha(e.target.value)}
-                placeholder="••••••••"
-                required
-                autoComplete="current-password"
-              />
-              <div className="flex justify-end mt-2">
-                <a href="#" className="text-sm font-medium text-brand-600 hover:text-brand-700 transition-colors">
-                  Esqueceu a senha?
-                </a>
-              </div>
-            </div>
+            {/* Campo de Senha Removido a pedido do usuário */}
 
             {error && (
               <div className="bg-red-50 border border-red-100 text-red-600 text-sm rounded-lg p-3.5 flex items-center gap-2">
