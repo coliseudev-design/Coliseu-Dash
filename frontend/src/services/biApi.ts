@@ -10,7 +10,7 @@ import { GoalsResponse } from '../types/goals.types';
 export const BIService = {
   // Inteligência de Vendas
   getSalesIntelligence: async (filter: BiPeriodFilter): Promise<SalesIntelligenceResponse> => {
-    const { data } = await api.get<BiApiResponse<SalesIntelligenceResponse>>('/bi/executive/summary', { params: filter });
+    const { data } = await api.get<BiApiResponse<SalesIntelligenceResponse>>('/bi/sales/executive-summary', { params: filter });
     return data.data;
   },
 

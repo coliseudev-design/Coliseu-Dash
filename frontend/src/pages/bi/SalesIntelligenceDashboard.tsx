@@ -2,7 +2,7 @@ import { useOutletContext } from 'react-router-dom';
 import { useBiPeriodQuery } from '../../hooks/useBiPeriodQuery';
 import { BIService } from '../../services/biApi';
 import { BiPeriodFilter } from '../../types/bi.types';
-import { TrendingUp, TrendingDown, DollarSign, Box, Target, Trophy } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Box, Target, Trophy, Users } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Cell } from 'recharts';
 import { formatBRL, formatBRLCompact, formatNum } from '../../utils/format';
 import { CHART_COLORS } from '../../utils/chartColors';
