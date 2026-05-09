@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, ShoppingCart, Wallet,
-  Trophy, BarChart3, Users, X, LogOut, Shield,
+  Trophy, BarChart3, Users, X, LogOut, Shield, DollarSign,
   Truck, Map, BrainCircuit
 } from 'lucide-react'
 import clsx from 'clsx'
@@ -25,7 +25,7 @@ const BI_MODULES = [
   { to: '/bi/abc',        label: 'Gestão de Inventário', icon: Package,                        id: 'bi_abc' },
   { to: '/bi/finance',    label: 'Financeiro',    icon: Wallet,                         id: 'bi_finance' },
   { to: '/bi/customer',   label: 'Radar 360',     icon: Users,                          id: 'bi_customer' },
-  { to: '/bi/comparative',label: 'Comparativo',   icon: BarChart3,                      id: 'bi_comparative' },
+  { to: '/bi/comparative',label: 'Lucratividade',   icon: DollarSign,                     id: 'bi_comparative' },
   { to: '/bi/customer-analytics',label: 'Análise de Clientes', icon: Users,             id: 'bi_customer_analytics' },
   { to: '/bi/goals',      label: 'Análise de Metas',icon: Trophy,                       id: 'bi_goals' },
   { to: '/bi/heatmap',    label: 'Mapa de Calor', icon: Map,                            id: 'bi_heatmap' },
