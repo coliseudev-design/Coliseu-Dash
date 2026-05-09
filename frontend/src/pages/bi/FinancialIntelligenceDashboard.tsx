@@ -4,7 +4,7 @@ import { BIService } from '../../services/biApi';
 import { BiPeriodFilter } from '../../types/bi.types';
 import { 
   Wallet, ArrowUpRight, ArrowDownRight, DollarSign, CreditCard, 
-  AlertTriangle, TrendingUp, BarChart3, Clock, Search, ChevronDown
+  AlertTriangle, TrendingUp, TrendingDown, BarChart3, Clock, Search, ChevronDown
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { formatBRL, formatBRLCompact } from '../../utils/format';
