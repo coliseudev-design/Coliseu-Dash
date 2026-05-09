@@ -2,9 +2,9 @@ import { useQuery, UseQueryOptions } from '@tanstack/react-query'
 import api from '../services/api'
 import { usePeriodStore, periodToParams } from '../store/periodStore'
 
-export function useApiQuery<T = any>(
+export function useApiQuery<T = unknown>(
   endpoint: string,
-  params?: Record<string, any>,
+  params?: Record<string, unknown>,
   options?: Omit<UseQueryOptions<T>, 'queryKey' | 'queryFn'>,
 ) {
   return useQuery<T>({
@@ -18,7 +18,7 @@ export function useApiQuery<T = any>(
 }
 
 /** Usa periodo global da store para adicionar params automaticamente */
-export function usePeriodQuery<T = any>(endpoint: string, extra?: Record<string, any>) {
+export function usePeriodQuery<T = unknown>(endpoint: string, extra?: Record<string, unknown>) {
   const state = usePeriodStore()
   const params = { ...periodToParams(state), ...(extra || {}) }
   return useApiQuery<T>(endpoint, params)

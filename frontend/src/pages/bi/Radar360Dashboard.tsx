@@ -1,0 +1,223 @@
+import { useOutletContext } from 'react-router-dom';
+import { useBiPeriodQuery } from '../../hooks/useBiPeriodQuery';
+import { BIService } from '../../services/biApi';
+import { BiPeriodFilter } from '../../types/bi.types';
+import { User, ShieldAlert, ShoppingCart, Calendar, Heart, Search } from 'lucide-react';
+import { useState } from 'react';
+
+export default function Radar360Dashboard() {
+  const { filter } = useOutletContext<{ filter: BiPeriodFilter }>();
+  const [customerId, setCustomerId] = useState<number>(456); // Mock inicial para demonstração
+  const [searchInput, setSearchInput] = useState('');
+
+  const { data, isLoading, isError } = useBiPeriodQuery(
+    ['bi', 'radar360', customerId],
+    () => BIService.getRadar360(customerId, filter),
+    filter
+  );
+
+  const handleSearch = () => {
+    if (searchInput) {
+      setCustomerId(Number(searchInput));
+    }
+  };
+
+  // Mock fallback
+  const mockRadar = {
+    customer_dna: {
+      id: 456, nome: "Loja Premium ABC", cnpj: "12.345.678/0001-90",
+      cidade: "São Paulo", estado: "SP", telefone: "(11) 3456-7890", email: "contato@lojapremium.com.br",
+      data_cadastro: "2020-05-15", status: "ATIVO", tipo_cliente: "VAREJO", segmento: "PREMIUM"
+    },
+    customer_metrics: {
+      faturamento_total: 250000.00, faturamento_anual: 125000.00, quantidade_pedidos: 156,
+      ticket_medio: 1602.56, ultima_compra: "2026-01-18", dias_sem_comprar: 3,
+      frequencia_dias: 15.4, margem_media_pct: 27.8, risco_churn_pct: 5.2
+    },
+    customer_habits: {
+      produto_favorito: { id: 789, descricao: "Produto Premium XYZ", quantidade_comprada: 45, valor_total: 45000.00, margem_pct: 30.5 },
+      marca_favorita: { marca: "Brand Premium", quantidade_comprada: 78, valor_total: 78000.00, percentual_compras: 31.2 },
+      categoria_favorita: { categoria: "Eletrônicos", quantidade_comprada: 92, valor_total: 92000.00, percentual_compras: 36.8 },
+      melhor_dia_semana: "SEGUNDA", melhor_horario: "09:00-12:00",
+      sazonalidade: []
+    },
+    customer_orders_history: [
+      { id: 12345, numero_nota: "NF-001234", data_emissao: "2026-01-18", vendedor_nome: "João Silva", valor_total: 5420.50, quantidade_itens: 12, margem_pct: 28.5, status: "FATURADO" }
+    ],
+    risk_assessment: {
+      risco_churn_pct: 5.2, motivo_risco: "Frequência de compra reduzida em 40% nos últimos 3 meses", recomendacao: "Contato comercial urgente para reativação", score_saude: 8.5, status_saude: "SAUDÁVEL" as const
+    }
+  };
+
+  const radar = data || mockRadar;
+  const formatCurrency = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+
+  return (
+    <div className="space-y-4 animate-in fade-in duration-300">
+      {/* Busca de Cliente */}
+      <div className="bg-bg-primary border border-border-primary rounded-xl p-4 shadow-sm flex items-center justify-between">
+        <div>
+          <h3 className="text-base font-semibold text-text-primary">Visão 360 do Cliente</h3>
+          <p className="text-sm text-text-secondary">Pesquise um cliente para ver seu DNA e hábitos</p>
+        </div>
+        <div className="flex gap-2">
+          <input 
+            type="number" 
+            placeholder="ID do Cliente..." 
+            className="bg-bg-secondary border border-border-primary rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-1 focus:ring-brand-primary"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+          />
+          <button onClick={handleSearch} className="bg-brand-500 text-white p-2 rounded-lg hover:bg-brand-600 transition-colors">
+            <Search size={18} />
+          </button>
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center h-64 text-text-secondary">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-500 mr-3"></div>
+          Buscando DNA do Cliente...
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* DNA (Perfil Base) */}
+            <div className="bg-bg-primary border border-border-primary rounded-xl p-4 shadow-sm flex flex-col items-center text-center">
+              <div className="w-20 h-20 bg-brand-500/10 text-brand-500 rounded-full flex items-center justify-center mb-4">
+                <User size={40} />
+              </div>
+              <h2 className="text-xl font-bold text-text-primary">{radar.customer_dna.nome}</h2>
+              <p className="text-sm text-text-secondary mb-4">{radar.customer_dna.cnpj}</p>
+              
+              <div className="w-full space-y-2 text-sm text-left">
+                <div className="flex justify-between py-1 border-b border-border-primary">
+                  <span className="text-text-secondary">Localidade</span>
+                  <span className="font-medium text-text-primary">{radar.customer_dna.cidade}/{radar.customer_dna.estado}</span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-border-primary">
+                  <span className="text-text-secondary">Segmento</span>
+                  <span className="font-medium text-text-primary">{radar.customer_dna.segmento}</span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-border-primary">
+                  <span className="text-text-secondary">Desde</span>
+                  <span className="font-medium text-text-primary">{radar.customer_dna.data_cadastro}</span>
+                </div>
+                <div className="flex justify-between py-1">
+                  <span className="text-text-secondary">Status</span>
+                  <span className="font-medium text-green-500">{radar.customer_dna.status}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Métricas e Risco */}
+            <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-bg-primary border border-border-primary rounded-xl p-4 shadow-sm">
+                <h3 className="text-sm font-semibold text-text-secondary mb-4 flex items-center">
+                  <ShoppingCart size={16} className="mr-2" /> Visão Financeira
+                </h3>
+                <div className="text-3xl font-bold text-text-primary mb-1">{formatCurrency(radar.customer_metrics.faturamento_total)}</div>
+                <div className="text-sm text-text-secondary mb-4">Faturamento Vitalício</div>
+                
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="bg-bg-secondary p-2 rounded">
+                    <div className="text-text-secondary text-xs">Ticket Médio</div>
+                    <div className="font-semibold text-text-primary">{formatCurrency(radar.customer_metrics.ticket_medio)}</div>
+                  </div>
+                  <div className="bg-bg-secondary p-2 rounded">
+                    <div className="text-text-secondary text-xs">Pedidos</div>
+                    <div className="font-semibold text-text-primary">{radar.customer_metrics.quantidade_pedidos}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-bg-primary border border-border-primary rounded-xl p-4 shadow-sm flex flex-col">
+                <h3 className="text-sm font-semibold text-text-secondary mb-4 flex items-center">
+                  <ShieldAlert size={16} className="mr-2" /> Risco de Churn (Evasão)
+                </h3>
+                
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="text-3xl font-bold text-green-500">{radar.risk_assessment.risco_churn_pct}%</div>
+                  <div>
+                    <div className="text-sm font-semibold text-text-primary">Status: {radar.risk_assessment.status_saude}</div>
+                    <div className="text-xs text-text-secondary">Score Saúde: {radar.risk_assessment.score_saude}/10</div>
+                  </div>
+                </div>
+
+                <div className="bg-bg-secondary p-2 rounded mt-auto text-sm">
+                  <div className="text-text-secondary text-xs">Última Compra</div>
+                  <div className="font-semibold text-text-primary">{radar.customer_metrics.ultima_compra} ({radar.customer_metrics.dias_sem_comprar} dias atrás)</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Hábitos de Compra */}
+            <div className="bg-bg-primary border border-border-primary rounded-xl p-4 shadow-sm">
+              <h3 className="text-base font-semibold text-text-primary mb-4 flex items-center">
+                <Heart size={18} className="text-brand-500 mr-2" /> Hábitos de Compra
+              </h3>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center pb-3 border-b border-border-primary">
+                  <div>
+                    <span className="block text-xs text-text-secondary uppercase">Produto Favorito</span>
+                    <span className="font-medium text-text-primary">{radar.customer_habits.produto_favorito.descricao}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="block text-sm font-bold text-text-primary">{radar.customer_habits.produto_favorito.quantidade_comprada}x</span>
+                  </div>
+                </div>
+                <div className="flex justify-between items-center pb-3 border-b border-border-primary">
+                  <div>
+                    <span className="block text-xs text-text-secondary uppercase">Marca Favorita</span>
+                    <span className="font-medium text-text-primary">{radar.customer_habits.marca_favorita.marca}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="block text-sm font-bold text-text-primary">{radar.customer_habits.marca_favorita.percentual_compras}%</span>
+                  </div>
+                </div>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <span className="block text-xs text-text-secondary uppercase">Melhor Dia/Hora</span>
+                    <span className="font-medium text-text-primary">{radar.customer_habits.melhor_dia_semana} às {radar.customer_habits.melhor_horario}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Histórico Pedidos */}
+            <div className="bg-bg-primary border border-border-primary rounded-xl shadow-sm flex flex-col">
+              <div className="p-4 border-b border-border-primary flex items-center">
+                <Calendar size={18} className="text-brand-500 mr-2" />
+                <h3 className="text-base font-semibold text-text-primary">Histórico de Pedidos</h3>
+              </div>
+              <div className="p-4 flex-1 overflow-y-auto">
+                <div className="space-y-3">
+                  {radar.customer_orders_history.map(order => (
+                    <div key={order.id} className="flex justify-between items-center p-3 bg-bg-secondary/50 rounded-lg">
+                      <div>
+                        <div className="text-sm font-medium text-text-primary">{order.numero_nota}</div>
+                        <div className="text-xs text-text-secondary">{order.data_emissao} • {order.quantidade_itens} itens</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm font-bold text-text-primary">{formatCurrency(order.valor_total)}</div>
+                        <div className={`text-xs font-medium ${order.status === 'FATURADO' ? 'text-green-500' : 'text-yellow-500'}`}>{order.status}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {isError && !isLoading && (
+        <div className="bg-orange-500/10 border border-orange-500/20 text-orange-500 p-3 rounded-lg text-sm mt-4">
+          Aviso: Os dados exibidos podem ser simulados, pois houve erro na comunicação com a API.
+        </div>
+      )}
+    </div>
+  );
+}

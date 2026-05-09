@@ -12,11 +12,28 @@ import {
 import { formatBRL, formatBRLCompact, formatNum } from '../utils/format'
 import { CHART_COLORS, CHART_PALETTE } from '../utils/chartColors'
 
+interface VendasKPIs {
+  kpis: {
+    total_faturado: number;
+    qtd_pedidos: number;
+    ticket_medio: number;
+  }
+}
+
+interface TopVendedor {
+  vendedor: string;
+  total_vendas: number;
+}
+
+interface Categoria {
+  nome: string;
+  total: number;
+}
+
 export default function Vendas() {
-  const kpis = usePeriodQuery<any>('/vendas/kpis')
-  const ranking = usePeriodQuery<any>('/comissoes/ranking')
-  const estatisticas = usePeriodQuery<any>('/estatisticas/kpis')
-  const categoriasReq = usePeriodQuery<any>('/ranking/categorias', { limit: 10 })
+  const kpis = usePeriodQuery<VendasKPIs>('/vendas/kpis')
+  const ranking = usePeriodQuery<{ data: TopVendedor[] }>('/comissoes/ranking')
+  const categoriasReq = usePeriodQuery<{ data: Categoria[] }>('/ranking/categorias', { limit: 10 })
 
   const topVendedores = ranking.data?.data || []
   const categorias = categoriasReq.data?.data || []
@@ -69,11 +86,11 @@ export default function Vendas() {
                 />
                 <YAxis tick={{ fontSize: 11, fill: '#6B7280' }} tickFormatter={formatBRLCompact} />
                 <Tooltip
-                  formatter={(v: any) => formatBRL(v)}
+                  formatter={(v: number) => formatBRL(v)}
                   contentStyle={{ fontSize: 12, borderRadius: 8 }}
                 />
                 <Bar dataKey="total_vendas" fill={CHART_COLORS.primary} radius={[6, 6, 0, 0]} name="Valor Faturado">
-                  {topVendedores.map((_: any, i: number) => (
+                  {topVendedores.map((_, i) => (
                     <Cell key={i} fill={CHART_PALETTE[i % CHART_PALETTE.length]} />
                   ))}
                 </Bar>
@@ -101,12 +118,12 @@ export default function Vendas() {
                   outerRadius="80%"
                   innerRadius="50%" /* Formato Donut/Rosca */
                 >
-                  {categorias.map((_: any, i: number) => (
+                  {categorias.map((_, i) => (
                     <Cell key={i} fill={CHART_PALETTE[(i + 3) % CHART_PALETTE.length]} />
                   ))}
                 </Pie>
                 <Tooltip 
-                  formatter={(v: any) => formatBRL(v)} 
+                  formatter={(v: number) => formatBRL(v)} 
                   contentStyle={{ fontSize: 12, borderRadius: 8 }} 
                 />
                 <Legend wrapperStyle={{ fontSize: 11 }} />

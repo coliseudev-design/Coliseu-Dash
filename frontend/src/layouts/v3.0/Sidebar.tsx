@@ -1,7 +1,8 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, ShoppingCart, Wallet,
-  Trophy, BarChart3, Users, X, LogOut, Shield
+  Trophy, BarChart3, Users, X, LogOut, Shield,
+  Truck, Map, BrainCircuit
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useAuthStore } from '../../store/authStore'
@@ -15,12 +16,20 @@ interface Props {
 
 const MODULES = [
   { to: '/',              label: 'Início',        icon: LayoutDashboard,  exact: true,  id: 'inicio' },
-  { to: '/comissoes',     label: 'Vendedores',    icon: Users,                          id: 'vendedores' },
-  { to: '/fluxo-caixa',   label: 'Fluxo de Caixa',icon: Wallet,                         id: 'fluxo_caixa' },
-  { to: '/financeiro',    label: 'Financeiro',    icon: BarChart3,                      id: 'financeiro' },
-  { to: '/estoque',       label: 'Estoque',       icon: Package,                        id: 'estoque' },
-  { to: '/ranking',       label: 'Ranking',       icon: Trophy,                         id: 'ranking' },
-  { to: '/estatisticas',  label: 'Estatísticas',  icon: BarChart3,                      id: 'estatisticas' }
+]
+
+const BI_MODULES = [
+  { to: '/bi',            label: 'Sales Intel',   icon: BarChart3,        exact: true,  id: 'bi_sales' },
+  { to: '/bi/hub',        label: 'Sales Hub',     icon: ShoppingCart,                   id: 'bi_hub' },
+  { to: '/bi/abc',        label: 'Análise ABC',   icon: Package,                        id: 'bi_abc' },
+  { to: '/bi/finance',    label: 'Financeiro',    icon: Wallet,                         id: 'bi_finance' },
+  { to: '/bi/customer',   label: 'Radar 360',     icon: Users,                          id: 'bi_customer' },
+  { to: '/bi/comparative',label: 'Comparativo',   icon: BarChart3,                      id: 'bi_comparative' },
+  { to: '/bi/customer-analytics',label: 'Análise de Clientes', icon: Users,             id: 'bi_customer_analytics' },
+  { to: '/bi/goals',      label: 'Análise de Metas',icon: Trophy,                       id: 'bi_goals' },
+  { to: '/bi/supplier',   label: 'Fornecedores',  icon: Truck,                          id: 'bi_supplier' },
+  { to: '/bi/heatmap',    label: 'Mapa de Calor', icon: Map,                            id: 'bi_heatmap' },
+  { to: '/bi/ai-insights',label: 'Coliseu AI',    icon: BrainCircuit,                   id: 'bi_ai_insights' },
 ]
 
 const CONFIG_MODULES = [
@@ -39,6 +48,7 @@ export default function Sidebar({ open, onClose }: Props) {
   }
 
   const allowedModules = MODULES.filter((m) => hasAccess(m.id))
+  const allowedBiModules = BI_MODULES.filter((m) => hasAccess(m.id))
   const allowedConfigModules = CONFIG_MODULES.filter((m) => hasAccess(m.id))
 
   return (
@@ -100,6 +110,33 @@ export default function Sidebar({ open, onClose }: Props) {
               </NavLink>
             ))}
           </div>
+
+          {allowedBiModules.length > 0 && (
+            <div className="flex-1 mt-4">
+              <div className="px-3 mb-2 text-xs font-semibold text-text-secondary uppercase tracking-wider">
+                Business Intelligence
+              </div>
+              {allowedBiModules.map(({ to, label, icon: Icon, exact }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  end={exact}
+                  onClick={onClose}
+                  className={({ isActive }) =>
+                    clsx(
+                      'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors mb-1',
+                      isActive
+                        ? 'bg-brand-500/10 text-brand-500'
+                        : 'text-text-secondary hover:bg-bg-secondary hover:text-text-primary',
+                    )
+                  }
+                >
+                  <Icon size={18} className="flex-shrink-0" />
+                  <span className="truncate">{label}</span>
+                </NavLink>
+              ))}
+            </div>
+          )}
 
           {allowedConfigModules.length > 0 && (
             <div className="mt-auto pt-4 border-t border-divider">

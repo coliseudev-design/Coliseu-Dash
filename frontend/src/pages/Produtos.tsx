@@ -5,15 +5,46 @@ import DataTable from '../components/DataTable'
 import { Package, DollarSign, AlertCircle, TrendingUp, TrendingDown, Search } from 'lucide-react'
 import { formatBRL, formatBRLCompact, formatNum } from '../utils/format'
 
+interface ProdutoKPIs {
+  kpis: {
+    total_produtos: number;
+    valor_total_estoque: number;
+    baixo_estoque: number;
+    produto_mais_caro: string;
+    produto_mais_barato: string;
+  }
+}
+
+interface Categoria {
+  categoria: string;
+  qtd: number;
+}
+
+interface ProdutoItem {
+  codigo: string;
+  nome: string;
+  categoria: string;
+  estoque: number;
+  estoque_minimo: number;
+  preco: number;
+  custo: number;
+  valor_total_estoque: number;
+}
+
+interface ProdutosList {
+  total: number;
+  data: ProdutoItem[];
+}
+
 export default function Produtos() {
   const [search, setSearch] = useState('')
   const [categoria, setCategoria] = useState('')
-  const kpis = useApiQuery<any>('/produtos/kpis')
-  const cats = useApiQuery<any>('/produtos/categorias')
-  const lista = useApiQuery<any>(
+  const kpis = useApiQuery<ProdutoKPIs>('/produtos/kpis')
+  const cats = useApiQuery<{ data: Categoria[] }>('/produtos/categorias')
+  const lista = useApiQuery<ProdutosList>(
     '/produtos/lista',
     { search, categoria: categoria || undefined, limit: 200 },
-    { placeholderData: (prev: any) => prev },
+    { placeholderData: (prev) => prev },
   )
 
   const k = kpis.data?.kpis
@@ -76,7 +107,7 @@ export default function Produtos() {
           onChange={(e) => setCategoria(e.target.value)}
         >
           <option value="">Todas categorias</option>
-          {(cats.data?.data || []).map((c: any) => (
+          {(cats.data?.data || []).map((c) => (
             <option key={c.categoria} value={c.categoria}>
               {c.categoria} ({c.qtd})
             </option>
@@ -92,19 +123,19 @@ export default function Produtos() {
         data={lista.data?.data || []}
         empty="Nenhum produto encontrado"
         columns={[
-          { key: 'codigo', label: 'Código', render: (r: any) => <span className="mono text-xs text-text-secondary">{r.codigo}</span> },
+          { key: 'codigo', label: 'Código', render: (r: ProdutoItem) => <span className="mono text-xs text-text-secondary">{r.codigo}</span> },
           { key: 'nome', label: 'Nome' },
-          { key: 'categoria', label: 'Categoria', render: (r: any) => <span className="badge-info">{r.categoria}</span> },
+          { key: 'categoria', label: 'Categoria', render: (r: ProdutoItem) => <span className="badge-info">{r.categoria}</span> },
           { key: 'estoque', label: 'Estoque', align: 'right',
-            render: (r: any) => (
+            render: (r: ProdutoItem) => (
               <span className={r.estoque <= r.estoque_minimo ? 'text-danger font-semibold' : ''}>
                 {formatNum(r.estoque)}
               </span>
             ) },
-          { key: 'preco', label: 'Preço', align: 'right', render: (r: any) => formatBRL(r.preco) },
-          { key: 'custo', label: 'Custo', align: 'right', render: (r: any) => <span className="text-text-secondary">{formatBRL(r.custo)}</span> },
+          { key: 'preco', label: 'Preço', align: 'right', render: (r: ProdutoItem) => formatBRL(r.preco) },
+          { key: 'custo', label: 'Custo', align: 'right', render: (r: ProdutoItem) => <span className="text-text-secondary">{formatBRL(r.custo)}</span> },
           { key: 'valor_total_estoque', label: 'Total Estoque', align: 'right',
-            render: (r: any) => <span className="font-semibold">{formatBRL(r.valor_total_estoque)}</span> },
+            render: (r: ProdutoItem) => <span className="font-semibold">{formatBRL(r.valor_total_estoque)}</span> },
         ]}
       />
     </div>

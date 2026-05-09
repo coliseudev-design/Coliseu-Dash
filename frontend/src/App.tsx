@@ -20,6 +20,20 @@ import Estoque from './pages/Estoque'
 import Vendas from './pages/Vendas'
 import Usuarios from './pages/Usuarios'
 
+// BI Modules
+import BiDashboard from './pages/bi/BiDashboard'
+import SalesIntelligenceDashboard from './pages/bi/SalesIntelligenceDashboard'
+import SalesHubDashboard from './pages/bi/SalesHubDashboard'
+import ABCAnalysisDashboard from './pages/bi/ABCAnalysisDashboard'
+import FinancialIntelligenceDashboard from './pages/bi/FinancialIntelligenceDashboard'
+import Radar360Dashboard from './pages/bi/Radar360Dashboard'
+import ComparativeAnalysisDashboard from './pages/bi/ComparativeAnalysisDashboard'
+import CustomerAnalyticsDashboard from './pages/bi/CustomerAnalyticsDashboard'
+import GoalsPerformanceDashboard from './pages/bi/GoalsPerformanceDashboard'
+import SupplierAnalyticsDashboard from './pages/bi/SupplierAnalyticsDashboard'
+import HeatmapDashboard from './pages/bi/HeatmapDashboard'
+import AIInsightsDashboard from './pages/bi/AIInsightsDashboard'
+
 function Protected({ children }: { children: JSX.Element }) {
   const user = useAuthStore((s) => s.user)
   if (!user) return <Navigate to="/login" replace />
@@ -68,6 +82,23 @@ export default function App() {
         <Route path="clientes" element={<Clientes />} />
         <Route path="vendas" element={<Vendas />} />
         <Route path="usuarios" element={<Usuarios />} />
+        
+        {/* Novas Rotas de BI */}
+        <Route path="bi" element={<BiDashboard />}>
+          <Route index element={<SalesIntelligenceDashboard />} />
+          <Route path="sales" element={<SalesIntelligenceDashboard />} />
+          <Route path="hub" element={<SalesHubDashboard />} />
+          <Route path="abc" element={<ABCAnalysisDashboard />} />
+          <Route path="finance" element={<FinancialIntelligenceDashboard />} />
+          <Route path="customer" element={<Radar360Dashboard />} />
+          <Route path="comparative" element={<ComparativeAnalysisDashboard />} />
+          <Route path="customer-analytics" element={<CustomerAnalyticsDashboard />} />
+          <Route path="goals" element={<GoalsPerformanceDashboard />} />
+          <Route path="supplier" element={<SupplierAnalyticsDashboard />} />
+          <Route path="heatmap" element={<HeatmapDashboard />} />
+          <Route path="ai-insights" element={<AIInsightsDashboard />} />
+          {/* Adicionaremos as sub-rotas nas Fases futuras */}
+        </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

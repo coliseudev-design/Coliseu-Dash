@@ -6,13 +6,38 @@ import PeriodFilter from '../components/PeriodFilter'
 import { Users, UserCheck, Award, Receipt, Search } from 'lucide-react'
 import { formatBRL, formatBRLCompact, formatDate, formatNum } from '../utils/format'
 
+interface ClienteKPIs {
+  kpis: {
+    total_clientes: number;
+    clientes_ativos: number;
+    top_cliente: string;
+    top_cliente_valor: number;
+    ticket_medio_por_cliente: number;
+  }
+}
+
+interface ClienteItem {
+  nome: string;
+  documento: string;
+  cidade: string;
+  estado: string;
+  qtd_pedidos: number;
+  total_gasto: number;
+  ultimo_pedido: string;
+}
+
+interface ClientesList {
+  total: number;
+  data: ClienteItem[];
+}
+
 export default function Clientes() {
   const [search, setSearch] = useState('')
-  const kpis = usePeriodQuery<any>('/clientes/kpis')
-  const lista = useApiQuery<any>(
+  const kpis = usePeriodQuery<ClienteKPIs>('/clientes/kpis')
+  const lista = useApiQuery<ClientesList>(
     '/clientes/lista',
     { search, limit: 200 },
-    { placeholderData: (prev: any) => prev },
+    { placeholderData: (prev) => prev },
   )
 
   const k = kpis.data?.kpis
@@ -75,12 +100,12 @@ export default function Clientes() {
         empty="Nenhum cliente encontrado"
         columns={[
           { key: 'nome', label: 'Nome' },
-          { key: 'documento', label: 'Documento', render: (r: any) => <span className="mono text-xs">{r.documento || '—'}</span> },
-          { key: 'cidade', label: 'Cidade', render: (r: any) => r.cidade ? `${r.cidade}/${r.estado}` : '—' },
-          { key: 'qtd_pedidos', label: 'Pedidos', align: 'right', render: (r: any) => formatNum(r.qtd_pedidos) },
+          { key: 'documento', label: 'Documento', render: (r: ClienteItem) => <span className="mono text-xs">{r.documento || '—'}</span> },
+          { key: 'cidade', label: 'Cidade', render: (r: ClienteItem) => r.cidade ? `${r.cidade}/${r.estado}` : '—' },
+          { key: 'qtd_pedidos', label: 'Pedidos', align: 'right', render: (r: ClienteItem) => formatNum(r.qtd_pedidos) },
           { key: 'total_gasto', label: 'Total Gasto', align: 'right',
-            render: (r: any) => <span className="font-semibold">{formatBRL(r.total_gasto)}</span> },
-          { key: 'ultimo_pedido', label: 'Último Pedido', render: (r: any) => formatDate(r.ultimo_pedido) },
+            render: (r: ClienteItem) => <span className="font-semibold">{formatBRL(r.total_gasto)}</span> },
+          { key: 'ultimo_pedido', label: 'Último Pedido', render: (r: ClienteItem) => formatDate(r.ultimo_pedido) },
         ]}
       />
     </div>

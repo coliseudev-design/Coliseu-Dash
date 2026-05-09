@@ -56,8 +56,11 @@ export const useAuthStore = create<AuthState>((set) => ({
       
       set({ user, token, loading: false })
       return true
-    } catch (e: any) {
-      const msg = e?.response?.data?.error || e?.response?.data?.message || 'Email ou senha incorretos, ou módulo não contratado'
+    } catch (e: unknown) {
+      let msg = 'Email ou senha incorretos, ou módulo não contratado'
+      if (axios.isAxiosError(e) && e.response?.data) {
+        msg = e.response.data.error || e.response.data.message || msg
+      }
       set({ error: msg, loading: false })
       return false
     }
@@ -68,8 +71,11 @@ export const useAuthStore = create<AuthState>((set) => ({
       await api.post('/auth/register', { nome, email, password: senha, companyKey })
       // Se sucesso no cadastro, faz o login logo em seguida
       return await useAuthStore.getState().login(email, senha)
-    } catch (e: any) {
-      const msg = e?.response?.data?.error || e?.response?.data?.message || 'Erro ao cadastrar'
+    } catch (e: unknown) {
+      let msg = 'Erro ao cadastrar'
+      if (axios.isAxiosError(e) && e.response?.data) {
+        msg = e.response.data.error || e.response.data.message || msg
+      }
       set({ error: msg, loading: false })
       return false
     }
