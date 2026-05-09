@@ -13,6 +13,7 @@ import FluxoCaixa from './pages/Financeiro' // Usaremos a mesma página por enqu
 import Comissoes from './pages/Comissoes'
 import Ranking from './pages/Ranking'
 import Estatisticas from './pages/Estatisticas'
+import InteligenciaDashboard from './pages/inteligencia/InteligenciaDashboard'
 import Produtos from './pages/Produtos'
 import Clientes from './pages/Clientes'
 import Estoque from './pages/Estoque'
@@ -62,6 +63,7 @@ export default function App() {
         <Route path="comissoes" element={<Comissoes />} />
         <Route path="ranking" element={<Ranking />} />
         <Route path="estatisticas" element={<Estatisticas />} />
+        <Route path="inteligencia" element={<InteligenciaDashboard />} />
         <Route path="produtos" element={<Produtos />} />
         <Route path="clientes" element={<Clientes />} />
         <Route path="vendas" element={<Vendas />} />

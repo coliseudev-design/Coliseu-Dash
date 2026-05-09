@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, ShoppingCart, Wallet,
-  Trophy, BarChart3, Users, X, LogOut, Shield
+  Trophy, BarChart3, Users, X, LogOut, Shield, Brain
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useAuthStore } from '../../store/authStore'
@@ -19,8 +19,7 @@ const MODULES = [
   { to: '/fluxo-caixa',   label: 'Fluxo de Caixa',icon: Wallet,                         id: 'fluxo_caixa' },
   { to: '/financeiro',    label: 'Financeiro',    icon: BarChart3,                      id: 'financeiro' },
   { to: '/estoque',       label: 'Estoque',       icon: Package,                        id: 'estoque' },
-  { to: '/ranking',       label: 'Ranking',       icon: Trophy,                         id: 'ranking' },
-  { to: '/estatisticas',  label: 'Estatísticas',  icon: BarChart3,                      id: 'estatisticas' }
+  { to: '/inteligencia',  label: 'Inteligência',  icon: Brain,                          id: 'inteligencia' }
 ]
 
 const CONFIG_MODULES = [
