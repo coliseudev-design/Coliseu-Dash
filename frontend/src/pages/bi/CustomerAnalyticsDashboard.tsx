@@ -95,7 +95,7 @@ export default function CustomerAnalyticsDashboard() {
             {analytics.customer_overview.clientes_inativos}
           </div>
           <div className="flex items-center justify-between mt-auto">
-            <span className="text-xs text-text-secondary">Sem comprar há >90 dias</span>
+            <span className="text-xs text-text-secondary">Sem comprar há &gt;90 dias</span>
           </div>
         </div>
 
