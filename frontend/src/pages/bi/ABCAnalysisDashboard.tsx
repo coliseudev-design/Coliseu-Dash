@@ -50,41 +50,20 @@ export default function InventoryManagementDashboard() {
 
   // Mocks explicitly matching the layout
   const barChartData = [
-    { name: 'N/D', estoque: 670331015.95, giro: '0x' }
-  ];
-
-  const distGrupo = [
-    { name: 'OUTROS', value: 100 },
-    { name: 'DIVERSOS', value: 45 },
-    { name: 'FECHADURAS', value: 15 },
-    { name: 'PUXADORES E KITS', value: 10 },
-    { name: 'CONSUMO', value: 8 },
-    { name: 'PVC', value: 8 },
-    { name: 'ABERTURAS DE ALUM...', value: 7 },
-    { name: 'TUBOS E CONEXOES', value: 6 },
-    { name: 'AMOSTRAS', value: 5 },
-    { name: 'TINTAS E ACESS.', value: 4 }
-  ];
-
-  const distMarca = [
-    { name: 'DIVERSAS', value: 100 },
-    { name: 'LOPES', value: 30 },
-    { name: 'NEGRAO', value: 25 },
-    { name: 'PLASBIL', value: 24, active: true },
-    { name: 'MGM', value: 20 },
-    { name: 'MECARI', value: 15 },
-    { name: 'UNIÃO MUNDIAL', value: 14 },
-    { name: 'ROCHA DISTRIBUIDORA', value: 12 },
-    { name: 'EUCATEX', value: 10 },
-    { name: 'STAM', value: 8 }
-  ];
-
-  const tableData = [
-    { cod: '0', desc: 'COMPENSADO NAVAL 18MM 2.20 X 1.60', emb: 'UN', marca: 'DIVERSAS', grupo: 'OUTROS', abc: 'C', status: 'Sem Giro', estoque: 0.00, custo: 0.00, preco: 0.00, dias: 0, alert: true },
-    { cod: '1', desc: 'FECHADURA STAM INOX EXTERNA', emb: 'CX', marca: 'STAM', grupo: 'FECHADURAS', abc: 'A', status: 'Ideal', estoque: 45.00, custo: 25.50, preco: 45.90, dias: 30, alert: false },
-    { cod: '2', desc: 'FORRO PVC BRANCO 8MM', emb: 'M2', marca: 'PLASBIL', grupo: 'PVC', abc: 'A', status: 'Atenção', estoque: 150.00, custo: 12.00, preco: 22.00, dias: 15, alert: false },
-    { cod: '3', desc: 'PUXADOR CONCHA INOX', emb: 'UN', marca: 'UNIÃO MUNDIAL', grupo: 'PUXADORES E KITS', abc: 'B', status: 'Crítico', estoque: 5.00, custo: 8.50, preco: 18.90, dias: 45, alert: false }
-  ];
+  const barChartData = data?.barChartData || [];
+  const distGrupo = data?.distGrupo || [];
+  const distMarca = data?.distMarca || [];
+  const tableData = data?.tableData || [];
+  const kpis = data?.kpis || {
+    valor_estoque_custo: 0,
+    valor_estoque_venda: 0,
+    total_volume: 0,
+    skus_com_saldo: 0,
+    ruptura_pct: 0,
+    curva_a_count: 0,
+    curva_b_count: 0,
+    curva_c_count: 0
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300 pb-10">
@@ -121,32 +100,20 @@ export default function InventoryManagementDashboard() {
           <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">
             <div className="p-1.5 bg-success/10 rounded-lg"><DollarSign size={14} className="text-success" /></div> VALOR EM ESTOQUE (CUSTO)
           </div>
-          <div className="text-2xl font-extrabold text-text-primary mt-2">{formatBRL(670331015.95)}</div>
+          <div className="text-2xl font-extrabold text-text-primary mt-2">{formatBRL(kpis.valor_estoque_custo)}</div>
         </div>
 
         <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between hover:border-blue-500/50 transition-colors">
           <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">
             <div className="p-1.5 bg-blue-500/10 rounded-lg"><DollarSign size={14} className="text-blue-500" /></div> VALOR EM ESTOQUE (VENDA)
           </div>
-          <div className="text-2xl font-extrabold text-text-primary mt-2">{formatBRL(670331015.95)}</div>
+          <div className="text-2xl font-extrabold text-text-primary mt-2">{formatBRL(kpis.valor_estoque_venda)}</div>
         </div>
 
         <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between">
           <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">
             <div className="p-1.5 bg-blue-400/10 rounded-lg"><Box size={14} className="text-blue-400" /></div> TOTAL ITENS (VOLUME)
           </div>
-          <div className="text-2xl font-extrabold text-text-primary mt-2">150.752.691</div>
-          <div className="text-[10px] text-text-muted mt-1">2493 SKUs com saldo</div>
-        </div>
-
-        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between">
-          <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">
-            <div className="p-1.5 bg-teal-500/10 rounded-lg"><BarChart2 size={14} className="text-teal-500" /></div> COBERTURA MÉDIA
-          </div>
-          <div className="text-2xl font-extrabold text-text-primary mt-2">-</div>
-          <div className="text-[10px] text-text-muted mt-1">Dias de cobertura atual</div>
-        </div>
-
         <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between">
           <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">
             <div className="p-1.5 bg-purple-500/10 rounded-lg"><RefreshCcw size={14} className="text-purple-500" /></div> GIRO (TURNOVER)

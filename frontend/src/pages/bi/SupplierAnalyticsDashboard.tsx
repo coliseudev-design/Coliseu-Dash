@@ -57,11 +57,14 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 export default function SupplierAnalyticsDashboard() {
   const { filter } = useOutletContext<{ filter: BiPeriodFilter }>();
   const [activeTab, setActiveTab] = useState('Visão Geral de Vendas');
+  const [selectedBrand, setSelectedBrand] = useState('VHM TRACTOR'); // Default initial brand
 
-  const { isLoading } = useBiPeriodQuery(
-    ['bi', 'supplier'],
-    BIService.getSupplierAnalytics,
-    filter
+  const supplierFilter = { ...filter, marca: selectedBrand };
+
+  const { data, isLoading } = useBiPeriodQuery(
+    ['bi', 'supplier', selectedBrand],
+    () => BIService.getSupplierAnalytics(supplierFilter),
+    supplierFilter
   );
 
   if (isLoading) {
@@ -73,29 +76,13 @@ export default function SupplierAnalyticsDashboard() {
     );
   }
 
-  // Mocks explicitly matching the requested layout image
-  const performanceMensal = [
-    { mes: 'Mar / 2026', vendas: 1170.00, cresc_vendas: -78.5, qtde: 2, cresc_qtde: -80.0 },
-    { mes: 'Fev / 2026', vendas: 5438.50, cresc_vendas: -73.2, qtde: 5, cresc_qtde: -66.7 },
-    { mes: 'Jan / 2026', vendas: 20317.10, cresc_vendas: 168.6, qtde: 15, cresc_qtde: 66.7 },
-    { mes: 'Dez / 2025', vendas: 7563.10, cresc_vendas: 47.6, qtde: 9, cresc_qtde: 0.0 },
-    { mes: 'Nov / 2025', vendas: 5125.50, cresc_vendas: 119.5, qtde: 9, cresc_qtde: 350.0 },
-    { mes: 'Out / 2025', vendas: 2335.00, cresc_vendas: null, qtde: 2, cresc_qtde: null },
-  ];
-
-  const chartData = [
-    { mes: '05/2025', valor: 2000, qtde: 2, margem: 15 },
-    { mes: '06/2025', valor: 32000, qtde: 18, margem: 45 },
-    { mes: '07/2025', valor: 15000, qtde: 12, margem: 50 },
-    { mes: '08/2025', valor: 12000, qtde: 8, margem: 52 },
-    { mes: '09/2025', valor: 6000, qtde: 4, margem: 48 },
-    { mes: '10/2025', valor: 4000, qtde: 3, margem: 20 },
-    { mes: '11/2025', valor: 5125, qtde: 9, margem: 18 },
-    { mes: '12/2025', valor: 7563, qtde: 9, margem: 30 },
-    { mes: '01/2026', valor: 20317, qtde: 15, margem: 58 },
-    { mes: '02/2026', valor: 5438, qtde: 5, margem: 62 },
-    { mes: '03/2026', valor: 1170, qtde: 2, margem: 10 },
-  ];
+  const performanceMensal = data?.monthly_performance || [];
+  const chartData = data?.monthly_performance || [];
+  const overview = data?.overview || { receita: 0, custo: 0, pedidos: 0, clientes: 0 };
+  const topProducts = data?.top_products || [];
+  const availableBrands = data?.available_brands || ['VHM TRACTOR'];
+  const margem = overview.receita > 0 ? ((overview.receita - overview.custo) / overview.receita) * 100 : 0;
+  const ticketMedio = overview.pedidos > 0 ? overview.receita / overview.pedidos : 0;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300 pb-10">
@@ -109,19 +96,19 @@ export default function SupplierAnalyticsDashboard() {
           </h2>
           <p className="text-sm text-text-secondary mt-1">Análise de performance, rentabilidade e argumentos de negociação.</p>
           <div className="flex items-center gap-4 mt-3 text-xs font-semibold text-text-muted">
-             <div className="flex items-center gap-1"><span className="text-brand-500">📅</span> Período Analisado: <span className="text-brand-500">Últimos 12 Meses</span></div>
-             <div className="flex items-center gap-1"><span className="text-brand-500">🏢</span> Marca: <span className="text-brand-500">4AM COMPENSADOS LTDA</span></div>
+             <div className="flex items-center gap-1"><span className="text-brand-500">🏢</span> Marca Analisada: <span className="text-brand-500">{selectedBrand}</span></div>
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <div className="bg-bg-primary border border-border rounded-lg px-3 py-2 flex items-center gap-2 min-w-[200px]">
-             <span className="text-sm text-text-primary flex-1 truncate">4AM COMPENSADOS LTDA</span>
-             <ChevronDown size={14} className="text-text-muted" />
-          </div>
-          <div className="bg-bg-primary border border-border rounded-lg px-3 py-2 flex items-center gap-2">
-             <span className="text-sm text-text-primary">Últimos 12 Meses</span>
-             <ChevronDown size={14} className="text-text-muted" />
-          </div>
+          <select 
+            className="bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary outline-none focus:border-brand-500 max-w-[250px]"
+            value={selectedBrand}
+            onChange={(e) => setSelectedBrand(e.target.value)}
+          >
+            {availableBrands.map(b => (
+              <option key={b} value={b}>{b}</option>
+            ))}
+          </select>
           <button className="bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 transition-colors">
             <Search size={16} /> Analisar
           </button>
@@ -220,8 +207,8 @@ export default function SupplierAnalyticsDashboard() {
             <DollarSign size={14} className="text-success" /> Receita Total
           </div>
           <div>
-            <div className="text-xl font-extrabold text-text-primary mb-1">{formatBRL(94744.50)}</div>
-            <div className="flex items-center gap-1 text-[10px] text-success font-bold"><TrendingUp size={12}/> 32.9% <span className="font-medium text-text-muted">vs período anterior</span></div>
+            <div className="text-xl font-extrabold text-text-primary mb-1">{formatBRL(overview.receita)}</div>
+            <div className="flex items-center gap-1 text-[10px] text-text-muted font-bold">Baseado nas vendas da marca</div>
           </div>
         </div>
         <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between hover:border-danger/50 transition-colors">
@@ -229,7 +216,7 @@ export default function SupplierAnalyticsDashboard() {
             <DollarSign size={14} className="text-danger" /> Custo
           </div>
           <div>
-            <div className="text-xl font-extrabold text-text-primary mb-1">{formatBRL(42326.50)}</div>
+            <div className="text-xl font-extrabold text-text-primary mb-1">{formatBRL(overview.custo)}</div>
             <div className="text-[10px] text-text-muted">Custo das vendas</div>
           </div>
         </div>
@@ -238,7 +225,7 @@ export default function SupplierAnalyticsDashboard() {
             <Target size={14} className="text-brand-500" /> Margem
           </div>
           <div>
-            <div className="text-xl font-extrabold text-text-primary mb-1">55,3%</div>
+            <div className="text-xl font-extrabold text-text-primary mb-1">{margem.toFixed(1)}%</div>
             <div className="text-[10px] text-text-muted">Rentabilidade bruta</div>
           </div>
         </div>
@@ -247,7 +234,7 @@ export default function SupplierAnalyticsDashboard() {
             <Box size={14} className="text-warning" /> Volume de Pedidos
           </div>
           <div>
-            <div className="text-xl font-extrabold text-text-primary mb-1">48</div>
+            <div className="text-xl font-extrabold text-text-primary mb-1">{overview.pedidos}</div>
             <div className="text-[10px] text-text-muted">Pedidos no período</div>
           </div>
         </div>
@@ -256,7 +243,7 @@ export default function SupplierAnalyticsDashboard() {
             <ShoppingCart size={14} className="text-purple-500" /> Ticket Médio
           </div>
           <div>
-            <div className="text-xl font-extrabold text-text-primary mb-1">{formatBRL(1973.84)}</div>
+            <div className="text-xl font-extrabold text-text-primary mb-1">{formatBRL(ticketMedio)}</div>
             <div className="text-[10px] text-text-muted">Valor médio por pedido</div>
           </div>
         </div>
@@ -294,7 +281,7 @@ export default function SupplierAnalyticsDashboard() {
             <Box size={14} className="text-text-secondary" /> SKUs Vendidos
           </div>
           <div>
-            <div className="text-xl font-extrabold text-text-primary mb-1">2</div>
+            <div className="text-xl font-extrabold text-text-primary mb-1">{topProducts.length}</div>
             <div className="text-[10px] text-text-muted">Produtos distintos</div>
           </div>
         </div>
@@ -303,7 +290,7 @@ export default function SupplierAnalyticsDashboard() {
             <Building2 size={14} className="text-purple-500" /> Clientes Ativos
           </div>
           <div>
-            <div className="text-xl font-extrabold text-text-primary mb-1">40</div>
+            <div className="text-xl font-extrabold text-text-primary mb-1">{overview.clientes}</div>
             <div className="text-[10px] text-text-muted">Compraram no período</div>
           </div>
         </div>
@@ -315,46 +302,44 @@ export default function SupplierAnalyticsDashboard() {
           <Award size={18} className="text-warning" /> Top 3 Produtos em Vendas
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* 1st Place */}
-          <div className="bg-bg-primary border border-warning/30 shadow-card rounded-xl p-5 relative overflow-hidden group hover:border-warning transition-colors">
-             <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                <Award size={64} className="text-warning" />
-             </div>
-             <div className="flex items-center gap-2 mb-3">
-               <div className="w-6 h-6 rounded-full bg-warning flex items-center justify-center text-white text-xs font-bold">1</div>
-               <span className="text-xs font-bold text-warning uppercase tracking-wider">1º Lugar</span>
-             </div>
-             <div className="text-sm font-bold text-text-primary mb-6 pr-8 truncate" title="COMP NAVAL 18MM 7,10 X 2,50 M">COMP NAVAL 18MM 7,10 X 2,50 M</div>
-             <div className="flex justify-between items-end border-t border-divider/50 pt-4 mt-auto">
-                <div>
-                   <div className="text-[10px] text-text-muted uppercase font-bold tracking-wider mb-1">Volume</div>
-                   <div className="text-sm font-bold text-text-primary">59 un.</div>
-                </div>
-                <div className="text-right">
-                   <div className="text-[10px] text-text-muted uppercase font-bold tracking-wider mb-1">Receita</div>
-                   <div className="text-lg font-extrabold text-success">{formatBRL(74234.50)}</div>
-                </div>
-             </div>
-          </div>
+          {topProducts.slice(0, 3).map((prod, index) => {
+             const isFirst = index === 0;
+             const isSecond = index === 1;
+             const isThird = index === 2;
+             
+             let colors = {
+                 border: isFirst ? 'border-warning/30' : isSecond ? 'border-text-secondary/30' : 'border-[#b08d57]/30',
+                 hover: isFirst ? 'hover:border-warning' : isSecond ? 'hover:border-text-secondary' : 'hover:border-[#b08d57]',
+                 bg: isFirst ? 'bg-warning' : isSecond ? 'bg-text-secondary' : 'bg-[#b08d57]',
+                 text: isFirst ? 'text-warning' : isSecond ? 'text-text-secondary' : 'text-[#b08d57]',
+                 label: isFirst ? '1º Lugar' : isSecond ? '2º Lugar' : '3º Lugar'
+             };
 
-          {/* 2nd Place */}
-          <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 relative overflow-hidden group hover:border-text-secondary transition-colors">
-             <div className="flex items-center gap-2 mb-3">
-               <div className="w-6 h-6 rounded-full bg-text-secondary flex items-center justify-center text-white text-xs font-bold">2</div>
-               <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">2º Lugar</span>
-             </div>
-             <div className="text-sm font-bold text-text-primary mb-6 pr-8 truncate" title="COMP NAVAL 18MM 8,00 X 2,50 M">COMP NAVAL 18MM 8,00 X 2,50 M</div>
-             <div className="flex justify-between items-end border-t border-divider/50 pt-4 mt-auto">
-                <div>
-                   <div className="text-[10px] text-text-muted uppercase font-bold tracking-wider mb-1">Volume</div>
-                   <div className="text-sm font-bold text-text-primary">15 un.</div>
-                </div>
-                <div className="text-right">
-                   <div className="text-[10px] text-text-muted uppercase font-bold tracking-wider mb-1">Receita</div>
-                   <div className="text-lg font-extrabold text-text-primary">{formatBRL(20510.00)}</div>
-                </div>
-             </div>
-          </div>
+             return (
+               <div key={index} className={`bg-bg-primary border ${colors.border} shadow-card rounded-xl p-5 relative overflow-hidden group ${colors.hover} transition-colors`}>
+                  {isFirst && (
+                    <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                       <Award size={64} className="text-warning" />
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className={`w-6 h-6 rounded-full ${colors.bg} flex items-center justify-center text-white text-xs font-bold`}>{index + 1}</div>
+                    <span className={`text-xs font-bold ${colors.text} uppercase tracking-wider`}>{colors.label}</span>
+                  </div>
+                  <div className="text-sm font-bold text-text-primary mb-6 pr-8 truncate" title={prod.name}>{prod.name}</div>
+                  <div className="flex justify-between items-end border-t border-divider/50 pt-4 mt-auto">
+                     <div>
+                        <div className="text-[10px] text-text-muted uppercase font-bold tracking-wider mb-1">Volume</div>
+                        <div className="text-sm font-bold text-text-primary">{prod.volume} un.</div>
+                     </div>
+                     <div className="text-right">
+                        <div className="text-[10px] text-text-muted uppercase font-bold tracking-wider mb-1">Receita</div>
+                        <div className={`text-lg font-extrabold ${isFirst ? 'text-success' : 'text-text-primary'}`}>{formatBRL(prod.receita)}</div>
+                     </div>
+                  </div>
+               </div>
+             );
+          })}
         </div>
       </div>
 

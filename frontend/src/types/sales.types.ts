@@ -28,8 +28,27 @@ export interface CommercialKpis {
 }
 
 export interface SalesIntelligenceResponse {
-  executive_summary: ExecutiveSummaryData;
-  commercial_kpis: CommercialKpis;
+  executive_summary: {
+    faturamento: number;
+    faturamento_anterior: number;
+    crescimento_pct: number;
+    quantidade_pedidos: number;
+    quantidade_pedidos_anterior: number;
+    crescimento_pedidos_pct: number;
+    ticket_medio: number;
+    ticket_medio_anterior: number;
+    crescimento_ticket_pct: number;
+    margem_bruta_pct?: number;
+    clientes_ativos?: number;
+    vendedores_ativos?: number;
+  };
+  commercial_kpis?: CommercialKpis;
+  top_sellers: Array<{ rank: number; name: string; vendas: number; margin?: number }>;
+  top_products: Array<{ rank: number; name: string; vendas: number; margin?: number }>;
+  top_brands: Array<{ rank: number; name: string; vendas: number; margin?: number }>;
+  top_regions: Array<{ rank: number; name: string; vendas: number; margin?: number }>;
+  top_categories: Array<{ rank: number; name: string; vendas: number; margin?: number }>;
+  revenue_trajectory: Array<{ date: string; value: number }>;
 }
 
 export interface OrderItem {
