@@ -48,38 +48,47 @@ const ComparisonBadge = ({ pct }: { pct: number }) => {
 }
 
 // Gauge Chart Component using PieChart
-const GaugeChart = ({ value }: { value: number }) => {
+const GaugeChart = ({ realizado, meta }: { realizado: number, meta: number }) => {
+  const atingimento = meta > 0 ? (realizado / meta) * 100 : 0;
+  const value = Math.min(atingimento, 100);
   const data = [
     { name: 'Atingido', value: value, color: CHART_COLORS.primary },
     { name: 'Restante', value: 100 - value, color: 'var(--color-bg-tertiary)' }
   ];
   
   return (
-    <div className="relative h-40 w-full flex items-center justify-center">
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
-          <Pie
-            data={data}
-            cx="50%"
-            cy="100%"
-            startAngle={180}
-            endAngle={0}
-            innerRadius={60}
-            outerRadius={80}
-            paddingAngle={0}
-            dataKey="value"
-            stroke="none"
-            cornerRadius={4}
-          >
-            {data.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={entry.color} />
-            ))}
-          </Pie>
-        </PieChart>
-      </ResponsiveContainer>
-      <div className="absolute inset-0 flex flex-col items-center justify-end pb-2">
-        <span className="text-3xl font-extrabold text-text-primary tracking-tight">{value.toFixed(1)}%</span>
-        <span className="text-[10px] text-text-secondary uppercase font-bold tracking-widest mt-1">Atingimento</span>
+    <div className="w-full flex flex-col items-center">
+      <div className="relative h-32 w-full mt-2">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={data}
+              cx="50%"
+              cy="100%"
+              startAngle={180}
+              endAngle={0}
+              innerRadius={60}
+              outerRadius={80}
+              paddingAngle={0}
+              dataKey="value"
+              stroke="none"
+              cornerRadius={4}
+            >
+              {data.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={entry.color} />
+              ))}
+            </Pie>
+          </PieChart>
+        </ResponsiveContainer>
+        <div className="absolute inset-0 flex flex-col items-center justify-end pb-1">
+          <span className="text-3xl font-extrabold text-text-primary tracking-tight">{atingimento.toFixed(1)}%</span>
+        </div>
+      </div>
+      <div className="text-center mt-3">
+        <div className="text-[10px] text-text-secondary uppercase font-bold tracking-widest">Realizado vs Meta</div>
+        <div className="text-xs font-semibold text-text-primary mt-0.5">
+          {formatBRLCompact(realizado)} / <span className="text-text-muted">{formatBRLCompact(meta)}</span>
+        </div>
       </div>
     </div>
   );
@@ -97,16 +106,22 @@ export default function VisaoEstrategicaV3() {
   const faturamentoAtual = ov.data?.mes?.total || 240116.50;
   const faturamentoCrescimento = ((faturamentoAtual - mockFaturamentoAnterior) / mockFaturamentoAnterior) * 100;
 
-  const mockMonthlyData = [
-    { month: 'Jan/25', total: 156000 },
-    { month: 'Fev/25', total: 142000 },
-    { month: 'Mar/25', total: 180000 },
-    { month: 'Abr/25', total: 175000 },
-    { month: 'Mai/25', total: 198000 },
-    { month: 'Jun/25', total: 210000 },
-    { month: 'Jul/25', total: 223838 },
-    { month: 'Ago/25', total: faturamentoAtual },
-  ];
+  // Calculate mock meta if not provided by API
+  const metaFaturamento = ov.data?.meta_total || (faturamentoAtual > 0 ? faturamentoAtual * 1.2 : 100000);
+
+  // Use real data from fatMes (which is daily data for the period)
+  const faturamentoPeriodoData = fatMes.data?.data && fatMes.data.data.length > 0 
+    ? fatMes.data.data 
+    : [
+        { data: '01/08', total: 15600 },
+        { data: '02/08', total: 14200 },
+        { data: '03/08', total: 18000 },
+        { data: '04/08', total: 17500 },
+        { data: '05/08', total: 19800 },
+        { data: '06/08', total: 21000 },
+        { data: '07/08', total: 22383 },
+        { data: '08/08', total: 18000 },
+      ];
 
   const mockTopSellers = [
     { name: 'FABIOLA', value: 89600 },
@@ -156,8 +171,8 @@ export default function VisaoEstrategicaV3() {
 
         {/* Gauge Meta */}
         <div className="bg-bg-primary rounded-xl p-5 border border-border shadow-card flex flex-col justify-center items-center">
-          <span className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2">Atingimento de Meta</span>
-          <GaugeChart value={78.5} />
+          <span className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-0">Atingimento de Meta</span>
+          <GaugeChart realizado={faturamentoAtual} meta={metaFaturamento} />
         </div>
 
         {/* Faturamento Anterior */}
@@ -215,18 +230,18 @@ export default function VisaoEstrategicaV3() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 bg-bg-primary border border-border shadow-card rounded-xl p-5">
           <div className="flex justify-between items-center mb-6">
-            <h3 className="font-bold text-text-primary text-sm uppercase tracking-wider">Faturamento Mensal (Últimos 8 Meses)</h3>
+            <h3 className="font-bold text-text-primary text-sm uppercase tracking-wider">Faturamento Diário no Período</h3>
           </div>
           <div className="h-[280px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={mockMonthlyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <BarChart data={faturamentoPeriodoData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" opacity={0.5} />
-                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }} />
+                <XAxis dataKey="data" axisLine={false} tickLine={false} tickFormatter={(v) => String(v).slice(0, 5)} tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }} />
                 <YAxis axisLine={false} tickLine={false} tickFormatter={(v) => formatBRLCompact(v)} tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }} />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.4 }} />
                 <Bar dataKey="total" radius={[4, 4, 0, 0]} maxBarSize={40}>
-                  {mockMonthlyData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={barColors[index % barColors.length]} />
+                  {faturamentoPeriodoData.map((entry: any, index: number) => (
+                    <Cell key={`cell-${index}`} fill={CHART_COLORS.primary} />
                   ))}
                 </Bar>
               </BarChart>
@@ -280,13 +295,21 @@ export default function VisaoEstrategicaV3() {
           </div>
           <div className="h-[220px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={mockTopBrands} layout="vertical" margin={{ top: 0, right: 30, left: 20, bottom: 0 }}>
+              <BarChart data={mockTopBrands} layout="vertical" margin={{ top: 0, right: 30, left: 10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--color-border)" opacity={0.5} />
                 <XAxis type="number" hide />
-                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--color-text-primary)', fontWeight: 600 }} width={80} />
+                <YAxis 
+                  dataKey="name" 
+                  type="category" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tickFormatter={(v) => String(v).length > 12 ? String(v).substring(0, 12) + '...' : v}
+                  tick={{ fontSize: 11, fill: 'var(--color-text-primary)', fontWeight: 600 }} 
+                  width={100} 
+                />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.4 }} />
                 <Bar dataKey="value" fill={CHART_COLORS.secondary} radius={[0, 4, 4, 0]} barSize={20}>
-                  {mockTopBrands.map((entry, index) => (
+                  {mockTopBrands.map((entry: any, index: number) => (
                     <Cell key={`cell-${index}`} fill={barColors[(index + 5) % barColors.length]} />
                   ))}
                 </Bar>

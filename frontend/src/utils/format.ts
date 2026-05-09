@@ -16,7 +16,13 @@ export const formatBRL = (v: unknown) => {
 export const formatBRLCompact = (v: unknown) => {
   const n = Number(v ?? 0)
   if (!Number.isFinite(n)) return 'R$ 0'
-  return BRL.format(n)
+  return new Intl.NumberFormat('pt-BR', { 
+    notation: "compact", 
+    compactDisplay: "short", 
+    style: 'currency', 
+    currency: 'BRL',
+    maximumFractionDigits: 1
+  }).format(n)
 }
 
 export const formatNum = (v: unknown) => NUM.format(Number(v ?? 0))
