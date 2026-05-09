@@ -153,45 +153,7 @@ export default function Usuarios() {
     }
   }
 
-  if (!isUnlocked) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] animate-fade-in">
-        <div className="bg-bg-primary rounded-2xl shadow-sm border border-border p-8 w-full max-w-md flex flex-col items-center">
-          <div className="w-16 h-16 bg-brand-50 rounded-2xl flex items-center justify-center mb-6">
-            <Lock className="w-8 h-8 text-brand-500" />
-          </div>
-          <h2 className="text-xl font-semibold text-text-primary mb-2 text-center">Área Restrita</h2>
-          <p className="text-sm text-text-secondary mb-6 text-center">
-            Digite a senha master do sistema para acessar as configurações e gestão de usuários.
-          </p>
-
-          <form onSubmit={handleUnlock} className="w-full space-y-4">
-            {adminPassError && (
-              <div className="p-3 rounded-lg bg-red-50 text-red-600 text-sm font-medium border border-red-100 text-center">
-                {adminPassError}
-              </div>
-            )}
-            <div>
-              <input
-                type="password"
-                placeholder="Senha Master"
-                required
-                className="w-full px-4 py-3 border border-border rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-shadow outline-none bg-bg-primary text-text-primary text-center tracking-widest"
-                value={adminPassInput}
-                onChange={(e) => setAdminPassInput(e.target.value)}
-              />
-            </div>
-            <button
-              type="submit"
-              className="w-full py-3 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-semibold transition-colors flex items-center justify-center gap-2"
-            >
-              Desbloquear
-            </button>
-          </form>
-        </div>
-      </div>
-    )
-  }
+  // Removeram a tela de senha a pedido do usuário
 
   return (
     <div className="space-y-6 sm:space-y-8 animate-fade-in">
