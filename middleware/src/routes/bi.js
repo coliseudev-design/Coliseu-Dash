@@ -209,8 +209,12 @@ router.get('/sales/commercial-kpis', async (req, res, next) => {
         const { start, end } = getBiDateRange(req);
 
         // Produtos vendidos
+        // Produtos vendidos e Faturamento Total
         const { rows: p } = await db.query(`
-            SELECT COALESCE(SUM(vi.quantidade), 0) AS qtd
+            SELECT 
+                COALESCE(SUM(vi.quantidade), 0) AS qtd,
+                COUNT(DISTINCT v.id_firebird) as pedidos,
+                COALESCE(SUM(v.valor_total), 0) as faturamento_total
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
             WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
@@ -248,9 +252,16 @@ router.get('/sales/commercial-kpis', async (req, res, next) => {
             };
         });
 
+        const totalPedidos = parseInt(p[0].pedidos || 0);
+        const totalFaturamento = parseFloat(p[0].faturamento_total || 0);
+        const ticketMedio = totalPedidos > 0 ? totalFaturamento / totalPedidos : 0;
+
         res.json({
             produtos_vendidos: parseFloat(p[0].qtd),
             descontos_concedidos: parseFloat(d[0].descontos),
+            faturamento_total: totalFaturamento,
+            ticket_medio: ticketMedio,
+            total_pedidos: totalPedidos,
             meta_atingida_pct: 0, // Placeholder para futuras métricas
             projecao_fechamento: 0,
             top_sellers

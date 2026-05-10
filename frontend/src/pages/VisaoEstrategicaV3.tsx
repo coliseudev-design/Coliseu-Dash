@@ -106,11 +106,11 @@ export default function VisaoEstrategicaV3() {
   const marcas = usePeriodQuery<any>('/ranking/marcas')
 
   const period = usePeriodStore((s) => s.period)
-  const faturamentoAtual = ov.data?.mes?.total || 240116.50;
+  const faturamentoAtual = ov.data?.mes?.total || 0;
 
   // Mock data dynamic config
-  let mockFaturamentoAnterior = 223838.93;
-  let metaFaturamento = ov.data?.meta_total || 280000;
+  let mockFaturamentoAnterior = 0;
+  let metaFaturamento = ov.data?.meta_total || 0;
 
   if (period === 'today' || period === 'yesterday') {
     mockFaturamentoAnterior = 9500.50;
@@ -147,11 +147,11 @@ export default function VisaoEstrategicaV3() {
         { data: 'Ago', total: 240116 },
       ];
 
-  const mockTopSellers = vd.data?.data?.map((s: any) => ({ name: s.vendedor, value: s.total_vendas })) || [];
+  const mockTopSellers = vd.data?.data?.map((s: any) => ({ name: s.nome || s.vendedor, value: s.total || s.total_vendas })) || [];
 
-  const mockTopBrands = marcas.data?.data?.map((m: any) => ({ name: m.nome, value: m.total })) || [];
+  const mockTopBrands = marcas.data?.data?.map((m: any) => ({ name: m.nome || m.marca, value: m.total })) || [];
 
-  const mockTopProducts = prod.data?.data?.map((p: any) => ({ name: p.nome, value: p.total })) || [];
+  const mockTopProducts = prod.data?.data?.map((p: any) => ({ name: p.nome || p.produto, value: p.total })) || [];
 
   const mockTopCities = [
     { name: 'DOURADOS - MS', value: 103432.05 },
@@ -328,13 +328,13 @@ export default function VisaoEstrategicaV3() {
         <div className="lg:col-span-1 bg-bg-primary border border-border shadow-card rounded-xl p-5 flex flex-col justify-center space-y-4">
           <div className="p-4 bg-bg-secondary rounded-xl border border-divider h-full flex flex-col justify-center">
             <div className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2">Vendedor Destaque</div>
-            <div className="text-brand-500 font-extrabold text-lg mb-1">FABIOLA</div>
-            <div className="text-2xl font-extrabold text-text-primary mb-2">{formatBRL(89600.75)}</div>
+            <div className="text-brand-500 font-extrabold text-lg mb-1">{mockTopSellers.length > 0 ? mockTopSellers[0].name : '-'}</div>
+            <div className="text-2xl font-extrabold text-text-primary mb-2">{formatBRL(mockTopSellers.length > 0 ? mockTopSellers[0].value : 0)}</div>
             <div className="text-sm text-text-secondary">
-              Participação: <span className="font-bold text-text-primary">35.8%</span>
+              Participação: <span className="font-bold text-text-primary">{faturamentoAtual > 0 && mockTopSellers.length > 0 ? ((mockTopSellers[0].value / faturamentoAtual) * 100).toFixed(1) : 0}%</span>
             </div>
             <div className="text-sm text-text-secondary mt-1">
-              Ticket Médio: <span className="font-bold text-text-primary">R$ 1.542,00</span>
+              Ticket Médio: <span className="font-bold text-text-primary">-</span>
             </div>
           </div>
         </div>
@@ -373,17 +373,17 @@ export default function VisaoEstrategicaV3() {
         <div className="lg:col-span-1 flex flex-col gap-4">
           <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex-1 flex flex-col justify-center">
             <div className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2">Maior Venda (Lucro)</div>
-            <div className="text-brand-500 font-extrabold text-sm mb-1 truncate">AR COMPRESSOR ETAA ME</div>
-            <div className="text-xl font-extrabold text-text-primary">{formatBRL(20590.70)}</div>
-            <div className="text-xs text-text-muted mt-1">Margem: 42.5%</div>
+            <div className="text-brand-500 font-extrabold text-sm mb-1 truncate">{mockTopBrands.length > 0 ? mockTopBrands[0].name : '-'}</div>
+            <div className="text-xl font-extrabold text-text-primary">{formatBRL(mockTopBrands.length > 0 ? mockTopBrands[0].value : 0)}</div>
+            <div className="text-xs text-text-muted mt-1">Margem: -</div>
           </div>
           <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex-1 flex flex-col justify-center">
             <div className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2">Análise de Mercado</div>
             <div className="text-sm font-medium text-text-primary leading-snug">
-              A marca TVH COMPRESSORES teve um pico de vendas no momento em 15% comparado ao mês passado.
+              A marca {mockTopBrands.length > 0 ? mockTopBrands[0].name : '-'} teve o maior volume de vendas.
             </div>
             <div className="text-[10px] text-text-muted mt-2">
-              Os dados indicam que o setor florestal e mineração alavancaram esses pedidos.
+              Destaque do período atual.
             </div>
           </div>
         </div>
@@ -422,17 +422,17 @@ export default function VisaoEstrategicaV3() {
         <div className="lg:col-span-1 flex flex-col gap-4">
           <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex-1 flex flex-col justify-center">
             <div className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2">Produto Destaque</div>
-            <div className="text-warning font-extrabold text-sm mb-1 truncate">COMP NAVAL 10MM X 3,50 M</div>
-            <div className="text-xl font-extrabold text-text-primary">{formatBRL(15106.10)}</div>
+            <div className="text-warning font-extrabold text-sm mb-1 truncate">{mockTopProducts.length > 0 ? mockTopProducts[0].name : '-'}</div>
+            <div className="text-xl font-extrabold text-text-primary">{formatBRL(mockTopProducts.length > 0 ? mockTopProducts[0].value : 0)}</div>
             <div className="text-xs text-text-muted mt-1">Giro: Alto</div>
           </div>
           <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex-1 flex flex-col justify-center">
             <div className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2">Performance de Venda</div>
             <div className="text-sm font-medium text-text-primary leading-snug">
-              O item COMP NAVAL 10MM teve saída constante nestes últimos dias, com um ticket médio de R$ 3,5.
+              O item {mockTopProducts.length > 0 ? mockTopProducts[0].name : '-'} teve saída constante nestes últimos dias.
             </div>
             <div className="text-[10px] text-text-muted mt-2">
-              A demanda se mantem alta, sendo um item chave ABC A.
+              A demanda se mantém alta.
             </div>
           </div>
         </div>
@@ -517,17 +517,17 @@ export default function VisaoEstrategicaV3() {
         <div className="lg:col-span-1 flex flex-col gap-4">
           <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex-1 flex flex-col justify-center">
             <div className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2">Cliente Destaque</div>
-            <div className="text-danger font-extrabold text-sm mb-1 truncate">AO CONSUMIDOR</div>
-            <div className="text-xl font-extrabold text-text-primary">{formatBRL(45281.41)}</div>
+            <div className="text-danger font-extrabold text-sm mb-1 truncate">{mockTopClients.length > 0 ? mockTopClients[0].name : '-'}</div>
+            <div className="text-xl font-extrabold text-text-primary">{formatBRL(mockTopClients.length > 0 ? mockTopClients[0].value : 0)}</div>
             <div className="text-xs text-text-muted mt-1">Ticket: Médio</div>
           </div>
           <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex-1 flex flex-col justify-center">
             <div className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2">Perfil do Cliente</div>
             <div className="text-sm font-medium text-text-primary leading-snug">
-              O cliente AO CONSUMIDOR é o principal gerador de receita no período.
+              O cliente {mockTopClients.length > 0 ? mockTopClients[0].name : '-'} é o principal gerador de receita no período.
             </div>
             <div className="text-[10px] text-text-muted mt-2">
-              Geralmente corresponde a clientes pulverizados de balcão ou pequenas vendas.
+              Destaque do período atual.
             </div>
           </div>
         </div>

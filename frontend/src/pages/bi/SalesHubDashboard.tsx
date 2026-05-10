@@ -45,24 +45,7 @@ export default function SalesHubDashboard() {
 
   const mockSellers = data?.top_sellers || [];
 
-  const generateOrders = () => {
-    const orders = [];
-    const sellers = ['PAULA', 'FABIOLA', 'ANA', 'MARCOS', 'ROBSON'];
-    const clients = ['AO CONSUMIDOR', 'FUNDO MUNICIPAL DE SAUDE', 'JOSE PAULINO DA SILVA', 'AGROPECUARIA JD SA', 'PREFEITURA MUNICIPAL'];
-    for (let i = 0; i < 35; i++) {
-      orders.push({
-        id: 15004 + i,
-        numero_nota: Math.random() > 0.5 ? '0' : String(Math.floor(Math.random() * 5000) + 1000),
-        cliente: clients[Math.floor(Math.random() * clients.length)],
-        vendedor: sellers[Math.floor(Math.random() * sellers.length)],
-        data: '29/08/2026',
-        valor: Math.random() * 1500 + 50,
-        status: 'Normal'
-      });
-    }
-    return orders;
-  };
-  const mockRecentOrders = generateOrders();
+  const mockRecentOrders: any[] = [];
 
   const heatmapData = Array.from({ length: 4 }).map(() => 
     Array.from({ length: 7 }).map(() => Math.floor(Math.random() * 10))
@@ -90,7 +73,7 @@ export default function SalesHubDashboard() {
             <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Volume de Pedidos</span>
           </div>
           <div className="text-3xl font-extrabold text-text-primary pl-1 mb-1">
-            337 <span className="text-xs font-medium text-text-muted lowercase">pedidos</span>
+            {formatNum(data?.total_pedidos || 0)} <span className="text-xs font-medium text-text-muted lowercase">pedidos</span>
           </div>
           <div className="flex justify-end text-[10px] text-success font-bold mt-1">100% atingido</div>
           <div className="w-full bg-bg-secondary h-1 mt-1 rounded-full overflow-hidden">
@@ -107,7 +90,7 @@ export default function SalesHubDashboard() {
             <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Faturamento</span>
           </div>
           <div className="text-3xl font-extrabold text-text-primary pl-1 mb-1">
-            {formatBRL(240116.50)}
+            {formatBRL(data?.faturamento_total || 0)}
           </div>
           <div className="flex justify-end text-[10px] text-warning font-bold mt-1">85% atingido</div>
           <div className="w-full bg-bg-secondary h-1 mt-1 rounded-full overflow-hidden">
@@ -124,7 +107,7 @@ export default function SalesHubDashboard() {
             <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Ticket Médio</span>
           </div>
           <div className="text-3xl font-extrabold text-text-primary pl-1 mb-1">
-            {formatBRL(712.51)}
+            {formatBRL(data?.ticket_medio || 0)}
           </div>
           <div className="flex justify-end text-[10px] text-purple-500 font-bold mt-1">92% atingido</div>
           <div className="w-full bg-bg-secondary h-1 mt-1 rounded-full overflow-hidden">

@@ -57,7 +57,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 export default function SupplierAnalyticsDashboard() {
   const { filter } = useOutletContext<{ filter: BiPeriodFilter }>();
   const [activeTab, setActiveTab] = useState('Visão Geral de Vendas');
-  const [selectedBrand, setSelectedBrand] = useState('VHM TRACTOR'); // Default initial brand
+  const [selectedBrand, setSelectedBrand] = useState(''); // Default to empty (All Brands)
 
   const supplierFilter = { ...filter, marca: selectedBrand };
 
@@ -105,7 +105,8 @@ export default function SupplierAnalyticsDashboard() {
             value={selectedBrand}
             onChange={(e) => setSelectedBrand(e.target.value)}
           >
-            {availableBrands.map(b => (
+            <option value="">Todas as Marcas</option>
+            {availableBrands.map((b: string) => (
               <option key={b} value={b}>{b}</option>
             ))}
           </select>
@@ -125,7 +126,7 @@ export default function SupplierAnalyticsDashboard() {
             <Target size={32} className="text-white" />
           </div>
           <div>
-            <h2 className="text-2xl font-extrabold tracking-tight">4AM COMPENSADOS LTDA</h2>
+            <h2 className="text-2xl font-extrabold tracking-tight">{selectedBrand || 'Todas as Marcas'}</h2>
             <p className="text-orange-100 font-medium text-sm">Raio-X de Performance no Período</p>
           </div>
         </div>
@@ -140,7 +141,7 @@ export default function SupplierAnalyticsDashboard() {
           </div>
           <div className="bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl px-4 py-3 flex flex-col justify-center shadow-md">
             <span className="text-[10px] font-black uppercase tracking-wider text-orange-100">Share da Empresa</span>
-            <span className="text-xl font-extrabold text-white">3,8%</span>
+            <span className="text-xl font-extrabold text-white">-</span>
           </div>
         </div>
       </div>
@@ -272,7 +273,7 @@ export default function SupplierAnalyticsDashboard() {
             <Users size={14} className="text-brand-500" /> Vendedor Destaque
           </div>
           <div>
-            <div className="text-xl font-extrabold text-text-primary mb-1">ARAL</div>
+            <div className="text-xl font-extrabold text-text-primary mb-1">N/A</div>
             <div className="text-[10px] text-text-muted">Maior volume na marca</div>
           </div>
         </div>
@@ -388,20 +389,17 @@ export default function SupplierAnalyticsDashboard() {
               </tr>
             </thead>
             <tbody className="divide-y divide-divider/30 text-xs">
-              <tr className="hover:bg-bg-secondary/50 transition-colors">
-                <td className="px-5 py-3 font-bold text-text-muted">1º</td>
-                <td className="px-5 py-3 font-bold text-text-primary">COMP NAVAL 18MM 7,10 X 2,50 M</td>
-                <td className="px-5 py-3 text-right font-medium text-text-primary">59</td>
-                <td className="px-5 py-3 text-right font-mono font-bold text-text-primary">{formatBRL(74234.50)}</td>
-                <td className="px-5 py-3 text-right font-bold text-text-secondary">78,4%</td>
-              </tr>
-              <tr className="hover:bg-bg-secondary/50 transition-colors">
-                <td className="px-5 py-3 font-bold text-text-muted">2º</td>
-                <td className="px-5 py-3 font-bold text-text-primary">COMP NAVAL 18MM 8,00 X 2,50 M</td>
-                <td className="px-5 py-3 text-right font-medium text-text-primary">15</td>
-                <td className="px-5 py-3 text-right font-mono font-bold text-text-primary">{formatBRL(20510.00)}</td>
-                <td className="px-5 py-3 text-right font-bold text-text-secondary">21,6%</td>
-              </tr>
+              {topProducts.map((prod: any, idx: number) => (
+                <tr key={idx} className="hover:bg-bg-secondary/50 transition-colors">
+                  <td className="px-5 py-3 font-bold text-text-muted">{prod.rank}º</td>
+                  <td className="px-5 py-3 font-bold text-text-primary">{prod.name}</td>
+                  <td className="px-5 py-3 text-right font-medium text-text-primary">{prod.volume}</td>
+                  <td className="px-5 py-3 text-right font-mono font-bold text-text-primary">{formatBRL(prod.receita)}</td>
+                  <td className="px-5 py-3 text-right font-bold text-text-secondary">
+                    {overview.receita > 0 ? ((prod.receita / overview.receita) * 100).toFixed(1) : 0}%
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
