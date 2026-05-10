@@ -8,7 +8,6 @@ import {
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { formatBRL, formatBRLCompact } from '../../utils/format';
-import clsx from 'clsx';
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
@@ -338,14 +337,11 @@ export default function FinancialIntelligenceDashboard() {
             </h4>
             <div className="flex flex-col gap-1">
               {agingReceber.map((row, i) => (
-                <div key={i} className={clsx(
-                  "flex justify-between items-center p-2.5 rounded transition-colors text-xs font-bold",
-                  row.red ? "border-b-2 border-danger/80 bg-danger/5" : "hover:bg-bg-secondary/50 border-b border-divider"
-                )}>
-                  <span className={clsx("flex items-center gap-1", row.red ? "text-danger" : "text-text-primary")}>
+                <div key={i} className={`flex justify-between items-center p-2.5 rounded transition-colors text-xs font-bold ${row.red ? "border-b-2 border-danger/80 bg-danger/5" : "hover:bg-bg-secondary/50 border-b border-divider"}`}>
+                  <span className={`flex items-center gap-1 ${row.red ? "text-danger" : "text-text-primary"}`}>
                     {row.red && <AlertTriangle size={12} />} {row.label}
                   </span>
-                  <span className={clsx("font-mono", row.red ? "text-danger" : "text-blue-500")}>
+                  <span className={`font-mono ${row.red ? "text-danger" : "text-blue-500"}`}>
                     {formatBRL(row.valor)}
                   </span>
                 </div>
@@ -360,14 +356,11 @@ export default function FinancialIntelligenceDashboard() {
             </h4>
             <div className="flex flex-col gap-1">
               {agingPagar.map((row, i) => (
-                <div key={i} className={clsx(
-                  "flex justify-between items-center p-2.5 rounded transition-colors text-xs font-bold",
-                  row.red ? "border-b-2 border-danger/80 bg-danger/5" : "hover:bg-bg-secondary/50 border-b border-divider"
-                )}>
-                  <span className={clsx("flex items-center gap-1", row.red ? "text-danger" : "text-text-primary")}>
+                <div key={i} className={`flex justify-between items-center p-2.5 rounded transition-colors text-xs font-bold ${row.red ? "border-b-2 border-danger/80 bg-danger/5" : "hover:bg-bg-secondary/50 border-b border-divider"}`}>
+                  <span className={`flex items-center gap-1 ${row.red ? "text-danger" : "text-text-primary"}`}>
                     {row.red && <AlertTriangle size={12} />} {row.label}
                   </span>
-                  <span className={clsx("font-mono", row.red ? "text-danger" : "text-warning")}>
+                  <span className={`font-mono ${row.red ? "text-danger" : "text-warning"}`}>
                     {formatBRL(row.valor)}
                   </span>
                 </div>

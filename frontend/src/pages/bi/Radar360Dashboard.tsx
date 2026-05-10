@@ -49,8 +49,52 @@ export default function Radar360Dashboard() {
     }
   };
 
-  const radar = data || mockRadar;
+  // Formatter and fallback
   const formatCurrency = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+
+  // Safely map API response to the expected structure
+  const radar = data ? {
+    customer_dna: {
+      id: data.dna?.cliente_id || mockRadar.customer_dna.id,
+      nome: data.dna?.nome || mockRadar.customer_dna.nome,
+      cnpj: data.dna?.documento || mockRadar.customer_dna.cnpj,
+      cidade: data.dna?.cidade || mockRadar.customer_dna.cidade,
+      estado: data.dna?.estado || mockRadar.customer_dna.estado,
+      telefone: mockRadar.customer_dna.telefone,
+      email: mockRadar.customer_dna.email,
+      data_cadastro: data.dna?.data_cadastro ? new Date(data.dna.data_cadastro).toLocaleDateString('pt-BR') : mockRadar.customer_dna.data_cadastro,
+      status: data.dna?.status || mockRadar.customer_dna.status,
+      tipo_cliente: mockRadar.customer_dna.tipo_cliente,
+      segmento: mockRadar.customer_dna.segmento
+    },
+    customer_metrics: {
+      faturamento_total: data.dna?.ltv || 0,
+      faturamento_anual: mockRadar.customer_metrics.faturamento_anual,
+      quantidade_pedidos: data.behavior?.frequencia_dias || 0, // Using behavior frequencia_dias just as a placeholder since bi.js didn't return total orders
+      ticket_medio: data.behavior?.ticket_medio_historico || 0,
+      ultima_compra: data.risk_assessment?.ultima_compra ? new Date(data.risk_assessment.ultima_compra).toLocaleDateString('pt-BR') : 'N/A',
+      dias_sem_comprar: data.risk_assessment?.dias_sem_comprar || 0,
+      frequencia_dias: data.behavior?.frequencia_dias || 0,
+      margem_media_pct: mockRadar.customer_metrics.margem_media_pct,
+      risco_churn_pct: data.risk_assessment?.risco_churn_pct || 0
+    },
+    customer_habits: {
+      produto_favorito: { descricao: data.behavior?.produto_favorito || "Pendente", quantidade_comprada: 0 },
+      marca_favorita: { marca: data.behavior?.marca_favorita || "Pendente", percentual_compras: 0 },
+      categoria_favorita: mockRadar.customer_habits.categoria_favorita,
+      melhor_dia_semana: mockRadar.customer_habits.melhor_dia_semana,
+      melhor_horario: mockRadar.customer_habits.melhor_horario,
+      sazonalidade: []
+    },
+    customer_orders_history: data.order_history || [],
+    risk_assessment: {
+      risco_churn_pct: data.risk_assessment?.risco_churn_pct || 0,
+      motivo_risco: "Baseado no LTV e dias sem comprar",
+      recomendacao: "Acompanhar",
+      score_saude: 10 - ((data.risk_assessment?.risco_churn_pct || 0) / 10),
+      status_saude: data.risk_assessment?.tendencia === 'ESTAVEL' || data.risk_assessment?.tendencia === 'CRESCIMENTO' ? "SAUDÁVEL" : "EM RISCO"
+    }
+  } : mockRadar;
 
   return (
     <div className="space-y-4 animate-in fade-in duration-300">
