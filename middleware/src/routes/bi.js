@@ -544,13 +544,20 @@ router.get('/customer/analytics', async (req, res, next) => {
         const total_clientes = parseInt(tot[0].totais || 0);
         const clientes_ativos = parseInt(atv[0].ativos || 0);
         const retencao_pct = total_clientes > 0 ? (clientes_ativos / total_clientes) * 100 : 0;
+        const novos = parseInt(tot[0].novos || 0);
 
         res.json({
-            retencao_pct,
-            clientes_ativos,
-            clientes_inativos: total_clientes - clientes_ativos,
-            novos_clientes: parseInt(tot[0].novos || 0),
-            top_clientes_faturamento: [], // Mock array to fulfill interface, can add a heavy query later
+            customer_overview: {
+                total_clientes,
+                clientes_ativos,
+                clientes_novos: novos,
+                clientes_em_crescimento: 0, // Mock
+                clientes_em_queda: 0, // Mock
+                clientes_inativos: total_clientes - clientes_ativos,
+                taxa_retencao_pct: retencao_pct,
+                valor_medio_cliente: 0 // Mock
+            },
+            top_clientes: [], // Mock array to fulfill interface, can add a heavy query later
             clientes_risco_churn: risco.map(r => ({
                 cliente_id: r.id_firebird,
                 nome: r.nome,
