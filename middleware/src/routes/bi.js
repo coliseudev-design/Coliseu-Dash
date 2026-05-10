@@ -208,16 +208,21 @@ router.get('/sales/commercial-kpis', async (req, res, next) => {
         const tenantId = req.tenant.id;
         const { start, end } = getBiDateRange(req);
 
-        // Produtos vendidos
-        // Produtos vendidos e Faturamento Total
-        const { rows: p } = await db.query(`
+        // Produtos vendidos e Faturamento Total (separando para não duplicar faturamento por causa do JOIN)
+        const { rows: pItems } = await db.query(`
+            SELECT COALESCE(SUM(quantidade), 0) AS qtd
+            FROM dash_vendas_itens
+            WHERE tenant_id = $1 AND venda_id_firebird IN (
+                SELECT id_firebird FROM dash_vendas WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3 AND TRIM(status) IN ('FATURADO', 'FINALIZADO')
+            )
+        `, [tenantId, start, end]);
+
+        const { rows: pVendas } = await db.query(`
             SELECT 
-                COALESCE(SUM(vi.quantidade), 0) AS qtd,
-                COUNT(DISTINCT v.id_firebird) as pedidos,
-                COALESCE(SUM(v.valor_total), 0) as faturamento_total
-            FROM dash_vendas_itens vi
-            JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
-            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
+                COUNT(DISTINCT id_firebird) as pedidos,
+                COALESCE(SUM(valor_total), 0) as faturamento_total
+            FROM dash_vendas
+            WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3 AND TRIM(status) IN ('FATURADO', 'FINALIZADO')
         `, [tenantId, start, end]);
 
         // Total descontos
@@ -239,32 +244,58 @@ router.get('/sales/commercial-kpis', async (req, res, next) => {
             LIMIT 10
         `, [tenantId, start, end]);
 
-        // Calcula total faturado para share
-        const faturamento = vends.reduce((acc, curr) => acc + parseFloat(curr.vendas), 0);
+        // Calcula total faturado para share (usando faturamento_total real)
+        const totalFaturamento = parseFloat(pVendas[0].faturamento_total || 0);
 
         const top_sellers = vends.map((v, i) => {
             const colors = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#14B8A6'];
             return {
                 name: v.nome,
                 value: parseFloat(v.vendas),
-                share: faturamento > 0 ? (parseFloat(v.vendas) / faturamento) * 100 : 0,
+                share: totalFaturamento > 0 ? (parseFloat(v.vendas) / totalFaturamento) * 100 : 0,
                 color: colors[i % colors.length]
             };
         });
 
-        const totalPedidos = parseInt(p[0].pedidos || 0);
-        const totalFaturamento = parseFloat(p[0].faturamento_total || 0);
+        const totalPedidos = parseInt(pVendas[0].pedidos || 0);
         const ticketMedio = totalPedidos > 0 ? totalFaturamento / totalPedidos : 0;
 
+        // Fila de pedidos recentes
+        const { rows: recent } = await db.query(`
+            SELECT 
+                v.id_firebird as id,
+                v.numero_nota,
+                c.nome as cliente,
+                vend.nome as vendedor,
+                TO_CHAR(v.data_venda, 'DD/MM/YYYY') as data,
+                v.valor_total as valor,
+                v.status
+            FROM dash_vendas v
+            LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
+            LEFT JOIN dash_vendedores vend ON vend.id_firebird = v.vendedor_id_firebird AND vend.tenant_id = v.tenant_id
+            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
+            ORDER BY v.data_venda DESC, v.id_firebird DESC
+            LIMIT 10
+        `, [tenantId, start, end]);
+
         res.json({
-            produtos_vendidos: parseFloat(p[0].qtd),
+            produtos_vendidos: parseFloat(pItems[0].qtd),
             descontos_concedidos: parseFloat(d[0].descontos),
             faturamento_total: totalFaturamento,
             ticket_medio: ticketMedio,
             total_pedidos: totalPedidos,
             meta_atingida_pct: 0, // Placeholder para futuras métricas
             projecao_fechamento: 0,
-            top_sellers
+            top_sellers,
+            recent_orders: recent.map(r => ({
+                id: String(r.id),
+                numero_nota: r.numero_nota || '-',
+                cliente: r.cliente || 'Consumidor',
+                vendedor: r.vendedor || 'Vendedor',
+                data: r.data,
+                valor: parseFloat(r.valor || 0),
+                status: r.status
+            }))
         });
     } catch (err) { next(err); }
 });

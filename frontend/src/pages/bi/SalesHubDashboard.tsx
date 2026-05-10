@@ -230,7 +230,7 @@ export default function SalesHubDashboard() {
               </tr>
             </thead>
             <tbody className="divide-y divide-divider/30 text-xs">
-              {mockRecentOrders.map((order, i) => (
+              {(data?.recent_orders || []).map((order: any, i: number) => (
                 <tr key={i} className="hover:bg-bg-secondary transition-colors">
                   <td className="py-2.5 font-mono text-text-muted">{order.id}</td>
                   <td className="py-2.5 text-text-primary font-medium">{order.numero_nota}</td>
