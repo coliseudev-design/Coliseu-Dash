@@ -3,6 +3,7 @@ import { useBiPeriodQuery } from '../../hooks/useBiPeriodQuery';
 import { BIService } from '../../services/biApi';
 import { BiPeriodFilter } from '../../types/bi.types';
 import { Users, UserPlus, UserMinus, Activity, AlertCircle } from 'lucide-react';
+import { PromptViewer } from '../../components/PromptViewer';
 
 export default function CustomerAnalyticsDashboard() {
   const { filter } = useOutletContext<{ filter: BiPeriodFilter }>();
@@ -168,7 +169,50 @@ export default function CustomerAnalyticsDashboard() {
             </div>
           </div>
         </div>
+        </div>
       </div>
+
+      {/* AI Prompt Generator */}
+      <PromptViewer 
+        title="Gerador de Análise: Customer Success e Churn"
+        description="Prompt estruturado para análise de clientes e estratégias de retenção via Inteligência Artificial."
+        prompt={`Atue como um Especialista Sênior em Customer Success, Ciência de Dados e Estratégia Comercial. Sua tarefa é analisar os dados da base de clientes do período selecionado e gerar um relatório de "Análise de Clientes" altamente estruturado, visualmente atraente e focado em ações práticas para retenção e aumento de receita.
+
+Diretrizes de Formatação e Conteúdo:
+• Utilize formatação Markdown avançada, incluindo tabelas bem estruturadas, negrito para métricas-chave e ícones representativos (👥, 🟢, 🔴, ⚠️, 💰, 📉, 📈).
+• Divida a análise em seções claras: Visão Geral da Base, Top Clientes por Faturamento, Alerta de Risco de Churn e Plano de Ação Estratégico.
+• Não mencione o nome da nossa empresa na análise.
+• Seja analítico: não apenas liste os números, mas explique o que eles significam para a saúde do negócio.
+
+Dados Necessários:
+Métricas Principais (Cards Superiores):
+• Clientes Ativos: ${analytics.customer_overview.clientes_ativos} de um total de ${analytics.customer_overview.total_clientes}
+• Novos Clientes (no período): ${analytics.customer_overview.clientes_novos}
+• Clientes Inativos (Sem comprar há >90 dias): ${analytics.customer_overview.clientes_inativos}
+• Taxa de Retenção: ${analytics.customer_overview.taxa_retencao_pct}% (Valor Médio: ${formatCurrency(analytics.customer_overview.valor_medio_cliente)})
+
+Top Clientes por Faturamento:
+${analytics.top_clientes.map(c => `- ${c.nome} | Faturamento: ${formatCurrency(c.faturamento)} | Pedidos: ${c.quantidade_pedidos}`).join('\n')}
+
+Clientes em Risco (Sem Comprar / Risco de Churn):
+${analytics.clientes_sem_comprar.map(c => `- ${c.nome} - ${c.dias_sem_comprar} dias - ${formatCurrency(c.faturamento_historico)} - ${c.risco_churn_pct}% risco`).join('\n')}
+
+Estrutura da Resposta Esperada:
+1. 👥 Saúde da Base de Clientes (Visão Geral):
+   • Apresente um resumo executivo comparando Clientes Ativos vs. Inativos.
+   • Avalie a taxa de aquisição (Novos Clientes) em relação à inatividade.
+   • Comente sobre a Taxa de Retenção. O valor está saudável? Há um desequilíbrio (ex: base gigante de inativos comparada aos ativos)? Use ícones de alerta (⚠️) se a proporção de inativos for criticamente alta.
+2. 💰 Top Clientes por Faturamento (Curva ABC):
+   • Apresente os Top Clientes em uma tabela Markdown formatada (| Cliente | Faturamento (R$) |).
+   • Analise a concentração de receita: O negócio depende muito de poucos clientes? Adicione um selo de "Parabéns" (🎉) para clientes com ticket médio excepcional.
+3. 🚨 Alerta Crítico: Clientes em Risco de Churn:
+   • Crie uma tabela de alerta máximo (| Cliente em Risco | Dias Inativo | Valor em Risco (R$) | % Risco de Churn |).
+   • Destaque financeiramente o impacto desses clientes parados. (Ex: "Temos R$ X.XXX.XXX paralisados em clientes que não compram há mais de 12 dias").
+4. 🎯 Plano de Ação Estratégico (Recomendações):
+   • Para os Top Clientes: Sugira 1 ação de fidelização (Upsell/Cross-sell).
+   • Para os Clientes em Risco (Churn Alto): Sugira 2 ações imediatas de recuperação (ex: campanhas de reativação com desconto, contato direto do executivo de contas para clientes de alto valor).
+   • Para a Base Inativa (>90 dias): Sugira uma estratégia em massa para limpar a base ou tentar uma reativação agressiva.`}
+      />
 
       {isError && (
         <div className="bg-orange-500/10 border border-orange-500/20 text-orange-500 p-3 rounded-lg text-sm mt-4">

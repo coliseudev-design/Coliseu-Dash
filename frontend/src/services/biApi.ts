@@ -40,6 +40,12 @@ export const BIService = {
     return data.data || data;
   },
 
+  searchCustomers: async (query: string): Promise<{id: number, nome: string, cnpj: string}[]> => {
+    if (!query || query.length < 3) return [];
+    const { data } = await api.get<any>('/bi/customer/search', { params: { q: query } });
+    return data;
+  },
+
   // Análise de Clientes
   getCustomerAnalytics: async (filter: BiPeriodFilter): Promise<CustomerAnalyticsResponse> => {
     const { data } = await api.get<BiApiResponse<any>>('/bi/customer/analytics', { params: filter });

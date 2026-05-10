@@ -571,6 +571,29 @@ router.get('/customer/analytics', async (req, res, next) => {
     } catch (err) { next(err); }
 });
 
+// GET /api/bi/customer/search
+router.get('/customer/search', async (req, res, next) => {
+    try {
+        const tenantId = req.tenant.id;
+        const query = req.query.q?.toUpperCase() || '';
+        
+        if (!query || query.length < 3) {
+            return res.json([]);
+        }
+
+        const { rows } = await db.query(`
+            SELECT id_firebird as id, nome, documento as cnpj 
+            FROM dash_clientes 
+            WHERE tenant_id = $1 
+              AND (UPPER(nome) LIKE $2 OR documento LIKE $2)
+            ORDER BY nome ASC
+            LIMIT 10
+        `, [tenantId, `%${query}%`]);
+
+        res.json(rows);
+    } catch (err) { next(err); }
+});
+
 // GET /api/bi/customer/radar-360
 router.get('/customer/radar-360', async (req, res, next) => {
     try {
