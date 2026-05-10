@@ -7,7 +7,7 @@ import { useState } from 'react';
 // O ideal seria usar Zustand se precisar compartilhar entre muitas rotas diferentes.
 export const useBiFilterState = () => {
   const [filter, setFilter] = useState<BiPeriodFilter>({
-    startDate: format(subDays(new Date(), 30), 'yyyy-MM-dd'),
+    startDate: format(new Date(new Date().getFullYear(), new Date().getMonth(), 1), 'yyyy-MM-dd'),
     endDate: format(new Date(), 'yyyy-MM-dd'),
   });
 
