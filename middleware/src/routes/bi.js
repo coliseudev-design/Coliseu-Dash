@@ -350,7 +350,7 @@ router.get('/sales/abc-analysis', async (req, res, next) => {
                 COUNT(CASE WHEN estoque > 0 THEN 1 END) AS skus_com_saldo,
                 COUNT(id_firebird) AS total_skus
             FROM dash_produtos
-            WHERE tenant_id = $1 AND ativo = 'S'
+            WHERE tenant_id = $1 AND ativo = true
         `, [tenantId]);
 
         const valor_estoque_custo = parseFloat(inv[0].valor_estoque_custo);
@@ -368,7 +368,7 @@ router.get('/sales/abc-analysis', async (req, res, next) => {
                 COALESCE(SUM(vi.valor_total), 0) as faturamento_historico
             FROM dash_produtos p
             LEFT JOIN dash_vendas_itens vi ON vi.produto_id_firebird = p.id_firebird AND vi.tenant_id = p.tenant_id
-            WHERE p.tenant_id = $1 AND p.ativo = 'S'
+            WHERE p.tenant_id = $1 AND p.ativo = true
             GROUP BY p.id_firebird, p.nome, p.unidade, p.marca, p.categoria, p.estoque, p.custo, p.preco
             ORDER BY faturamento_historico DESC
             LIMIT 500
@@ -414,19 +414,19 @@ router.get('/sales/abc-analysis', async (req, res, next) => {
         // Distribution by Grupo
         const { rows: distGrupo } = await db.query(`
             SELECT COALESCE(categoria, 'OUTROS') as name, COUNT(id_firebird) as value
-            FROM dash_produtos WHERE tenant_id = $1 AND ativo = 'S' GROUP BY categoria ORDER BY value DESC LIMIT 10
+            FROM dash_produtos WHERE tenant_id = $1 AND ativo = true GROUP BY categoria ORDER BY value DESC LIMIT 10
         `, [tenantId]);
 
         // Distribution by Marca
         const { rows: distMarca } = await db.query(`
             SELECT COALESCE(marca, 'DIVERSAS') as name, COUNT(id_firebird) as value
-            FROM dash_produtos WHERE tenant_id = $1 AND ativo = 'S' GROUP BY marca ORDER BY value DESC LIMIT 10
+            FROM dash_produtos WHERE tenant_id = $1 AND ativo = true GROUP BY marca ORDER BY value DESC LIMIT 10
         `, [tenantId]);
 
         // Bar Chart (Top 15 Marcas por Estoque)
         const { rows: barChart } = await db.query(`
             SELECT COALESCE(marca, 'DIVERSAS') as name, SUM(estoque * custo) as estoque
-            FROM dash_produtos WHERE tenant_id = $1 AND ativo = 'S' GROUP BY marca ORDER BY estoque DESC LIMIT 15
+            FROM dash_produtos WHERE tenant_id = $1 AND ativo = true GROUP BY marca ORDER BY estoque DESC LIMIT 15
         `, [tenantId]);
 
         res.json({
