@@ -558,12 +558,14 @@ router.get('/customer/analytics', async (req, res, next) => {
                 valor_medio_cliente: 0 // Mock
             },
             top_clientes: [], // Mock array to fulfill interface, can add a heavy query later
-            clientes_risco_churn: risco.map(r => ({
+            clientes_sem_comprar: risco.map(r => ({
                 cliente_id: r.id_firebird,
                 nome: r.nome,
                 ultima_compra: r.ultima_compra,
-                dias_inativo: Math.floor((new Date() - new Date(r.ultima_compra)) / (1000 * 60 * 60 * 24)),
-                ltv: parseFloat(r.ltv)
+                dias_sem_comprar: Math.floor((new Date() - new Date(r.ultima_compra)) / (1000 * 60 * 60 * 24)),
+                faturamento_historico: parseFloat(r.ltv),
+                frequencia_dias: 30, // Mock for now
+                risco_churn_pct: 50.0 // Mock for now
             }))
         });
     } catch (err) { next(err); }
@@ -772,10 +774,21 @@ router.get('/comparative/summary', async (req, res, next) => {
 router.get('/goals/summary', async (req, res, next) => {
     try {
         res.json({
-            meta_global: { objetivo: 500000, realizado: 345000, projetado_fechamento: 480000, pct_atingimento: 69 },
-            ritmo_vendas: { diaria_necessaria: 15000, diaria_realizada: 12500, status_ritmo: "ABAIXO" },
-            metas_vendedores: [],
-            metas_marcas: []
+            meta_geral: {
+                meta_total: 500000.00,
+                realizado: 345000.00,
+                atingimento_pct: 69.0,
+                diferenca: -155000.00,
+                projecao: 480000.00,
+                projecao_atingimento_pct: 96.0,
+                dias_uteis: 22,
+                media_diaria: 15681.82,
+                meta_diaria: 22727.27,
+                dias_restantes: 5
+            },
+            metas_por_vendedor: [],
+            metas_por_marca: [],
+            metas_por_grupo: []
         });
     } catch (err) { next(err); }
 });
