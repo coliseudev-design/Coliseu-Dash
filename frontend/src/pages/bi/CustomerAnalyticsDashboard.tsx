@@ -169,7 +169,6 @@ export default function CustomerAnalyticsDashboard() {
             </div>
           </div>
         </div>
-        </div>
       </div>
 
       {/* AI Prompt Generator */}

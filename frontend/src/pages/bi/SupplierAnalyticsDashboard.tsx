@@ -170,8 +170,6 @@ export default function SupplierAnalyticsDashboard() {
         ))}
       </div>
 
-      </div>
-
       {activeTab === 'Visão Geral de Vendas' && (
         <div className="space-y-6 animate-in fade-in duration-300">
           {/* PERFORMANCE MENSAL TABLE */}
@@ -437,9 +435,9 @@ export default function SupplierAnalyticsDashboard() {
             </div>
           </div>
         </div>
-        </div>
-      )}
-
+      </div>
+    </div>
+  )}
       {activeTab === 'Ranking de Marcas' && (
         <PromptViewer 
           title="Gerador de Análise: Ranking de Marcas"
