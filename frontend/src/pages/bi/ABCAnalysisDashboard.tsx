@@ -1,3 +1,4 @@
+import { useState, useMemo, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useBiPeriodQuery } from '../../hooks/useBiPeriodQuery';
 import { BIService } from '../../services/biApi';
@@ -63,6 +64,48 @@ export default function InventoryManagementDashboard() {
     curva_b_count: 0,
     curva_c_count: 0
   };
+
+  const [searchTerm, setSearchTerm] = useState('');
+  const [marcaFilter, setMarcaFilter] = useState('');
+  const [grupoFilter, setGrupoFilter] = useState('');
+  const [abcFilter, setAbcFilter] = useState('');
+  const [comEstoque, setComEstoque] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 100;
+
+  const marcasDisponiveis = useMemo(() => {
+    const marcas = new Set(tableData.map((item: any) => item.marca).filter(Boolean));
+    return Array.from(marcas).sort();
+  }, [tableData]);
+
+  const gruposDisponiveis = useMemo(() => {
+    const grupos = new Set(tableData.map((item: any) => item.grupo).filter(Boolean));
+    return Array.from(grupos).sort();
+  }, [tableData]);
+
+  const filteredData = useMemo(() => {
+    return tableData.filter((item: any) => {
+      const matchSearch = item.desc?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          item.cod?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchMarca = marcaFilter ? item.marca === marcaFilter : true;
+      const matchGrupo = grupoFilter ? item.grupo === grupoFilter : true;
+      const matchAbc = abcFilter ? item.abc === abcFilter : true;
+      const matchEstoque = comEstoque ? item.estoque > 0 : true;
+
+      return matchSearch && matchMarca && matchGrupo && matchAbc && matchEstoque;
+    });
+  }, [tableData, searchTerm, marcaFilter, grupoFilter, abcFilter, comEstoque]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, marcaFilter, grupoFilter, abcFilter, comEstoque]);
+
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage) || 1;
+  const paginatedData = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredData.slice(start, start + itemsPerPage);
+  }, [filteredData, currentPage]);
+
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300 pb-10">
@@ -253,22 +296,50 @@ export default function InventoryManagementDashboard() {
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
             <input 
               type="text" 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Buscar produto ou código..." 
               className="w-full bg-bg-secondary border border-border rounded-lg pl-9 pr-3 py-1.5 text-xs text-text-primary outline-none focus:border-brand-500"
             />
           </div>
-          <select className="bg-bg-secondary border border-border rounded-lg px-3 py-1.5 text-xs outline-none">
-            <option>Todas Marcas (292)</option>
+          <select 
+            value={marcaFilter}
+            onChange={(e) => setMarcaFilter(e.target.value)}
+            className="bg-bg-secondary border border-border rounded-lg px-3 py-1.5 text-xs outline-none"
+          >
+            <option value="">Todas Marcas ({marcasDisponiveis.length})</option>
+            {marcasDisponiveis.map((m: any) => <option key={m} value={m}>{m}</option>)}
           </select>
-          <select className="bg-bg-secondary border border-border rounded-lg px-3 py-1.5 text-xs outline-none">
-            <option>Todos Grupos (46)</option>
+          <select 
+            value={grupoFilter}
+            onChange={(e) => setGrupoFilter(e.target.value)}
+            className="bg-bg-secondary border border-border rounded-lg px-3 py-1.5 text-xs outline-none"
+          >
+            <option value="">Todos Grupos ({gruposDisponiveis.length})</option>
+            {gruposDisponiveis.map((g: any) => <option key={g} value={g}>{g}</option>)}
           </select>
-          <button className="bg-success/10 text-success border border-success/30 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-success"></span> Com Estoque
+          <select 
+            value={abcFilter}
+            onChange={(e) => setAbcFilter(e.target.value)}
+            className="bg-bg-secondary border border-border rounded-lg px-3 py-1.5 text-xs outline-none"
+          >
+            <option value="">Classe ABC: Todas</option>
+            <option value="A">Curva A</option>
+            <option value="B">Curva B</option>
+            <option value="C">Curva C</option>
+          </select>
+          <button 
+            onClick={() => setComEstoque(!comEstoque)}
+            className={clsx(
+              "border px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-colors",
+              comEstoque 
+                ? "bg-success/10 text-success border-success/30" 
+                : "bg-bg-secondary text-text-muted border-border"
+            )}
+          >
+            <span className={clsx("w-2 h-2 rounded-full", comEstoque ? "bg-success" : "bg-text-muted")}></span> 
+            Com Estoque
           </button>
-          <select className="bg-bg-secondary border border-border rounded-lg px-3 py-1.5 text-xs outline-none">
-            <option>Classe ABC: Todas</option>
-          </select>
         </div>
 
         {/* Legend */}
@@ -279,7 +350,7 @@ export default function InventoryManagementDashboard() {
           <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-warning"></span> Atenção</div>
           <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-success"></span> Ideal</div>
           <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-500"></span> Sem Giro</div>
-          <div className="ml-auto">1 de 1 itens</div>
+          <div className="ml-auto">{filteredData.length} itens encontrados</div>
         </div>
 
         {/* Data Table */}
@@ -301,7 +372,7 @@ export default function InventoryManagementDashboard() {
               </tr>
             </thead>
             <tbody className="divide-y divide-divider/30 text-xs">
-              {tableData.map((row, i) => (
+              {paginatedData.map((row: any, i: number) => (
                 <tr key={i} className="hover:bg-bg-secondary/30 transition-colors">
                   <td className="py-3 px-2 font-mono font-bold text-blue-500">{row.cod}</td>
                   <td className="py-3 px-2 font-bold text-text-primary truncate max-w-[250px]">{row.desc}</td>
@@ -331,12 +402,28 @@ export default function InventoryManagementDashboard() {
           </table>
         </div>
         
-        {/* Pagination mock */}
+        {/* Pagination */}
         <div className="flex justify-center items-center gap-2 mt-4 pt-4 border-t border-divider">
-           <button className="w-6 h-6 rounded flex items-center justify-center bg-bg-secondary text-text-muted">&lt;</button>
-           <button className="w-6 h-6 rounded flex items-center justify-center bg-blue-500/20 text-blue-500 font-bold border border-blue-500/30">1</button>
-           <button className="w-6 h-6 rounded flex items-center justify-center bg-bg-secondary text-text-muted">&gt;</button>
-           <span className="text-[10px] text-text-muted ml-2">Pág. 1 de 1 (4 itens)</span>
+           <button 
+             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+             disabled={currentPage === 1}
+             className="w-6 h-6 rounded flex items-center justify-center bg-bg-secondary text-text-muted hover:bg-border disabled:opacity-50"
+           >
+             &lt;
+           </button>
+           
+           <button className="h-6 px-3 rounded flex items-center justify-center bg-blue-500/20 text-blue-500 font-bold border border-blue-500/30">
+             {currentPage}
+           </button>
+           
+           <button 
+             onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+             disabled={currentPage === totalPages}
+             className="w-6 h-6 rounded flex items-center justify-center bg-bg-secondary text-text-muted hover:bg-border disabled:opacity-50"
+           >
+             &gt;
+           </button>
+           <span className="text-[10px] text-text-muted ml-2">Pág. {currentPage} de {totalPages} ({filteredData.length} itens)</span>
         </div>
       </div>
 

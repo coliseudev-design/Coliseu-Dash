@@ -29,7 +29,7 @@ export default function ProfitabilityDashboard() {
   const { filter } = useOutletContext<{ filter: BiPeriodFilter }>();
 
   // Fetch using the existing query, but we'll use mock data to perfectly match the UI
-  const { isLoading, isError } = useBiPeriodQuery(
+  const { data, isLoading, isError } = useBiPeriodQuery(
     ['bi', 'comparative'],
     BIService.getComparativeAnalysis,
     filter

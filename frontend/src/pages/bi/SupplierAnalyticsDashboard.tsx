@@ -10,6 +10,7 @@ import {
 import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { formatBRL, formatBRLCompact, formatNum } from '../../utils/format';
 import clsx from 'clsx';
+import { PromptViewer } from '../../components/PromptViewer';
 
 // Badge Comparativo para tabelas
 const DeltaBadge = ({ pct }: { pct: number | null }) => {
@@ -169,8 +170,12 @@ export default function SupplierAnalyticsDashboard() {
         ))}
       </div>
 
-      {/* PERFORMANCE MENSAL TABLE */}
-      <div className="bg-bg-primary border border-border shadow-card rounded-xl overflow-hidden flex flex-col">
+      </div>
+
+      {activeTab === 'Visão Geral de Vendas' && (
+        <div className="space-y-6 animate-in fade-in duration-300">
+          {/* PERFORMANCE MENSAL TABLE */}
+          <div className="bg-bg-primary border border-border shadow-card rounded-xl overflow-hidden flex flex-col">
         <div className="p-4 border-b border-divider">
           <h3 className="font-bold text-text-primary text-sm uppercase tracking-wider">Performance Mensal</h3>
         </div>
@@ -432,7 +437,83 @@ export default function SupplierAnalyticsDashboard() {
             </div>
           </div>
         </div>
-      </div>
+        </div>
+      )}
+
+      {activeTab === 'Ranking de Marcas' && (
+        <PromptViewer 
+          title="Gerador de Análise: Ranking de Marcas"
+          description="Prompt estruturado para análise de desempenho de marcas via Inteligência Artificial."
+          prompt={`Atue como um Especialista Sênior em Ciência de Dados, Vendas e Finanças. Sua tarefa é analisar o desempenho de vendas das marcas no período selecionado e gerar um relatório de "Ranking de Marcas" estruturado, visualmente atraente e focado em insights acionáveis.
+
+Diretrizes de Formatação e Conteúdo:
+• Utilize formatação Markdown avançada, incluindo tabelas bem estruturadas, negrito para métricas-chave e ícones representativos (🏆, 📈, ⚠️, 🎯).
+• Divida a análise em seções claras: Visão Geral, Top 10 Marcas, Foco na Marca Selecionada e Recomendações Estratégicas.
+• Não mencione o nome da nossa empresa na análise.
+
+Dados Necessários:
+• Marca Selecionada no Filtro: ${selectedBrand || 'Todas as Marcas'}
+• Total de Receita do Período: ${formatBRL(overview.receita)}
+• Top Produtos da Marca/Geral:
+${topProducts.slice(0, 10).map((p: any) => `  - ${p.rank}º ${p.name}: ${p.volume} un. | ${formatBRL(p.receita)}`).join('\n')}
+
+Estrutura da Resposta Esperada:
+1. 🏆 Top 10 Marcas Mais Vendidas: Apresente uma tabela detalhada com as 10 principais marcas.
+2. 🎯 Análise da Marca Selecionada (${selectedBrand || 'Todas as Marcas'}):
+   • Se a marca estiver no Top 10, destaque seu desempenho, pontos fortes e motivos do sucesso.
+   • Se a marca NÃO estiver no Top 10, informe claramente sua posição atual, apresente suas métricas e forneça uma análise de por que ela está fora do topo, incluindo alertas (⚠️) sobre queda de vendas ou perda de market share.
+3. 💡 Recomendações Estratégicas: Forneça de 2 a 3 sugestões práticas para melhorar o posicionamento da marca selecionada ou alavancar ainda mais as líderes. Inclua "Parabéns" (🎉) para desempenhos excepcionais.`}
+        />
+      )}
+
+      {activeTab === 'Análise de Estoque' && (
+        <PromptViewer 
+          title="Gerador de Análise: Diagnóstico de Estoque"
+          description="Prompt focado na avaliação de capital imobilizado, oportunidades de margem e giro."
+          prompt={`Atue como um Especialista Sênior em Gestão de Estoque, Finanças e Supply Chain. Sua tarefa é realizar um diagnóstico financeiro e quantitativo do inventário atual, gerando um relatório de "Análise de Estoque" estruturado, direto e visualmente atrativo.
+
+Diretrizes de Formatação e Conteúdo:
+• Utilize formatação Markdown avançada, com tabelas de resumo financeiro, indicadores em destaque e ícones (📦, 💰, 📊, 🚨).
+• Separe os insights em categorias: Saúde Financeira do Estoque, Alertas de Risco e Oportunidades de Margem.
+• Não mencione o nome da nossa empresa.
+
+Dados Necessários:
+• Total de Custo do Estoque: ${formatBRL(overview.custo)} (Ref. Vendas)
+• Total de Preço de Venda (Receita Potencial): ${formatBRL(overview.receita)}
+• Quantidade Total de Produtos Físicos: ${topProducts.reduce((acc: number, p: any) => acc + p.volume, 0)} unidades vendidas
+• Margem Bruta Potencial Projetada: ${margem.toFixed(1)}%
+
+Estrutura da Resposta Esperada:
+1. 📊 Resumo Financeiro do Inventário: Apresente os totais de custo, valor de venda potencial e quantidade de itens em um formato de "cards" textuais ou tabela de alto impacto.
+2. 💰 Análise de Rentabilidade: Calcule e comente sobre a margem bruta potencial. O estoque atual representa uma boa oportunidade de lucro?
+3. 🚨 Alertas e Otimizações: Identifique possíveis riscos de capital imobilizado (baseado no volume total) e sugira ações para acelerar o giro de estoque e maximizar o retorno sobre o custo.`}
+        />
+      )}
+
+      {activeTab === 'Catálogo' && (
+        <PromptViewer 
+          title="Gerador de Análise: Revisão de Catálogo"
+          description="Prompt estruturado para análise de catálogo e estratégias de precificação por IA."
+          prompt={`Atue como um Analista Sênior de Produtos e Precificação. Sua tarefa é estruturar e analisar a lista de produtos disponíveis, gerando um "Catálogo" detalhado, organizado e fácil de consultar para a equipe comercial.
+
+Diretrizes de Formatação e Conteúdo:
+• Utilize formatação Markdown, priorizando uma tabela abrangente e limpa.
+• Inclua ícones de status para facilitar a visualização (🟢 Estoque Alto, 🟡 Estoque Médio, 🔴 Estoque Baixo/Crítico).
+• Não mencione o nome da nossa empresa.
+
+Dados Necessários:
+Lista de Produtos Base:
+${topProducts.slice(0, 15).map((p: any) => `- SKU_${p.rank} | ${p.name} | Receita: ${formatBRL(p.receita)} | Vol: ${p.volume}`).join('\n')}
+
+Estrutura da Resposta Esperada:
+1. 📋 Catálogo Geral de Produtos: Apresente a lista completa em uma tabela Markdown formatada com as colunas: | Código | Descrição | Preço de Custo | Preço de Venda | Margem Bruta (%) | Estoque Atual | Status |.
+   *Nota para a IA: Como os dados de custo/preço individuais estão omitidos na amostra, crie estimativas lógicas com base na Receita e Volume fornecidos para simular o cenário.*
+2. 🎯 Destaques do Catálogo:
+   • Destaque o produto com a maior margem de lucro.
+   • Destaque o produto com o maior volume em estoque.
+3. 💡 Sugestões de Ação: Recomende brevemente ações promocionais para itens com alto estoque e ações de reposição para itens críticos.`}
+        />
+      )}
 
     </div>
   );
