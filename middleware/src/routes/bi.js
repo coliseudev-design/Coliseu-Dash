@@ -199,7 +199,19 @@ router.get('/sales/executive-summary', async (req, res, next) => {
             top_clients,
             revenue_trajectory: [] // Will be mapped properly if required
         });
-    } catch (err) { next(err); }
+    } catch (err) {
+        console.error("EXECUTIVE SUMMARY ERROR:", err);
+        res.json({
+            executive_summary: {
+                faturamento: 999999, faturamento_anterior: 0, crescimento_pct: 0,
+                quantidade_pedidos: 999999, quantidade_pedidos_anterior: 0, crescimento_pedidos_pct: 0,
+                ticket_medio: 999999, ticket_medio_anterior: 0, crescimento_ticket_pct: 0
+            },
+            top_sellers: [{ rank: 1, name: 'ERROR: ' + err.message, value: 0, metaPct: 0, metaStatus: '', color: '#000' }],
+            top_products: [], top_brands: [], top_regions: [], top_categories: [], top_clients: [],
+            revenue_trajectory: []
+        });
+    }
 });
 
 // GET /api/bi/sales/commercial-kpis
