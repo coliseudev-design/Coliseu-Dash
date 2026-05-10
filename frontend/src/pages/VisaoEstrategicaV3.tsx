@@ -97,8 +97,8 @@ const GaugeChart = ({ realizado, meta }: { realizado: number, meta: number }) =>
 
 export default function VisaoEstrategicaV3() {
   const user = useAuthStore((s) => s.user)
-  
   const ov = usePeriodQuery<any>('/estatisticas/overview')
+  const kpisData = usePeriodQuery<any>('/estatisticas/kpis')
   const fatMes = usePeriodQuery<any>('/vendas/faturadas')
   const vd = usePeriodQuery<any>('/ranking/vendedores')
   const prod = usePeriodQuery<any>('/ranking/produtos')
@@ -106,33 +106,19 @@ export default function VisaoEstrategicaV3() {
   const marcas = usePeriodQuery<any>('/ranking/marcas')
 
   const period = usePeriodStore((s) => s.period)
+  
+  // Real data mapping
   const faturamentoAtual = ov.data?.mes?.total || 0;
+  const qtdPedidos = kpisData.data?.vendas?.qtd_pedidos || ov.data?.mes?.qtd || 0;
+  const ticketMedio = kpisData.data?.vendas?.ticket_medio || (qtdPedidos > 0 ? faturamentoAtual / qtdPedidos : 0);
+  const clientesAtivos = kpisData.data?.kpis?.clientes_ativos || 0;
+  const totalClientes = kpisData.data?.kpis?.total_clientes || 0;
+  const taxaConversao = kpisData.data?.kpis?.taxa_conversao_pct || 0;
+  
+  const mockFaturamentoAnterior = ov.data?.anterior?.total || 0;
+  const metaFaturamento = ov.data?.meta_total || faturamentoAtual * 1.2;
 
-  // Mock data dynamic config
-  let mockFaturamentoAnterior = 0;
-  let metaFaturamento = ov.data?.meta_total || 0;
-
-  if (period === 'today' || period === 'yesterday') {
-    mockFaturamentoAnterior = 9500.50;
-    metaFaturamento = 12000;
-  } else if (period === 'last7') {
-    mockFaturamentoAnterior = 76500.00;
-    metaFaturamento = 90000;
-  } else if (period === 'thisMonth') {
-    mockFaturamentoAnterior = 223838.93;
-    metaFaturamento = 280000;
-  } else if (period === 'lastMonth') {
-    mockFaturamentoAnterior = 210500.00;
-    metaFaturamento = 250000;
-  } else if (period === 'last12m') {
-    mockFaturamentoAnterior = 1850000.00;
-    metaFaturamento = 2500000;
-  } else if (period === 'custom') {
-    mockFaturamentoAnterior = faturamentoAtual * 0.85;
-    metaFaturamento = faturamentoAtual > 0 ? faturamentoAtual * 1.2 : 50000;
-  }
-
-  const faturamentoCrescimento = ((faturamentoAtual - mockFaturamentoAnterior) / mockFaturamentoAnterior) * 100;
+  const faturamentoCrescimento = mockFaturamentoAnterior > 0 ? ((faturamentoAtual - mockFaturamentoAnterior) / mockFaturamentoAnterior) * 100 : 0;
 
   const faturamentoPeriodoData = fatMes.data?.data && fatMes.data.data.length > 0 
     ? fatMes.data.data 
@@ -153,18 +139,8 @@ export default function VisaoEstrategicaV3() {
 
   const mockTopProducts = prod.data?.data?.map((p: any) => ({ name: p.nome || p.produto, value: p.total })) || [];
 
-  const mockTopCities = [
-    { name: 'DOURADOS - MS', value: 103432.05 },
-    { name: 'CAMPO GRANDE - MS', value: 85000.00 },
-    { name: 'MARACAJU - MS', value: 65000.00 },
-    { name: 'PONTA PORÃ - MS', value: 45000.00 },
-    { name: 'NAVIRAÍ - MS', value: 35000.00 },
-    { name: 'TRÊS LAGOAS - MS', value: 25000.00 },
-    { name: 'RIO BRILHANTE - MS', value: 15000.00 },
-    { name: 'SIDROLÂNDIA - MS', value: 12000.00 },
-    { name: 'NOVA ANDRADINA - MS', value: 8000.00 },
-    { name: 'AMAMBAI - MS', value: 5000.00 },
-  ];
+  // Currently no /ranking/cidades exists, so we derive from top clients if possible or use empty
+  const mockTopCities = cli.data?.data?.map((c: any) => ({ name: c.cidade || 'NÃO INFORMADA', value: c.total })) || [];
 
   const mockTopClients = cli.data?.data?.map((c: any, i: number) => ({ rank: i + 1, name: c.nome, value: c.total })) || [];
 
@@ -216,9 +192,9 @@ export default function VisaoEstrategicaV3() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: 'Vendas Totais', value: formatBRL(faturamentoAtual), icon: DollarSign, color: 'text-success', bg: 'bg-success/10' },
-          { label: 'Volume de Peças', value: formatNum(ov.data?.mes?.qtd || 337), icon: Box, color: 'text-brand-500', bg: 'bg-brand-500/10' },
-          { label: 'Ticket Médio', value: formatBRL((ov.data?.mes?.total || 0) / (ov.data?.mes?.qtd || 1) || 712.51), icon: Target, color: 'text-warning', bg: 'bg-warning/10' },
-          { label: 'Taxa de Conversão', value: '4,6%', icon: TrendingUp, color: 'text-danger', bg: 'bg-danger/10' },
+          { label: 'Volume de Peças', value: formatNum(qtdPedidos), icon: Box, color: 'text-brand-500', bg: 'bg-brand-500/10' },
+          { label: 'Ticket Médio', value: formatBRL(ticketMedio), icon: Target, color: 'text-warning', bg: 'bg-warning/10' },
+          { label: 'Taxa de Conversão', value: `${taxaConversao.toFixed(1)}%`, icon: TrendingUp, color: 'text-danger', bg: 'bg-danger/10' },
         ].map((kpi, idx) => (
           <div key={idx} className="bg-bg-primary rounded-xl p-4 border border-border shadow-card flex items-center gap-4">
             <div className={clsx('p-3 rounded-lg', kpi.bg, kpi.color)}>
@@ -235,10 +211,11 @@ export default function VisaoEstrategicaV3() {
       {/* TIER 3: KPIS SECUNDÁRIOS */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Metas Atingidas', value: '15,3', icon: Award, color: 'text-brand-400', bg: 'bg-brand-400/10' },
-          { label: 'Clientes Ativos', value: '384 / 6995', icon: Users, color: 'text-blue-500', bg: 'bg-blue-500/10' },
-          { label: 'Vendedores Ativos', value: '106', icon: Briefcase, color: 'text-purple-500', bg: 'bg-purple-500/10' },
-          { label: 'Lojas Atendidas', value: '56', icon: Map, color: 'text-orange-500', bg: 'bg-orange-500/10' },
+          { label: 'Volume de Peças (Pedidos)', value: formatNum(qtdPedidos), icon: ShoppingBag, color: 'text-brand-500', bg: 'bg-brand-500/10' },
+          { label: 'Ticket Médio', value: formatBRL(ticketMedio), icon: DollarSign, color: 'text-warning', bg: 'bg-warning/10' },
+          { label: 'Taxa de Conversão', value: `${taxaConversao.toFixed(1)}%`, icon: TrendingUp, color: 'text-danger', bg: 'bg-danger/10' },
+          { label: 'Clientes Ativos', value: `${clientesAtivos} / ${totalClientes}`, icon: Users, color: 'text-blue-500', bg: 'bg-blue-500/10' },
+          { label: 'Vendedores Ativos', value: vd.data?.data?.length || 0, icon: Briefcase, color: 'text-purple-500', bg: 'bg-purple-500/10' }
         ].map((kpi, idx) => (
           <div key={idx} className="bg-bg-primary rounded-xl p-4 border border-border shadow-card flex items-center gap-4">
             <div className={clsx('p-3 rounded-lg', kpi.bg, kpi.color)}>

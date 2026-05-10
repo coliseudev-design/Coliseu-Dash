@@ -106,8 +106,8 @@ router.get('/sales/executive-summary', async (req, res, next) => {
             rank: i + 1,
             name: p.nome,
             current: parseFloat(p.vendas),
-            prev: parseFloat(p.vendas) * 0.9, // Mocking delta for now
-            delta: 10
+            prev: null, // Removed fake mock
+            delta: null // Removed fake mock
         }));
 
         // --- 4. Top Brands ---
@@ -126,8 +126,8 @@ router.get('/sales/executive-summary', async (req, res, next) => {
             rank: i + 1,
             name: b.nome,
             current: parseFloat(b.vendas),
-            prev: parseFloat(b.vendas) * 0.85,
-            delta: 15
+            prev: null, // Removed fake mock
+            delta: null // Removed fake mock
         }));
 
         // --- 5. Top Regions (Cities) ---
@@ -164,8 +164,8 @@ router.get('/sales/executive-summary', async (req, res, next) => {
             rank: i + 1,
             name: c.nome,
             current: parseFloat(c.vendas),
-            prev: parseFloat(c.vendas) * 0.9,
-            delta: 10
+            prev: null, // Removed fake mock
+            delta: null // Removed fake mock
         }));
 
         // --- 7. Top Clientes ---

@@ -378,31 +378,8 @@ export default function SalesIntelligenceDashboard() {
                 <span className="text-xl font-bold text-brand-500 font-mono">{formatBRL(seller.value)}</span>
                 <span className="text-xs text-text-muted">Total Vendas</span>
               </div>
-              <div className="flex-1 flex flex-wrap gap-2">
-                {brandsList.slice(0, 5).map((brand, bIdx) => {
-                  // Simulate random share logic based on seller
-                  const share = [45, 25, 15, 10, 5][bIdx];
-                  const value = (seller.value * share) / 100;
-                  return (
-                    <div 
-                      key={bIdx} 
-                      className="p-3 rounded-lg border border-transparent shadow-sm flex flex-col justify-between"
-                      style={{ 
-                        flexGrow: share, 
-                        flexBasis: `${Math.max(20, share)}%`,
-                        backgroundColor: `${brandColors[bIdx]}15`,
-                        borderColor: `${brandColors[bIdx]}30`
-                      }}
-                    >
-                      <span className="text-[10px] font-bold text-text-secondary uppercase truncate" style={{ color: brandColors[bIdx] }}>{brand.name}</span>
-                      <span className="text-sm font-extrabold text-text-primary">{formatBRL(value)}</span>
-                      <div className="flex justify-between items-center mt-2">
-                        <span className="text-xs font-bold text-text-muted">{share}%</span>
-                        <span className="text-[10px] text-text-muted">Share</span>
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="flex-1 flex items-center justify-center p-4 bg-bg-tertiary/50 border border-dashed border-divider rounded-lg">
+                <span className="text-sm font-semibold text-text-muted">Detalhamento por marca indisponível no momento.</span>
               </div>
             </div>
           ))}

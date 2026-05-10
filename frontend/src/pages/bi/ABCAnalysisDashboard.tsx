@@ -33,7 +33,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 export default function InventoryManagementDashboard() {
   const { filter } = useOutletContext<{ filter: BiPeriodFilter }>();
 
-  const { isLoading, isError } = useBiPeriodQuery(
+  const { data, isLoading, isError } = useBiPeriodQuery(
     ['bi', 'abc'],
     BIService.getABCAnalysis,
     filter
@@ -49,7 +49,6 @@ export default function InventoryManagementDashboard() {
   }
 
   // Mocks explicitly matching the layout
-  const barChartData = [
   const barChartData = data?.barChartData || [];
   const distGrupo = data?.distGrupo || [];
   const distMarca = data?.distMarca || [];
@@ -114,6 +113,9 @@ export default function InventoryManagementDashboard() {
           <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">
             <div className="p-1.5 bg-blue-400/10 rounded-lg"><Box size={14} className="text-blue-400" /></div> TOTAL ITENS (VOLUME)
           </div>
+          <div className="text-2xl font-extrabold text-text-primary mt-2">{formatNum(kpis.total_volume)}</div>
+        </div>
+
         <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between">
           <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">
             <div className="p-1.5 bg-purple-500/10 rounded-lg"><RefreshCcw size={14} className="text-purple-500" /></div> GIRO (TURNOVER)
