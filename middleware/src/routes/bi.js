@@ -363,13 +363,13 @@ router.get('/sales/abc-analysis', async (req, res, next) => {
         // Fetch product list and calculate ABC
         const { rows: prods } = await db.query(`
             SELECT 
-                p.id_firebird, p.nome, p.unidade, COALESCE(p.marca, 'DIVERSAS') as marca, 
+                p.id_firebird, p.nome, COALESCE(p.marca, 'DIVERSAS') as marca, 
                 COALESCE(p.categoria, 'OUTROS') as grupo, p.estoque, p.custo, p.preco,
                 COALESCE(SUM(vi.valor_total), 0) as faturamento_historico
             FROM dash_produtos p
             LEFT JOIN dash_vendas_itens vi ON vi.produto_id_firebird = p.id_firebird AND vi.tenant_id = p.tenant_id
             WHERE p.tenant_id = $1 AND p.ativo = true
-            GROUP BY p.id_firebird, p.nome, p.unidade, p.marca, p.categoria, p.estoque, p.custo, p.preco
+            GROUP BY p.id_firebird, p.nome, p.marca, p.categoria, p.estoque, p.custo, p.preco
             ORDER BY faturamento_historico DESC
             LIMIT 500
         `, [tenantId]);
@@ -397,7 +397,7 @@ router.get('/sales/abc-analysis', async (req, res, next) => {
             return {
                 cod: String(p.id_firebird),
                 desc: p.nome,
-                emb: p.unidade,
+                emb: 'UN',
                 marca: p.marca,
                 grupo: p.grupo,
                 abc: curva,
@@ -445,17 +445,7 @@ router.get('/sales/abc-analysis', async (req, res, next) => {
             barChartData: barChart.map(b => ({ name: b.name, estoque: parseFloat(b.estoque), giro: '0x' })),
             tableData: mapped
         });
-    } catch (err) {
-        console.error("ABC ANALYSIS ERROR:", err);
-        res.json({
-            error_message: err.message,
-            kpis: { valor_estoque_custo: 0, valor_estoque_venda: 0, total_volume: 0, skus_com_saldo: 0, ruptura_pct: 0, curva_a_count: 0, curva_b_count: 0, curva_c_count: 0 },
-            distGrupo: [],
-            distMarca: [],
-            barChartData: [{ name: 'ERROR: ' + err.message, estoque: 99999, giro: '0x' }],
-            tableData: []
-        });
-    }
+    } catch (err) { next(err); }
 });
 
 // ==========================================
