@@ -260,11 +260,10 @@ router.get('/sales/commercial-kpis', async (req, res, next) => {
         const totalPedidos = parseInt(pVendas[0].pedidos || 0);
         const ticketMedio = totalPedidos > 0 ? totalFaturamento / totalPedidos : 0;
 
-        // Fila de pedidos recentes
         const { rows: recent } = await db.query(`
             SELECT 
                 v.id_firebird as id,
-                v.numero_nota,
+                v.numero_pedido as numero_nota,
                 c.nome as cliente,
                 vend.nome as vendedor,
                 TO_CHAR(v.data_venda, 'DD/MM/YYYY') as data,
