@@ -445,7 +445,17 @@ router.get('/sales/abc-analysis', async (req, res, next) => {
             barChartData: barChart.map(b => ({ name: b.name, estoque: parseFloat(b.estoque), giro: '0x' })),
             tableData: mapped
         });
-    } catch (err) { next(err); }
+    } catch (err) {
+        console.error("ABC ANALYSIS ERROR:", err);
+        res.json({
+            error_message: err.message,
+            kpis: { valor_estoque_custo: 0, valor_estoque_venda: 0, total_volume: 0, skus_com_saldo: 0, ruptura_pct: 0, curva_a_count: 0, curva_b_count: 0, curva_c_count: 0 },
+            distGrupo: [],
+            distMarca: [],
+            barChartData: [{ name: 'ERROR: ' + err.message, estoque: 99999, giro: '0x' }],
+            tableData: []
+        });
+    }
 });
 
 // ==========================================
