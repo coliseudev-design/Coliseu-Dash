@@ -81,9 +81,18 @@ export default function SupplierAnalyticsDashboard() {
   const chartData = data?.monthly_performance || [];
   const overview = data?.overview || { receita: 0, custo: 0, pedidos: 0, clientes: 0 };
   const topProducts = data?.top_products || [];
+  const topBrands = data?.top_brands || [];
   const availableBrands = data?.available_brands || ['VHM TRACTOR'];
   const margem = overview.receita > 0 ? ((overview.receita - overview.custo) / overview.receita) * 100 : 0;
   const ticketMedio = overview.pedidos > 0 ? overview.receita / overview.pedidos : 0;
+
+  let currentRank = '-';
+  if (selectedBrand && topBrands.length > 0) {
+     const brandData = topBrands.find((b: any) => b.name === selectedBrand);
+     if (brandData) currentRank = `${brandData.rank}º`;
+  } else if (!selectedBrand && topBrands.length > 0) {
+     currentRank = 'Geral';
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300 pb-10">
@@ -134,7 +143,7 @@ export default function SupplierAnalyticsDashboard() {
 
         <div className="flex items-center gap-4 z-10">
           <div className="bg-white text-orange-600 rounded-xl px-4 py-3 flex items-center gap-3 shadow-md">
-            <div className="text-2xl font-extrabold bg-orange-100 rounded-full w-10 h-10 flex items-center justify-center">8º</div>
+            <div className="text-xl font-extrabold bg-orange-100 rounded-full w-12 h-12 flex items-center justify-center">{currentRank}</div>
             <div className="flex flex-col">
               <span className="text-[10px] font-black uppercase tracking-wider text-orange-400">Posição no Ranking</span>
               <span className="text-xs font-bold text-orange-600">Período Selecionado</span>
@@ -171,9 +180,20 @@ export default function SupplierAnalyticsDashboard() {
       </div>
 
       {activeTab === 'Visão Geral de Vendas' && (
-        <div className="space-y-6 animate-in fade-in duration-300">
-          {/* PERFORMANCE MENSAL TABLE */}
-          <div className="bg-bg-primary border border-border shadow-card rounded-xl overflow-hidden flex flex-col">
+        !selectedBrand ? (
+          <div className="bg-bg-primary border border-border shadow-card rounded-xl p-12 text-center animate-in fade-in flex flex-col items-center justify-center">
+            <div className="w-16 h-16 bg-bg-secondary rounded-full flex items-center justify-center mb-4">
+              <Activity size={32} className="text-text-muted" />
+            </div>
+            <h3 className="text-xl font-bold text-text-primary mb-2">Selecione uma Marca</h3>
+            <p className="text-sm text-text-secondary max-w-md">
+              Para visualizar a <strong>Visão Geral de Vendas</strong>, escolha uma marca específica no filtro superior. Para ver o portfólio completo, acesse a guia "Ranking de Marcas".
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-6 animate-in fade-in duration-300">
+            {/* PERFORMANCE MENSAL TABLE */}
+            <div className="bg-bg-primary border border-border shadow-card rounded-xl overflow-hidden flex flex-col">
         <div className="p-4 border-b border-divider">
           <h3 className="font-bold text-text-primary text-sm uppercase tracking-wider">Performance Mensal</h3>
         </div>
@@ -449,51 +469,49 @@ export default function SupplierAnalyticsDashboard() {
             </div>
           </div>
 
-          {/* 1. Visão Geral (Top Produtos da Marca/Geral em formato de Ranking) */}
+          {/* 1. Visão Geral (Top Marcas em formato de Ranking) */}
           <div className="bg-bg-primary border border-border shadow-card rounded-xl overflow-hidden flex flex-col">
             <div className="p-4 border-b border-divider flex justify-between items-center bg-gradient-to-r from-bg-secondary to-bg-primary">
               <h3 className="font-bold text-text-primary text-sm uppercase tracking-wider flex items-center gap-2">
                 <Trophy size={18} className="text-brand-500" />
-                🏆 Top Produtos - {selectedBrand || 'Todas as Marcas'}
+                🏆 Top 10 Marcas - Faturamento Geral
               </h3>
-              <div className="text-xs font-bold px-3 py-1 bg-brand-500/10 text-brand-500 rounded-full">
-                Receita Total: {formatBRL(overview.receita)}
-              </div>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm whitespace-nowrap">
                 <thead>
                   <tr className="bg-bg-secondary/30 text-[10px] text-text-muted uppercase font-bold tracking-wider">
                     <th className="px-5 py-3 w-16 text-center">POS</th>
-                    <th className="px-5 py-3">PRODUTO</th>
+                    <th className="px-5 py-3">MARCA</th>
                     <th className="px-5 py-3 text-right">VOLUME</th>
                     <th className="px-5 py-3 text-right">RECEita</th>
                     <th className="px-5 py-3 text-center">TENDÊNCIA</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-divider/30 text-xs">
-                  {topProducts.slice(0, 10).map((prod: any, idx: number) => {
-                    const isTop3 = idx < 3;
+                  {topBrands.map((brand: any, idx: number) => {
+                    const isTop3 = brand.rank <= 3;
+                    const isSelected = selectedBrand && brand.name === selectedBrand;
                     return (
-                      <tr key={idx} className={`hover:bg-bg-secondary/50 transition-colors ${isTop3 ? 'bg-brand-500/5' : ''}`}>
+                      <tr key={idx} className={`hover:bg-bg-secondary/50 transition-colors ${isTop3 ? 'bg-brand-500/5' : ''} ${isSelected ? 'bg-brand-500/20 border-l-4 border-brand-500' : ''}`}>
                         <td className="px-5 py-3 text-center">
-                          {idx === 0 && <span className="text-xl" title="Ouro">🥇</span>}
-                          {idx === 1 && <span className="text-xl" title="Prata">🥈</span>}
-                          {idx === 2 && <span className="text-xl" title="Bronze">🥉</span>}
-                          {idx > 2 && <span className="font-bold text-text-muted">{idx + 1}º</span>}
+                          {brand.rank === 1 && <span className="text-xl" title="Ouro">🥇</span>}
+                          {brand.rank === 2 && <span className="text-xl" title="Prata">🥈</span>}
+                          {brand.rank === 3 && <span className="text-xl" title="Bronze">🥉</span>}
+                          {brand.rank > 3 && <span className="font-bold text-text-muted">{brand.rank}º</span>}
                         </td>
-                        <td className="px-5 py-3 font-bold text-text-primary">{prod.name}</td>
-                        <td className="px-5 py-3 text-right font-medium text-text-secondary">{prod.volume} un.</td>
-                        <td className="px-5 py-3 text-right font-bold text-brand-500">{formatBRL(prod.receita)}</td>
+                        <td className="px-5 py-3 font-bold text-text-primary">{brand.name}</td>
+                        <td className="px-5 py-3 text-right font-medium text-text-secondary">{brand.volume} un.</td>
+                        <td className="px-5 py-3 text-right font-bold text-brand-500">{formatBRL(brand.receita)}</td>
                         <td className="px-5 py-3 text-center">
                           <TrendingUp size={16} className={isTop3 ? "text-success mx-auto" : "text-text-muted mx-auto"} />
                         </td>
                       </tr>
                     );
                   })}
-                  {topProducts.length === 0 && (
+                  {topBrands.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="px-5 py-8 text-center text-text-muted">Nenhum produto encontrado no período.</td>
+                      <td colSpan={5} className="px-5 py-8 text-center text-text-muted">Nenhuma marca encontrada no período.</td>
                     </tr>
                   )}
                 </tbody>
@@ -578,7 +596,18 @@ export default function SupplierAnalyticsDashboard() {
       )}
 
       {activeTab === 'Análise de Estoque' && (
-        <div className="space-y-6 animate-in fade-in duration-300">
+        !selectedBrand ? (
+          <div className="bg-bg-primary border border-border shadow-card rounded-xl p-12 text-center animate-in fade-in flex flex-col items-center justify-center">
+            <div className="w-16 h-16 bg-bg-secondary rounded-full flex items-center justify-center mb-4">
+              <Box size={32} className="text-text-muted" />
+            </div>
+            <h3 className="text-xl font-bold text-text-primary mb-2">Selecione uma Marca</h3>
+            <p className="text-sm text-text-secondary max-w-md">
+              Para visualizar a <strong>Análise de Estoque</strong>, escolha uma marca específica no filtro superior. Para ver o portfólio completo, acesse a guia "Ranking de Marcas".
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-6 animate-in fade-in duration-300">
           
           <div className="flex items-center gap-2 mb-4">
             <div className="bg-brand-500 text-white p-2 rounded-lg"><Box size={24} /></div>
@@ -676,10 +705,22 @@ export default function SupplierAnalyticsDashboard() {
           </div>
 
         </div>
+        )
       )}
 
       {activeTab === 'Catálogo' && (
-        <div className="space-y-6 animate-in fade-in duration-300">
+        !selectedBrand ? (
+          <div className="bg-bg-primary border border-border shadow-card rounded-xl p-12 text-center animate-in fade-in flex flex-col items-center justify-center">
+            <div className="w-16 h-16 bg-bg-secondary rounded-full flex items-center justify-center mb-4">
+              <ShoppingCart size={32} className="text-text-muted" />
+            </div>
+            <h3 className="text-xl font-bold text-text-primary mb-2">Selecione uma Marca</h3>
+            <p className="text-sm text-text-secondary max-w-md">
+              Para visualizar o <strong>Catálogo</strong>, escolha uma marca específica no filtro superior. Para ver o portfólio completo, acesse a guia "Ranking de Marcas".
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-6 animate-in fade-in duration-300">
           <div className="bg-bg-primary border border-border shadow-card rounded-xl flex flex-col overflow-hidden">
             <div className="p-4 border-b border-divider flex justify-between items-center bg-gradient-to-r from-bg-secondary to-bg-primary">
               <h3 className="font-bold text-text-primary text-sm uppercase tracking-wider flex items-center gap-2">
@@ -766,6 +807,7 @@ export default function SupplierAnalyticsDashboard() {
             </div>
           </div>
         </div>
+        )
       )}
 
     </div>
