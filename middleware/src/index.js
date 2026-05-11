@@ -52,44 +52,6 @@ async function startServer() {
                         logger.info('[App] Migração 001 (filtro filial) aplicada com sucesso.');
                     }
                 } catch (migErr) {
-                    // Não bloqueia o startup — avisa no log
-                    logger.warn('[App] Aviso na migração 001 (pode já existir):', migErr.message);
-                }
-
-                // --- Sincronização de Filiais do Identity Server ---
-                // Busca as filiais cadastradas no Identity Server e popula dash_filiais.
-                // Roda no startup — independente do Worker. Usa UPSERT para ser idempotente.
-                try {
-                    const fetch = (await import('node-fetch')).default;
-                    const identityUrl = config.identity?.apiUrl || process.env.IDENTITY_API_URL || 'https://adminlicencas.coliseusistemas.com.br';
-                    const internalKey = config.identity?.internalKey || process.env.IDENTITY_INTERNAL_KEY || '';
-
-                    // Busca todos os tenants que têm filiais configuradas
-                    const resp = await fetch(`${identityUrl}/internal/filiais`, {
-                        headers: { 'x-internal-key': internalKey },
-                        signal: AbortSignal.timeout(8000),
-                    });
-
-                    if (resp.ok) {
-                        const { filiais } = await resp.json();
-                        logger.info(`[App] Sincronizando ${filiais?.length || 0} filiais do Identity Server...`);
-                        for (const f of (filiais || [])) {
-                            await db.query(
-                                `INSERT INTO dash_filiais (tenant_id, empresa_erp, depto_id, centro_custo, nome, documento, is_default, ativo, sincronizado_em)
-                                 VALUES ($1,$2,$3,$4,$5,$6,$7,true,NOW())
-                                 ON CONFLICT (tenant_id, depto_id) DO UPDATE
-                                 SET empresa_erp=$2, centro_custo=$4, nome=$5, documento=$6, is_default=$7, ativo=true, sincronizado_em=NOW()`,
-                                [f.tenant_id, f.empresa_erp, f.depto_id, f.centro_custo ?? null, f.nome, f.documento ?? null, f.is_default ?? false]
-                            );
-                        }
-                        logger.info('[App] Filiais sincronizadas com sucesso.');
-                    } else {
-                        logger.warn(`[App] Identity Server retornou ${resp.status} ao buscar filiais. Pulando sync.`);
-                    }
-                } catch (filiaisErr) {
-                    logger.warn('[App] Não foi possível sincronizar filiais do Identity Server:', filiaisErr.message);
-                }
-
             } catch (dbErr) {
                 logger.error('[App] Erro ao sincronizar as tabelas do banco:', dbErr);
             }

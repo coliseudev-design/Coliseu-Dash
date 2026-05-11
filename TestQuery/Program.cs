@@ -10,11 +10,11 @@ class Program
         {
             conn.Open();
             try {
-                using (FbCommand cmd = new FbCommand("SELECT RDB$RELATION_NAME FROM RDB$RELATIONS WHERE RDB$SYSTEM_FLAG = 0 AND RDB$RELATION_NAME LIKE '%EMP%'", conn))
+                using (FbCommand cmd = new FbCommand("SELECT FIRST 1 * FROM EMPRESA", conn))
                 using (FbDataReader r = cmd.ExecuteReader())
                 {
-                    while(r.Read()) {
-                        Console.WriteLine($"TABLE: {r[0].ToString().Trim()}");
+                    for(int i = 0; i < r.FieldCount; i++) {
+                        Console.WriteLine($"COLUMN: {r.GetName(i)}");
                     }
                 }
             }
