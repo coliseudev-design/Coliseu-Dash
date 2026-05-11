@@ -11,12 +11,6 @@ export interface SupplierAnalyticsResponse {
     volume: number;
     receita: number;
   }>;
-  top_brands: Array<{
-    rank: number;
-    name: string;
-    volume: number;
-    receita: number;
-  }>;
   monthly_performance: Array<{
     mes: string;
     valor: number;

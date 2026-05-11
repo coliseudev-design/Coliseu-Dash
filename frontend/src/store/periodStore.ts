@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type PeriodKey = 'today' | 'yesterday' | 'last7' | 'thisMonth' | 'lastMonth' | 'last6m' | 'last12m' | 'custom'
+export type PeriodKey = 'today' | 'yesterday' | 'last7' | 'thisMonth' | 'lastMonth' | 'last12m' | 'custom'
 
 export interface PeriodState {
   period: PeriodKey
@@ -23,7 +23,6 @@ export const PERIOD_OPTIONS: { key: PeriodKey; label: string }[] = [
   { key: 'last7', label: 'Últimos 7 dias' },
   { key: 'thisMonth', label: 'Mês atual' },
   { key: 'lastMonth', label: 'Mês anterior' },
-  { key: 'last6m', label: 'Últimos 6 meses' },
   { key: 'last12m', label: 'Últimos 12 meses' },
   { key: 'custom', label: 'Personalizado' },
 ]
