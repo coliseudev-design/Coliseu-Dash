@@ -40,14 +40,13 @@ export default function InventoryManagementDashboard() {
     filter
   );
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64 text-text-secondary">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-500 mr-3"></div>
-        Carregando Gestão de Inventário...
-      </div>
-    );
-  }
+  const [searchTerm, setSearchTerm] = useState('');
+  const [marcaFilter, setMarcaFilter] = useState('');
+  const [grupoFilter, setGrupoFilter] = useState('');
+  const [abcFilter, setAbcFilter] = useState('');
+  const [comEstoque, setComEstoque] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 100;
 
   // Mocks explicitly matching the layout
   const barChartData = data?.barChartData || [];
@@ -64,7 +63,6 @@ export default function InventoryManagementDashboard() {
     curva_b_count: 0,
     curva_c_count: 0
   };
-
 
   const marcasDisponiveis = useMemo(() => {
     const marcas = new Set(tableData.map((item: any) => item.marca).filter(Boolean));
@@ -98,6 +96,15 @@ export default function InventoryManagementDashboard() {
     const start = (currentPage - 1) * itemsPerPage;
     return filteredData.slice(start, start + itemsPerPage);
   }, [filteredData, currentPage]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64 text-text-secondary">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-500 mr-3"></div>
+        Carregando Gestão de Inventário...
+      </div>
+    );
+  }
 
 
   return (
