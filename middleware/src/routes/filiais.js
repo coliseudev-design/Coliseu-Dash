@@ -39,10 +39,10 @@ router.get('/', async (req, res, next) => {
             const fetch = (await import('node-fetch')).default;
             const config = require('../config/env');
             const identityUrl = config.security?.identityApiUrl || process.env.IDENTITY_API_URL || 'https://adminlicencas.coliseusistemas.com.br';
-            const internalKey = config.security?.identityInternalKey || process.env.IDENTITY_INTERNAL_KEY || '';
+            const internalKey = config.security?.identityInternalKey || process.env.IDENTITY_INTERNAL_KEY || 'Coliseu2026!IdentitySuperSecretKeyOauth20';
 
             const resp = await fetch(`${identityUrl}/internal/companies/${tenantId}/branches`, {
-                headers: { 'x-internal-key': internalKey },
+                headers: { 'x-internal-api-key': internalKey },
                 signal: AbortSignal.timeout(5000),
             });
 
