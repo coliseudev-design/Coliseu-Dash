@@ -30,8 +30,8 @@ router.get('/overview', async (req, res, next) => {
         const [
             vHoje, vMes, pAbertos, pProc, pCanc, fReceber, fRecebido, fPagar, fPago, topMarcasItens, topMarcasVendas, topCatsItens, topCatsVendas
         ] = await Promise.all([
-            db.query(`SELECT COALESCE(SUM(valor_total),0) AS total, COUNT(*) AS qtd FROM dash_vendas WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3 AND TRIM(status) IN ('FATURADO', 'FINALIZADO')`, [tenantId, startHoje, endHoje]),
-            db.query(`SELECT COALESCE(SUM(valor_total),0) AS total, COUNT(*) AS qtd FROM dash_vendas WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3 AND TRIM(status) IN ('FATURADO', 'FINALIZADO')`, [tenantId, start, end]),
+            db.query(`SELECT COALESCE(SUM((SELECT COALESCE(SUM(vi.valor_total),0) FROM dash_vendas_itens vi WHERE vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id)),0) AS total, COUNT(*) AS qtd FROM dash_vendas v WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')`, [tenantId, startHoje, endHoje]),
+            db.query(`SELECT COALESCE(SUM((SELECT COALESCE(SUM(vi.valor_total),0) FROM dash_vendas_itens vi WHERE vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id)),0) AS total, COUNT(*) AS qtd FROM dash_vendas v WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')`, [tenantId, start, end]),
             db.query(`SELECT COUNT(*) AS qtd FROM dash_vendas WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3 AND TRIM(status) IN ('PENDENTE','ABERTO')`, [tenantId, start, end]),
             db.query(`SELECT COUNT(*) AS qtd FROM dash_vendas WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3 AND TRIM(status) IN ('FATURADO','FINALIZADO')`, [tenantId, start, end]),
             db.query(`SELECT COUNT(*) AS qtd FROM dash_vendas WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3 AND TRIM(status) = 'CANCELADO'`, [tenantId, start, end]),
@@ -40,9 +40,9 @@ router.get('/overview', async (req, res, next) => {
             db.query(`SELECT COALESCE(SUM(valor - valor_pago),0) AS v FROM dash_financeiro WHERE tenant_id = $1 AND COALESCE(data_vencimento, data_emissao, NOW()) >= $2 AND COALESCE(data_vencimento, data_emissao, NOW()) <= $3 AND TRIM(tipo) = 'PAGAR' AND TRIM(status_pagamento) = 'ABERTO'`, [tenantId, finRange.start, finRange.end]),
             db.query(`SELECT COALESCE(SUM((CASE WHEN valor_pago = 0 THEN valor ELSE valor_pago END)),0) AS v FROM dash_financeiro WHERE tenant_id = $1 AND COALESCE(data_pagamento, data_vencimento, NOW()) >= $2 AND COALESCE(data_pagamento, data_vencimento, NOW()) <= $3 AND TRIM(tipo) = 'PAGAR' AND TRIM(status_pagamento) = 'PAGO'`, [tenantId, finRange.start, finRange.end]),
             db.query(`SELECT vi.marca, SUM(vi.valor_total) AS total FROM dash_vendas_itens vi JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO') AND vi.marca IS NOT NULL AND vi.marca != '' GROUP BY vi.marca ORDER BY total DESC LIMIT 10`, [tenantId, start, end]),
-            db.query(`SELECT marca, SUM(valor_total) AS total FROM dash_vendas WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3 AND TRIM(status) IN ('FATURADO', 'FINALIZADO') AND marca IS NOT NULL AND marca != '' GROUP BY marca ORDER BY total DESC LIMIT 10`, [tenantId, start, end]),
+            db.query(`SELECT marca, SUM((SELECT COALESCE(SUM(vi.valor_total),0) FROM dash_vendas_itens vi WHERE vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id)) AS total FROM dash_vendas v WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO') AND v.marca IS NOT NULL AND v.marca != '' GROUP BY v.marca ORDER BY total DESC LIMIT 10`, [tenantId, start, end]),
             db.query(`SELECT vi.categoria, SUM(vi.valor_total) AS total FROM dash_vendas_itens vi JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO') AND vi.categoria IS NOT NULL AND vi.categoria != '' GROUP BY vi.categoria ORDER BY total DESC LIMIT 10`, [tenantId, start, end]),
-            db.query(`SELECT categoria, SUM(valor_total) AS total FROM dash_vendas WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3 AND TRIM(status) IN ('FATURADO', 'FINALIZADO') AND categoria IS NOT NULL AND categoria != '' GROUP BY categoria ORDER BY total DESC LIMIT 10`, [tenantId, start, end])
+            db.query(`SELECT categoria, SUM((SELECT COALESCE(SUM(vi.valor_total),0) FROM dash_vendas_itens vi WHERE vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id)) AS total FROM dash_vendas v WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO') AND v.categoria IS NOT NULL AND v.categoria != '' GROUP BY v.categoria ORDER BY total DESC LIMIT 10`, [tenantId, start, end])
         ]);
 
         const topMarcas = topMarcasItens.rows.length > 0 ? topMarcasItens.rows : topMarcasVendas.rows;
@@ -83,12 +83,12 @@ router.get('/kpis', async (req, res, next) => {
 
         const { rows: v } = await db.query(`
             SELECT 
-                COALESCE(SUM(valor_total), 0) AS faturamento,
-                COUNT(DISTINCT id_firebird) AS qtd_pedidos,
-                COALESCE(AVG(valor_total), 0) AS ticket_medio,
-                COALESCE(SUM(valor_desconto), 0) AS total_descontos
-            FROM dash_vendas
-            WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3 AND TRIM(status) IN ('FATURADO', 'FINALIZADO')
+                COALESCE(SUM((SELECT COALESCE(SUM(vi.valor_total),0) FROM dash_vendas_itens vi WHERE vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id)), 0) AS faturamento,
+                COUNT(DISTINCT v.id_firebird) AS qtd_pedidos,
+                COALESCE(AVG((SELECT COALESCE(SUM(vi.valor_total),0) FROM dash_vendas_itens vi WHERE vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id)), 0) AS ticket_medio,
+                COALESCE(SUM(v.valor_desconto), 0) AS total_descontos
+            FROM dash_vendas v
+            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
         `, [tenantId, start, end]);
 
         const { rows: f } = await db.query(`
@@ -118,7 +118,7 @@ router.get('/kpis', async (req, res, next) => {
         const { rows: rTotCli } = await db.query(`SELECT COUNT(*) AS total FROM dash_clientes WHERE tenant_id = $1 AND ativo = true`, [tenantId]);
 
         const { rows: topClientes } = await db.query(`
-            SELECT c.nome, SUM(v.valor_total) AS total
+            SELECT c.nome, SUM((SELECT COALESCE(SUM(vi.valor_total),0) FROM dash_vendas_itens vi WHERE vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id)) AS total
             FROM dash_vendas v
             JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
             WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')

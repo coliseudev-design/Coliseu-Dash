@@ -5,24 +5,25 @@ const router = express.Router();
 const db = require('../db/postgres');
 const { getPeriodRange } = require('../utils/period');
 
-// Helper para converter filtros do BI (inicio, fim) para datas
 const getBiDateRange = (req) => {
     const inicioParam = req.query.inicio || req.query.startDate || req.query.start_date;
     const fimParam = req.query.fim || req.query.endDate || req.query.end_date;
-    let start = new Date(0); // Epoch as default past
-    let end = new Date(); // Now as default future
+    
+    // Default fallback (Epoch to Now)
+    let startStr = '1970-01-01 00:00:00-03:00';
+    
+    const now = new Date();
+    const pad = (n) => n.toString().padStart(2, '0');
+    let endStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} 23:59:59-03:00`;
 
     if (inicioParam) {
-        // Parse YYYY-MM-DD manually to avoid UTC offset issues
-        const [y, m, d] = inicioParam.split('T')[0].split('-');
-        start = new Date(parseInt(y), parseInt(m) - 1, parseInt(d), 0, 0, 0, 0);
+        startStr = `${inicioParam.split('T')[0]} 00:00:00-03:00`;
     }
     if (fimParam) {
-        const [y, m, d] = fimParam.split('T')[0].split('-');
-        end = new Date(parseInt(y), parseInt(m) - 1, parseInt(d), 23, 59, 59, 999);
+        endStr = `${fimParam.split('T')[0]} 23:59:59.999-03:00`;
     }
     
-    return { start, end };
+    return { start: startStr, end: endStr };
 };
 
 // ==========================================
@@ -43,18 +44,18 @@ router.get('/sales/executive-summary', async (req, res, next) => {
         // --- 1. Executive Summary ---
         const { rows: v } = await db.query(`
             SELECT 
-                COALESCE(SUM(valor_total), 0) AS faturamento_total,
-                COUNT(DISTINCT id_firebird) AS total_pedidos
-            FROM dash_vendas
-            WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3 AND TRIM(status) IN ('FATURADO', 'FINALIZADO')
+                COALESCE(SUM((SELECT COALESCE(SUM(vi.valor_total),0) FROM dash_vendas_itens vi WHERE vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id)), 0) AS faturamento_total,
+                COUNT(DISTINCT v.id_firebird) AS total_pedidos
+            FROM dash_vendas v
+            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
         `, [tenantId, start, end]);
 
         const { rows: vPrev } = await db.query(`
             SELECT 
-                COALESCE(SUM(valor_total), 0) AS faturamento_total,
-                COUNT(DISTINCT id_firebird) AS total_pedidos
-            FROM dash_vendas
-            WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3 AND TRIM(status) IN ('FATURADO', 'FINALIZADO')
+                COALESCE(SUM((SELECT COALESCE(SUM(vi.valor_total),0) FROM dash_vendas_itens vi WHERE vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id)), 0) AS faturamento_total,
+                COUNT(DISTINCT v.id_firebird) AS total_pedidos
+            FROM dash_vendas v
+            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
         `, [tenantId, prevStart, prevEnd]);
 
         const faturamento = parseFloat(v[0].faturamento_total);
@@ -220,9 +221,9 @@ router.get('/sales/commercial-kpis', async (req, res, next) => {
         const { rows: pVendas } = await db.query(`
             SELECT 
                 COUNT(DISTINCT id_firebird) as pedidos,
-                COALESCE(SUM(valor_total), 0) as faturamento_total
-            FROM dash_vendas
-            WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3 AND TRIM(status) IN ('FATURADO', 'FINALIZADO')
+                COALESCE(SUM((SELECT COALESCE(SUM(vi.valor_total),0) FROM dash_vendas_itens vi WHERE vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id)), 0) as faturamento_total
+            FROM dash_vendas v
+            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
         `, [tenantId, start, end]);
 
         // Total descontos
@@ -235,7 +236,7 @@ router.get('/sales/commercial-kpis', async (req, res, next) => {
         // --- Vendedores ---
         const { rows: vends } = await db.query(`
             SELECT COALESCE(vend.nome, 'Vendedor ' || COALESCE(v.vendedor_id_firebird::text, '?')) as nome, 
-                   SUM(v.valor_total) as vendas
+                   SUM((SELECT COALESCE(SUM(vi.valor_total),0) FROM dash_vendas_itens vi WHERE vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id)) as vendas
             FROM dash_vendas v
             LEFT JOIN dash_vendedores vend ON vend.id_firebird = v.vendedor_id_firebird AND vend.tenant_id = v.tenant_id
             WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
@@ -267,7 +268,7 @@ router.get('/sales/commercial-kpis', async (req, res, next) => {
                 c.nome as cliente,
                 vend.nome as vendedor,
                 TO_CHAR(v.data_venda, 'DD/MM/YYYY') as data,
-                v.valor_total as valor,
+                (SELECT COALESCE(SUM(vi.valor_total),0) FROM dash_vendas_itens vi WHERE vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id) as valor,
                 v.status
             FROM dash_vendas v
             LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
@@ -308,9 +309,9 @@ router.get('/sales/sellers', async (req, res, next) => {
         const { rows } = await db.query(`
             SELECT 
                 vend.nome as nome_vendedor, 
-                SUM(v.valor_total) as faturamento, 
+                SUM((SELECT COALESCE(SUM(vi.valor_total),0) FROM dash_vendas_itens vi WHERE vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id)) as faturamento, 
                 COUNT(v.id_firebird) as pedidos,
-                COALESCE(AVG(v.valor_total), 0) as ticket_medio,
+                COALESCE(AVG((SELECT COALESCE(SUM(vi.valor_total),0) FROM dash_vendas_itens vi WHERE vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id)), 0) as ticket_medio,
                 COALESCE(SUM(v.valor_total - v.valor_custo), 0) as lucro,
                 MAX(v.data_venda) as ultima_venda
             FROM dash_vendas v
@@ -528,7 +529,7 @@ router.get('/customer/analytics', async (req, res, next) => {
 
         // Top 50 clientes em risco (compraram antes do inicio, mas nao no periodo atual)
         const { rows: risco } = await db.query(`
-            SELECT c.id_firebird, c.nome, MAX(v.data_venda) as ultima_compra, SUM(v.valor_total) as LTV
+            SELECT c.id_firebird, c.nome, MAX(v.data_venda) as ultima_compra, SUM((SELECT COALESCE(SUM(vi.valor_total),0) FROM dash_vendas_itens vi WHERE vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id)) as LTV
             FROM dash_clientes c
             JOIN dash_vendas v ON v.cliente_id_firebird = c.id_firebird AND v.tenant_id = c.tenant_id
             WHERE c.tenant_id = $1 AND v.data_venda < $2 AND c.ativo = true
@@ -618,15 +619,15 @@ router.get('/customer/radar-360', async (req, res, next) => {
         // LTV e Ticket Medio Histórico
         const { rows: vInfo } = await db.query(`
             SELECT 
-                COUNT(*) as qtd_pedidos,
-                COALESCE(SUM(valor_total), 0) as ltv,
-                MAX(data_venda) as ultima_compra
-            FROM dash_vendas 
-            WHERE tenant_id = $1 AND cliente_id_firebird = $2 AND TRIM(status) IN ('FATURADO', 'FINALIZADO')
+                COALESCE(SUM((SELECT COALESCE(SUM(vi.valor_total),0) FROM dash_vendas_itens vi WHERE vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id)), 0) as ltv,
+                COUNT(DISTINCT v.id_firebird) as total_pedidos,
+                MAX(v.data_venda) as ultima_compra
+            FROM dash_vendas v
+            WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
         `, [tenantId, searchId]);
 
         const ltv = parseFloat(vInfo[0].ltv);
-        const qtd_pedidos = parseInt(vInfo[0].qtd_pedidos);
+        const qtd_pedidos = parseInt(vInfo[0].total_pedidos);
         const ticket_medio_historico = qtd_pedidos > 0 ? ltv / qtd_pedidos : 0;
         const ultima_compra = vInfo[0].ultima_compra;
         const dias_sem_comprar = ultima_compra ? Math.floor((new Date() - new Date(ultima_compra)) / (1000 * 60 * 60 * 24)) : 999;
@@ -678,10 +679,10 @@ router.get('/comparative/summary', async (req, res, next) => {
         // --- KPI Overview ---
         const { rows: kpis } = await db.query(`
             SELECT 
-                COALESCE(SUM(valor_total), 0) AS faturamento,
-                COALESCE(SUM(valor_custo), 0) AS custo
-            FROM dash_vendas
-            WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3 AND TRIM(status) IN ('FATURADO', 'FINALIZADO')
+                COALESCE(SUM((SELECT COALESCE(SUM(vi.valor_total),0) FROM dash_vendas_itens vi WHERE vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id)), 0) AS faturamento,
+                COALESCE(SUM(v.valor_custo), 0) AS custo
+            FROM dash_vendas v
+            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
         `, [tenantId, start, end]);
 
         const faturamento = parseFloat(kpis[0].faturamento);

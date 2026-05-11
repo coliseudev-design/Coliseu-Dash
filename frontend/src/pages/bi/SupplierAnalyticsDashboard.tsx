@@ -5,7 +5,7 @@ import { BIService } from '../../services/biApi';
 import { BiPeriodFilter } from '../../types/bi.types';
 import { 
   Building2, TrendingUp, TrendingDown, DollarSign, Target, Award, 
-  MapPin, Users, ShoppingCart, Activity, ShieldCheck, Box, ChevronDown, Search
+  MapPin, Users, ShoppingCart, Activity, ShieldCheck, Box, ChevronDown, Search, AlertCircle, Trophy
 } from 'lucide-react';
 import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { formatBRL, formatBRLCompact, formatNum } from '../../utils/format';
