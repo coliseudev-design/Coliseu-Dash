@@ -199,4 +199,13 @@ router.get('/debug-db', async (req, res, next) => {
     }
 });
 
+
+// GET /api/estatisticas/debug-vendas-hoje
+router.get('/debug-vendas-hoje', async (req, res, next) => {
+    try {
+        const tenantId = req.tenant.id;
+        const { rows } = await db.query(`SELECT numero_pedido, valor_total, data_venda FROM dash_vendas WHERE tenant_id = $1 ORDER BY id DESC LIMIT 10`, [tenantId]);
+        res.json({ ultimas_vendas: rows });
+    } catch (err) { next(err); }
+});
 module.exports = router;

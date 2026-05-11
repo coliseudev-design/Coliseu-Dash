@@ -1,3 +1,4 @@
+import { useState, useMemo } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useBiPeriodQuery } from '../../hooks/useBiPeriodQuery';
 import { BIService } from '../../services/biApi';
@@ -50,6 +51,31 @@ export default function SalesHubDashboard() {
   const heatmapData = Array.from({ length: 4 }).map(() => 
     Array.from({ length: 7 }).map(() => Math.floor(Math.random() * 10))
   );
+
+  const [statusFilter, setStatusFilter] = useState('TODOS');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 100;
+
+  const { filteredOrders, currentOrders, totalPages, availableStatuses } = useMemo(() => {
+    const orders = data?.recent_orders || [];
+    
+    const statuses = Array.from(new Set(orders.map((o: any) => o.status))).filter(Boolean) as string[];
+    
+    const filtered = statusFilter === 'TODOS' 
+      ? orders 
+      : orders.filter((o: any) => o.status === statusFilter);
+    
+    const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const currentOrders = filtered.slice(startIndex, startIndex + itemsPerPage);
+    
+    return { filteredOrders: filtered, currentOrders, totalPages, availableStatuses: statuses };
+  }, [data?.recent_orders, statusFilter, currentPage]);
+
+  const handleFilterChange = (newStatus: string) => {
+    setStatusFilter(newStatus);
+    setCurrentPage(1);
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
@@ -214,7 +240,23 @@ export default function SalesHubDashboard() {
 
       {/* FILA DE PEDIDOS RECENTES */}
       <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex flex-col">
-        <h3 className="font-bold text-text-primary text-sm uppercase tracking-wider mb-4">Fila de Pedidos Recentes</h3>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
+          <h3 className="font-bold text-text-primary text-sm uppercase tracking-wider">Fila de Pedidos Recentes</h3>
+          
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-text-muted font-medium">Status:</span>
+            <select
+              value={statusFilter}
+              onChange={(e) => handleFilterChange(e.target.value)}
+              className="bg-bg-secondary border border-divider rounded-lg text-sm px-3 py-1.5 text-text-primary focus:outline-none focus:border-brand-500"
+            >
+              <option value="TODOS">Todos os Status</option>
+              {availableStatuses.map(status => (
+                <option key={status} value={status}>{status}</option>
+              ))}
+            </select>
+          </div>
+        </div>
         
         <div className="flex-1 overflow-x-auto">
           <table className="w-full text-left text-sm whitespace-nowrap">
@@ -230,8 +272,8 @@ export default function SalesHubDashboard() {
               </tr>
             </thead>
             <tbody className="divide-y divide-divider/30 text-xs">
-              {(data?.recent_orders || []).map((order: any, i: number) => (
-                <tr key={i} className="hover:bg-bg-secondary transition-colors">
+              {currentOrders.map((order: any, i: number) => (
+                <tr key={order.id || i} className="hover:bg-bg-secondary transition-colors">
                   <td className="py-2.5 font-mono text-text-muted">{order.id}</td>
                   <td className="py-2.5 text-text-primary font-medium">{order.numero_nota}</td>
                   <td className="py-2.5 text-text-primary truncate max-w-[200px]" title={order.cliente}>{order.cliente}</td>
@@ -239,13 +281,53 @@ export default function SalesHubDashboard() {
                   <td className="py-2.5 text-text-muted">{order.data}</td>
                   <td className="py-2.5 text-right font-mono font-bold text-success">{formatBRL(order.valor)}</td>
                   <td className="py-2.5 text-center">
-                    <span className="text-text-primary text-[11px] font-medium">{order.status}</span>
+                    <span className={clsx(
+                      "text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider",
+                      order.status === 'FATURADO' || order.status === 'FINALIZADO' ? 'bg-success/10 text-success' :
+                      order.status === 'CANCELADO' ? 'bg-danger/10 text-danger' :
+                      'bg-warning/10 text-warning'
+                    )}>
+                      {order.status}
+                    </span>
                   </td>
                 </tr>
               ))}
+              {currentOrders.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="py-8 text-center text-text-muted">Nenhum pedido encontrado.</td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
+
+        {/* PAGINATION */}
+        {totalPages > 1 && (
+          <div className="flex justify-between items-center mt-4 pt-4 border-t border-divider">
+            <span className="text-xs text-text-muted">
+              Mostrando {currentOrders.length} de {filteredOrders.length} pedidos
+            </span>
+            <div className="flex gap-1">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1 rounded-md text-xs font-medium border border-divider hover:bg-bg-secondary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Anterior
+              </button>
+              <div className="flex items-center px-2">
+                <span className="text-xs text-text-muted">Página {currentPage} de {totalPages}</span>
+              </div>
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1 rounded-md text-xs font-medium border border-divider hover:bg-bg-secondary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Próxima
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {isError && (
