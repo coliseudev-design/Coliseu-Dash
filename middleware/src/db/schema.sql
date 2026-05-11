@@ -205,6 +205,7 @@ CREATE TABLE IF NOT EXISTS dash_financeiro (
     tenant_id UUID NOT NULL,
     id_firebird INTEGER NOT NULL,
     tipo VARCHAR(20) NOT NULL, -- 'RECEBER' ou 'PAGAR'
+    tipo_documento VARCHAR(50) DEFAULT NULL, -- Ex: 'TITULO COMUM', 'TITULO RENEGOCIADO'...
     descricao TEXT,
     cliente_id_firebird INTEGER,
     fornecedor_id_firebird INTEGER,
@@ -221,6 +222,9 @@ CREATE TABLE IF NOT EXISTS dash_financeiro (
 CREATE INDEX IF NOT EXISTS idx_dash_financeiro_tipo ON dash_financeiro(tenant_id, tipo);
 CREATE INDEX IF NOT EXISTS idx_dash_financeiro_status ON dash_financeiro(tenant_id, status_pagamento);
 CREATE INDEX IF NOT EXISTS idx_dash_financeiro_venc ON dash_financeiro(tenant_id, data_vencimento);
+
+-- Migração: adiciona tipo_documento para instalações já existentes
+ALTER TABLE dash_financeiro ADD COLUMN IF NOT EXISTS tipo_documento VARCHAR(50) DEFAULT NULL;
 
 CREATE TABLE IF NOT EXISTS dash_compras (
     id SERIAL PRIMARY KEY,
