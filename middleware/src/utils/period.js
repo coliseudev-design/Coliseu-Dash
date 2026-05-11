@@ -14,14 +14,14 @@ function getPeriodRange(period, startDate, endDate, anchorDate) {
         // Valores enviados pelo frontend React
         case 'today':
         case 'hoje':
-            start.setHours(0, 0, 0, 0);
-            end.setHours(23, 59, 59, 999);
+            start.setUTCHours(0, 0, 0, 0);
+            end.setUTCHours(23, 59, 59, 999);
             break;
         case 'yesterday':
-            start.setDate(start.getDate() - 1);
-            start.setHours(0, 0, 0, 0);
-            end.setDate(end.getDate() - 1);
-            end.setHours(23, 59, 59, 999);
+            start.setUTCDate(start.getUTCDate() - 1);
+            start.setUTCHours(0, 0, 0, 0);
+            end.setUTCDate(end.getUTCDate() - 1);
+            end.setUTCHours(23, 59, 59, 999);
             break;
         case 'last7':
         case '7d':
@@ -29,12 +29,12 @@ function getPeriodRange(period, startDate, endDate, anchorDate) {
             break;
         case 'thisMonth':
         case '1m':
-            start = new Date(now.getFullYear(), now.getMonth(), 1);
-            end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+            start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+            end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999));
             break;
         case 'lastMonth':
-            start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-            end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+            start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
+            end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 0, 23, 59, 59, 999));
             break;
         case 'last12m':
         case '1y':
@@ -63,7 +63,7 @@ function getPeriodRange(period, startDate, endDate, anchorDate) {
             start.setMonth(start.getMonth() - 6);
             break;
         case 'ytd':
-            start = new Date(now.getFullYear(), 0, 1);
+            start = new Date(Date.UTC(now.getUTCFullYear(), 0, 1));
             break;
         case 'all':
             start = new Date(1970, 0, 1);
