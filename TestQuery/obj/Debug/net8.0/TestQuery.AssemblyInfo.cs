@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("TestQuery")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d812b0b59890b10dfb03103ad67860c1f6f2046f")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e429021e4c3e40f5a4b734c51e4a3221361f5da1")]
 [assembly: System.Reflection.AssemblyProductAttribute("TestQuery")]
 [assembly: System.Reflection.AssemblyTitleAttribute("TestQuery")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
