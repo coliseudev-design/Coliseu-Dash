@@ -34,6 +34,39 @@ router.get('/', async (req, res, next) => {
     if (!tenantId) return res.status(401).json({ error: 'Tenant não autenticado.' });
 
     try {
+        // 1) Sincroniza filiais do Identity Server para este tenant
+        try {
+            const fetch = (await import('node-fetch')).default;
+            const config = require('../config/env');
+            const identityUrl = config.security?.identityApiUrl || process.env.IDENTITY_API_URL || 'https://adminlicencas.coliseusistemas.com.br';
+            const internalKey = config.security?.identityInternalKey || process.env.IDENTITY_INTERNAL_KEY || 'Coliseu2026!IdentitySuperSecretKeyOauth20';
+
+            const resp = await fetch(`${identityUrl}/internal/companies/${tenantId}/branches`, {
+                headers: { 'x-internal-api-key': internalKey },
+                signal: AbortSignal.timeout(5000),
+            });
+
+            if (resp.ok) {
+                const branches = await resp.json();
+                const validBranches = branches.filter(b => b.erpDeptoPadrao != null);
+                
+                for (const b of validBranches) {
+                    await db.query(
+                        `INSERT INTO dash_filiais (tenant_id, empresa_erp, depto_id, centro_custo, nome, documento, is_default, ativo, sincronizado_em)
+                         VALUES ($1,$2,$3,$4,$5,$6,$7,true,NOW())
+                         ON CONFLICT (tenant_id, depto_id) DO UPDATE
+                         SET empresa_erp=$2, centro_custo=$4, nome=$5, documento=$6, is_default=$7, ativo=true, sincronizado_em=NOW()`,
+                        [tenantId, b.erpEmpresaId || 1, b.erpDeptoPadrao, b.erpCentroPadrao || null, b.name, b.cnpj || null, b.isDefault || false]
+                    );
+                }
+            } else {
+                logger.warn(`[Filiais] Falha no sync com Identity Server (HTTP ${resp.status}) para tenant ${tenantId}`);
+            }
+        } catch (syncErr) {
+            logger.warn(`[Filiais] Erro ao sincronizar filiais do Identity Server: ${syncErr.message}`);
+        }
+
+        // 2) Retorna as filiais atualizadas
         const { rows } = await db.query(
             `SELECT id, empresa_erp, depto_id, centro_custo, nome, documento, is_default, ativo
              FROM dash_filiais

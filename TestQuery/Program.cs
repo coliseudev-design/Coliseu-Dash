@@ -10,7 +10,7 @@ class Program
         {
             conn.Open();
             try {
-                using (FbCommand cmd = new FbCommand("SELECT FIRST 1 * FROM NATUREZA_OPERACAO", conn))
+                using (FbCommand cmd = new FbCommand("SELECT FIRST 1 * FROM EMPRESA", conn))
                 using (FbDataReader r = cmd.ExecuteReader())
                 {
                     for(int i = 0; i < r.FieldCount; i++) {
@@ -19,7 +19,7 @@ class Program
                 }
             }
             catch (Exception ex) {
-                Console.WriteLine($"ERROR: {ex.Message}");
+                Console.WriteLine($"ERRO: {ex.Message}");
             }
         }
     }
