@@ -874,6 +874,33 @@ router.get('/supplier/analytics', async (req, res, next) => {
         
         const { rows: monthly } = await db.query(monthlyQuery, params);
 
+        // Fetch top brands ranking
+        const { rows: top_brands_all } = await db.query(`
+            SELECT COALESCE(vi.marca, v.marca, 'S/ MARCA') as name, SUM(vi.valor_total) as receita, SUM(vi.quantidade) as volume
+            FROM dash_vendas_itens vi
+            JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
+              AND COALESCE(vi.marca, v.marca) IS NOT NULL AND COALESCE(vi.marca, v.marca) != ''
+            GROUP BY COALESCE(vi.marca, v.marca, 'S/ MARCA')
+            ORDER BY receita DESC
+        `, [tenantId, start, end]);
+
+        let top_brands = top_brands_all.map((b, i) => ({
+            rank: i + 1,
+            name: b.name,
+            volume: parseFloat(b.volume || 0),
+            receita: parseFloat(b.receita || 0)
+        }));
+
+        let display_brands = top_brands.slice(0, 10);
+        
+        if (marca) {
+            const selectedIdx = top_brands.findIndex(b => b.name === marca);
+            if (selectedIdx >= 10) {
+                display_brands.push(top_brands[selectedIdx]);
+            }
+        }
+
         // Fetch all distinct brands for the dropdown filter
         const { rows: allBrands } = await db.query(`
             SELECT DISTINCT marca FROM dash_vendas_itens WHERE tenant_id = $1 AND marca IS NOT NULL ORDER BY marca ASC
@@ -898,6 +925,7 @@ router.get('/supplier/analytics', async (req, res, next) => {
                 qtde: parseFloat(m.qtde || 0),
                 margem: 30 // Mock margin for now since we didn't fetch cost per month
             })),
+            top_brands: display_brands,
             available_brands: allBrands.map(b => b.marca)
         });
     } catch (err) { next(err); }
