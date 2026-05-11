@@ -5,6 +5,12 @@
  * Suporta: today, yesterday, last7, thisMonth, lastMonth, last12m, custom
  * e também os legados: hoje, 7d, 30d, 1m, 3m, 6m, 1y, ytd, all
  */
+function toBrazilTZString(dateObj) {
+    if (!dateObj) return null;
+    const pad = (n) => n.toString().padStart(2, '0');
+    return `${dateObj.getFullYear()}-${pad(dateObj.getMonth() + 1)}-${pad(dateObj.getDate())} ${pad(dateObj.getHours())}:${pad(dateObj.getMinutes())}:${pad(dateObj.getSeconds())}-03:00`;
+}
+
 function getPeriodRange(period, startDate, endDate, anchorDate) {
     const now = anchorDate ? new Date(anchorDate) : new Date();
     let start = new Date(now);
@@ -76,7 +82,10 @@ function getPeriodRange(period, startDate, endDate, anchorDate) {
             break;
     }
 
-    return { start, end };
+    return { 
+        start: toBrazilTZString(start), 
+        end: toBrazilTZString(end) 
+    };
 }
 
 module.exports = {
