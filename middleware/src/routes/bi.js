@@ -9,17 +9,15 @@ const { getPeriodRange } = require('../utils/period');
 const getBiDateRange = (req) => {
     const inicioParam = req.query.inicio || req.query.startDate || req.query.start_date;
     const fimParam = req.query.fim || req.query.endDate || req.query.end_date;
-    let start = new Date(0); // Epoch as default past
-    let end = new Date(); // Now as default future
+    let start = new Date(0).toISOString(); // Epoch as default past
+    let end = new Date().toISOString(); // Now as default future
 
     if (inicioParam) {
-        // Parse YYYY-MM-DD manually to avoid UTC offset issues
-        const [y, m, d] = inicioParam.split('T')[0].split('-');
-        start = new Date(parseInt(y), parseInt(m) - 1, parseInt(d), 0, 0, 0, 0);
+        // Send string literals directly to Postgres to completely bypass NodeJS/pg timezone offset issues
+        start = `${inicioParam.split('T')[0]} 00:00:00`;
     }
     if (fimParam) {
-        const [y, m, d] = fimParam.split('T')[0].split('-');
-        end = new Date(parseInt(y), parseInt(m) - 1, parseInt(d), 23, 59, 59, 999);
+        end = `${fimParam.split('T')[0]} 23:59:59.999`;
     }
     
     return { start, end };
@@ -43,7 +41,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
         // --- 1. Executive Summary ---
         const { rows: v } = await db.query(`
             SELECT 
-                COALESCE(SUM((SELECT COALESCE(SUM(vi.valor_total),0) FROM dash_vendas_itens vi WHERE vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id)), 0) AS faturamento_total,
+                COALESCE(SUM(v.valor_total), 0) AS faturamento_total,
                 COUNT(DISTINCT v.id_firebird) AS total_pedidos
             FROM dash_vendas v
             WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
@@ -822,20 +820,30 @@ router.get('/supplier/analytics', async (req, res, next) => {
         const { start, end } = getBiDateRange(req);
         const { marca } = req.query;
 
-        let baseQuery = `
-            SELECT 
-                SUM(vi.valor_total) as receita,
-                SUM(vi.custo_unitario * vi.quantidade) as custo,
-                COUNT(DISTINCT v.id_firebird) as pedidos,
-                COUNT(DISTINCT v.cliente_id_firebird) as clientes
-            FROM dash_vendas_itens vi
-            JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
-            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
-        `;
-        let params = [tenantId, start, end];
-        
+        let baseQuery = '';
         if (marca) {
-            baseQuery += ` AND vi.marca = $4`;
+            baseQuery = `
+                SELECT 
+                    SUM(vi.valor_total) as receita,
+                    SUM(vi.custo_unitario * vi.quantidade) as custo,
+                    COUNT(DISTINCT v.id_firebird) as pedidos,
+                    COUNT(DISTINCT v.cliente_id_firebird) as clientes
+                FROM dash_vendas_itens vi
+                JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+                WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
+                AND vi.marca = $4
+            `;
+        } else {
+            baseQuery = `
+                SELECT 
+                    (SELECT COALESCE(SUM(valor_total),0) FROM dash_vendas WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3 AND TRIM(status) IN ('FATURADO', 'FINALIZADO')) as receita,
+                    (SELECT COALESCE(SUM(vi.custo_unitario * vi.quantidade),0) FROM dash_vendas_itens vi JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')) as custo,
+                    (SELECT COUNT(DISTINCT id_firebird) FROM dash_vendas WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3 AND TRIM(status) IN ('FATURADO', 'FINALIZADO')) as pedidos,
+                    (SELECT COUNT(DISTINCT cliente_id_firebird) FROM dash_vendas WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3 AND TRIM(status) IN ('FATURADO', 'FINALIZADO')) as clientes
+            `;
+        }
+        let params = [tenantId, start, end];
+        if (marca) {
             params.push(marca);
         }
 
@@ -854,17 +862,32 @@ router.get('/supplier/analytics', async (req, res, next) => {
         const { rows: top_products } = await db.query(prodQuery, params);
 
         // Fetch monthly performance
-        let monthlyQuery = `
-            SELECT 
-                TO_CHAR(v.data_venda, 'MM/YYYY') as mes_ano,
-                SUM(vi.valor_total) as receita,
-                SUM(vi.quantidade) as qtde
-            FROM dash_vendas_itens vi
-            JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
-            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
-        `;
-        if (marca) monthlyQuery += ` AND vi.marca = $4`;
-        monthlyQuery += ` GROUP BY TO_CHAR(v.data_venda, 'MM/YYYY') ORDER BY TO_CHAR(v.data_venda, 'MM/YYYY') ASC`;
+        let monthlyQuery = '';
+        if (marca) {
+            monthlyQuery = `
+                SELECT 
+                    TO_CHAR(v.data_venda, 'MM/YYYY') as mes_ano,
+                    SUM(vi.valor_total) as receita,
+                    SUM(vi.quantidade) as qtde
+                FROM dash_vendas_itens vi
+                JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+                WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
+                AND vi.marca = $4
+                GROUP BY TO_CHAR(v.data_venda, 'MM/YYYY') 
+                ORDER BY TO_CHAR(v.data_venda, 'MM/YYYY') ASC
+            `;
+        } else {
+            monthlyQuery = `
+                SELECT 
+                    TO_CHAR(v.data_venda, 'MM/YYYY') as mes_ano,
+                    SUM(v.valor_total) as receita,
+                    SUM((SELECT SUM(vi.quantidade) FROM dash_vendas_itens vi WHERE vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id)) as qtde
+                FROM dash_vendas v
+                WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
+                GROUP BY TO_CHAR(v.data_venda, 'MM/YYYY') 
+                ORDER BY TO_CHAR(v.data_venda, 'MM/YYYY') ASC
+            `;
+        }
         
         const { rows: monthly } = await db.query(monthlyQuery, params);
 
