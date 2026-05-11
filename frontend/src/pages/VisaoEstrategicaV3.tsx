@@ -7,7 +7,7 @@ import {
   TrendingUp, TrendingDown, DollarSign, ShoppingBag, 
   Users, Award, Map, Target, Briefcase, Box, AlertCircle
 } from 'lucide-react'
-import { usePeriodQuery } from '../hooks/useApi'
+import { useBranchPeriodQuery } from '../hooks/useApi'
 import { useAuthStore } from '../store/authStore'
 import PeriodFilter from '../components/PeriodFilter'
 import { usePeriodStore } from '../store/periodStore'
@@ -97,13 +97,13 @@ const GaugeChart = ({ realizado, meta }: { realizado: number, meta: number }) =>
 
 export default function VisaoEstrategicaV3() {
   const user = useAuthStore((s) => s.user)
-  const ov = usePeriodQuery<any>('/estatisticas/overview')
-  const kpisData = usePeriodQuery<any>('/estatisticas/kpis')
-  const fatMes = usePeriodQuery<any>('/vendas/faturadas')
-  const vd = usePeriodQuery<any>('/ranking/vendedores')
-  const prod = usePeriodQuery<any>('/ranking/produtos')
-  const cli = usePeriodQuery<any>('/ranking/clientes')
-  const marcas = usePeriodQuery<any>('/ranking/marcas')
+  const ov = useBranchPeriodQuery<any>('/estatisticas/overview')
+  const kpisData = useBranchPeriodQuery<any>('/estatisticas/kpis')
+  const fatMes = useBranchPeriodQuery<any>('/vendas/faturadas')
+  const vd = useBranchPeriodQuery<any>('/ranking/vendedores')
+  const prod = useBranchPeriodQuery<any>('/ranking/produtos')
+  const cli = useBranchPeriodQuery<any>('/ranking/clientes')
+  const marcas = useBranchPeriodQuery<any>('/ranking/marcas')
 
   const period = usePeriodStore((s) => s.period)
   

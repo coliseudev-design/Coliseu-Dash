@@ -4,6 +4,7 @@ import { useAuthStore } from '../../store/authStore'
 import { useSyncStatus } from '../../hooks/useSync'
 import { formatDateTime } from '../../utils/format'
 import ThemeToggle from '../../components/ThemeToggle'
+import BranchSelector from '../../components/BranchSelector'
 import api from '../../services/api'
 
 interface Props {
@@ -98,6 +99,8 @@ export default function Header({ onMenuClick, title }: Props) {
             </span>
           </div>
         )}
+
+        <BranchSelector />
 
         <ThemeToggle />
 

@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '../services/api'
 import DataTable from '../components/DataTable'
-import { Shield, UserPlus, CheckCircle, XCircle, Lock } from 'lucide-react'
+import { Shield, UserPlus, CheckCircle, XCircle, Lock, Building2 } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
+import { useBranch } from '../contexts/BranchContext'
 
 interface UserRow {
   id: number
@@ -15,6 +16,7 @@ interface UserRow {
   permissions: string[] | null
   tenant_id: string
   layout_version?: string
+  filial_acesso?: string
 }
 
 const AVAILABLE_MODULES = [
@@ -30,10 +32,13 @@ const AVAILABLE_MODULES = [
 
 export default function Usuarios() {
   const queryClient = useQueryClient()
+  const { filiais } = useBranch()
   const [modalOpen, setModalOpen] = useState(false)
   const [permissionsModalOpen, setPermissionsModalOpen] = useState(false)
+  const [filialModalOpen, setFilialModalOpen] = useState(false)
   const [selectedUser, setSelectedUser] = useState<UserRow | null>(null)
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([])
+  const [selectedFilialAcesso, setSelectedFilialAcesso] = useState<string>('todas')
   
   // Admin lock
   const [isUnlocked, setIsUnlocked] = useState(false)
@@ -136,6 +141,27 @@ export default function Usuarios() {
       alert(err.response?.data?.error || 'Erro ao alterar layout')
     }
   })
+
+  const updateFilialAcesso = useMutation({
+    mutationFn: async ({ id, filial_acesso }: { id: number, filial_acesso: string }) => {
+      const res = await api.put(`/usuarios/${id}/filial-acesso`, { filial_acesso })
+      return res.data
+    },
+    onSuccess: () => {
+      setFilialModalOpen(false)
+      setSelectedUser(null)
+      queryClient.invalidateQueries({ queryKey: ['usuarios'] })
+    },
+    onError: (err: any) => {
+      alert(err.response?.data?.error || 'Erro ao alterar acesso de filial')
+    }
+  })
+
+  const openFilialModal = (user: UserRow) => {
+    setSelectedUser(user)
+    setSelectedFilialAcesso(user.filial_acesso || 'todas')
+    setFilialModalOpen(true)
+  }
 
   const togglePermission = (id: string) => {
     setSelectedPermissions(prev => 
@@ -254,8 +280,17 @@ export default function Usuarios() {
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-brand-600 hover:bg-brand-50 transition-colors"
                   >
                     <Shield size={16} />
-                    <span>Acessos</span>
+                    <span>Módulos</span>
                   </button>
+                  {filiais.length > 0 && (
+                    <button
+                      onClick={() => openFilialModal(r)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-indigo-600 hover:bg-indigo-50 transition-colors"
+                    >
+                      <Building2 size={16} />
+                      <span>Filiais</span>
+                    </button>
+                  )}
                   <button
                     onClick={() => toggleStatus.mutate({ id: r.id, ativo: !r.ativo })}
                     disabled={toggleStatus.isPending}
@@ -406,6 +441,82 @@ export default function Usuarios() {
                   className="flex-1 px-4 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-medium transition-colors disabled:opacity-50 flex items-center justify-center"
                 >
                   {updatePermissions.isPending ? 'Salvando...' : 'Salvar Acessos'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Acesso por Filial */}
+      {filialModalOpen && selectedUser && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-bg-primary rounded-2xl shadow-xl border border-border w-full max-w-md overflow-hidden animate-fade-in">
+            <div className="p-5 border-b border-border flex justify-between items-center bg-bg-secondary/50">
+              <div>
+                <h3 className="font-semibold text-lg text-text-primary flex items-center gap-2">
+                  <Building2 size={18} className="text-indigo-500" />
+                  Acesso de Filiais
+                </h3>
+                <p className="text-xs text-text-secondary mt-0.5">{selectedUser.nome}</p>
+              </div>
+              <button onClick={() => setFilialModalOpen(false)} className="text-text-secondary hover:text-text-primary">
+                <XCircle size={24} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-text-secondary">
+                Defina quais filiais este usuário pode visualizar no dashboard.
+              </p>
+
+              <div className="space-y-2">
+                {/* Opção: Todas */}
+                <label className="flex items-center gap-3 p-3 rounded-xl border border-border cursor-pointer hover:bg-bg-secondary transition-colors">
+                  <input
+                    type="radio"
+                    name="filial_acesso"
+                    value="todas"
+                    checked={selectedFilialAcesso === 'todas'}
+                    onChange={() => setSelectedFilialAcesso('todas')}
+                    className="w-4 h-4 text-brand-500"
+                  />
+                  <span className="text-sm font-medium text-text-primary">Todas as Filiais</span>
+                </label>
+
+                {/* Filiais individuais */}
+                {filiais.map((f) => (
+                  <label key={f.depto_id} className="flex items-center gap-3 p-3 rounded-xl border border-border cursor-pointer hover:bg-bg-secondary transition-colors">
+                    <input
+                      type="radio"
+                      name="filial_acesso"
+                      value={String(f.depto_id)}
+                      checked={selectedFilialAcesso === String(f.depto_id)}
+                      onChange={() => setSelectedFilialAcesso(String(f.depto_id))}
+                      className="w-4 h-4 text-indigo-500"
+                    />
+                    <div>
+                      <span className="text-sm font-medium text-text-primary block">{f.nome}</span>
+                      {f.documento && <span className="text-xs text-text-muted font-mono">{f.documento}</span>}
+                    </div>
+                  </label>
+                ))}
+              </div>
+
+              <div className="pt-4 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setFilialModalOpen(false)}
+                  className="flex-1 px-4 py-2.5 rounded-xl border border-border text-text-secondary font-medium hover:bg-bg-secondary transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => selectedUser && updateFilialAcesso.mutate({ id: selectedUser.id, filial_acesso: selectedFilialAcesso })}
+                  disabled={updateFilialAcesso.isPending}
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white font-medium transition-colors disabled:opacity-50 flex items-center justify-center"
+                >
+                  {updateFilialAcesso.isPending ? 'Salvando...' : 'Salvar Acesso'}
                 </button>
               </div>
             </div>

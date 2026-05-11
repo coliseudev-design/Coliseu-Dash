@@ -3,6 +3,9 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db/postgres');
+const { getPeriodRange } = require('../utils/period');
+const { getCache, setCache } = require('../config/cache');
+const { buildDeptoFilter } = require('./filiais');
 
 /**
  * Calcula range de datas relativo à data máxima no banco (âncora).
@@ -39,7 +42,6 @@ async function getAnchoredRange(tenantId, period, start_date, end_date) {
             if (start_date && end_date) {
                 const [sy, sm, sd] = start_date.split('T')[0].split('-');
                 const s = new Date(parseInt(sy), parseInt(sm) - 1, parseInt(sd), 0, 0, 0, 0);
-                
                 const [ey, em, ed] = end_date.split('T')[0].split('-');
                 const e = new Date(parseInt(ey), parseInt(em) - 1, parseInt(ed), 23, 59, 59, 999);
                 return { start: s, end: e };
@@ -62,28 +64,28 @@ router.get('/kpis', async (req, res, next) => {
     try {
         const tenantId = req.tenant.id;
         const { start, end } = await getAnchoredRange(tenantId, req.query.period || 'last12m', req.query.start_date, req.query.end_date);
+        const deptoId = req.query.depto_id;
+        const df = buildDeptoFilter(deptoId, 4, 'v');
 
-        // Como não há sync de comissões ativado ainda, vamos calcular comissões estimadas a partir das vendas
         const { rows } = await db.query(`
             SELECT 
                 SUM(v.valor_total) AS total_produzido,
                 COUNT(DISTINCT v.id_firebird) AS qtd_vendas
             FROM dash_vendas v
-            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
-        `, [tenantId, start, end]);
+            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')${df.clause}
+        `, [tenantId, start, end, ...df.params]);
 
         const { rows: grouped } = await db.query(`
             SELECT 
                 v.vendedor_id_firebird, SUM(v.valor_total) AS total
             FROM dash_vendas v
-            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
+            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')${df.clause}
             GROUP BY v.vendedor_id_firebird
-        `, [tenantId, start, end]);
+        `, [tenantId, start, end, ...df.params]);
 
         let maior = 0;
         let menor = 0;
         if (grouped.length > 0) {
-            // Supondo 5% de comissão média para ter valores na tela
             maior = Math.max(...grouped.map(r => parseFloat(r.total))) * 0.05;
             menor = Math.min(...grouped.map(r => parseFloat(r.total))) * 0.05;
         }
@@ -105,6 +107,8 @@ router.get('/vendedores', async (req, res, next) => {
         const tenantId = req.tenant.id;
         const { start, end } = await getAnchoredRange(tenantId, req.query.period || 'last12m', req.query.start_date, req.query.end_date);
         const limit = parseInt(req.query.limit) || 10;
+        const deptoId = req.query.depto_id;
+        const df = buildDeptoFilter(deptoId, 4, 'v');
 
         const { rows } = await db.query(`
             SELECT 
@@ -115,10 +119,10 @@ router.get('/vendedores', async (req, res, next) => {
                 AVG(v.valor_total) AS ticket_medio
             FROM dash_vendas v
             LEFT JOIN dash_vendedores vd ON vd.id_firebird = v.vendedor_id_firebird AND vd.tenant_id = v.tenant_id
-            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
+            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')${df.clause}
             GROUP BY v.vendedor_id_firebird, vd.nome
-            ORDER BY total DESC LIMIT $4
-        `, [tenantId, start, end, limit]);
+            ORDER BY total DESC LIMIT $${4 + df.params.length}
+        `, [tenantId, start, end, ...df.params, limit]);
 
         res.json({ data: rows.map(r => ({
             id: r.id, nome: r.nome,
@@ -135,6 +139,8 @@ router.get('/produtos', async (req, res, next) => {
         const tenantId = req.tenant.id;
         const { start, end } = await getAnchoredRange(tenantId, req.query.period || 'last12m', req.query.start_date, req.query.end_date);
         const limit = parseInt(req.query.limit) || 10;
+        const deptoId = req.query.depto_id;
+        const df = buildDeptoFilter(deptoId, 4, 'v');
 
         const { rows } = await db.query(`
             SELECT 
@@ -145,10 +151,10 @@ router.get('/produtos', async (req, res, next) => {
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
             WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
-              AND COALESCE(vi.produto, vi.produto_id_firebird::text) IS NOT NULL
+              AND COALESCE(vi.produto, vi.produto_id_firebird::text) IS NOT NULL${df.clause}
             GROUP BY COALESCE(vi.produto, 'Produto ' || COALESCE(vi.produto_id_firebird::text, '?'))
-            ORDER BY total DESC LIMIT $4
-        `, [tenantId, start, end, limit]);
+            ORDER BY total DESC LIMIT $${4 + df.params.length}
+        `, [tenantId, start, end, ...df.params, limit]);
 
         res.json({ data: rows.map(r => ({
             nome: r.nome, total: parseFloat(r.total || 0),
@@ -164,6 +170,8 @@ router.get('/clientes', async (req, res, next) => {
         const tenantId = req.tenant.id;
         const { start, end } = await getAnchoredRange(tenantId, req.query.period || 'last12m', req.query.start_date, req.query.end_date);
         const limit = parseInt(req.query.limit) || 10;
+        const deptoId = req.query.depto_id;
+        const df = buildDeptoFilter(deptoId, 4, 'v');
 
         const { rows } = await db.query(`
             SELECT 
@@ -173,10 +181,10 @@ router.get('/clientes', async (req, res, next) => {
                 COUNT(DISTINCT v.id_firebird) AS qtd_pedidos
             FROM dash_vendas v
             LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
-            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
+            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')${df.clause}
             GROUP BY v.cliente_id_firebird, c.nome
-            ORDER BY total DESC LIMIT $4
-        `, [tenantId, start, end, limit]);
+            ORDER BY total DESC LIMIT $${4 + df.params.length}
+        `, [tenantId, start, end, ...df.params, limit]);
 
         res.json({ data: rows.map(r => ({
             id: r.id, nome: r.nome,
@@ -192,6 +200,8 @@ router.get('/marcas', async (req, res, next) => {
         const tenantId = req.tenant.id;
         const { start, end } = await getAnchoredRange(tenantId, req.query.period || 'last12m', req.query.start_date, req.query.end_date);
         const limit = parseInt(req.query.limit) || 10;
+        const deptoId = req.query.depto_id;
+        const df = buildDeptoFilter(deptoId, 4, 'v');
 
         const { rows } = await db.query(`
             SELECT 
@@ -201,10 +211,10 @@ router.get('/marcas', async (req, res, next) => {
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
             WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
-              AND COALESCE(vi.marca, v.marca) IS NOT NULL AND COALESCE(vi.marca, v.marca) != ''
+              AND COALESCE(vi.marca, v.marca) IS NOT NULL AND COALESCE(vi.marca, v.marca) != ''${df.clause}
             GROUP BY COALESCE(vi.marca, v.marca)
-            ORDER BY total DESC LIMIT $4
-        `, [tenantId, start, end, limit]);
+            ORDER BY total DESC LIMIT $${4 + df.params.length}
+        `, [tenantId, start, end, ...df.params, limit]);
 
         res.json({ data: rows.map(r => ({
             nome: r.marca, total: parseFloat(r.total || 0),
@@ -219,6 +229,8 @@ router.get('/especies', async (req, res, next) => {
         const tenantId = req.tenant.id;
         const { start, end } = await getAnchoredRange(tenantId, req.query.period || 'last12m', req.query.start_date, req.query.end_date);
         const limit = parseInt(req.query.limit) || 10;
+        const deptoId = req.query.depto_id;
+        const df = buildDeptoFilter(deptoId, 4, 'v');
 
         const { rows } = await db.query(`
             SELECT COALESCE(v.especie, 'Não Informada') AS nome, SUM(v.valor_total) AS total, COUNT(*) AS qtd
@@ -226,9 +238,9 @@ router.get('/especies', async (req, res, next) => {
             WHERE v.tenant_id = $1
               AND v.data_venda >= $2
               AND v.data_venda <= $3
-              AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
-            GROUP BY v.especie ORDER BY total DESC LIMIT $4
-        `, [tenantId, start, end, limit]);
+              AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')${df.clause}
+            GROUP BY v.especie ORDER BY total DESC LIMIT $${4 + df.params.length}
+        `, [tenantId, start, end, ...df.params, limit]);
 
         res.json({ data: rows.map(r => ({
             nome: r.nome, total: parseFloat(r.total || 0), qtd: parseInt(r.qtd)
@@ -242,6 +254,8 @@ router.get('/ranking', async (req, res, next) => {
         const tenantId = req.tenant.id;
         const { start, end } = await getAnchoredRange(tenantId, req.query.period || 'last12m', req.query.start_date, req.query.end_date);
         const limit = parseInt(req.query.limit) || 10;
+        const deptoId = req.query.depto_id;
+        const df = buildDeptoFilter(deptoId, 4, 'v');
 
         const { rows } = await db.query(`
             SELECT 
@@ -254,14 +268,13 @@ router.get('/ranking', async (req, res, next) => {
                 SUM(CASE WHEN COALESCE(v.valor_desconto, 0) > 0 THEN 1 ELSE 0 END) AS qtd_descontos
             FROM dash_vendas v
             LEFT JOIN dash_vendedores vd ON vd.id_firebird = v.vendedor_id_firebird AND vd.tenant_id = v.tenant_id
-            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
+            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')${df.clause}
             GROUP BY v.vendedor_id_firebird, vd.nome
-            ORDER BY faturamento DESC LIMIT $4
-        `, [tenantId, start, end, limit]);
+            ORDER BY faturamento DESC LIMIT $${4 + df.params.length}
+        `, [tenantId, start, end, ...df.params, limit]);
 
         const result = [];
         for (const seller of rows) {
-            // Find biggest sale
             const { rows: rMaxSale } = await db.query(`
                 SELECT v.valor_total as valor_total, COALESCE(c.nome, 'Consumidor Final') as cliente_nome
                 FROM dash_vendas v
@@ -270,7 +283,6 @@ router.get('/ranking', async (req, res, next) => {
                 ORDER BY valor_total DESC LIMIT 1
             `, [tenantId, seller.id, start, end]);
 
-            // Find best selling product
             const { rows: rBestProduct } = await db.query(`
                 SELECT COALESCE(vi.produto, 'Sem nome') as produto_nome, SUM(vi.valor_total) as total
                 FROM dash_vendas_itens vi
@@ -305,16 +317,18 @@ router.get('/categorias', async (req, res, next) => {
         const tenantId = req.tenant.id;
         const { start, end } = await getAnchoredRange(tenantId, req.query.period || 'last12m', req.query.start_date, req.query.end_date);
         const limit = parseInt(req.query.limit) || 10;
+        const deptoId = req.query.depto_id;
+        const df = buildDeptoFilter(deptoId, 4, 'v');
 
         const { rows } = await db.query(`
             SELECT COALESCE(vi.categoria, v.categoria) AS categoria, SUM(vi.valor_total) AS total
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
             WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
-              AND COALESCE(vi.categoria, v.categoria) IS NOT NULL AND COALESCE(vi.categoria, v.categoria) != ''
+              AND COALESCE(vi.categoria, v.categoria) IS NOT NULL AND COALESCE(vi.categoria, v.categoria) != ''${df.clause}
             GROUP BY COALESCE(vi.categoria, v.categoria)
-            ORDER BY total DESC LIMIT $4
-        `, [tenantId, start, end, limit]);
+            ORDER BY total DESC LIMIT $${4 + df.params.length}
+        `, [tenantId, start, end, ...df.params, limit]);
 
         res.json({ data: rows.map(r => ({
             nome: r.categoria, total: parseFloat(r.total || 0)

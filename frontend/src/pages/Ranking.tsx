@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { usePeriodQuery } from '../hooks/useApi'
+import { useBranchPeriodQuery } from '../hooks/useApi'
 import PeriodFilter from '../components/PeriodFilter'
 import DataTable from '../components/DataTable'
 import {
@@ -101,12 +101,12 @@ function RankingSection({ title, subtitle, icon: Icon, data, loading }: any) {
 export default function Ranking() {
   const [activeTab, setActiveTab] = useState('vendedores')
 
-  const vendedores = usePeriodQuery<any>('/ranking/vendedores', { limit: 10 })
-  const produtos = usePeriodQuery<any>('/ranking/produtos', { limit: 10 })
-  const clientes = usePeriodQuery<any>('/ranking/clientes', { limit: 10 })
-  const marcas = usePeriodQuery<any>('/ranking/marcas', { limit: 10 })
-  const categorias = usePeriodQuery<any>('/ranking/categorias', { limit: 10 })
-  const especies = usePeriodQuery<any>('/ranking/especies', { limit: 10 })
+  const vendedores = useBranchPeriodQuery<any>('/ranking/vendedores', { limit: 10 })
+  const produtos = useBranchPeriodQuery<any>('/ranking/produtos', { limit: 10 })
+  const clientes = useBranchPeriodQuery<any>('/ranking/clientes', { limit: 10 })
+  const marcas = useBranchPeriodQuery<any>('/ranking/marcas', { limit: 10 })
+  const categorias = useBranchPeriodQuery<any>('/ranking/categorias', { limit: 10 })
+  const especies = useBranchPeriodQuery<any>('/ranking/especies', { limit: 10 })
   
   // Normalização de Dados para o formato padronizado { nome, total }
   const getNorm = (arr: any[], nameKey1: string, nameKey2: string, valKey1: string, valKey2: string) => {
