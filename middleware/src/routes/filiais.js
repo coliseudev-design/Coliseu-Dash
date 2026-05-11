@@ -30,7 +30,7 @@ function buildDeptoFilter(deptoId, nextParamIndex, alias = 'v') {
 // GET /api/filiais  →  Lista filiais do tenant
 // ----------------------------------------------------------------
 router.get('/', async (req, res, next) => {
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.tenant?.id;
     if (!tenantId) return res.status(401).json({ error: 'Tenant não autenticado.' });
 
     try {
@@ -86,7 +86,7 @@ router.get('/', async (req, res, next) => {
 // (Rota de leitura alternativa para o admin do tenant)
 // ----------------------------------------------------------------
 router.get('/check/:deptoId', async (req, res, next) => {
-    const tenantId = req.user?.tenantId;
+    const tenantId = req.tenant?.id;
     const deptoId = parseInt(req.params.deptoId, 10);
     if (!tenantId) return res.status(401).json({ error: 'Tenant não autenticado.' });
 
