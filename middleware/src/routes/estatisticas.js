@@ -23,8 +23,8 @@ router.get('/overview', async (req, res, next) => {
         const { start, end } = getPeriodRange(period, start_date, end_date, maxDate);
         const finRange = getPeriodRange(period, start_date, end_date, maxDateFin);
 
-        const startHoje = new Date(maxDate); startHoje.setHours(0,0,0,0);
-        const endHoje = new Date(maxDate); endHoje.setHours(23,59,59,999);
+        const startHoje = new Date(maxDate); startHoje.setUTCHours(0,0,0,0);
+        const endHoje = new Date(maxDate); endHoje.setUTCHours(23,59,59,999);
 
         // Paralelizando todas as consultas pesadas para o banco compilar simultaneamente
         const [

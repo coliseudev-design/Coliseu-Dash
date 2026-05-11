@@ -9,21 +9,26 @@ const getBiDateRange = (req) => {
     const inicioParam = req.query.inicio || req.query.startDate || req.query.start_date;
     const fimParam = req.query.fim || req.query.endDate || req.query.end_date;
     
-    // Default fallback (Epoch to Now)
-    let startStr = '1970-01-01 00:00:00-03:00';
-    
     const now = new Date();
-    const pad = (n) => n.toString().padStart(2, '0');
-    let endStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} 23:59:59-03:00`;
+    // Usa UTC direto para evitar deslocamento do banco de dados (que armazena em UTC)
+    let start = new Date(Date.UTC(1970, 0, 1));
+    let end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999));
 
     if (inicioParam) {
-        startStr = `${inicioParam.split('T')[0]} 00:00:00-03:00`;
-    }
-    if (fimParam) {
-        endStr = `${fimParam.split('T')[0]} 23:59:59.999-03:00`;
+        const parts = inicioParam.split('T')[0].split('-');
+        if (parts.length === 3) {
+            start = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2], 0, 0, 0, 0));
+        }
     }
     
-    return { start: startStr, end: endStr };
+    if (fimParam) {
+        const parts = fimParam.split('T')[0].split('-');
+        if (parts.length === 3) {
+            end = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2], 23, 59, 59, 999));
+        }
+    }
+    
+    return { start, end };
 };
 
 // ==========================================
