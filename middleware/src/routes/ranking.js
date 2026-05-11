@@ -37,7 +37,12 @@ async function getAnchoredRange(tenantId, period, start_date, end_date) {
             break;
         case 'custom':
             if (start_date && end_date) {
-                return { start: new Date(start_date), end: new Date(end_date) };
+                const [sy, sm, sd] = start_date.split('T')[0].split('-');
+                const s = new Date(parseInt(sy), parseInt(sm) - 1, parseInt(sd), 0, 0, 0, 0);
+                
+                const [ey, em, ed] = end_date.split('T')[0].split('-');
+                const e = new Date(parseInt(ey), parseInt(em) - 1, parseInt(ed), 23, 59, 59, 999);
+                return { start: s, end: e };
             }
             start.setFullYear(start.getFullYear() - 1);
             break;
@@ -61,18 +66,18 @@ router.get('/kpis', async (req, res, next) => {
         // Como não há sync de comissões ativado ainda, vamos calcular comissões estimadas a partir das vendas
         const { rows } = await db.query(`
             SELECT 
-                SUM(valor_total) AS total_produzido,
-                COUNT(DISTINCT id_firebird) AS qtd_vendas
-            FROM dash_vendas
-            WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3 AND TRIM(status) IN ('FATURADO', 'FINALIZADO')
+                SUM((SELECT COALESCE(SUM(vi.valor_total),0) FROM dash_vendas_itens vi WHERE vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id)) AS total_produzido,
+                COUNT(DISTINCT v.id_firebird) AS qtd_vendas
+            FROM dash_vendas v
+            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
         `, [tenantId, start, end]);
 
         const { rows: grouped } = await db.query(`
             SELECT 
-                vendedor_id_firebird, SUM(valor_total) AS total
-            FROM dash_vendas
-            WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3 AND TRIM(status) IN ('FATURADO', 'FINALIZADO')
-            GROUP BY vendedor_id_firebird
+                v.vendedor_id_firebird, SUM((SELECT COALESCE(SUM(vi.valor_total),0) FROM dash_vendas_itens vi WHERE vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id)) AS total
+            FROM dash_vendas v
+            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
+            GROUP BY v.vendedor_id_firebird
         `, [tenantId, start, end]);
 
         let maior = 0;
@@ -105,9 +110,9 @@ router.get('/vendedores', async (req, res, next) => {
             SELECT 
                 v.vendedor_id_firebird AS id,
                 COALESCE(vd.nome, 'Vendedor ' || COALESCE(v.vendedor_id_firebird::text, '?')) AS nome,
-                SUM(v.valor_total) AS total,
+                SUM((SELECT COALESCE(SUM(vi.valor_total),0) FROM dash_vendas_itens vi WHERE vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id)) AS total,
                 COUNT(DISTINCT v.id_firebird) AS qtd_pedidos,
-                AVG(v.valor_total) AS ticket_medio
+                AVG((SELECT COALESCE(SUM(vi.valor_total),0) FROM dash_vendas_itens vi WHERE vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id)) AS ticket_medio
             FROM dash_vendas v
             LEFT JOIN dash_vendedores vd ON vd.id_firebird = v.vendedor_id_firebird AND vd.tenant_id = v.tenant_id
             WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
@@ -164,7 +169,7 @@ router.get('/clientes', async (req, res, next) => {
             SELECT 
                 v.cliente_id_firebird AS id,
                 COALESCE(c.nome, 'Cliente ' || COALESCE(v.cliente_id_firebird::text, '?')) AS nome,
-                SUM(v.valor_total) AS total,
+                SUM((SELECT COALESCE(SUM(vi.valor_total),0) FROM dash_vendas_itens vi WHERE vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id)) AS total,
                 COUNT(DISTINCT v.id_firebird) AS qtd_pedidos
             FROM dash_vendas v
             LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
@@ -216,7 +221,7 @@ router.get('/especies', async (req, res, next) => {
         const limit = parseInt(req.query.limit) || 10;
 
         const { rows } = await db.query(`
-            SELECT COALESCE(v.especie, 'Não Informada') AS nome, SUM(v.valor_total) AS total, COUNT(*) AS qtd
+            SELECT COALESCE(v.especie, 'Não Informada') AS nome, SUM((SELECT COALESCE(SUM(vi.valor_total),0) FROM dash_vendas_itens vi WHERE vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id)) AS total, COUNT(*) AS qtd
             FROM dash_vendas v
             WHERE v.tenant_id = $1
               AND v.data_venda >= $2
@@ -242,9 +247,9 @@ router.get('/ranking', async (req, res, next) => {
             SELECT 
                 v.vendedor_id_firebird AS id,
                 COALESCE(vd.nome, 'Vendedor ' || COALESCE(v.vendedor_id_firebird::text, '?')) AS nome,
-                SUM(v.valor_total) AS faturamento,
+                SUM((SELECT COALESCE(SUM(vi.valor_total),0) FROM dash_vendas_itens vi WHERE vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id)) AS faturamento,
                 COUNT(DISTINCT v.id_firebird) AS qtd_pedidos,
-                AVG(v.valor_total) AS ticket_medio,
+                AVG((SELECT COALESCE(SUM(vi.valor_total),0) FROM dash_vendas_itens vi WHERE vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id)) AS ticket_medio,
                 SUM(COALESCE(v.valor_desconto, 0)) AS total_desconto,
                 SUM(CASE WHEN COALESCE(v.valor_desconto, 0) > 0 THEN 1 ELSE 0 END) AS qtd_descontos
             FROM dash_vendas v
@@ -258,11 +263,11 @@ router.get('/ranking', async (req, res, next) => {
         for (const seller of rows) {
             // Find biggest sale
             const { rows: rMaxSale } = await db.query(`
-                SELECT v.valor_total, COALESCE(c.nome, 'Consumidor Final') as cliente_nome
+                SELECT (SELECT COALESCE(SUM(vi.valor_total),0) FROM dash_vendas_itens vi WHERE vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id) as valor_total, COALESCE(c.nome, 'Consumidor Final') as cliente_nome
                 FROM dash_vendas v
                 LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
                 WHERE v.tenant_id = $1 AND v.vendedor_id_firebird = $2 AND v.data_venda >= $3 AND v.data_venda <= $4 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
-                ORDER BY v.valor_total DESC LIMIT 1
+                ORDER BY valor_total DESC LIMIT 1
             `, [tenantId, seller.id, start, end]);
 
             // Find best selling product

@@ -42,9 +42,11 @@ function getPeriodRange(period, startDate, endDate, anchorDate) {
             break;
         case 'custom':
             if (startDate && endDate) {
-                start = new Date(startDate);
-                end = new Date(endDate);
-                end.setHours(23, 59, 59, 999);
+                const [sy, sm, sd] = startDate.split('T')[0].split('-');
+                start = new Date(parseInt(sy), parseInt(sm) - 1, parseInt(sd), 0, 0, 0, 0);
+                
+                const [ey, em, ed] = endDate.split('T')[0].split('-');
+                end = new Date(parseInt(ey), parseInt(em) - 1, parseInt(ed), 23, 59, 59, 999);
             } else {
                 // fallback
                 start.setDate(start.getDate() - 30);

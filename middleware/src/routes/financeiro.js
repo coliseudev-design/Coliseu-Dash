@@ -35,7 +35,14 @@ async function getFinanceiroAnchor(tenantId, period, start_date, end_date) {
             start = new Date(fakeNow.getFullYear(), fakeNow.getMonth() - 1, 1);
             end = new Date(fakeNow.getFullYear(), fakeNow.getMonth(), 0, 23, 59, 59); break;
         case 'custom':
-            if (start_date && end_date) return { start: new Date(start_date), end: new Date(end_date) };
+            if (start_date && end_date) {
+                const [sy, sm, sd] = start_date.split('T')[0].split('-');
+                const s = new Date(parseInt(sy), parseInt(sm) - 1, parseInt(sd), 0, 0, 0, 0);
+                
+                const [ey, em, ed] = end_date.split('T')[0].split('-');
+                const e = new Date(parseInt(ey), parseInt(em) - 1, parseInt(ed), 23, 59, 59, 999);
+                return { start: s, end: e };
+            }
             start.setFullYear(start.getFullYear() - 1); break;
         case 'all': start = new Date(1970, 0, 1); break;
         case 'last12m': case '1y': default:
