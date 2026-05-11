@@ -35,23 +35,6 @@ export default function SalesHubDashboard() {
     filter
   );
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64 text-text-secondary">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-500 mr-3"></div>
-        Carregando Hub de Vendas...
-      </div>
-    );
-  }
-
-  const mockSellers = data?.top_sellers || [];
-
-  const mockRecentOrders: any[] = [];
-
-  const heatmapData = Array.from({ length: 4 }).map(() => 
-    Array.from({ length: 7 }).map(() => Math.floor(Math.random() * 10))
-  );
-
   const [statusFilter, setStatusFilter] = useState('TODOS');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 100;
@@ -76,6 +59,23 @@ export default function SalesHubDashboard() {
     setStatusFilter(newStatus);
     setCurrentPage(1);
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64 text-text-secondary">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-500 mr-3"></div>
+        Carregando Hub de Vendas...
+      </div>
+    );
+  }
+
+  const mockSellers = data?.top_sellers || [];
+
+  const mockRecentOrders: any[] = [];
+
+  const heatmapData = Array.from({ length: 4 }).map(() => 
+    Array.from({ length: 7 }).map(() => Math.floor(Math.random() * 10))
+  );
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
