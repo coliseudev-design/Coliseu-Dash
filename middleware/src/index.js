@@ -18,16 +18,16 @@ async function startServer() {
                 const schemaPath = path.join(__dirname, 'db', 'schema.sql');
                 const schemaSql = fs.readFileSync(schemaPath, 'utf8');
                 await db.query(schemaSql);
-                
+
                 logger.info('[App] Executando migração de permissões e admin...');
                 await db.query('ALTER TABLE dash_usuarios ADD COLUMN IF NOT EXISTS permissions JSONB DEFAULT NULL;');
-                
+
                 const bcrypt = require('bcryptjs');
                 const adminEmail = 'admin@silenus.com.br';
                 const adminPass = '13894645';
                 const salt = await bcrypt.genSalt(10);
                 const hash = await bcrypt.hash(adminPass, salt);
-                
+
                 const checkAdmin = await db.query('SELECT id FROM dash_usuarios WHERE email = $1', [adminEmail]);
                 if (checkAdmin.rowCount > 0) {
                     await db.query('UPDATE dash_usuarios SET senha_hash = $1, role = $2, permissions = NULL, ativo = true WHERE email = $3', [hash, 'master', adminEmail]);
@@ -39,6 +39,23 @@ async function startServer() {
                     );
                 }
                 logger.info('[App] Tabelas inicializadas com sucesso.');
+
+                // --- Migração 001: Filtro por Filial/Departamento ---
+                // Idempotente: usa IF NOT EXISTS em todas as instruções.
+                // Roda automaticamente a cada deploy via Coolify.
+                try {
+                    const migrationPath = path.join(__dirname, 'db', 'migrations', '001_add_depto_filial.sql');
+                    if (fs.existsSync(migrationPath)) {
+                        logger.info('[App] Aplicando migração 001_add_depto_filial.sql...');
+                        const migrationSql = fs.readFileSync(migrationPath, 'utf8');
+                        await db.query(migrationSql);
+                        logger.info('[App] Migração 001 (filtro filial) aplicada com sucesso.');
+                    }
+                } catch (migErr) {
+                    // Não bloqueia o startup — avisa no log
+                    logger.warn('[App] Aviso na migração 001 (pode já existir):', migErr.message);
+                }
+
             } catch (dbErr) {
                 logger.error('[App] Erro ao sincronizar as tabelas do banco:', dbErr);
             }
