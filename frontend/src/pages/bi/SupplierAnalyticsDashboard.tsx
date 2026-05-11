@@ -81,9 +81,14 @@ export default function SupplierAnalyticsDashboard() {
   const chartData = data?.monthly_performance || [];
   const overview = data?.overview || { receita: 0, custo: 0, pedidos: 0, clientes: 0 };
   const topProducts = data?.top_products || [];
+  const topBrands = data?.top_brands || [];
   const availableBrands = data?.available_brands || ['VHM TRACTOR'];
   const margem = overview.receita > 0 ? ((overview.receita - overview.custo) / overview.receita) * 100 : 0;
   const ticketMedio = overview.pedidos > 0 ? overview.receita / overview.pedidos : 0;
+
+  const currentBrandData = selectedBrand ? topBrands.find((b: any) => b.name === selectedBrand) : null;
+  const currentRank = currentBrandData ? `${currentBrandData.rank}º` : '-';
+  const currentShare = currentBrandData && overview.receita > 0 ? ((currentBrandData.receita / overview.receita) * 100).toFixed(1) + '%' : '-';
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300 pb-10">
@@ -134,7 +139,7 @@ export default function SupplierAnalyticsDashboard() {
 
         <div className="flex items-center gap-4 z-10">
           <div className="bg-white text-orange-600 rounded-xl px-4 py-3 flex items-center gap-3 shadow-md">
-            <div className="text-2xl font-extrabold bg-orange-100 rounded-full w-10 h-10 flex items-center justify-center">8º</div>
+            <div className="text-2xl font-extrabold bg-orange-100 rounded-full w-10 h-10 flex items-center justify-center">{currentRank}</div>
             <div className="flex flex-col">
               <span className="text-[10px] font-black uppercase tracking-wider text-orange-400">Posição no Ranking</span>
               <span className="text-xs font-bold text-orange-600">Período Selecionado</span>
@@ -142,7 +147,7 @@ export default function SupplierAnalyticsDashboard() {
           </div>
           <div className="bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl px-4 py-3 flex flex-col justify-center shadow-md">
             <span className="text-[10px] font-black uppercase tracking-wider text-orange-100">Share da Empresa</span>
-            <span className="text-xl font-extrabold text-white">-</span>
+            <span className="text-xl font-extrabold text-white">{currentShare}</span>
           </div>
         </div>
       </div>

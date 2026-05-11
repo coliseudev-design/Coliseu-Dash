@@ -859,6 +859,40 @@ router.get('/supplier/analytics', async (req, res, next) => {
         
         const { rows: top_products } = await db.query(prodQuery, params);
 
+        // Fetch Top Brands
+        let brandQuery = `
+            SELECT 
+                COALESCE(vi.marca, 'S/ MARCA') as nome, 
+                SUM(vi.quantidade) as qtde, 
+                SUM(vi.valor_total) as receita,
+                RANK() OVER (ORDER BY SUM(vi.valor_total) DESC) as rank
+            FROM dash_vendas_itens vi
+            JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
+            GROUP BY COALESCE(vi.marca, 'S/ MARCA')
+            ORDER BY receita DESC
+        `;
+        const { rows: all_brands_ranked } = await db.query(brandQuery, [tenantId, start, end]);
+        
+        let top_brands = all_brands_ranked.slice(0, 10).map(b => ({
+            rank: parseInt(b.rank),
+            name: b.nome,
+            volume: parseFloat(b.qtde || 0),
+            receita: parseFloat(b.receita || 0)
+        }));
+
+        if (marca) {
+            const selectedBrandData = all_brands_ranked.find(b => b.nome === marca);
+            if (selectedBrandData && parseInt(selectedBrandData.rank) > 10) {
+                top_brands.push({
+                    rank: parseInt(selectedBrandData.rank),
+                    name: selectedBrandData.nome,
+                    volume: parseFloat(selectedBrandData.qtde || 0),
+                    receita: parseFloat(selectedBrandData.receita || 0)
+                });
+            }
+        }
+
         // Fetch monthly performance
         let monthlyQuery = `
             SELECT 
@@ -870,7 +904,7 @@ router.get('/supplier/analytics', async (req, res, next) => {
             WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
         `;
         if (marca) monthlyQuery += ` AND vi.marca = $4`;
-        monthlyQuery += ` GROUP BY TO_CHAR(v.data_venda, 'MM/YYYY') ORDER BY TO_CHAR(v.data_venda, 'MM/YYYY') ASC`;
+        monthlyQuery += ` GROUP BY TO_CHAR(v.data_venda, 'MM/YYYY') ORDER BY MIN(v.data_venda) ASC`;
         
         const { rows: monthly } = await db.query(monthlyQuery, params);
 
@@ -881,10 +915,10 @@ router.get('/supplier/analytics', async (req, res, next) => {
 
         res.json({
             overview: {
-                receita: parseFloat(kpis[0].receita || 0),
-                custo: parseFloat(kpis[0].custo || 0),
-                pedidos: parseInt(kpis[0].pedidos || 0),
-                clientes: parseInt(kpis[0].clientes || 0)
+                receita: parseFloat(kpis[0]?.receita || 0),
+                custo: parseFloat(kpis[0]?.custo || 0),
+                pedidos: parseInt(kpis[0]?.pedidos || 0),
+                clientes: parseInt(kpis[0]?.clientes || 0)
             },
             top_products: top_products.map((p, i) => ({
                 rank: i + 1,
@@ -892,6 +926,7 @@ router.get('/supplier/analytics', async (req, res, next) => {
                 volume: parseFloat(p.qtde || 0),
                 receita: parseFloat(p.receita || 0)
             })),
+            top_brands: top_brands,
             monthly_performance: monthly.map(m => ({
                 mes: m.mes_ano,
                 valor: parseFloat(m.receita || 0),
