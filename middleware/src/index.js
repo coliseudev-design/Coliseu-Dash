@@ -52,6 +52,10 @@ async function startServer() {
                         logger.info('[App] Migração 001 (filtro filial) aplicada com sucesso.');
                     }
                 } catch (migErr) {
+                    // Não bloqueia o startup — avisa no log
+                    logger.warn('[App] Aviso na migração 001 (pode já existir):', migErr.message);
+                }
+
             } catch (dbErr) {
                 logger.error('[App] Erro ao sincronizar as tabelas do banco:', dbErr);
             }
