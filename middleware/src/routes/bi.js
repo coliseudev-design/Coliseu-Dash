@@ -55,7 +55,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
                 COALESCE(SUM(v.valor_total), 0) AS faturamento_total,
                 COUNT(DISTINCT v.id_firebird) AS total_pedidos
             FROM dash_vendas v
-            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) != 'CANCELADO'${df.clause}
+            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO', 'ABERTO', 'PENDENTE', 'PAGO', 'EMITIDO', 'DEVOLVIDO', 'DEVOLUCAO', 'DEVOLUÇÃO', 'TROCA', 'VENDIDO')${df.clause}
         `, [tenantId, start, end, ...df.params]);
 
         const { rows: vPrev } = await db.query(`
@@ -63,7 +63,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
                 COALESCE(SUM(v.valor_total), 0) AS faturamento_total,
                 COUNT(DISTINCT v.id_firebird) AS total_pedidos
             FROM dash_vendas v
-            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) != 'CANCELADO'${df.clause}
+            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO', 'ABERTO', 'PENDENTE', 'PAGO', 'EMITIDO', 'DEVOLVIDO', 'DEVOLUCAO', 'DEVOLUÇÃO', 'TROCA', 'VENDIDO')${df.clause}
         `, [tenantId, prevStart, prevEnd, ...df.params]);
 
         const faturamento = parseFloat(v[0].faturamento_total);
@@ -83,7 +83,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
             SELECT COALESCE(vend.nome, 'Vendedor ' || COALESCE(v.vendedor_id_firebird::text, '?')) as nome, SUM(v.valor_total) as vendas
             FROM dash_vendas v
             LEFT JOIN dash_vendedores vend ON vend.id_firebird = v.vendedor_id_firebird AND vend.tenant_id = v.tenant_id
-            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) != 'CANCELADO'${df.clause}
+            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO', 'ABERTO', 'PENDENTE', 'PAGO', 'EMITIDO', 'DEVOLVIDO', 'DEVOLUCAO', 'DEVOLUÇÃO', 'TROCA', 'VENDIDO')${df.clause}
             GROUP BY v.vendedor_id_firebird, vend.nome
             ORDER BY vendas DESC
             LIMIT 10
@@ -104,7 +104,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
             SELECT COALESCE(vi.produto, 'Produto ' || COALESCE(vi.produto_id_firebird::text, '?')) AS nome, SUM(vi.valor_total) as vendas
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
-            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) != 'CANCELADO'
+            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO', 'ABERTO', 'PENDENTE', 'PAGO', 'EMITIDO', 'DEVOLVIDO', 'DEVOLUCAO', 'DEVOLUÇÃO', 'TROCA', 'VENDIDO')
               AND COALESCE(vi.produto, vi.produto_id_firebird::text) IS NOT NULL${df.clause}
             GROUP BY COALESCE(vi.produto, 'Produto ' || COALESCE(vi.produto_id_firebird::text, '?'))
             ORDER BY vendas DESC
@@ -124,7 +124,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
             SELECT COALESCE(vi.marca, v.marca, 'S/ MARCA') as nome, SUM(vi.valor_total) as vendas
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
-            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) != 'CANCELADO'
+            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO', 'ABERTO', 'PENDENTE', 'PAGO', 'EMITIDO', 'DEVOLVIDO', 'DEVOLUCAO', 'DEVOLUÇÃO', 'TROCA', 'VENDIDO')
               AND COALESCE(vi.marca, v.marca) IS NOT NULL AND COALESCE(vi.marca, v.marca) != ''${df.clause}
             GROUP BY COALESCE(vi.marca, v.marca, 'S/ MARCA')
             ORDER BY vendas DESC
@@ -144,7 +144,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
             SELECT COALESCE(c.cidade, 'NÃO INFORMADA') as nome, SUM(v.valor_total) as vendas
             FROM dash_vendas v
             LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
-            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) != 'CANCELADO'${df.clause}
+            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO', 'ABERTO', 'PENDENTE', 'PAGO', 'EMITIDO', 'DEVOLVIDO', 'DEVOLUCAO', 'DEVOLUÇÃO', 'TROCA', 'VENDIDO')${df.clause}
             GROUP BY c.cidade
             ORDER BY vendas DESC
             LIMIT 10
@@ -162,7 +162,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
             SELECT COALESCE(vi.categoria, v.categoria, 'S/ GRUPO') as nome, SUM(vi.valor_total) as vendas
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
-            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) != 'CANCELADO'
+            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO', 'ABERTO', 'PENDENTE', 'PAGO', 'EMITIDO', 'DEVOLVIDO', 'DEVOLUCAO', 'DEVOLUÇÃO', 'TROCA', 'VENDIDO')
               AND COALESCE(vi.categoria, v.categoria) IS NOT NULL AND COALESCE(vi.categoria, v.categoria) != ''${df.clause}
             GROUP BY COALESCE(vi.categoria, v.categoria, 'S/ GRUPO')
             ORDER BY vendas DESC
@@ -182,7 +182,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
             SELECT COALESCE(c.nome, 'Cliente ' || COALESCE(v.cliente_id_firebird::text, '?')) as nome, SUM(v.valor_total) as vendas
             FROM dash_vendas v
             LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
-            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) != 'CANCELADO'
+            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO', 'ABERTO', 'PENDENTE', 'PAGO', 'EMITIDO', 'DEVOLVIDO', 'DEVOLUCAO', 'DEVOLUÇÃO', 'TROCA', 'VENDIDO')
             GROUP BY v.cliente_id_firebird, c.nome
             ORDER BY vendas DESC
             LIMIT 10
@@ -233,7 +233,7 @@ router.get('/sales/commercial-kpis', async (req, res, next) => {
                 COUNT(DISTINCT id_firebird) as pedidos,
                 COALESCE(SUM(v.valor_total), 0) as faturamento_total
             FROM dash_vendas v
-            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) != 'CANCELADO'
+            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO', 'ABERTO', 'PENDENTE', 'PAGO', 'EMITIDO', 'DEVOLVIDO', 'DEVOLUCAO', 'DEVOLUÇÃO', 'TROCA', 'VENDIDO')
         ${df.clause}`, [tenantId, start, end, ...df.params]);
 
         // Total descontos
@@ -249,7 +249,7 @@ router.get('/sales/commercial-kpis', async (req, res, next) => {
                    SUM(v.valor_total) as vendas
             FROM dash_vendas v
             LEFT JOIN dash_vendedores vend ON vend.id_firebird = v.vendedor_id_firebird AND vend.tenant_id = v.tenant_id
-            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) != 'CANCELADO'
+            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO', 'ABERTO', 'PENDENTE', 'PAGO', 'EMITIDO', 'DEVOLVIDO', 'DEVOLUCAO', 'DEVOLUÇÃO', 'TROCA', 'VENDIDO')
             GROUP BY v.vendedor_id_firebird, vend.nome
             ORDER BY vendas DESC
             LIMIT 10
@@ -327,7 +327,7 @@ router.get('/sales/sellers', async (req, res, next) => {
                 MAX(v.data_venda) as ultima_venda
             FROM dash_vendas v
             JOIN dash_vendedores vend ON vend.id_firebird = v.vendedor_id_firebird AND vend.tenant_id = v.tenant_id
-            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) != 'CANCELADO'
+            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO', 'ABERTO', 'PENDENTE', 'PAGO', 'EMITIDO', 'DEVOLVIDO', 'DEVOLUCAO', 'DEVOLUÇÃO', 'TROCA', 'VENDIDO')
             GROUP BY vend.id_firebird, vend.nome
             ORDER BY faturamento DESC
         ${df.clause}`, [tenantId, start, end, ...df.params]);
@@ -638,7 +638,7 @@ router.get('/customer/radar-360', async (req, res, next) => {
                 COUNT(DISTINCT v.id_firebird) as total_pedidos,
                 MAX(v.data_venda) as ultima_compra
             FROM dash_vendas v
-            WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2 AND TRIM(v.status) != 'CANCELADO'
+            WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO', 'ABERTO', 'PENDENTE', 'PAGO', 'EMITIDO', 'DEVOLVIDO', 'DEVOLUCAO', 'DEVOLUÇÃO', 'TROCA', 'VENDIDO')
         `, [tenantId, searchId]);
 
         const ltv = parseFloat(vInfo[0].ltv);
@@ -699,7 +699,7 @@ router.get('/comparative/summary', async (req, res, next) => {
                 COALESCE(SUM(v.valor_total), 0) AS faturamento,
                 COALESCE(SUM(v.valor_custo), 0) AS custo
             FROM dash_vendas v
-            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) != 'CANCELADO'
+            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO', 'ABERTO', 'PENDENTE', 'PAGO', 'EMITIDO', 'DEVOLVIDO', 'DEVOLUCAO', 'DEVOLUÇÃO', 'TROCA', 'VENDIDO')
         `, [tenantId, start, end]);
 
         const faturamento = parseFloat(kpis[0].faturamento);
@@ -714,7 +714,7 @@ router.get('/comparative/summary', async (req, res, next) => {
                    SUM(vi.custo_unitario * vi.quantidade) as custo
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
-            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) != 'CANCELADO'
+            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO', 'ABERTO', 'PENDENTE', 'PAGO', 'EMITIDO', 'DEVOLVIDO', 'DEVOLUCAO', 'DEVOLUÇÃO', 'TROCA', 'VENDIDO')
               AND COALESCE(vi.marca, v.marca) IS NOT NULL AND COALESCE(vi.marca, v.marca) != ''
             GROUP BY COALESCE(vi.marca, v.marca, 'S/ MARCA')
             ORDER BY vendas DESC
@@ -745,7 +745,7 @@ router.get('/comparative/summary', async (req, res, next) => {
                    SUM(vi.custo_unitario * vi.quantidade) as custo
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
-            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) != 'CANCELADO'
+            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO', 'ABERTO', 'PENDENTE', 'PAGO', 'EMITIDO', 'DEVOLVIDO', 'DEVOLUCAO', 'DEVOLUÇÃO', 'TROCA', 'VENDIDO')
               AND COALESCE(vi.categoria, v.categoria) IS NOT NULL AND COALESCE(vi.categoria, v.categoria) != ''
             GROUP BY COALESCE(vi.categoria, v.categoria, 'S/ GRUPO')
             ORDER BY vendas DESC
@@ -773,7 +773,7 @@ router.get('/comparative/summary', async (req, res, next) => {
                    SUM(v.valor_custo) as custo
             FROM dash_vendas v
             LEFT JOIN dash_vendedores vend ON vend.id_firebird = v.vendedor_id_firebird AND vend.tenant_id = v.tenant_id
-            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) != 'CANCELADO'
+            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO', 'ABERTO', 'PENDENTE', 'PAGO', 'EMITIDO', 'DEVOLVIDO', 'DEVOLUCAO', 'DEVOLUÇÃO', 'TROCA', 'VENDIDO')
             GROUP BY v.vendedor_id_firebird, vend.nome
             ORDER BY vendas DESC
             LIMIT 15
@@ -850,7 +850,7 @@ router.get('/supplier/analytics', async (req, res, next) => {
                 COUNT(DISTINCT v.cliente_id_firebird) as clientes
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
-            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) != 'CANCELADO'
+            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO', 'ABERTO', 'PENDENTE', 'PAGO', 'EMITIDO', 'DEVOLVIDO', 'DEVOLUCAO', 'DEVOLUÇÃO', 'TROCA', 'VENDIDO')
         `;
         let params = [tenantId, start, end];
         
@@ -866,7 +866,7 @@ router.get('/supplier/analytics', async (req, res, next) => {
             SELECT COALESCE(vi.produto, 'S/ NOME') as nome, SUM(vi.quantidade) as qtde, SUM(vi.valor_total) as receita
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
-            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) != 'CANCELADO'
+            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO', 'ABERTO', 'PENDENTE', 'PAGO', 'EMITIDO', 'DEVOLVIDO', 'DEVOLUCAO', 'DEVOLUÇÃO', 'TROCA', 'VENDIDO')
         `;
         if (marca) prodQuery += ` AND vi.marca = $4`;
         prodQuery += ` GROUP BY vi.produto ORDER BY receita DESC LIMIT 30`; // Top 30 for the ranking table, top 3 for cards
@@ -882,7 +882,7 @@ router.get('/supplier/analytics', async (req, res, next) => {
                 RANK() OVER (ORDER BY SUM(vi.valor_total) DESC) as rank
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
-            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) != 'CANCELADO'
+            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO', 'ABERTO', 'PENDENTE', 'PAGO', 'EMITIDO', 'DEVOLVIDO', 'DEVOLUCAO', 'DEVOLUÇÃO', 'TROCA', 'VENDIDO')
             GROUP BY COALESCE(vi.marca, 'S/ MARCA')
             ORDER BY receita DESC
         `;
@@ -915,7 +915,7 @@ router.get('/supplier/analytics', async (req, res, next) => {
                 SUM(vi.quantidade) as qtde
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
-            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) != 'CANCELADO'
+            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO', 'ABERTO', 'PENDENTE', 'PAGO', 'EMITIDO', 'DEVOLVIDO', 'DEVOLUCAO', 'DEVOLUÇÃO', 'TROCA', 'VENDIDO')
         `;
         if (marca) monthlyQuery += ` AND vi.marca = $4`;
         monthlyQuery += ` GROUP BY TO_CHAR(v.data_venda, 'MM/YYYY') ORDER BY MIN(v.data_venda) ASC`;
