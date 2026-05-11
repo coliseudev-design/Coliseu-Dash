@@ -457,7 +457,8 @@ export default function SupplierAnalyticsDashboard() {
         </div>
       </div>
     </div>
-  )}
+  )
+)}
       {activeTab === 'Ranking de Marcas' && (
         <div className="space-y-6 animate-in fade-in duration-300">
           

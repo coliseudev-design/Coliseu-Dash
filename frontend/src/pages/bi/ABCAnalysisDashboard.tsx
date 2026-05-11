@@ -66,13 +66,6 @@ export default function InventoryManagementDashboard() {
     curva_c_count: 0
   };
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [marcaFilter, setMarcaFilter] = useState('');
-  const [grupoFilter, setGrupoFilter] = useState('');
-  const [abcFilter, setAbcFilter] = useState('');
-  const [comEstoque, setComEstoque] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 100;
 
   const marcasDisponiveis = useMemo(() => {
     const marcas = new Set(tableData.map((item: any) => item.marca).filter(Boolean));
