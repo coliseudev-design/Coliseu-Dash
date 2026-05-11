@@ -13,7 +13,7 @@ const logger = require('../config/logger');
  */
 router.get('/', async (req, res) => {
     try {
-        let query = `SELECT id, tenant_id, email, nome, role, ativo, created_at, permissions, layout_version FROM dash_usuarios`;
+        let query = `SELECT id, tenant_id, email, nome, role, ativo, created_at, permissions, layout_version, filial_acesso FROM dash_usuarios`;
         let params = [];
         
         if (req.tenant.id !== '00000000-0000-0000-0000-000000000000') {
@@ -108,9 +108,9 @@ router.post('/', async (req, res) => {
 
         // Insere o usuário
         const insertQuery = `
-            INSERT INTO dash_usuarios (tenant_id, email, nome, role, ativo, senha_hash, permissions, layout_version)
-            VALUES ($1, $2, $3, 'viewer', true, $4, NULL, 'v1.0')
-            RETURNING id, tenant_id, email, nome, role, ativo, created_at, permissions, layout_version
+            INSERT INTO dash_usuarios (tenant_id, email, nome, role, ativo, senha_hash, permissions, layout_version, filial_acesso)
+            VALUES ($1, $2, $3, 'viewer', true, $4, NULL, 'v1.0', 'todas')
+            RETURNING id, tenant_id, email, nome, role, ativo, created_at, permissions, layout_version, filial_acesso
         `;
         const result = await db.query(insertQuery, [companyKey, email, nome, senhaHash]);
         const user = result.rows[0];
@@ -247,6 +247,46 @@ router.put('/:id/layout', async (req, res) => {
     } catch (err) {
         logger.error('[Usuarios] Erro ao alterar layout version', err);
         res.status(500).json({ error: 'Erro interno ao alterar versão do layout.' });
+    }
+});
+
+/**
+ * PUT /api/usuarios/:id/filial-acesso
+ * Define quais filiais (depto_ids) o usuário pode visualizar.
+ * Formato: 'todas' | '1' | '1,3' (IDs separados por vírgula)
+ */
+router.put('/:id/filial-acesso', async (req, res) => {
+    try {
+        const { filial_acesso } = req.body;
+        const targetId = req.params.id;
+
+        // Validar formato: 'todas' ou lista de números separados por vírgula
+        const validFormat = /^(todas|\d+(,\d+)*)$/.test(String(filial_acesso || 'todas').trim());
+        if (!validFormat) {
+            return res.status(400).json({ error: 'Formato inválido. Use "todas" ou IDs separados por vírgula (ex: "1,3").' });
+        }
+
+        let query = `UPDATE dash_usuarios SET filial_acesso = $1 WHERE id = $2`;
+        let params = [filial_acesso, targetId];
+
+        if (req.tenant.id !== '00000000-0000-0000-0000-000000000000') {
+            query += ` AND tenant_id = $3`;
+            params.push(req.tenant.id);
+        }
+
+        query += ` RETURNING id, filial_acesso`;
+
+        const result = await db.query(query, params);
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: 'Usuário não encontrado ou sem permissão.' });
+        }
+
+        logger.info('[Usuarios] Acesso de filial alterado', { targetId, filial_acesso, by: req.user.email });
+        res.json({ message: 'Acesso de filiais atualizado com sucesso', user: result.rows[0] });
+    } catch (err) {
+        logger.error('[Usuarios] Erro ao alterar filial_acesso', err);
+        res.status(500).json({ error: 'Erro interno ao alterar acesso de filiais.' });
     }
 });
 

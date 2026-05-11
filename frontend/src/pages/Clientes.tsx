@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useApiQuery, usePeriodQuery } from '../hooks/useApi'
+import { useApiQuery, useBranchPeriodQuery } from '../hooks/useApi'
 import KPICard from '../components/KPICard'
 import DataTable from '../components/DataTable'
 import PeriodFilter from '../components/PeriodFilter'
@@ -33,7 +33,7 @@ interface ClientesList {
 
 export default function Clientes() {
   const [search, setSearch] = useState('')
-  const kpis = usePeriodQuery<ClienteKPIs>('/clientes/kpis')
+  const kpis = useBranchPeriodQuery<ClienteKPIs>('/clientes/kpis')
   const lista = useApiQuery<ClientesList>(
     '/clientes/lista',
     { search, limit: 200 },

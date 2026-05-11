@@ -1,4 +1,4 @@
-import { usePeriodQuery } from '../hooks/useApi'
+import { useBranchPeriodQuery } from '../hooks/useApi'
 import KPICard from '../components/KPICard'
 import ChartCard from '../components/ChartCard'
 import PeriodFilter from '../components/PeriodFilter'
@@ -31,9 +31,9 @@ interface Categoria {
 }
 
 export default function Vendas() {
-  const kpis = usePeriodQuery<VendasKPIs>('/vendas/kpis')
-  const ranking = usePeriodQuery<{ data: TopVendedor[] }>('/comissoes/ranking')
-  const categoriasReq = usePeriodQuery<{ data: Categoria[] }>('/ranking/categorias', { limit: 10 })
+  const kpis = useBranchPeriodQuery<VendasKPIs>('/vendas/kpis')
+  const ranking = useBranchPeriodQuery<{ data: TopVendedor[] }>('/comissoes/ranking')
+  const categoriasReq = useBranchPeriodQuery<{ data: Categoria[] }>('/ranking/categorias', { limit: 10 })
 
   const topVendedores = ranking.data?.data || []
   const categorias = categoriasReq.data?.data || []

@@ -1,4 +1,4 @@
-import { useApiQuery, usePeriodQuery } from '../hooks/useApi'
+import { useApiQuery, useBranchPeriodQuery } from '../hooks/useApi'
 import KPICard from '../components/KPICard'
 import ChartCard from '../components/ChartCard'
 import { Link } from 'react-router-dom'
@@ -33,8 +33,8 @@ export default function Home() {
   const start_date = usePeriodStore((s) => s.startDate)
   const end_date = usePeriodStore((s) => s.endDate)
 
-  const ov = usePeriodQuery<Overview>('/estatisticas/overview')
-  const fatMes = usePeriodQuery<any>('/vendas/faturadas')
+  const ov = useBranchPeriodQuery<Overview>('/estatisticas/overview')
+  const fatMes = useBranchPeriodQuery<any>('/vendas/faturadas')
   const recentes = useApiQuery<any>('/vendas/recentes', { limit: 8 })
 
   const totalPeriodo = ov.data?.mes?.total || 0

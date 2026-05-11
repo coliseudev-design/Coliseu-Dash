@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { usePeriodQuery } from '../hooks/useApi'
+import { useBranchPeriodQuery } from '../hooks/useApi'
 import PeriodFilter from '../components/PeriodFilter'
 import {
   Users, Percent, ArrowDownAZ, Hash, Trophy, BarChart3,
@@ -10,7 +10,7 @@ import KPICard from '../components/KPICard'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 
 export default function Comissoes() {
-  const ranking = usePeriodQuery<any>('/comissoes/ranking')
+  const ranking = useBranchPeriodQuery<any>('/comissoes/ranking')
 
   const dadosVendedores = ranking.data?.data || []
 

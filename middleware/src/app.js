@@ -22,6 +22,7 @@ const rankingRouter = require('./routes/ranking');
 const usuariosRouter = require('./routes/usuarios');
 const configuracoesRouter = require('./routes/configuracoes');
 const biRouter = require('./routes/bi');
+const { router: filiaisRouter } = require('./routes/filiais');
 
 const app = express();
 
@@ -54,6 +55,7 @@ app.use('/api/ranking', rankingRouter);
 app.use('/api/comissoes', rankingRouter); // comissoes/ranking mapeia para ranking/vendedores
 app.use('/api/usuarios', usuariosRouter);
 app.use('/api/configuracoes', configuracoesRouter);
+app.use('/api/filiais', filiaisRouter);  // Lista de filiais/departamentos por tenant
 app.use('/api/sync', syncRouter); // Habilita /api/sync/status para o frontend web
 app.use('/api/bi', biRouter); // Novas rotas de BI
 

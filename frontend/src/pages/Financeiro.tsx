@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { usePeriodQuery, useApiQuery } from '../hooks/useApi'
+import { useBranchParam } from '../contexts/BranchContext'
 import KPICard from '../components/KPICard'
 import ChartCard from '../components/ChartCard'
 import PeriodFilter from '../components/PeriodFilter'
@@ -16,6 +17,7 @@ import { CHART_COLORS } from '../utils/chartColors'
 export default function Financeiro() {
   // Seletor de Caixas Real
   const [selectedCaixa, setSelectedCaixa] = useState('todos')
+  const branchParam = useBranchParam()
   
   // Lista de caixas
   const { data: caixasRes } = useApiQuery<any>('/financeiro/caixas')
@@ -27,7 +29,10 @@ export default function Financeiro() {
     }
   }, [caixas, selectedCaixa])
 
-  const extraParams = selectedCaixa !== 'todos' ? { caixa_id: selectedCaixa } : {}
+  const extraParams = {
+    ...(selectedCaixa !== 'todos' ? { caixa_id: selectedCaixa } : {}),
+    ...branchParam
+  }
   const caixa = usePeriodQuery<any>('/financeiro/caixa', extraParams)
 
   return (

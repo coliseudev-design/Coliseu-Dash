@@ -1,4 +1,4 @@
-import { usePeriodQuery } from '../hooks/useApi'
+import { useBranchPeriodQuery } from '../hooks/useApi'
 import KPICard from '../components/KPICard'
 import PeriodFilter from '../components/PeriodFilter'
 import {
@@ -33,7 +33,7 @@ interface EstatisticasKPIs {
 }
 
 export default function Estatisticas() {
-  const kpis = usePeriodQuery<EstatisticasKPIs>('/estatisticas/kpis')
+  const kpis = useBranchPeriodQuery<EstatisticasKPIs>('/estatisticas/kpis')
   const k = kpis.data?.kpis
 
   return (
