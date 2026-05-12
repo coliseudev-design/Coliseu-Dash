@@ -39,7 +39,6 @@ router.get('/', async (req, res, next) => {
 
         // 1) Sincroniza filiais do Identity Server para este tenant
         try {
-            const fetch = (await import('node-fetch')).default;
             const config = require('../config/env');
             const identityUrl = config.security?.identityApiUrl || process.env.IDENTITY_API_URL || 'https://adminlicencas.coliseusistemas.com.br';
             identityUrlUsed = identityUrl;
