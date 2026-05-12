@@ -2,17 +2,20 @@ import { Outlet, useLocation } from 'react-router-dom';
 import PeriodFilter from '../../components/PeriodFilter';
 import { usePeriodStore } from '../../store/periodStore';
 import { BiPeriodFilter } from '../../types/bi.types';
+import { useBranchParam } from '../../contexts/BranchContext';
 
 export default function BiDashboard() {
   const periodState = usePeriodStore();
   const location = useLocation();
+  const branchParam = useBranchParam();
 
   // Compatibilidade com as páginas filhas que ainda esperam `filter` no contexto
   // Caso a página já utilize `useBranchPeriodQuery` diretamente, este context não fará efeito negativo.
-  const filter: BiPeriodFilter = {
+  const filter: BiPeriodFilter & { depto_id?: number } = {
     period: periodState.period,
     startDate: periodState.startDate || '',
     endDate: periodState.endDate || '',
+    ...branchParam
   };
 
   return (
