@@ -47,11 +47,14 @@ export function BranchProvider({ children }: { children: ReactNode }) {
       setIsLoading(true)
       try {
         const { data } = await api.get('/filiais')
-        setFiliais(data.filiais || [])
+        
+        // O backend retorna um array diretamente: res.json(rows)
+        const filiaisList = Array.isArray(data) ? data : (data.filiais || [])
+        setFiliais(filiaisList)
 
         // Se só tem 1 filial, selecionar ela automaticamente
-        if (data.filiais?.length === 1) {
-          setSelectedBranch(data.filiais[0].depto_id)
+        if (filiaisList.length === 1) {
+          setSelectedBranch(filiaisList[0].depto_id)
         }
       } catch (err) {
         // Se não tem filiais cadastradas ainda, usa 'todas' sem erro
