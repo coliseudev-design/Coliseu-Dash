@@ -5,8 +5,9 @@ export interface BiPeriod {
 }
 
 export interface BiPeriodFilter {
-  startDate: string; // ISO string YYYY-MM-DD
-  endDate: string;
+  period?: string; // e.g. 'thisMonth', 'today', 'custom'
+  startDate?: string; // ISO string YYYY-MM-DD
+  endDate?: string;
   sellerId?: number;
   customerId?: number;
   city?: string;
