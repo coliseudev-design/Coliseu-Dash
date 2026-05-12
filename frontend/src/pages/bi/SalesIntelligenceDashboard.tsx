@@ -61,7 +61,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 export default function SalesIntelligenceDashboard() {
   const { filter } = useOutletContext<{ filter: BiPeriodFilter }>();
 
-  const { data, isLoading } = useBiPeriodQuery(
+  const { data, isLoading, isError } = useBiPeriodQuery(
     ['bi', 'sales-intelligence'],
     BIService.getSalesIntelligence,
     filter
@@ -384,9 +384,7 @@ export default function SalesIntelligenceDashboard() {
             </div>
           ))}
         </div>
-        </div>
       </div>
-
       {isError && (
         <div className="bg-danger/10 border border-danger/20 text-danger p-3 rounded-lg text-sm mt-4">
           Aviso: Os dados não puderam ser carregados devido a uma falha de conexão com o banco de dados/API.
