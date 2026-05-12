@@ -1,10 +1,14 @@
-import urllib.request
-import json
+import paramiko
 
-try:
-    req = urllib.request.Request('http://177.39.17.7:3000/api/health')
-    with urllib.request.urlopen(req) as response:
-        print("Health:", response.read().decode())
-except Exception as e:
-    print("Health error:", e)
+client = paramiko.SSHClient()
+client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+client.connect('177.39.17.7', username='root', password='6EFBC!c0:wzr%Ij')
 
+script = r'''
+container=$(docker ps --format '{{.Names}}' | grep middleware | head -n 1)
+docker logs --tail 20 $container
+'''
+
+stdin, stdout, stderr = client.exec_command(script)
+print('STDOUT:', stdout.read().decode('utf-8'))
+print('STDERR:', stderr.read().decode('utf-8'))
