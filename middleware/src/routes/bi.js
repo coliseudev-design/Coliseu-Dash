@@ -116,6 +116,54 @@ router.get('/sales/executive-summary', async (req, res, next) => {
         const { rows: prods } = await db.query(`
             SELECT COALESCE(vi.produto, 'Produto ' || COALESCE(vi.produto_id_firebird::text, '?')) AS nome, 
                    SUM(
+                       vi.valor_total
+                   ) as vendas
+            FROM dash_vendas_itens vi
+            JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 
+              AND UPPER(TRIM(v.status)) NOT IN ('CANCELADO', 'ABERTO', 'PENDENTE', 'ORÇAMENTO', 'ORCAMENTO', 'NULO')
+              AND COALESCE(vi.produto, vi.produto_id_firebird::text) IS NOT NULL${df.clause}
+            GROUP BY COALESCE(vi.produto, 'Produto ' || COALESCE(vi.produto_id_firebird::text, '?'))
+            ORDER BY vendas DESC
+            LIMIT 10
+        `, [tenantId, start, end, ...df.params]);
+
+        const top_products = prods.map((p, i) => ({
+            rank: i + 1,
+            name: p.nome,
+            current: parseFloat(p.vendas),
+            prev: null, // Removed fake mock
+            delta: null // Removed fake mock
+        }));
+
+        // --- 4. Top Brands ---
+        const { rows: brands } = await db.query(`
+            SELECT COALESCE(vi.marca, v.marca, 'S/ MARCA') as nome, 
+                   SUM(
+                       vi.valor_total
+                   ) as vendas
+            FROM dash_vendas_itens vi
+            JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 
+              AND UPPER(TRIM(v.status)) NOT IN ('CANCELADO', 'ABERTO', 'PENDENTE', 'ORÇAMENTO', 'ORCAMENTO', 'NULO')
+              AND COALESCE(vi.marca, v.marca) IS NOT NULL AND COALESCE(vi.marca, v.marca) != ''${df.clause}
+            GROUP BY COALESCE(vi.marca, v.marca, 'S/ MARCA')
+            ORDER BY vendas DESC
+            LIMIT 10
+        `, [tenantId, start, end, ...df.params]);
+
+        const top_brands = brands.map((b, i) => ({
+            rank: i + 1,
+            name: b.nome,
+            current: parseFloat(b.vendas),
+            prev: null, // Removed fake mock
+            delta: null // Removed fake mock
+        }));
+
+        // --- 5. Top Regions (Cities) ---
+        const { rows: regions } = await db.query(`
+            SELECT COALESCE(c.cidade, 'NÃO INFORMADA') as nome, 
+                   SUM(
                        v.valor_total
                    ) as vendas
             FROM dash_vendas v
@@ -138,6 +186,30 @@ router.get('/sales/executive-summary', async (req, res, next) => {
         // --- 6. Top Categories ---
         const { rows: categories } = await db.query(`
             SELECT COALESCE(vi.categoria, v.categoria, 'S/ GRUPO') as nome, 
+                   SUM(
+                       vi.valor_total
+                   ) as vendas
+            FROM dash_vendas_itens vi
+            JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 
+              AND UPPER(TRIM(v.status)) NOT IN ('CANCELADO', 'ABERTO', 'PENDENTE', 'ORÇAMENTO', 'ORCAMENTO', 'NULO')
+              AND COALESCE(vi.categoria, v.categoria) IS NOT NULL AND COALESCE(vi.categoria, v.categoria) != ''${df.clause}
+            GROUP BY COALESCE(vi.categoria, v.categoria, 'S/ GRUPO')
+            ORDER BY vendas DESC
+            LIMIT 10
+        `, [tenantId, start, end, ...df.params]);
+
+        const top_categories = categories.map((c, i) => ({
+            rank: i + 1,
+            name: c.nome,
+            current: parseFloat(c.vendas),
+            prev: null, // Removed fake mock
+            delta: null // Removed fake mock
+        }));
+
+        // --- 7. Top Clientes ---
+        const { rows: clients } = await db.query(`
+            SELECT COALESCE(c.nome, 'Cliente ' || COALESCE(v.cliente_id_firebird::text, '?')) as nome, 
                    SUM(
                        v.valor_total
                    ) as vendas
