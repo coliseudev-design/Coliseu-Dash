@@ -5,7 +5,9 @@ client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 client.connect('177.39.17.7', username='root', password='6EFBC!c0:wzr%Ij')
 
 script = '''
-ping -c 1 coliseu-db.opdc.cloud
+container=$(docker ps --format "{{.Names}}" | grep middleware)
+echo "Container: $container"
+docker logs --tail 20 $container
 '''
 stdin, stdout, stderr = client.exec_command(script)
 print('STDOUT:\n', stdout.read().decode('utf-8'))
