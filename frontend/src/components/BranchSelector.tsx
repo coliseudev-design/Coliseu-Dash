@@ -49,7 +49,7 @@ export default function BranchSelector() {
       {open && (
         <>
           <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1 w-56 bg-surface border border-divider rounded-xl shadow-card-hover z-40 py-1 overflow-hidden">
+          <div className="absolute right-0 top-full mt-1 w-56 bg-white dark:bg-bg-secondary border border-divider rounded-xl shadow-card-hover z-40 py-1 overflow-hidden">
             {/* Opção "Todas" */}
             <button
               className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-bg-secondary transition-colors"
