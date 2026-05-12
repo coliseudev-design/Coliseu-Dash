@@ -4,7 +4,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db/postgres');
 const { getPeriodRange } = require('../utils/period');
-const { buildDeptoFilter } = require('./filiais');
+const { buildDeptoFilter, buildCentroCustoFilter } = require('./filiais');
 
 const getBiDateRange = (req) => {
     const period = req.query.period;
@@ -513,8 +513,8 @@ router.get('/financial/summary', async (req, res, next) => {
     try {
         const tenantId = req.tenant.id;
         const { start, end } = getBiDateRange(req);
-        const deptoId = req.query.depto_id;
-        const df = buildDeptoFilter(deptoId, 4, 'f');
+        const centroCusto = req.query.centro_custo || req.query.depto_id; // Fallback se centro_custo nao for enviado
+        const cf = buildCentroCustoFilter(centroCusto, 4, 'f');
 
         const { rows: f } = await db.query(`
             SELECT 
@@ -524,8 +524,8 @@ router.get('/financial/summary', async (req, res, next) => {
                 COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'PAGAR' AND TRIM(f.status_pagamento) = 'PAGO' AND COALESCE(f.data_pagamento, f.data_vencimento, NOW()) >= $2 AND COALESCE(f.data_pagamento, f.data_vencimento, NOW()) <= $3 THEN (CASE WHEN f.valor_pago = 0 THEN f.valor ELSE f.valor_pago END) ELSE 0 END), 0) AS pagamentos_realizados
             FROM dash_financeiro f
             WHERE f.tenant_id = $1
-            ${df.clause}
-        `, [tenantId, start, end, ...df.params]);
+            ${cf.clause}
+        `, [tenantId, start, end, ...cf.params]);
 
         const a_receber = parseFloat(f[0].contas_receber);
         const a_pagar = parseFloat(f[0].contas_pagar);

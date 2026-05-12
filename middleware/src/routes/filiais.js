@@ -26,6 +26,18 @@ function buildDeptoFilter(deptoId, nextParamIndex, alias = 'v') {
     };
 }
 
+function buildCentroCustoFilter(centroCustoId, nextParamIndex, alias = 'f') {
+    if (!centroCustoId || centroCustoId === 'todas' || centroCustoId === 'all') {
+        return { clause: '', params: [] };
+    }
+    const num = parseInt(centroCustoId, 10);
+    if (isNaN(num)) return { clause: '', params: [] };
+    return {
+        clause: ` AND ${alias}.centro_custo = $${nextParamIndex}`,
+        params: [num]
+    };
+}
+
 // ----------------------------------------------------------------
 // GET /api/filiais  →  Lista filiais do tenant
 // ----------------------------------------------------------------
@@ -123,4 +135,4 @@ router.get('/check/:deptoId', async (req, res, next) => {
     }
 });
 
-module.exports = { router, buildDeptoFilter };
+module.exports = { router, buildDeptoFilter, buildCentroCustoFilter };

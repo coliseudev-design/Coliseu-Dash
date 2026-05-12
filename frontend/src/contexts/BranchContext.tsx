@@ -82,8 +82,13 @@ export function useBranch() {
  * Retorna o valor de depto_id para injetar nas queries da API.
  * Se 'todas', retorna undefined (sem filtro).
  */
-export function useBranchParam(): { depto_id?: number } {
-  const { selectedBranch } = useBranch()
+export function useBranchParam(): { depto_id?: number; centro_custo?: number } {
+  const { selectedBranch, filiais } = useBranch()
   if (selectedBranch === 'todas') return {}
-  return { depto_id: selectedBranch }
+  
+  const filial = filiais.find(f => f.depto_id === selectedBranch)
+  return { 
+    depto_id: selectedBranch,
+    ...(filial?.centro_custo ? { centro_custo: filial.centro_custo } : {})
+  }
 }

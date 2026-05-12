@@ -56,6 +56,19 @@ async function startServer() {
                     logger.warn('[App] Aviso na migração 001 (pode já existir):', migErr.message);
                 }
 
+                // --- Migração 002: Centro de Custo no Financeiro ---
+                try {
+                    const migrationPath2 = path.join(__dirname, 'db', 'migrations', '002_add_centro_custo.sql');
+                    if (fs.existsSync(migrationPath2)) {
+                        logger.info('[App] Aplicando migração 002_add_centro_custo.sql...');
+                        const migrationSql2 = fs.readFileSync(migrationPath2, 'utf8');
+                        await db.query(migrationSql2);
+                        logger.info('[App] Migração 002 aplicada com sucesso.');
+                    }
+                } catch (migErr) {
+                    logger.warn('[App] Aviso na migração 002:', migErr.message);
+                }
+
             } catch (dbErr) {
                 logger.error('[App] Erro ao sincronizar as tabelas do banco:', dbErr);
             }

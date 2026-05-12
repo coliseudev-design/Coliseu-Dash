@@ -31,7 +31,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 export default function FinancialIntelligenceDashboard() {
   const { filter } = useOutletContext<{ filter: BiPeriodFilter }>();
 
-  const { isLoading } = useBiPeriodQuery(
+  const { data, isLoading } = useBiPeriodQuery(
     ['bi', 'financial'],
     BIService.getFinancialIntelligence,
     filter
@@ -76,15 +76,15 @@ export default function FinancialIntelligenceDashboard() {
   ];
 
   const agingReceber = [
-    { label: 'Vencido', valor: 10207926.03, red: true },
-    { label: '0-15 dias', valor: 8668.97 },
-    { label: '16-30 dias', valor: 3575.50 },
-    { label: '31-60 dias', valor: 2893.77 },
-    { label: '60+ dias', valor: 8136.29 },
+    { label: 'Vencido', valor: data?.contas_receber || 0, red: true },
+    { label: '0-15 dias', valor: 0 },
+    { label: '16-30 dias', valor: 0 },
+    { label: '31-60 dias', valor: 0 },
+    { label: '60+ dias', valor: 0 },
   ];
 
   const agingPagar = [
-    { label: 'Vencido', valor: 14622.00, red: true },
+    { label: 'Vencido', valor: data?.contas_pagar || 0, red: true },
     { label: '0-15 dias', valor: 0 },
     { label: '16-30 dias', valor: 0 },
     { label: '31-60 dias', valor: 0 },
@@ -100,7 +100,7 @@ export default function FinancialIntelligenceDashboard() {
           <div className="flex flex-col">
             <span className="text-[10px] text-text-muted font-bold uppercase mb-1">Mês</span>
             <div className="bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm min-w-[200px] flex items-center justify-between cursor-pointer">
-              <span className="text-text-primary">Janeiro</span>
+              <span className="text-text-primary">Mês Atual</span>
               <ChevronDown size={16} className="text-text-muted" />
             </div>
           </div>
@@ -111,9 +111,6 @@ export default function FinancialIntelligenceDashboard() {
               <ChevronDown size={16} className="text-text-muted" />
             </div>
           </div>
-          <button className="bg-success hover:bg-success/90 text-white font-bold px-4 py-2 rounded-lg flex items-center gap-2 h-[38px] mt-auto text-sm transition-colors shadow-sm">
-            <Search size={16} /> FILTRAR
-          </button>
         </div>
       </div>
 
@@ -125,9 +122,9 @@ export default function FinancialIntelligenceDashboard() {
             <Wallet size={14} className="text-success"/> Saldo Real
           </div>
           <div>
-            <div className="text-2xl font-extrabold text-text-primary mb-1 tracking-tight">{formatBRL(216188.15)}</div>
+            <div className="text-2xl font-extrabold text-text-primary mb-1 tracking-tight">{formatBRL(data?.saldo_atual || 0)}</div>
             <div className="text-[10px] text-success font-bold flex items-center gap-1">
-              <ArrowUpRight size={12}/> Recebido: R$ 216.2K
+              <ArrowUpRight size={12}/> Recebido: {formatBRLCompact(data?.recebimentos_realizados || 0)}
             </div>
           </div>
         </div>
@@ -138,7 +135,7 @@ export default function FinancialIntelligenceDashboard() {
             <ArrowUpRight size={14} className="text-blue-500"/> Total Recebido
           </div>
           <div>
-            <div className="text-2xl font-extrabold text-text-primary mb-1 tracking-tight">{formatBRL(216188.15)}</div>
+            <div className="text-2xl font-extrabold text-text-primary mb-1 tracking-tight">{formatBRL(data?.recebimentos_realizados || 0)}</div>
             <div className="text-[10px] text-text-muted font-medium">No período selecionado</div>
           </div>
         </div>
@@ -149,7 +146,7 @@ export default function FinancialIntelligenceDashboard() {
             <ArrowDownRight size={14} className="text-warning"/> Total Pago
           </div>
           <div>
-            <div className="text-2xl font-extrabold text-text-primary mb-1 tracking-tight">{formatBRL(0)}</div>
+            <div className="text-2xl font-extrabold text-text-primary mb-1 tracking-tight">{formatBRL(data?.pagamentos_realizados || 0)}</div>
             <div className="text-[10px] text-text-muted font-medium">No período selecionado</div>
           </div>
         </div>
@@ -160,9 +157,9 @@ export default function FinancialIntelligenceDashboard() {
             <DollarSign size={14} className="text-brand-500"/> A Receber
           </div>
           <div>
-            <div className="text-2xl font-extrabold text-text-primary mb-1 tracking-tight">{formatBRL(10231200.56)}</div>
+            <div className="text-2xl font-extrabold text-text-primary mb-1 tracking-tight">{formatBRL(data?.contas_receber || 0)}</div>
             <div className="text-[10px] text-danger font-bold flex items-center gap-1">
-              <ArrowDownRight size={12}/> 7155 títulos vencidos
+              <ArrowDownRight size={12}/> Títulos em aberto
             </div>
           </div>
         </div>
@@ -173,9 +170,9 @@ export default function FinancialIntelligenceDashboard() {
             <CreditCard size={14} className="text-danger"/> A Pagar
           </div>
           <div>
-            <div className="text-2xl font-extrabold text-text-primary mb-1 tracking-tight">{formatBRL(14622.00)}</div>
+            <div className="text-2xl font-extrabold text-text-primary mb-1 tracking-tight">{formatBRL(data?.contas_pagar || 0)}</div>
             <div className="text-[10px] text-danger font-bold flex items-center gap-1">
-              <ArrowDownRight size={12}/> 1 títulos vencidos
+              <ArrowDownRight size={12}/> Títulos em aberto
             </div>
           </div>
         </div>
@@ -213,8 +210,8 @@ export default function FinancialIntelligenceDashboard() {
                   <div className="text-xs font-bold text-danger">Receber Vencido</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm font-extrabold text-danger">{formatBRL(10207926.03)}</div>
-                  <div className="text-[10px] text-text-muted">7155 títulos</div>
+                  <div className="text-sm font-extrabold text-danger">{formatBRL(data?.contas_receber || 0)}</div>
+                  <div className="text-[10px] text-text-muted">Títulos em aberto</div>
                 </div>
               </div>
               <div className="flex justify-between items-center bg-bg-secondary/30 p-3 rounded-lg border border-warning/20">
@@ -222,8 +219,8 @@ export default function FinancialIntelligenceDashboard() {
                   <div className="text-xs font-bold text-warning">Pagar Vencido</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm font-extrabold text-warning">{formatBRL(14622.00)}</div>
-                  <div className="text-[10px] text-text-muted">1 títulos</div>
+                  <div className="text-sm font-extrabold text-warning">{formatBRL(data?.contas_pagar || 0)}</div>
+                  <div className="text-[10px] text-text-muted">Títulos em aberto</div>
                 </div>
               </div>
             </div>
