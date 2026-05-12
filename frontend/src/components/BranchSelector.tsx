@@ -23,8 +23,8 @@ export default function BranchSelector() {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  // Não exibir se só tem 1 filial (sem sentido filtrar)
-  if (isLoading || filiais.length <= 1) return null
+  // Removemos a ocultação se tiver 1 filial para que o usuário saiba que a tela está ali
+  if (isLoading) return null
 
   const selectedLabel =
     selectedBranch === 'todas'
