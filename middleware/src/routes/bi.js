@@ -14,32 +14,19 @@ const getBiDateRange = (req) => {
     // Se o frontend mandar period, usamos o utilitário padrão
     if (period && period !== 'custom') {
         const pr = getPeriodRange(period);
-        const [sY, sM, sD] = pr.start.split(' ')[0].split('-');
-        const [eY, eM, eD] = pr.end.split(' ')[0].split('-');
-        
-        return { 
-            start: new Date(Date.UTC(sY, sM - 1, sD, 0, 0, 0, 0)), 
-            end: new Date(Date.UTC(eY, eM - 1, eD, 23, 59, 59, 999)) 
-        };
+        return { start: pr.start, end: pr.end };
     }
 
     const now = new Date();
-    // Usa UTC direto para evitar deslocamento do banco de dados (que armazena em UTC)
-    let start = new Date(Date.UTC(1970, 0, 1));
-    let end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999));
+    let start = new Date(1970, 0, 1);
+    let end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
 
     if (inicioParam) {
-        const parts = inicioParam.split('T')[0].split('-');
-        if (parts.length === 3) {
-            start = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2], 0, 0, 0, 0));
-        }
+        start = new Date(`${inicioParam}T00:00:00`);
     }
     
     if (fimParam) {
-        const parts = fimParam.split('T')[0].split('-');
-        if (parts.length === 3) {
-            end = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2], 23, 59, 59, 999));
-        }
+        end = new Date(`${fimParam}T23:59:59.999`);
     }
     
     return { start, end };
