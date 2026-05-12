@@ -53,11 +53,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
         const { rows: v } = await db.query(`
             SELECT 
                 COALESCE(SUM(
-                    CASE 
-                        WHEN upper(v.natureza_operacao) LIKE '%DEVOL%' OR upper(v.natureza_operacao) LIKE '%TROCA%' OR upper(v.natureza_operacao) LIKE '%ENTRADA%'
-                        THEN -abs(v.valor_total)
-                        ELSE v.valor_total
-                    END
+                    v.valor_total
                 ), 0) AS faturamento_total,
                 COUNT(DISTINCT v.id_firebird) AS total_pedidos
             FROM dash_vendas v
@@ -69,11 +65,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
         const { rows: vPrev } = await db.query(`
             SELECT 
                 COALESCE(SUM(
-                    CASE 
-                        WHEN upper(v.natureza_operacao) LIKE '%DEVOL%' OR upper(v.natureza_operacao) LIKE '%TROCA%' OR upper(v.natureza_operacao) LIKE '%ENTRADA%'
-                        THEN -abs(v.valor_total)
-                        ELSE v.valor_total
-                    END
+                    v.valor_total
                 ), 0) AS faturamento_total,
                 COUNT(DISTINCT v.id_firebird) AS total_pedidos
             FROM dash_vendas v
@@ -98,11 +90,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
         const { rows: sellers } = await db.query(`
             SELECT COALESCE(vend.nome, 'Vendedor ' || COALESCE(v.vendedor_id_firebird::text, '?')) as nome, 
                    SUM(
-                       CASE 
-                           WHEN upper(v.natureza_operacao) LIKE '%DEVOL%' OR upper(v.natureza_operacao) LIKE '%TROCA%' OR upper(v.natureza_operacao) LIKE '%ENTRADA%'
-                           THEN -abs(v.valor_total)
-                           ELSE v.valor_total
-                       END
+                       v.valor_total
                    ) as vendas
             FROM dash_vendas v
             LEFT JOIN dash_vendedores vend ON vend.id_firebird = v.vendedor_id_firebird AND vend.tenant_id = v.tenant_id
@@ -128,67 +116,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
         const { rows: prods } = await db.query(`
             SELECT COALESCE(vi.produto, 'Produto ' || COALESCE(vi.produto_id_firebird::text, '?')) AS nome, 
                    SUM(
-                       CASE 
-                           WHEN upper(v.natureza_operacao) LIKE '%DEVOL%' OR upper(v.natureza_operacao) LIKE '%TROCA%' OR upper(v.natureza_operacao) LIKE '%ENTRADA%'
-                           THEN -abs(vi.valor_total)
-                           ELSE vi.valor_total
-                       END
-                   ) as vendas
-            FROM dash_vendas_itens vi
-            JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
-            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 
-              AND UPPER(TRIM(v.status)) NOT IN ('CANCELADO', 'ABERTO', 'PENDENTE', 'ORÇAMENTO', 'ORCAMENTO', 'NULO')
-              AND COALESCE(vi.produto, vi.produto_id_firebird::text) IS NOT NULL${df.clause}
-            GROUP BY COALESCE(vi.produto, 'Produto ' || COALESCE(vi.produto_id_firebird::text, '?'))
-            ORDER BY vendas DESC
-            LIMIT 10
-        `, [tenantId, start, end, ...df.params]);
-
-        const top_products = prods.map((p, i) => ({
-            rank: i + 1,
-            name: p.nome,
-            current: parseFloat(p.vendas),
-            prev: null, // Removed fake mock
-            delta: null // Removed fake mock
-        }));
-
-        // --- 4. Top Brands ---
-        const { rows: brands } = await db.query(`
-            SELECT COALESCE(vi.marca, v.marca, 'S/ MARCA') as nome, 
-                   SUM(
-                       CASE 
-                           WHEN upper(v.natureza_operacao) LIKE '%DEVOL%' OR upper(v.natureza_operacao) LIKE '%TROCA%' OR upper(v.natureza_operacao) LIKE '%ENTRADA%'
-                           THEN -abs(vi.valor_total)
-                           ELSE vi.valor_total
-                       END
-                   ) as vendas
-            FROM dash_vendas_itens vi
-            JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
-            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 
-              AND UPPER(TRIM(v.status)) NOT IN ('CANCELADO', 'ABERTO', 'PENDENTE', 'ORÇAMENTO', 'ORCAMENTO', 'NULO')
-              AND COALESCE(vi.marca, v.marca) IS NOT NULL AND COALESCE(vi.marca, v.marca) != ''${df.clause}
-            GROUP BY COALESCE(vi.marca, v.marca, 'S/ MARCA')
-            ORDER BY vendas DESC
-            LIMIT 10
-        `, [tenantId, start, end, ...df.params]);
-
-        const top_brands = brands.map((b, i) => ({
-            rank: i + 1,
-            name: b.nome,
-            current: parseFloat(b.vendas),
-            prev: null, // Removed fake mock
-            delta: null // Removed fake mock
-        }));
-
-        // --- 5. Top Regions (Cities) ---
-        const { rows: regions } = await db.query(`
-            SELECT COALESCE(c.cidade, 'NÃO INFORMADA') as nome, 
-                   SUM(
-                       CASE 
-                           WHEN upper(v.natureza_operacao) LIKE '%DEVOL%' OR upper(v.natureza_operacao) LIKE '%TROCA%' OR upper(v.natureza_operacao) LIKE '%ENTRADA%'
-                           THEN -abs(v.valor_total)
-                           ELSE v.valor_total
-                       END
+                       v.valor_total
                    ) as vendas
             FROM dash_vendas v
             LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
@@ -211,39 +139,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
         const { rows: categories } = await db.query(`
             SELECT COALESCE(vi.categoria, v.categoria, 'S/ GRUPO') as nome, 
                    SUM(
-                       CASE 
-                           WHEN upper(v.natureza_operacao) LIKE '%DEVOL%' OR upper(v.natureza_operacao) LIKE '%TROCA%' OR upper(v.natureza_operacao) LIKE '%ENTRADA%'
-                           THEN -abs(vi.valor_total)
-                           ELSE vi.valor_total
-                       END
-                   ) as vendas
-            FROM dash_vendas_itens vi
-            JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
-            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 
-              AND UPPER(TRIM(v.status)) NOT IN ('CANCELADO', 'ABERTO', 'PENDENTE', 'ORÇAMENTO', 'ORCAMENTO', 'NULO')
-              AND COALESCE(vi.categoria, v.categoria) IS NOT NULL AND COALESCE(vi.categoria, v.categoria) != ''${df.clause}
-            GROUP BY COALESCE(vi.categoria, v.categoria, 'S/ GRUPO')
-            ORDER BY vendas DESC
-            LIMIT 10
-        `, [tenantId, start, end, ...df.params]);
-
-        const top_categories = categories.map((c, i) => ({
-            rank: i + 1,
-            name: c.nome,
-            current: parseFloat(c.vendas),
-            prev: null, // Removed fake mock
-            delta: null // Removed fake mock
-        }));
-
-        // --- 7. Top Clientes ---
-        const { rows: clients } = await db.query(`
-            SELECT COALESCE(c.nome, 'Cliente ' || COALESCE(v.cliente_id_firebird::text, '?')) as nome, 
-                   SUM(
-                       CASE 
-                           WHEN upper(v.natureza_operacao) LIKE '%DEVOL%' OR upper(v.natureza_operacao) LIKE '%TROCA%' OR upper(v.natureza_operacao) LIKE '%ENTRADA%'
-                           THEN -abs(v.valor_total)
-                           ELSE v.valor_total
-                       END
+                       v.valor_total
                    ) as vendas
             FROM dash_vendas v
             LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
@@ -300,11 +196,7 @@ router.get('/sales/commercial-kpis', async (req, res, next) => {
             SELECT 
                 COUNT(DISTINCT v.id_firebird) as pedidos,
                 COALESCE(SUM(
-                    CASE 
-                        WHEN upper(v.natureza_operacao) LIKE '%DEVOL%' OR upper(v.natureza_operacao) LIKE '%TROCA%' OR upper(v.natureza_operacao) LIKE '%ENTRADA%'
-                        THEN -abs(v.valor_total)
-                        ELSE v.valor_total
-                    END
+                    v.valor_total
                 ), 0) as faturamento_total
             FROM dash_vendas v
             WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 
