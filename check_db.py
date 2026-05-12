@@ -6,8 +6,7 @@ client.connect('177.39.17.7', username='root', password='6EFBC!c0:wzr%Ij')
 
 script = '''
 container=$(docker ps --format "{{.Names}}" | grep middleware)
-echo "Container: $container"
-docker logs --tail 20 $container
+docker logs --tail 30 $container
 '''
 stdin, stdout, stderr = client.exec_command(script)
 print('STDOUT:\n', stdout.read().decode('utf-8'))

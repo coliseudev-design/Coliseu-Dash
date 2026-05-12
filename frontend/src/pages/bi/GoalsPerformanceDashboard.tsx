@@ -196,7 +196,7 @@ export default function GoalsPerformanceDashboard() {
 
       {isError && (
         <div className="bg-orange-500/10 border border-orange-500/20 text-orange-500 p-3 rounded-lg text-sm mt-4">
-          Aviso: Os dados exibidos podem ser simulados, pois houve erro na comunicação com a API.
+          Aviso: Os dados não puderam ser carregados devido a uma falha de conexão com o banco de dados/API.
         </div>
       )}
     </div>

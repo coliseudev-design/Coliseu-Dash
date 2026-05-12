@@ -429,7 +429,7 @@ export default function InventoryManagementDashboard() {
 
       {isError && (
         <div className="bg-danger/10 border border-danger/20 text-danger p-3 rounded-lg text-sm mt-4">
-          Aviso: Os dados exibidos podem ser simulados, pois houve erro na comunicação com a API.
+          Aviso: Os dados não puderam ser carregados devido a uma falha de conexão com o banco de dados/API.
         </div>
       )}
     </div>
