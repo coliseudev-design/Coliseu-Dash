@@ -298,7 +298,7 @@ router.get('/sales/commercial-kpis', async (req, res, next) => {
 
         const { rows: pVendas } = await db.query(`
             SELECT 
-                COUNT(DISTINCT id_firebird) as pedidos,
+                COUNT(DISTINCT v.id_firebird) as pedidos,
                 COALESCE(SUM(
                     CASE 
                         WHEN upper(v.natureza_operacao) LIKE '%DEVOL%' OR upper(v.natureza_operacao) LIKE '%TROCA%' OR upper(v.natureza_operacao) LIKE '%ENTRADA%'
