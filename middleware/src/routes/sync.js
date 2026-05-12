@@ -75,9 +75,11 @@ router.post('/:tabela', async (req, res) => {
                 // Geração posicional para o Pg (ex: $1, $2, $3)
                 const placeholders = insertCols.map((_, i) => `$${i + 1}`).join(', ');
 
-                // Regra de conflito: Atualiza todos os campos menos id_firebird e tenant_id
+                const conflictKey = tabela === 'dash_filiais' ? 'depto_id' : 'id_firebird';
+
+                // Regra de conflito: Atualiza todos os campos menos conflictKey e tenant_id
                 const updateSet = usedCols
-                    .filter(c => c !== 'id_firebird')
+                    .filter(c => c !== conflictKey)
                     .map(c => `${c} = EXCLUDED.${c}`)
                     .join(', ');
 
@@ -87,17 +89,18 @@ router.post('/:tabela', async (req, res) => {
                 `;
 
                 if (updateSet.length > 0) {
-                    sql += ` ON CONFLICT (tenant_id, id_firebird) DO UPDATE SET ${updateSet}, sincronizado_em = NOW()`;
+                    sql += ` ON CONFLICT (tenant_id, ${conflictKey}) DO UPDATE SET ${updateSet}, sincronizado_em = NOW()`;
                 } else {
-                    sql += ` ON CONFLICT (tenant_id, id_firebird) DO NOTHING`;
+                    sql += ` ON CONFLICT (tenant_id, ${conflictKey}) DO NOTHING`;
                 }
 
                 await client.query(sql, insertValues);
                 inserted++;
             } catch (err) {
-                const idFirebird = row.id_firebird || rawRow.id_firebird || rawRow.ID_FIREBIRD || 'Unknown';
-                errors.push(`Row ID ${idFirebird}: ${err.message}`);
-                logger.error('[Sync] Falha em linha', { error: err.message, tenantId, rowId: idFirebird });
+                const conflictKey = tabela === 'dash_filiais' ? 'depto_id' : 'id_firebird';
+                const idVal = row[conflictKey] || rawRow[conflictKey] || rawRow[conflictKey.toUpperCase()] || rawRow.ID_FIREBIRD || 'Unknown';
+                errors.push(`Row ID ${idVal}: ${err.message}`);
+                logger.error('[Sync] Falha em linha', { error: err.message, tenantId, rowId: idVal });
             }
         }
 
