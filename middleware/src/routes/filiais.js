@@ -34,11 +34,15 @@ router.get('/', async (req, res, next) => {
     if (!tenantId) return res.status(401).json({ error: 'Tenant não autenticado.' });
 
     try {
+        let syncDebugInfo = null;
+        let identityUrlUsed = '';
+
         // 1) Sincroniza filiais do Identity Server para este tenant
         try {
             const fetch = (await import('node-fetch')).default;
             const config = require('../config/env');
             const identityUrl = config.security?.identityApiUrl || process.env.IDENTITY_API_URL || 'https://adminlicencas.coliseusistemas.com.br';
+            identityUrlUsed = identityUrl;
             const internalKey = config.security?.identityInternalKey || process.env.IDENTITY_INTERNAL_KEY || 'Coliseu2026!IdentitySuperSecretKeyOauth20';
 
             const resp = await fetch(`${identityUrl}/internal/companies/${tenantId}/branches`, {
@@ -60,9 +64,11 @@ router.get('/', async (req, res, next) => {
                     );
                 }
             } else {
+                syncDebugInfo = `HTTP ${resp.status} - ${await resp.text().catch(()=>'')}`;
                 logger.warn(`[Filiais] Falha no sync com Identity Server (HTTP ${resp.status}) para tenant ${tenantId}`);
             }
         } catch (syncErr) {
+            syncDebugInfo = syncErr.message;
             logger.warn(`[Filiais] Erro ao sincronizar filiais do Identity Server: ${syncErr.message}`);
         }
 
@@ -74,7 +80,21 @@ router.get('/', async (req, res, next) => {
              ORDER BY is_default DESC, nome ASC`,
             [tenantId]
         );
-        res.json({ filiais: rows });
+
+        if (rows.length === 0 && syncDebugInfo) {
+            rows.push({
+                id: 9999,
+                empresa_erp: 99,
+                depto_id: 9999,
+                centro_custo: null,
+                nome: `ERRO SYNC: ${syncDebugInfo.substring(0, 50)}`,
+                documento: identityUrlUsed,
+                is_default: false,
+                ativo: true
+            });
+        }
+
+        res.json({ filiais: rows, _debug: syncDebugInfo });
     } catch (err) {
         logger.error('[Filiais] Erro ao listar filiais:', err.message);
         next(err);
