@@ -1,4 +1,4 @@
-import { useOutletContext } from 'react-router-dom';
+import { useState } from 'react';
 import { useBiPeriodQuery } from '../../hooks/useBiPeriodQuery';
 import { BIService } from '../../services/biApi';
 import { BiPeriodFilter } from '../../types/bi.types';
@@ -26,13 +26,35 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function ProfitabilityDashboard() {
-  const { filter } = useOutletContext<{ filter: BiPeriodFilter }>();
+  const [month, setMonth] = useState(new Date().getMonth() + 1);
+  const [year, setYear] = useState(new Date().getFullYear());
+  
+  const getFilterFromState = (m: number, y: number): BiPeriodFilter => {
+    const start = new Date(y, m - 1, 1);
+    const end = new Date(y, m, 0);
+    const formatStr = (d: Date) => {
+      const yStr = d.getFullYear();
+      const mStr = String(d.getMonth() + 1).padStart(2, '0');
+      const dStr = String(d.getDate()).padStart(2, '0');
+      return `${yStr}-${mStr}-${dStr}`;
+    };
+    return {
+      period: 'custom',
+      startDate: formatStr(start),
+      endDate: formatStr(end)
+    };
+  };
 
-  // Fetch using the existing query, but we'll use mock data to perfectly match the UI
+  const [localFilter, setLocalFilter] = useState<BiPeriodFilter>(getFilterFromState(month, year));
+
+  const applyFilter = () => {
+    setLocalFilter(getFilterFromState(month, year));
+  };
+
   const { data, isLoading, isError } = useBiPeriodQuery(
     ['bi', 'comparative'],
     BIService.getComparativeAnalysis,
-    filter
+    localFilter
   );
 
   if (isLoading) {
@@ -74,11 +96,32 @@ export default function ProfitabilityDashboard() {
         <div className="flex flex-col gap-1">
            <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider px-1">PERÍODO <span className="bg-blue-500 text-white px-1 rounded ml-1">MÊS</span> <span className="text-text-muted/50 ml-1">ACUMULADO</span></span>
            <div className="flex gap-2">
-              <select className="bg-bg-secondary border border-border rounded-lg px-3 py-2 text-xs text-text-primary outline-none min-w-[120px]">
-                <option>Janeiro</option>
+              <select 
+                value={month} 
+                onChange={(e) => setMonth(Number(e.target.value))}
+                className="bg-bg-secondary border border-border rounded-lg px-3 py-2 text-xs text-text-primary outline-none min-w-[120px]"
+              >
+                <option value={1}>Janeiro</option>
+                <option value={2}>Fevereiro</option>
+                <option value={3}>Março</option>
+                <option value={4}>Abril</option>
+                <option value={5}>Maio</option>
+                <option value={6}>Junho</option>
+                <option value={7}>Julho</option>
+                <option value={8}>Agosto</option>
+                <option value={9}>Setembro</option>
+                <option value={10}>Outubro</option>
+                <option value={11}>Novembro</option>
+                <option value={12}>Dezembro</option>
               </select>
-              <select className="bg-bg-secondary border border-border rounded-lg px-3 py-2 text-xs text-text-primary outline-none">
-                <option>2026</option>
+              <select 
+                value={year} 
+                onChange={(e) => setYear(Number(e.target.value))}
+                className="bg-bg-secondary border border-border rounded-lg px-3 py-2 text-xs text-text-primary outline-none"
+              >
+                <option value={2026}>2026</option>
+                <option value={2025}>2025</option>
+                <option value={2024}>2024</option>
               </select>
            </div>
         </div>
@@ -101,7 +144,7 @@ export default function ProfitabilityDashboard() {
              <option>TODAS</option>
            </select>
         </div>
-        <button className="bg-blue-500 hover:bg-blue-600 text-white font-bold px-5 py-2 rounded-lg flex items-center gap-2 h-[36px] text-xs transition-colors shadow-sm">
+        <button onClick={applyFilter} className="bg-blue-500 hover:bg-blue-600 text-white font-bold px-5 py-2 rounded-lg flex items-center gap-2 h-[36px] text-xs transition-colors shadow-sm">
           <Filter size={14} /> FILTRAR
         </button>
       </div>

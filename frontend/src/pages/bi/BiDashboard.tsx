@@ -1,10 +1,11 @@
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import PeriodFilter from '../../components/PeriodFilter';
 import { usePeriodStore } from '../../store/periodStore';
 import { BiPeriodFilter } from '../../types/bi.types';
 
 export default function BiDashboard() {
   const periodState = usePeriodStore();
+  const location = useLocation();
 
   // Compatibilidade com as páginas filhas que ainda esperam `filter` no contexto
   // Caso a página já utilize `useBranchPeriodQuery` diretamente, este context não fará efeito negativo.
@@ -21,7 +22,9 @@ export default function BiDashboard() {
         <h2 className="text-xl font-bold text-text-primary">Business Intelligence</h2>
         
         <div className="flex items-center">
-          <PeriodFilter />
+          {!['/bi/abc', '/bi/customer-analytics', '/bi/goals', '/bi/heatmap', '/bi/comparative'].some(p => location.pathname.includes(p)) && (
+            <PeriodFilter />
+          )}
         </div>
       </div>
 
