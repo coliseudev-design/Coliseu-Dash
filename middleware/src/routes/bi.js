@@ -11,10 +11,10 @@ const getBiDateRange = (req) => {
     const inicioParam = req.query.inicio || req.query.startDate || req.query.start_date;
     const fimParam = req.query.fim || req.query.endDate || req.query.end_date;
     
-    // Se o frontend mandar period, usamos o utilitário padrão
     if (period && period !== 'custom') {
         const pr = getPeriodRange(period);
-        return { start: pr.start, end: pr.end };
+        // getPeriodRange retorna strings, precisamos converter para Date
+        return { start: new Date(pr.start), end: new Date(pr.end) };
     }
 
     const now = new Date();
