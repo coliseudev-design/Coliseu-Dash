@@ -81,13 +81,13 @@ router.get('/', async (req, res, next) => {
             [tenantId]
         );
 
-        if (rows.length === 0 && syncDebugInfo) {
+        if (rows.length === 0) {
             rows.push({
                 id: 9999,
                 empresa_erp: 99,
                 depto_id: 9999,
                 centro_custo: null,
-                nome: `ERRO SYNC: ${syncDebugInfo.substring(0, 50)}`,
+                nome: `DEBUG T:${tenantId.substring(0,8)} | ${syncDebugInfo ? syncDebugInfo.substring(0, 40) : '200 OK (Vazio)'}`,
                 documento: identityUrlUsed,
                 is_default: false,
                 ativo: true
