@@ -215,6 +215,9 @@ CREATE TABLE IF NOT EXISTS dash_financeiro (
     valor DECIMAL(15,2) NOT NULL DEFAULT 0,
     valor_pago DECIMAL(15,2) DEFAULT 0,
     status_pagamento VARCHAR(50) DEFAULT 'ABERTO', -- ABERTO, PAGO, CANCELADO
+    depto_id INTEGER,
+    centro_custo INTEGER,
+    caixa_id_firebird INTEGER,
     sincronizado_em TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(tenant_id, id_firebird)
 );
@@ -225,6 +228,9 @@ CREATE INDEX IF NOT EXISTS idx_dash_financeiro_venc ON dash_financeiro(tenant_id
 
 -- Migração: adiciona tipo_documento para instalações já existentes
 ALTER TABLE dash_financeiro ADD COLUMN IF NOT EXISTS tipo_documento VARCHAR(50) DEFAULT NULL;
+ALTER TABLE dash_financeiro ADD COLUMN IF NOT EXISTS depto_id INTEGER;
+ALTER TABLE dash_financeiro ADD COLUMN IF NOT EXISTS centro_custo INTEGER;
+ALTER TABLE dash_financeiro ADD COLUMN IF NOT EXISTS caixa_id_firebird INTEGER;
 
 CREATE TABLE IF NOT EXISTS dash_compras (
     id SERIAL PRIMARY KEY,
