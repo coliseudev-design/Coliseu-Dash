@@ -61,6 +61,9 @@ CREATE TABLE IF NOT EXISTS dash_clientes (
 CREATE INDEX IF NOT EXISTS idx_dash_clientes_nome ON dash_clientes(tenant_id, nome);
 CREATE INDEX IF NOT EXISTS idx_dash_clientes_doc ON dash_clientes(tenant_id, documento);
 
+-- Migração: Garante que a coluna classificacao seja adicionada em instalações antigas
+ALTER TABLE dash_clientes ADD COLUMN IF NOT EXISTS classificacao VARCHAR(50);
+
 CREATE TABLE IF NOT EXISTS dash_produtos (
     id SERIAL PRIMARY KEY,
     tenant_id UUID NOT NULL,
