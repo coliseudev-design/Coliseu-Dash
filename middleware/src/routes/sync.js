@@ -7,7 +7,7 @@ const logger = require('../config/logger');
 const { invalidateTenant } = require('../config/cache');
 
 const TABELAS_MAP = {
-    'dash_clientes': ['id_firebird', 'nome', 'documento', 'email', 'telefone', 'cidade', 'estado', 'data_cadastro', 'ativo'],
+    'dash_clientes': ['id_firebird', 'nome', 'documento', 'email', 'telefone', 'cidade', 'estado', 'classificacao', 'data_cadastro', 'ativo'],
     'dash_produtos': ['id_firebird', 'codigo', 'nome', 'descricao', 'categoria', 'marca', 'preco', 'custo', 'estoque', 'estoque_minimo', 'ativo'],
     'dash_vendedores': ['id_firebird', 'nome', 'email', 'ativo'],
     'dash_fornecedores': ['id_firebird', 'nome', 'documento', 'cidade', 'estado'],

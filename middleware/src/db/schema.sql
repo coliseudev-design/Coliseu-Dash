@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS dash_clientes (
     telefone VARCHAR(50),
     cidade VARCHAR(150),
     estado VARCHAR(2),
+    classificacao VARCHAR(50),
     data_cadastro TIMESTAMPTZ,
     ativo BOOLEAN DEFAULT TRUE,
     sincronizado_em TIMESTAMPTZ DEFAULT NOW(),
