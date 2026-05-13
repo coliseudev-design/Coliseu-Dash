@@ -25,6 +25,9 @@ function errorHandler(err, req, res, next) {
     if (err.type === 'entity.parse.failed') {
         body.error = "Payload JSON inválido";
         body.code = "INVALID_JSON";
+    } else if (err.type === 'entity.too.large') {
+        body.error = "request entity too large";
+        body.code = "PAYLOAD_TOO_LARGE";
     }
 
     if (process.env.NODE_ENV !== 'production' && status === 500) {

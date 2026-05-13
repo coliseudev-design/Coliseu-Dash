@@ -37,7 +37,7 @@ app.use(cors({
 }));
 
 // Payload maximo via sync interno será alto (batches de milhares de linhas)
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '50mb' }));
 
 app.use('/api/auth', authRouter); // Pública (limitada pelo rateLimiter adiante, mas no momento tá sem)
 app.use('/health', healthRouter);
