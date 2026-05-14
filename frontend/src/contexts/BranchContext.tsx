@@ -1,5 +1,6 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react'
 import api from '../services/api'
+import { useAuthStore } from '../store/authStore'
 
 export interface Filial {
   id: number
@@ -37,13 +38,20 @@ export function BranchProvider({ children }: { children: ReactNode }) {
     return isNaN(num) ? 'todas' : num
   })
 
-  const setSelectedBranch = (id: number | 'todas') => {
+  const token = useAuthStore(state => state.token)
+
+  const setSelectedBranch = useCallback((id: number | 'todas') => {
     setSelectedBranchState(id)
     localStorage.setItem('coliseu:branch', String(id))
-  }
+  }, [])
 
   useEffect(() => {
     const fetchFiliais = async () => {
+      if (!token) {
+        setFiliais([])
+        return
+      }
+
       setIsLoading(true)
       try {
         const { data } = await api.get('/filiais')
@@ -64,7 +72,7 @@ export function BranchProvider({ children }: { children: ReactNode }) {
       }
     }
     fetchFiliais()
-  }, [])
+  }, [token, setSelectedBranch])
 
   return (
     <BranchContext.Provider value={{ filiais, selectedBranch, setSelectedBranch, isLoading }}>
