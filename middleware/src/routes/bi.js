@@ -513,8 +513,15 @@ router.get('/financial/summary', async (req, res, next) => {
     try {
         const tenantId = req.tenant.id;
         const { start, end } = getBiDateRange(req);
-        const centroCusto = req.query.centro_custo || req.query.depto_id; // Fallback se centro_custo nao for enviado
-        const cf = buildCentroCustoFilter(centroCusto, 4, 'f');
+        const centroCusto = req.query.centro_custo;
+        const deptoId = req.query.depto_id;
+        
+        let cf = { clause: '', params: [] };
+        if (centroCusto && centroCusto !== 'todas') {
+            cf = buildCentroCustoFilter(centroCusto, 4, 'f');
+        } else if (deptoId && deptoId !== 'todas') {
+            cf = buildDeptoFilter(deptoId, 4, 'f');
+        }
 
         const { rows: f } = await db.query(`
             SELECT 
