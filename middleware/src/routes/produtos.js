@@ -38,7 +38,7 @@ router.get('/lista', async (req, res, next) => {
         
         const { rows } = await db.query(`
             SELECT 
-                id_firebird AS id, codigo, nome, categoria, preco, custo, estoque, estoque_minimo,
+                id_firebird AS id, codigo, nome, categoria, marca, referencia, codigo_fabrica, preco, custo, estoque, estoque_minimo,
                 (preco * estoque) AS valor_total_estoque
             FROM dash_produtos
             ${whereSql}

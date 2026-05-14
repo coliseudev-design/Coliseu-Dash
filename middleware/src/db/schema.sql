@@ -85,6 +85,10 @@ CREATE TABLE IF NOT EXISTS dash_produtos (
 CREATE INDEX IF NOT EXISTS idx_dash_produtos_nome ON dash_produtos(tenant_id, nome);
 CREATE INDEX IF NOT EXISTS idx_dash_produtos_cat ON dash_produtos(tenant_id, categoria);
 
+-- Migrações de produtos
+ALTER TABLE dash_produtos ADD COLUMN IF NOT EXISTS referencia VARCHAR(100);
+ALTER TABLE dash_produtos ADD COLUMN IF NOT EXISTS codigo_fabrica VARCHAR(100);
+
 CREATE TABLE IF NOT EXISTS dash_vendedores (
     id SERIAL PRIMARY KEY,
     tenant_id UUID NOT NULL,
