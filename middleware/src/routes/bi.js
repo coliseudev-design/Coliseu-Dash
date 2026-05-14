@@ -518,8 +518,10 @@ router.get('/financial/summary', async (req, res, next) => {
 
         const { rows: f } = await db.query(`
             SELECT 
-                COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'RECEBER' AND TRIM(f.status_pagamento) = 'ABERTO' AND COALESCE(f.data_vencimento, f.data_emissao, NOW()) >= $2 AND COALESCE(f.data_vencimento, f.data_emissao, NOW()) <= $3 THEN f.valor - (CASE WHEN f.valor_pago = 0 THEN 0 ELSE f.valor_pago END) ELSE 0 END), 0) AS contas_receber,
-                COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'PAGAR' AND TRIM(f.status_pagamento) = 'ABERTO' AND COALESCE(f.data_vencimento, f.data_emissao, NOW()) >= $2 AND COALESCE(f.data_vencimento, f.data_emissao, NOW()) <= $3 THEN f.valor - (CASE WHEN f.valor_pago = 0 THEN 0 ELSE f.valor_pago END) ELSE 0 END), 0) AS contas_pagar,
+                COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'RECEBER' AND TRIM(f.status_pagamento) = 'ABERTO' THEN f.valor - (CASE WHEN f.valor_pago = 0 THEN 0 ELSE f.valor_pago END) ELSE 0 END), 0) AS contas_receber,
+                COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'PAGAR' AND TRIM(f.status_pagamento) = 'ABERTO' THEN f.valor - (CASE WHEN f.valor_pago = 0 THEN 0 ELSE f.valor_pago END) ELSE 0 END), 0) AS contas_pagar,
+                COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'RECEBER' AND TRIM(f.status_pagamento) = 'ABERTO' AND f.data_vencimento < NOW() THEN f.valor - (CASE WHEN f.valor_pago = 0 THEN 0 ELSE f.valor_pago END) ELSE 0 END), 0) AS receber_vencido,
+                COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'PAGAR' AND TRIM(f.status_pagamento) = 'ABERTO' AND f.data_vencimento < NOW() THEN f.valor - (CASE WHEN f.valor_pago = 0 THEN 0 ELSE f.valor_pago END) ELSE 0 END), 0) AS pagar_vencido,
                 COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'RECEBER' AND TRIM(f.status_pagamento) = 'PAGO' AND COALESCE(f.data_pagamento, f.data_vencimento, NOW()) >= $2 AND COALESCE(f.data_pagamento, f.data_vencimento, NOW()) <= $3 THEN (CASE WHEN f.valor_pago = 0 THEN f.valor ELSE f.valor_pago END) ELSE 0 END), 0) AS recebimentos_realizados,
                 COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'PAGAR' AND TRIM(f.status_pagamento) = 'PAGO' AND COALESCE(f.data_pagamento, f.data_vencimento, NOW()) >= $2 AND COALESCE(f.data_pagamento, f.data_vencimento, NOW()) <= $3 THEN (CASE WHEN f.valor_pago = 0 THEN f.valor ELSE f.valor_pago END) ELSE 0 END), 0) AS pagamentos_realizados
             FROM dash_financeiro f
@@ -529,16 +531,21 @@ router.get('/financial/summary', async (req, res, next) => {
 
         const a_receber = parseFloat(f[0].contas_receber);
         const a_pagar = parseFloat(f[0].contas_pagar);
+        const receber_vencido = parseFloat(f[0].receber_vencido);
+        const pagar_vencido = parseFloat(f[0].pagar_vencido);
         const recebidos = parseFloat(f[0].recebimentos_realizados);
         const pagos = parseFloat(f[0].pagamentos_realizados);
+        const inadimplencia_pct = a_receber > 0 ? (receber_vencido / a_receber) * 100 : 0;
 
         res.json({
             saldo_atual: recebidos - pagos,
             contas_receber: a_receber,
             contas_pagar: a_pagar,
+            receber_vencido: receber_vencido,
+            pagar_vencido: pagar_vencido,
             recebimentos_realizados: recebidos,
             pagamentos_realizados: pagos,
-            inadimplencia_pct: 0 // Placeholder
+            inadimplencia_pct: Number(inadimplencia_pct.toFixed(1))
         });
     } catch (err) { next(err); }
 });

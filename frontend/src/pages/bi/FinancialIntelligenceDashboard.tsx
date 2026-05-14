@@ -192,15 +192,15 @@ export default function FinancialIntelligenceDashboard() {
               <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
                 {/* Background Ring */}
                 <circle cx="50" cy="50" r="40" fill="none" stroke="var(--color-bg-tertiary)" strokeWidth="12" />
-                {/* Value Ring (49.9%) */}
+                {/* Value Ring (inadimplencia) */}
                 <circle 
                   cx="50" cy="50" r="40" fill="none" stroke="#EF4444" strokeWidth="12" 
-                  strokeDasharray={`${49.9 * 2.51} ${100 * 2.51}`} 
+                  strokeDasharray={`${(data?.inadimplencia_pct || 0) * 2.51} ${100 * 2.51}`} 
                   strokeLinecap="round"
                 />
               </svg>
               <div className="absolute top-0 left-0 w-full h-full flex flex-col items-center justify-center">
-                <span className="text-2xl font-black text-danger tracking-tighter">49.9%</span>
+                <span className="text-2xl font-black text-danger tracking-tighter">{data?.inadimplencia_pct || 0}%</span>
               </div>
             </div>
 
@@ -210,8 +210,8 @@ export default function FinancialIntelligenceDashboard() {
                   <div className="text-xs font-bold text-danger">Receber Vencido</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm font-extrabold text-danger">{formatBRL(data?.contas_receber || 0)}</div>
-                  <div className="text-[10px] text-text-muted">Títulos em aberto</div>
+                  <div className="text-sm font-extrabold text-danger">{formatBRL(data?.receber_vencido || 0)}</div>
+                  <div className="text-[10px] text-text-muted">Títulos vencidos</div>
                 </div>
               </div>
               <div className="flex justify-between items-center bg-bg-secondary/30 p-3 rounded-lg border border-warning/20">
@@ -219,8 +219,8 @@ export default function FinancialIntelligenceDashboard() {
                   <div className="text-xs font-bold text-warning">Pagar Vencido</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm font-extrabold text-warning">{formatBRL(data?.contas_pagar || 0)}</div>
-                  <div className="text-[10px] text-text-muted">Títulos em aberto</div>
+                  <div className="text-sm font-extrabold text-warning">{formatBRL(data?.pagar_vencido || 0)}</div>
+                  <div className="text-[10px] text-text-muted">Títulos vencidos</div>
                 </div>
               </div>
             </div>
