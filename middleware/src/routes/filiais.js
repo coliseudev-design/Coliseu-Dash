@@ -21,7 +21,7 @@ function buildDeptoFilter(deptoId, nextParamIndex, alias = 'v') {
     const num = parseInt(deptoId, 10);
     if (isNaN(num)) return { clause: '', params: [] };
     return {
-        clause: ` AND ${alias}.depto_id = $${nextParamIndex}`,
+        clause: ` AND (${alias}.depto_id = $${nextParamIndex} OR ${alias}.depto_id IS NULL)`,
         params: [num]
     };
 }
@@ -33,7 +33,7 @@ function buildCentroCustoFilter(centroCustoId, nextParamIndex, alias = 'f') {
     const num = parseInt(centroCustoId, 10);
     if (isNaN(num)) return { clause: '', params: [] };
     return {
-        clause: ` AND ${alias}.centro_custo = $${nextParamIndex}`,
+        clause: ` AND (${alias}.centro_custo = $${nextParamIndex} OR ${alias}.centro_custo IS NULL)`,
         params: [num]
     };
 }

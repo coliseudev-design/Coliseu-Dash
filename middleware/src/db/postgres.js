@@ -66,6 +66,9 @@ async function checkConnection() {
                 ALTER TABLE dash_vendas ADD COLUMN IF NOT EXISTS especie VARCHAR(100);
             `, []);
             
+            await query(`ALTER TABLE dash_vendas ADD COLUMN IF NOT EXISTS depto_id INTEGER;`, []);
+            await query(`ALTER TABLE dash_vendas_itens ADD COLUMN IF NOT EXISTS depto_id INTEGER;`, []);
+            
             logger.info('[DB] Auto-migration (dash_caixas e especie) verificada/aplicada com sucesso.');
         } catch (migErr1) {
             logger.warn('[DB] Base tables not found yet, skipping initial auto-migration.', { erro: migErr1.message });
@@ -91,8 +94,11 @@ async function checkConnection() {
                 );
             `, []);
             await query(`ALTER TABLE dash_financeiro ADD COLUMN IF NOT EXISTS caixa_id_firebird INTEGER;`, []);
+            await query(`ALTER TABLE dash_financeiro ADD COLUMN IF NOT EXISTS depto_id INTEGER;`, []);
+            await query(`ALTER TABLE dash_financeiro ADD COLUMN IF NOT EXISTS centro_custo INTEGER;`, []);
+            await query(`ALTER TABLE dash_financeiro ADD COLUMN IF NOT EXISTS tipo_documento VARCHAR(50);`, []);
         } catch (migErr) {
-            logger.warn('[DB] Migração silenciosa de produtos/caixas falhou ou já executada', { erro: migErr.message });
+            logger.warn('[DB] Migração silenciosa falhou ou já executada', { erro: migErr.message });
         }
 
         return true;

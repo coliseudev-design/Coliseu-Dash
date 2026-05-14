@@ -76,16 +76,16 @@ export default function FinancialIntelligenceDashboard() {
   ];
 
   const agingReceber = [
-    { label: 'Vencido', valor: data?.contas_receber || 0, red: true },
-    { label: '0-15 dias', valor: 0 },
+    { label: 'Vencido', valor: data?.receber_vencido || 0, red: true },
+    { label: '0-15 dias', valor: Math.max(0, (data?.contas_receber || 0) - (data?.receber_vencido || 0)) },
     { label: '16-30 dias', valor: 0 },
     { label: '31-60 dias', valor: 0 },
     { label: '60+ dias', valor: 0 },
   ];
 
   const agingPagar = [
-    { label: 'Vencido', valor: data?.contas_pagar || 0, red: true },
-    { label: '0-15 dias', valor: 0 },
+    { label: 'Vencido', valor: data?.pagar_vencido || 0, red: true },
+    { label: '0-15 dias', valor: Math.max(0, (data?.contas_pagar || 0) - (data?.pagar_vencido || 0)) },
     { label: '16-30 dias', valor: 0 },
     { label: '31-60 dias', valor: 0 },
     { label: '60+ dias', valor: 0 },
