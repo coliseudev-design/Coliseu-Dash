@@ -25,8 +25,12 @@ router.get('/overview', async (req, res, next) => {
         const { start, end } = getPeriodRange(period, start_date, end_date, maxDate);
         const finRange = getPeriodRange(period, start_date, end_date, maxDateFin);
 
-        const startHoje = new Date(maxDate); startHoje.setUTCHours(0,0,0,0);
-        const endHoje = new Date(maxDate); endHoje.setUTCHours(23,59,59,999);
+        const startHoje = new Date(maxDate);
+        startHoje.setHours(0,0,0,0);
+        const startHojeStr = require('../utils/period').toSafeSqlString(startHoje);
+        const endHoje = new Date(maxDate);
+        endHoje.setHours(23,59,59,999);
+        const endHojeStr = require('../utils/period').toSafeSqlString(endHoje);
 
         // Filtro de departamento — injetado condicionalmente
         const df = buildDeptoFilter(deptoId, 4, 'v');
@@ -35,7 +39,7 @@ router.get('/overview', async (req, res, next) => {
         const [
             vHoje, vMes, pAbertos, pProc, pCanc, fReceber, fRecebido, fPagar, fPago, topMarcasItens, topMarcasVendas, topCatsItens, topCatsVendas
         ] = await Promise.all([
-            db.query(`SELECT COALESCE(SUM(v.valor_total),0) AS total, COUNT(*) AS qtd FROM dash_vendas v WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')${df.clause}`, [tenantId, startHoje, endHoje, ...df.params]),
+            db.query(`SELECT COALESCE(SUM(v.valor_total),0) AS total, COUNT(*) AS qtd FROM dash_vendas v WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')${df.clause}`, [tenantId, startHojeStr, endHojeStr, ...df.params]),
             db.query(`SELECT COALESCE(SUM(v.valor_total),0) AS total, COUNT(*) AS qtd FROM dash_vendas v WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')${df.clause}`, [tenantId, start, end, ...df.params]),
             db.query(`SELECT COUNT(*) AS qtd FROM dash_vendas v WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('PENDENTE','ABERTO')${df.clause}`, [tenantId, start, end, ...df.params]),
             db.query(`SELECT COUNT(*) AS qtd FROM dash_vendas v WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO','FINALIZADO')${df.clause}`, [tenantId, start, end, ...df.params]),

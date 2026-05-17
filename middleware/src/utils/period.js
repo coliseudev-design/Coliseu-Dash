@@ -11,6 +11,12 @@ function toBrazilTZString(dateObj) {
     return `${dateObj.getFullYear()}-${pad(dateObj.getMonth() + 1)}-${pad(dateObj.getDate())} ${pad(dateObj.getHours())}:${pad(dateObj.getMinutes())}:${pad(dateObj.getSeconds())}-03:00`;
 }
 
+function toSafeSqlString(dateObj) {
+    if (!dateObj) return null;
+    const pad = (n) => n.toString().padStart(2, '0');
+    return `${dateObj.getFullYear()}-${pad(dateObj.getMonth() + 1)}-${pad(dateObj.getDate())} ${pad(dateObj.getHours())}:${pad(dateObj.getMinutes())}:${pad(dateObj.getSeconds())}`;
+}
+
 function getPeriodRange(period, startDate, endDate, anchorDate) {
     const now = anchorDate ? new Date(anchorDate) : new Date();
     let start = new Date(now);
@@ -83,12 +89,13 @@ function getPeriodRange(period, startDate, endDate, anchorDate) {
     }
 
     return { 
-        start: toBrazilTZString(start), 
-        end: toBrazilTZString(end) 
+        start: toSafeSqlString(start), 
+        end: toSafeSqlString(end) 
     };
 }
 
 module.exports = {
-    getPeriodRange
+    getPeriodRange,
+    toBrazilTZString,
+    toSafeSqlString
 };
-

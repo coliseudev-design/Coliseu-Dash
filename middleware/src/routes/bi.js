@@ -3,7 +3,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db/postgres');
-const { getPeriodRange } = require('../utils/period');
+const { getPeriodRange, toSafeSqlString } = require('../utils/period');
 const { buildDeptoFilter, buildCentroCustoFilter } = require('./filiais');
 
 const getBiDateRange = (req) => {
@@ -60,7 +60,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
             WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 
               AND UPPER(TRIM(v.status)) NOT IN ('CANCELADO', 'ABERTO', 'PENDENTE', 'ORÇAMENTO', 'ORCAMENTO', 'NULO')
               ${df.clause}
-        `, [tenantId, start, end, ...df.params]);
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
 
         const { rows: vPrev } = await db.query(`
             SELECT 
@@ -72,7 +72,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
             WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 
               AND UPPER(TRIM(v.status)) NOT IN ('CANCELADO', 'ABERTO', 'PENDENTE', 'ORÇAMENTO', 'ORCAMENTO', 'NULO')
               ${df.clause}
-        `, [tenantId, prevStart, prevEnd, ...df.params]);
+        `, [tenantId, toSafeSqlString(prevStart), toSafeSqlString(prevEnd), ...df.params]);
 
         const faturamento = parseFloat(v[0].faturamento_total);
         const faturamento_anterior = parseFloat(vPrev[0].faturamento_total);
@@ -100,7 +100,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
             GROUP BY v.vendedor_id_firebird, vend.nome
             ORDER BY vendas DESC
             LIMIT 10
-        `, [tenantId, start, end, ...df.params]);
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
 
         const colors = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6'];
         const top_sellers = sellers.map((s, i) => ({
@@ -126,7 +126,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
             GROUP BY COALESCE(vi.produto, 'Produto ' || COALESCE(vi.produto_id_firebird::text, '?'))
             ORDER BY vendas DESC
             LIMIT 10
-        `, [tenantId, start, end, ...df.params]);
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
 
         const top_products = prods.map((p, i) => ({
             rank: i + 1,
@@ -150,7 +150,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
             GROUP BY COALESCE(vi.marca, v.marca, 'S/ MARCA')
             ORDER BY vendas DESC
             LIMIT 10
-        `, [tenantId, start, end, ...df.params]);
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
 
         const top_brands = brands.map((b, i) => ({
             rank: i + 1,
@@ -174,7 +174,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
             GROUP BY c.cidade
             ORDER BY vendas DESC
             LIMIT 10
-        `, [tenantId, start, end, ...df.params]);
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
 
         const top_regions = regions.map((r, i) => ({
             rank: i + 1,
@@ -197,7 +197,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
             GROUP BY COALESCE(vi.categoria, v.categoria, 'S/ GRUPO')
             ORDER BY vendas DESC
             LIMIT 10
-        `, [tenantId, start, end, ...df.params]);
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
 
         const top_categories = categories.map((c, i) => ({
             rank: i + 1,
@@ -220,7 +220,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
             GROUP BY v.cliente_id_firebird, c.nome
             ORDER BY vendas DESC
             LIMIT 10
-        `, [tenantId, start, end]);
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end)]);
 
         const top_clients = clients.map((c, i) => ({
             rank: i + 1,
@@ -262,7 +262,7 @@ router.get('/sales/commercial-kpis', async (req, res, next) => {
                 AND UPPER(TRIM(v.status)) NOT IN ('CANCELADO', 'ABERTO', 'PENDENTE', 'ORÇAMENTO', 'ORCAMENTO', 'NULO')
                 ${df.clause}
             )
-        `, [tenantId, start, end, ...df.params]);
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
 
         const { rows: pVendas } = await db.query(`
             SELECT 
@@ -274,7 +274,7 @@ router.get('/sales/commercial-kpis', async (req, res, next) => {
             WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 
               AND UPPER(TRIM(v.status)) NOT IN ('CANCELADO', 'ABERTO', 'PENDENTE', 'ORÇAMENTO', 'ORCAMENTO', 'NULO')
         ${df.clause}
-        `, [tenantId, start, end, ...df.params]);
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
 
         // Total descontos
         const { rows: d } = await db.query(`
@@ -282,7 +282,7 @@ router.get('/sales/commercial-kpis', async (req, res, next) => {
             FROM dash_vendas v
             WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
             ${df.clause}
-        `, [tenantId, start, end, ...df.params]);
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
 
         // --- Vendedores ---
         const { rows: vends } = await db.query(`
@@ -295,7 +295,7 @@ router.get('/sales/commercial-kpis', async (req, res, next) => {
             GROUP BY v.vendedor_id_firebird, vend.nome
             ORDER BY vendas DESC
             LIMIT 10
-        `, [tenantId, start, end, ...df.params]);
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
 
         // Calcula total faturado para share (usando faturamento_total real)
         const totalFaturamento = parseFloat(pVendas[0].faturamento_total || 0);
@@ -328,7 +328,7 @@ router.get('/sales/commercial-kpis', async (req, res, next) => {
             WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
             ${df.clause}
             ORDER BY v.data_venda DESC, v.id_firebird DESC
-        `, [tenantId, start, end, ...df.params]);
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
 
         res.json({
             produtos_vendidos: parseFloat(pItems[0].qtd),
@@ -374,7 +374,7 @@ router.get('/sales/sellers', async (req, res, next) => {
             ${df.clause}
             GROUP BY vend.id_firebird, vend.nome
             ORDER BY faturamento DESC
-        `, [tenantId, start, end, ...df.params]);
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
 
         const mapped = rows.map(r => ({
             vendedor_id: r.vendedor_id_firebird || 0,
@@ -534,7 +534,7 @@ router.get('/financial/summary', async (req, res, next) => {
             FROM dash_financeiro f
             WHERE f.tenant_id = $1
             ${cf.clause}
-        `, [tenantId, start, end, ...cf.params]);
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...cf.params]);
 
         const a_receber = parseFloat(f[0].contas_receber);
         const a_pagar = parseFloat(f[0].contas_pagar);
@@ -593,14 +593,14 @@ router.get('/customer/analytics', async (req, res, next) => {
             FROM dash_vendas v
             WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
             ${df.clause}
-        `, [tenantId, start, end, ...df.params]);
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
 
         const { rows: tot } = await db.query(`
             SELECT COUNT(*) AS totais,
                    SUM(CASE WHEN data_cadastro >= $2 AND data_cadastro <= $3 THEN 1 ELSE 0 END) AS novos
             FROM dash_clientes
             WHERE tenant_id = $1 AND ativo = true
-        `, [tenantId, start, end]);
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end)]);
 
         // Top 50 clientes em risco (compraram antes do inicio, mas nao no periodo atual)
         const { rows: risco } = await db.query(`
@@ -616,7 +616,7 @@ router.get('/customer/analytics', async (req, res, next) => {
             GROUP BY c.id_firebird, c.nome
             ORDER BY ultima_compra DESC, LTV DESC
             LIMIT 50
-        `, [tenantId, start, end, ...df.params]);
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
 
         const total_clientes = parseInt(tot[0].totais || 0);
         const clientes_ativos = parseInt(atv[0].ativos || 0);
@@ -762,7 +762,7 @@ router.get('/comparative/summary', async (req, res, next) => {
             FROM dash_vendas v
             WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO', 'PAGO', 'EMITIDO', 'CONCLUIDO', 'VENDIDO', 'DEVOLVIDO', 'DEVOLUCAO', 'DEVOLUÇÃO', 'TROCA')
             ${df.clause}
-        `, [tenantId, start, end, ...df.params]);
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
 
         const faturamento = parseFloat(kpis[0].faturamento);
         const custo = parseFloat(kpis[0].custo);
@@ -782,7 +782,7 @@ router.get('/comparative/summary', async (req, res, next) => {
             GROUP BY COALESCE(vi.marca, v.marca, 'S/ MARCA')
             ORDER BY vendas DESC
             LIMIT 15
-        `, [tenantId, start, end, ...df.params]);
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
 
         const colors = ['#0EA5E9', '#10B981', '#3B82F6', '#8B5CF6', '#A855F7', '#D946EF', '#F472B6', '#F43F5E', '#EF4444', '#F97316', '#F59E0B', '#EAB308', '#EAB308'];
 
@@ -814,7 +814,7 @@ router.get('/comparative/summary', async (req, res, next) => {
             GROUP BY COALESCE(vi.categoria, v.categoria, 'S/ GRUPO')
             ORDER BY vendas DESC
             LIMIT 15
-        `, [tenantId, start, end, ...df.params]);
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
 
         const grupoData = grupos.map((g, i) => {
             const g_vendas = parseFloat(g.vendas || 0);
@@ -842,7 +842,7 @@ router.get('/comparative/summary', async (req, res, next) => {
             GROUP BY v.vendedor_id_firebird, vend.nome
             ORDER BY vendas DESC
             LIMIT 15
-        `, [tenantId, start, end, ...df.params]);
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
 
         const vendedorData = vends.map((vd, i) => {
             const vd_vendas = parseFloat(vd.vendas || 0);
@@ -917,7 +917,7 @@ router.get('/supplier/analytics', async (req, res, next) => {
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
             WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO', 'PAGO', 'EMITIDO', 'CONCLUIDO', 'VENDIDO', 'DEVOLVIDO', 'DEVOLUCAO', 'DEVOLUÇÃO', 'TROCA')
         `;
-        let params = [tenantId, start, end];
+        let params = [tenantId, toSafeSqlString(start), toSafeSqlString(end)];
         
         if (marca) {
             baseQuery += ` AND vi.marca = $4`;
@@ -951,7 +951,7 @@ router.get('/supplier/analytics', async (req, res, next) => {
             GROUP BY COALESCE(vi.marca, 'S/ MARCA')
             ORDER BY receita DESC
         `;
-        const { rows: all_brands_ranked } = await db.query(brandQuery, [tenantId, start, end]);
+        const { rows: all_brands_ranked } = await db.query(brandQuery, [tenantId, toSafeSqlString(start), toSafeSqlString(end)]);
         
         let top_brands = all_brands_ranked.slice(0, 10).map(b => ({
             rank: parseInt(b.rank),
