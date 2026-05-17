@@ -93,16 +93,35 @@ router.get('/', async (req, res, next) => {
         );
 
         if (rows.length === 0) {
-            rows.push({
-                id: 9999,
-                empresa_erp: 99,
-                depto_id: 9999,
-                centro_custo: null,
-                nome: `DEBUG T:${tenantId.substring(0,8)} | ${syncDebugInfo ? syncDebugInfo.substring(0, 40) : '200 OK (Vazio)'}`,
-                documento: identityUrlUsed,
-                is_default: false,
-                ativo: true
-            });
+            // Fallback (Auto-discovery): Se a Identity Server falhou e a tabela está vazia,
+            // tentamos extrair as filiais a partir dos dados já sincronizados em dash_vendas.
+            try {
+                const { rows: autoRows } = await db.query(
+                    `SELECT DISTINCT depto_id 
+                     FROM dash_vendas 
+                     WHERE tenant_id = $1 AND depto_id IS NOT NULL
+                     ORDER BY depto_id ASC
+                     LIMIT 50`,
+                    [tenantId]
+                );
+                
+                if (autoRows.length > 0) {
+                    for (const r of autoRows) {
+                        rows.push({
+                            id: r.depto_id,
+                            empresa_erp: 1,
+                            depto_id: r.depto_id,
+                            centro_custo: null,
+                            nome: `Filial ${r.depto_id}`,
+                            documento: null,
+                            is_default: false,
+                            ativo: true
+                        });
+                    }
+                }
+            } catch (autoErr) {
+                logger.error('[Filiais] Erro no auto-discovery de filiais:', autoErr.message);
+            }
         }
 
         res.json({ filiais: rows, _debug: syncDebugInfo });

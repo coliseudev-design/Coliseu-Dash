@@ -78,6 +78,15 @@ router.post('/login', async (req, res) => {
 });
 
 /**
+ * Logout do usuário.
+ */
+router.post('/logout', async (req, res) => {
+    // Como usamos JWT, o frontend já remove o token.
+    // Aqui podemos apenas retornar sucesso ou invalidar sessão no futuro.
+    res.status(200).json({ message: 'Logout realizado com sucesso' });
+});
+
+/**
  * Cadastro de novo usuário.
  */
 router.post('/register', async (req, res) => {

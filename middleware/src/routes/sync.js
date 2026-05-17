@@ -22,6 +22,16 @@ const TABELAS_MAP = {
 };
 
 /**
+ * Endpoint para forçar início da sincronização.
+ * Como o worker roda independente, por enquanto apenas retornamos 200.
+ */
+router.post('/start', async (req, res) => {
+    // Aqui no futuro podemos avisar o worker (ex: Redis PubSub)
+    // Por enquanto, apenas retornamos sucesso para o frontend não dar erro 400
+    return res.status(200).json({ message: 'Sync start requested' });
+});
+
+/**
  * Endpoint primário de ingestão (Usado pelo Worker .NET).
  * Payload: { tabela: "dash_clientes", rows: [...] }
  * Header obriga: X-Internal-Key e X-Tenant-Id
