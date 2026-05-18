@@ -689,6 +689,14 @@ router.get('/customer/search', async (req, res, next) => {
         }
 
         const { rows } = await db.query(`
+            WITH matched_clientes AS (
+                SELECT id_firebird, nome, documento, tenant_id
+                FROM dash_clientes
+                WHERE tenant_id = $1 
+                  AND (UPPER(nome) LIKE $2 OR documento LIKE $2)
+                ORDER BY nome ASC
+                LIMIT 10
+            )
             SELECT 
                 c.id_firebird as id, 
                 c.nome, 
@@ -703,11 +711,8 @@ router.get('/customer/search', async (req, res, next) => {
                     FROM dash_vendas v 
                     WHERE v.cliente_id_firebird = c.id_firebird AND v.tenant_id = c.tenant_id
                 ) as ultima_compra
-            FROM dash_clientes c
-            WHERE c.tenant_id = $1 
-              AND (UPPER(c.nome) LIKE $2 OR c.documento LIKE $2)
+            FROM matched_clientes c
             ORDER BY c.nome ASC
-            LIMIT 10
         `, [tenantId, `%${query}%`]);
 
         // Calcula risco_churn basico no runtime para o Mini-Card
