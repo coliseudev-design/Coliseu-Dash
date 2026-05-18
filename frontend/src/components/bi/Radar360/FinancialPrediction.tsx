@@ -80,7 +80,7 @@ export const FinancialPrediction: React.FC<FinancialPredictionProps> = ({ ltv, t
           <div className="h-10 w-full mt-4">
             <svg viewBox="0 0 100 30" className="w-full h-full overflow-visible" preserveAspectRatio="none">
               <path 
-                d={`M 0,${30 - (sparklineData[0] / 100) * 30} ${sparklineData.map((val, i) => \`L \${(i / (sparklineData.length - 1)) * 100},\${30 - (val / 100) * 30}\`).join(' ')}`}
+                d={`M 0,${30 - (sparklineData[0] / 100) * 30} ${sparklineData.map((val, i) => `L ${(i / (sparklineData.length - 1)) * 100},${30 - (val / 100) * 30}`).join(' ')}`}
                 fill="none" 
                 stroke={isUp ? "#22c55e" : "#ef4444"} 
                 strokeWidth="2" 
@@ -89,7 +89,7 @@ export const FinancialPrediction: React.FC<FinancialPredictionProps> = ({ ltv, t
                 className="drop-shadow-md"
               />
               <path 
-                d={`M 0,30 L 0,${30 - (sparklineData[0] / 100) * 30} ${sparklineData.map((val, i) => \`L \${(i / (sparklineData.length - 1)) * 100},\${30 - (val / 100) * 30}\`).join(' ')} L 100,30 Z`}
+                d={`M 0,30 L 0,${30 - (sparklineData[0] / 100) * 30} ${sparklineData.map((val, i) => `L ${(i / (sparklineData.length - 1)) * 100},${30 - (val / 100) * 30}`).join(' ')} L 100,30 Z`}
                 fill={isUp ? "url(#gradGreen)" : "url(#gradRed)"}
                 opacity="0.2"
               />

@@ -63,7 +63,7 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({ bestHour }) =>
             <div key={data.hour} className="relative flex flex-col items-center justify-end h-full w-full group">
               <div 
                 className={`w-full rounded-t-sm transition-all duration-500 ease-out ${getColorForIntensity(data.intensity)}`}
-                style={{ height: \`\${Math.max(data.intensity, 2)}%\` }}
+                style={{ height: `${Math.max(data.intensity, 2)}%` }}
               ></div>
               
               {/* Tooltip */}

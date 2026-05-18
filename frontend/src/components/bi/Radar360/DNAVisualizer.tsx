@@ -55,7 +55,7 @@ export const DNAVisualizer: React.FC<DNAVisualizerProps> = ({ produtoFavorito, m
                 <div className="w-full h-1.5 bg-bg-secondary rounded-full overflow-hidden">
                   <div 
                     className={`h-full ${p.color} rounded-full transition-all duration-1000 ease-out group-hover:brightness-125`} 
-                    style={{ width: \`\${p.pct}%\` }}
+                    style={{ width: `${p.pct}%` }}
                   ></div>
                 </div>
               </div>
@@ -94,9 +94,9 @@ export const DNAVisualizer: React.FC<DNAVisualizerProps> = ({ produtoFavorito, m
                   key={i} 
                   className={`flex items-center justify-center rounded-full border ${c.color} shadow-sm backdrop-blur-sm transition-transform hover:scale-110 cursor-default`}
                   style={{ 
-                    width: \`\${c.size}px\`, 
-                    height: \`\${c.size}px\`,
-                    fontSize: \`\${Math.max(10, c.size / 5)}px\`,
+                    width: `${c.size}px`, 
+                    height: `${c.size}px`,
+                    fontSize: `${Math.max(10, c.size / 5)}px`,
                     fontWeight: 'bold'
                   }}
                 >
