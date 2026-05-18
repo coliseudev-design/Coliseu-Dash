@@ -779,7 +779,7 @@ router.get('/customer/radar-360', async (req, res, next) => {
         const { rows: vendedores } = await db.query(`
             SELECT vendedor, SUM(valor_total) as total_vendido
             FROM dash_vendas
-            WHERE tenant_id = \$1 AND cliente_id_firebird = \$2 AND vendedor IS NOT NULL AND vendedor != ''
+            WHERE tenant_id = $1 AND cliente_id_firebird = $2 AND vendedor IS NOT NULL AND vendedor != ''
             GROUP BY vendedor
             ORDER BY total_vendido DESC
             LIMIT 1
@@ -790,18 +790,18 @@ router.get('/customer/radar-360', async (req, res, next) => {
         const { rows: heatmap } = await db.query(`
             SELECT EXTRACT(HOUR FROM data_venda) as hora, COUNT(*) as qtd
             FROM dash_vendas
-            WHERE tenant_id = \$1 AND cliente_id_firebird = \$2
+            WHERE tenant_id = $1 AND cliente_id_firebird = $2
             GROUP BY hora
             ORDER BY qtd DESC
             LIMIT 1
         `, [tenantId, searchId]);
-        const melhor_horario = heatmap.length > 0 ? `\${String(heatmap[0].hora).padStart(2, '0')}:00` : 'N/A';
+        const melhor_horario = heatmap.length > 0 ? `${String(heatmap[0].hora).padStart(2, '0')}:00` : 'N/A';
 
         // Order History
         const { rows: history } = await db.query(`
             SELECT id_firebird as id, numero_pedido as numero_nota, data_venda as data_emissao, vendedor as vendedor_nome, valor_total, status 
             FROM dash_vendas
-            WHERE tenant_id = \$1 AND cliente_id_firebird = \$2
+            WHERE tenant_id = $1 AND cliente_id_firebird = $2
             ORDER BY data_venda DESC
             LIMIT 10
         `, [tenantId, searchId]);
