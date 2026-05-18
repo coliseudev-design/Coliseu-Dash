@@ -143,11 +143,11 @@ router.post('/:tabela', async (req, res) => {
                 db.query(`
                     UPDATE dash_vendas v
                     SET valor_total = (
-                        SELECT COALESCE(SUM(vi.valor_total), 0)
+                        SELECT COALESCE(SUM(CASE WHEN vi.valor_total = 0 THEN vi.quantidade * vi.preco_unitario ELSE vi.valor_total END), 0)
                         FROM dash_vendas_itens vi
                         WHERE vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id
                     )
-                    WHERE v.tenant_id = \$1 AND v.valor_total = 0
+                    WHERE v.tenant_id = $1 AND v.valor_total = 0
                       AND EXISTS (
                           SELECT 1 FROM dash_vendas_itens vi2
                           WHERE vi2.venda_id_firebird = v.id_firebird AND vi2.tenant_id = v.tenant_id

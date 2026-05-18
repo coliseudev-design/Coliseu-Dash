@@ -39,8 +39,8 @@ router.get('/overview', async (req, res, next) => {
         const [
             vHoje, vMes, pAbertos, pProc, pCanc, fReceber, fRecebido, fPagar, fPago, topMarcasItens, topMarcasVendas, topCatsItens, topCatsVendas
         ] = await Promise.all([
-            db.query(`SELECT COALESCE(SUM(v.valor_total),0) AS total, COUNT(*) AS qtd FROM dash_vendas v WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')${df.clause}`, [tenantId, startHojeStr, endHojeStr, ...df.params]),
-            db.query(`SELECT COALESCE(SUM(v.valor_total),0) AS total, COUNT(*) AS qtd FROM dash_vendas v WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')${df.clause}`, [tenantId, start, end, ...df.params]),
+            db.query(`SELECT COALESCE(SUM(v.valor_total),0) - (SELECT COALESCE(SUM(d.valor),0) FROM dash_devolucoes d LEFT JOIN dash_vendas v2 ON v2.id_firebird = d.venda_id_firebird AND v2.tenant_id = d.tenant_id WHERE d.tenant_id = $1 AND d.data_devolucao >= $2 AND d.data_devolucao <= $3 ${df.clause.replace(/v\./g, 'v2.')}) AS total, COUNT(*) AS qtd FROM dash_vendas v WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')${df.clause}`, [tenantId, startHojeStr, endHojeStr, ...df.params]),
+            db.query(`SELECT COALESCE(SUM(v.valor_total),0) - (SELECT COALESCE(SUM(d.valor),0) FROM dash_devolucoes d LEFT JOIN dash_vendas v2 ON v2.id_firebird = d.venda_id_firebird AND v2.tenant_id = d.tenant_id WHERE d.tenant_id = $1 AND d.data_devolucao >= $2 AND d.data_devolucao <= $3 ${df.clause.replace(/v\./g, 'v2.')}) AS total, COUNT(*) AS qtd FROM dash_vendas v WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')${df.clause}`, [tenantId, start, end, ...df.params]),
             db.query(`SELECT COUNT(*) AS qtd FROM dash_vendas v WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('PENDENTE','ABERTO')${df.clause}`, [tenantId, start, end, ...df.params]),
             db.query(`SELECT COUNT(*) AS qtd FROM dash_vendas v WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO','FINALIZADO')${df.clause}`, [tenantId, start, end, ...df.params]),
             db.query(`SELECT COUNT(*) AS qtd FROM dash_vendas v WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) = 'CANCELADO'${df.clause}`, [tenantId, start, end, ...df.params]),
@@ -95,13 +95,13 @@ router.get('/kpis', async (req, res, next) => {
 
         const { rows: v } = await db.query(`
             SELECT 
-                COALESCE(SUM(v.valor_total), 0) - COALESCE((
-                    SELECT SUM(d.valor) 
+                COALESCE(SUM(v.valor_total), 0) - (
+                    SELECT COALESCE(SUM(d.valor), 0) 
                     FROM dash_devolucoes d 
                     LEFT JOIN dash_vendas v2 ON v2.id_firebird = d.venda_id_firebird AND v2.tenant_id = d.tenant_id
                     WHERE d.tenant_id = $1 AND d.data_devolucao >= $2 AND d.data_devolucao <= $3
-                    AND (v.depto_id IS NULL OR v2.depto_id = v.depto_id)
-                ), 0) AS faturamento,
+                    ${df.clause.replace(/v\./g, 'v2.')}
+                ) AS faturamento,
                 COUNT(DISTINCT v.id_firebird) AS qtd_pedidos,
                 COALESCE(AVG(v.valor_total), 0) AS ticket_medio,
                 COALESCE(SUM(v.valor_desconto), 0) AS total_descontos
