@@ -73,11 +73,33 @@ export interface CustomerOrderHistory {
 }
 
 export interface Radar360Response {
-  customer_dna: CustomerDNA;
-  customer_metrics: CustomerMetrics;
-  customer_habits: CustomerHabits;
-  customer_orders_history: CustomerOrderHistory[];
-  risk_assessment: RiskAssessment;
+  dna?: {
+    cliente_id: number;
+    nome: string;
+    documento: string;
+    cidade: string;
+    estado: string;
+    data_cadastro: string;
+    status: string;
+    ltv: number;
+  };
+  behavior?: {
+    produto_favorito: string;
+    marca_favorita: string;
+    ticket_medio_historico: number;
+    frequencia_dias: number;
+    melhor_horario: string;
+  };
+  affinity?: {
+    vendedor_estrela: string;
+  };
+  risk_assessment?: {
+    risco_churn_pct: number;
+    tendencia: string;
+    ultima_compra: string;
+    dias_sem_comprar: number;
+  };
+  order_history?: any[];
 }
 
 export interface CustomerOverview {

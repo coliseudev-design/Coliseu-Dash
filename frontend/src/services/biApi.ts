@@ -40,7 +40,7 @@ export const BIService = {
     return data.data || data;
   },
 
-  searchCustomers: async (query: string): Promise<{id: number, nome: string, cnpj: string}[]> => {
+  searchCustomers: async (query: string): Promise<{id: number, nome: string, cnpj: string, ltv?: number, risco_churn_pct?: number}[]> => {
     if (!query || query.length < 3) return [];
     const { data } = await api.get<any>('/bi/customer/search', { params: { q: query } });
     return data;
