@@ -689,15 +689,45 @@ router.get('/customer/search', async (req, res, next) => {
         }
 
         const { rows } = await db.query(`
-            SELECT id_firebird as id, nome, documento as cnpj 
-            FROM dash_clientes 
-            WHERE tenant_id = $1 
-              AND (UPPER(nome) LIKE $2 OR documento LIKE $2)
-            ORDER BY nome ASC
+            SELECT 
+                c.id_firebird as id, 
+                c.nome, 
+                c.documento as cnpj,
+                COALESCE((
+                    SELECT SUM(v.valor_total) 
+                    FROM dash_vendas v 
+                    WHERE v.cliente_id_firebird = c.id_firebird AND v.tenant_id = c.tenant_id
+                ), 0) as ltv,
+                (
+                    SELECT MAX(data_venda) 
+                    FROM dash_vendas v 
+                    WHERE v.cliente_id_firebird = c.id_firebird AND v.tenant_id = c.tenant_id
+                ) as ultima_compra
+            FROM dash_clientes c
+            WHERE c.tenant_id = $1 
+              AND (UPPER(c.nome) LIKE $2 OR c.documento LIKE $2)
+            ORDER BY c.nome ASC
             LIMIT 10
         `, [tenantId, `%${query}%`]);
 
-        res.json(rows);
+        // Calcula risco_churn basico no runtime para o Mini-Card
+        const now = new Date();
+        const results = rows.map(r => {
+            let churnRisk = 0;
+            if (r.ultima_compra) {
+                const diffTime = Math.abs(now.getTime() - new Date(r.ultima_compra).getTime());
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                if (diffDays > 90) churnRisk = 95;
+                else if (diffDays > 60) churnRisk = 75;
+                else if (diffDays > 30) churnRisk = 40;
+                else churnRisk = 10;
+            } else {
+                churnRisk = 100; // Nunca comprou
+            }
+            return { ...r, ltv: parseFloat(r.ltv), risco_churn_pct: churnRisk };
+        });
+
+        res.json(results);
     } catch (err) { next(err); }
 });
 
@@ -744,6 +774,38 @@ router.get('/customer/radar-360', async (req, res, next) => {
         else if (dias_sem_comprar > 45) risco_churn_pct = 60;
         else if (dias_sem_comprar > 30) risco_churn_pct = 30;
 
+
+        // Vendedor Estrela
+        const { rows: vendedores } = await db.query(`
+            SELECT vendedor, SUM(valor_total) as total_vendido
+            FROM dash_vendas
+            WHERE tenant_id = \$1 AND cliente_id_firebird = \$2 AND vendedor IS NOT NULL AND vendedor != ''
+            GROUP BY vendedor
+            ORDER BY total_vendido DESC
+            LIMIT 1
+        `, [tenantId, searchId]);
+        const vendedor_estrela = vendedores.length > 0 ? vendedores[0].vendedor : 'N/A';
+
+        // Melhor Horário (Densidade)
+        const { rows: heatmap } = await db.query(`
+            SELECT EXTRACT(HOUR FROM data_venda) as hora, COUNT(*) as qtd
+            FROM dash_vendas
+            WHERE tenant_id = \$1 AND cliente_id_firebird = \$2
+            GROUP BY hora
+            ORDER BY qtd DESC
+            LIMIT 1
+        `, [tenantId, searchId]);
+        const melhor_horario = heatmap.length > 0 ? `\${String(heatmap[0].hora).padStart(2, '0')}:00` : 'N/A';
+
+        // Order History
+        const { rows: history } = await db.query(`
+            SELECT id_firebird as id, numero_pedido as numero_nota, data_venda as data_emissao, vendedor as vendedor_nome, valor_total, status 
+            FROM dash_vendas
+            WHERE tenant_id = \$1 AND cliente_id_firebird = \$2
+            ORDER BY data_venda DESC
+            LIMIT 10
+        `, [tenantId, searchId]);
+
         res.json({
             dna: {
                 cliente_id: cliente.id_firebird,
@@ -756,10 +818,14 @@ router.get('/customer/radar-360', async (req, res, next) => {
                 ltv
             },
             behavior: {
-                produto_favorito: "Análise dinâmica pendente", // Requires complex join
+                produto_favorito: "Análise dinâmica pendente",
                 marca_favorita: "Análise dinâmica pendente",
                 ticket_medio_historico,
-                frequencia_dias: 30 // Mock
+                frequencia_dias: 30, // Mock
+                melhor_horario
+            },
+            affinity: {
+                vendedor_estrela
             },
             risk_assessment: {
                 risco_churn_pct,
@@ -767,8 +833,16 @@ router.get('/customer/radar-360', async (req, res, next) => {
                 ultima_compra,
                 dias_sem_comprar
             },
-            order_history: [] // Mock
+            order_history: history.map(h => ({
+                id: h.id,
+                numero_nota: h.numero_nota,
+                data_emissao: h.data_emissao ? new Date(h.data_emissao).toLocaleDateString('pt-BR') : '',
+                vendedor_nome: h.vendedor_nome,
+                valor_total: parseFloat(h.valor_total),
+                status: h.status
+            }))
         });
+
     } catch (err) { next(err); }
 });
 
