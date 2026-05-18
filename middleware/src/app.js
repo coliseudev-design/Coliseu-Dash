@@ -23,6 +23,7 @@ const usuariosRouter = require('./routes/usuarios');
 const configuracoesRouter = require('./routes/configuracoes');
 const biRouter = require('./routes/bi');
 const { router: filiaisRouter } = require('./routes/filiais');
+const debugRouter = require('./routes/debug');
 
 const app = express();
 
@@ -58,6 +59,7 @@ app.use('/api/configuracoes', configuracoesRouter);
 app.use('/api/filiais', filiaisRouter);  // Lista de filiais/departamentos por tenant
 app.use('/api/sync', syncRouter); // Habilita /api/sync/status para o frontend web
 app.use('/api/bi', biRouter); // Novas rotas de BI
+app.use('/api/debug', debugRouter);
 
 app.use('/internal', requireInternalAuth);
 app.use('/internal/sync', syncRouter); // Mantém /internal/sync para o C# Worker

@@ -136,6 +136,24 @@ router.post('/:tabela', async (req, res) => {
         // Pós-Processamento: Atualizar Cache e Materialized Views
         if (['dash_vendas', 'dash_vendas_itens', 'dash_financeiro'].includes(tabela)) {
             invalidateTenant(tenantId);
+
+            // WORKAROUND: Correção para pedidos zerados (Apenas Serviços)
+            // Se o worker enviar a venda com valor_total = 0, tentamos recalcular pela soma dos itens.
+            if (tabela === 'dash_vendas_itens') {
+                db.query(`
+                    UPDATE dash_vendas v
+                    SET valor_total = (
+                        SELECT COALESCE(SUM(vi.valor_total), 0)
+                        FROM dash_vendas_itens vi
+                        WHERE vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id
+                    )
+                    WHERE v.tenant_id = \$1 AND v.valor_total = 0
+                      AND EXISTS (
+                          SELECT 1 FROM dash_vendas_itens vi2
+                          WHERE vi2.venda_id_firebird = v.id_firebird AND vi2.tenant_id = v.tenant_id
+                      )
+                `, [tenantId]).catch(e => console.error('[Sync] Erro ao recalcular valor_total de serviços', e.message));
+            }
             
             // Tenta dar refresh na visão de forma assíncrona para não prender o Worker
             const viewName = tabela === 'dash_financeiro' ? 'mv_dash_financeiro_diario' : 'mv_dash_vendas_diario';

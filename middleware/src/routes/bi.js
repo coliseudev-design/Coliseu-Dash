@@ -74,8 +74,28 @@ router.get('/sales/executive-summary', async (req, res, next) => {
               ${df.clause}
         `, [tenantId, toSafeSqlString(prevStart), toSafeSqlString(prevEnd), ...df.params]);
 
-        const faturamento = parseFloat(v[0].faturamento_total);
-        const faturamento_anterior = parseFloat(vPrev[0].faturamento_total);
+
+        const { rows: dev_rows } = await db.query(`
+            SELECT COALESCE(SUM(d.valor), 0) AS devolucao_total
+            FROM dash_devolucoes d
+            LEFT JOIN dash_vendas v ON v.id_firebird = d.venda_id_firebird AND v.tenant_id = d.tenant_id
+            WHERE d.tenant_id = \$1 AND d.data_devolucao >= \$2 AND d.data_devolucao <= \$3
+            ${df.clause}
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
+        const devolucoes = parseFloat(dev_rows[0].devolucao_total);
+
+        const { rows: dev_prev_rows } = await db.query(`
+            SELECT COALESCE(SUM(d.valor), 0) AS devolucao_total
+            FROM dash_devolucoes d
+            LEFT JOIN dash_vendas v ON v.id_firebird = d.venda_id_firebird AND v.tenant_id = d.tenant_id
+            WHERE d.tenant_id = \$1 AND d.data_devolucao >= \$2 AND d.data_devolucao <= \$3
+            ${df.clause}
+        `, [tenantId, toSafeSqlString(prevStart), toSafeSqlString(prevEnd), ...df.params]);
+        const devolucoes_anterior = parseFloat(dev_prev_rows[0].devolucao_total);
+
+        const faturamento = parseFloat(v[0].faturamento_total) - devolucoes;
+        const faturamento_anterior = parseFloat(vPrev[0].faturamento_total) - devolucoes_anterior;
+
         const crescimento_pct = faturamento_anterior > 0 ? ((faturamento - faturamento_anterior) / faturamento_anterior) * 100 : 0;
 
         const qtd = parseInt(v[0].total_pedidos, 10);
@@ -297,8 +317,18 @@ router.get('/sales/commercial-kpis', async (req, res, next) => {
             LIMIT 10
         `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
 
+
+        const { rows: dev_rows } = await db.query(`
+            SELECT COALESCE(SUM(d.valor), 0) AS devolucao_total
+            FROM dash_devolucoes d
+            LEFT JOIN dash_vendas v ON v.id_firebird = d.venda_id_firebird AND v.tenant_id = d.tenant_id
+            WHERE d.tenant_id = \$1 AND d.data_devolucao >= \$2 AND d.data_devolucao <= \$3
+            ${df.clause}
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
+        const devolucoes = parseFloat(dev_rows[0].devolucao_total);
+
         // Calcula total faturado para share (usando faturamento_total real)
-        const totalFaturamento = parseFloat(pVendas[0].faturamento_total || 0);
+        const totalFaturamento = parseFloat(pVendas[0].faturamento_total || 0) - devolucoes;
 
         const top_sellers = vends.map((v, i) => {
             const colors = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#14B8A6'];
