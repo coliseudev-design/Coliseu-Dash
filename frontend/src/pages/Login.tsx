@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, Navigate, Link } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
-import { LogIn, TrendingUp, BarChart3, Users, LayoutDashboard } from 'lucide-react'
+import { LogIn, TrendingUp, BarChart3, Users, LayoutDashboard, Eye, EyeOff } from 'lucide-react'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -11,12 +11,14 @@ export default function Login() {
   const error = useAuthStore((s) => s.error)
 
   const [email, setEmail] = useState('')
+  const [senha, setSenha] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
 
   if (user) return <Navigate to="/" replace />
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const ok = await login(email, 'dummy_password_disabled')
+    const ok = await login(email, senha)
     if (ok) navigate('/', { replace: true })
   }
 
@@ -148,7 +150,31 @@ export default function Login() {
               />
             </div>
 
-            {/* Campo de Senha Removido a pedido do usuário */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-medium text-text-primary">Senha</label>
+                <a href="#" className="text-xs text-brand-600 hover:text-brand-700 transition-colors font-medium">Esqueceu a senha?</a>
+              </div>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  className="w-full px-4 py-3 rounded-lg border border-border focus:border-brand-500 focus:ring-2 focus:ring-brand-500 outline-none transition-all text-text-primary bg-bg-primary pr-12"
+                  value={senha}
+                  onChange={(e) => setSenha(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary transition-colors p-1"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
 
             {error && (
               <div className="bg-red-50 border border-red-100 text-red-600 text-sm rounded-lg p-3.5 flex items-center gap-2">
@@ -169,7 +195,7 @@ export default function Login() {
                 </>
               ) : (
                 <>
-                  <span>Avançar</span>
+                  <span>Entrar</span>
                   <LogIn className="w-5 h-5" />
                 </>
               )}
