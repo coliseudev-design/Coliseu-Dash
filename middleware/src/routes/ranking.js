@@ -3,7 +3,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db/postgres');
-const { getPeriodRange } = require('../utils/period');
+const { getPeriodRange, toSafeSqlString } = require('../utils/period');
 const { getCache, setCache } = require('../config/cache');
 const { buildDeptoFilter } = require('./filiais');
 
@@ -44,7 +44,7 @@ async function getAnchoredRange(tenantId, period, start_date, end_date) {
                 const s = new Date(parseInt(sy), parseInt(sm) - 1, parseInt(sd), 0, 0, 0, 0);
                 const [ey, em, ed] = end_date.split('T')[0].split('-');
                 const e = new Date(parseInt(ey), parseInt(em) - 1, parseInt(ed), 23, 59, 59, 999);
-                return { start: s, end: e };
+                return { start: toSafeSqlString(s), end: toSafeSqlString(e) };
             }
             start.setFullYear(start.getFullYear() - 1);
             break;
@@ -56,7 +56,7 @@ async function getAnchoredRange(tenantId, period, start_date, end_date) {
             break;
     }
 
-    return { start, end };
+    return { start: toSafeSqlString(start), end: toSafeSqlString(end) };
 }
 
 // GET /api/ranking/kpis (para a tela de comissoes)

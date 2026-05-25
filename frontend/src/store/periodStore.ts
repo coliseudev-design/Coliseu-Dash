@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 
 export type PeriodKey = 'today' | 'yesterday' | 'last7' | 'thisMonth' | 'lastMonth' | 'last12m' | 'custom'
 
@@ -10,12 +11,19 @@ export interface PeriodState {
   setCustomRange: (start: string, end: string) => void
 }
 
-export const usePeriodStore = create<PeriodState>((set) => ({
-  period: 'thisMonth',
-  setPeriod: (p) => set({ period: p }),
-  setCustomRange: (start, end) =>
-    set({ period: 'custom', startDate: start, endDate: end }),
-}))
+export const usePeriodStore = create<PeriodState>()(
+  persist(
+    (set) => ({
+      period: 'thisMonth',
+      setPeriod: (p) => set({ period: p }),
+      setCustomRange: (start, end) =>
+        set({ period: 'custom', startDate: start, endDate: end }),
+    }),
+    {
+      name: 'coliseu-period-filter', // unique key in localStorage
+    }
+  )
+)
 
 export const PERIOD_OPTIONS: { key: PeriodKey; label: string }[] = [
   { key: 'today', label: 'Hoje' },
