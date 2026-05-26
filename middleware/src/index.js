@@ -69,6 +69,19 @@ async function startServer() {
                     logger.warn('[App] Aviso na migração 002:', migErr.message);
                 }
 
+                // --- Migração 004: Data de Vencimento nas Vendas ---
+                try {
+                    const migrationPath4 = path.join(__dirname, 'db', 'migrations', '004_add_data_vencimento_vendas.sql');
+                    if (fs.existsSync(migrationPath4)) {
+                        logger.info('[App] Aplicando migração 004_add_data_vencimento_vendas.sql...');
+                        const migrationSql4 = fs.readFileSync(migrationPath4, 'utf8');
+                        await db.query(migrationSql4);
+                        logger.info('[App] Migração 004 aplicada com sucesso.');
+                    }
+                } catch (migErr) {
+                    logger.warn('[App] Aviso na migração 004:', migErr.message);
+                }
+
             } catch (dbErr) {
                 logger.error('[App] Erro ao sincronizar as tabelas do banco:', dbErr);
             }
