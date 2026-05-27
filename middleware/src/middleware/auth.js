@@ -3,6 +3,7 @@
 const jwt = require('jsonwebtoken');
 const config = require('../config/env');
 const logger = require('../config/logger');
+const db = require('../db/postgres');
 
 /**
  * Middleware para validar JWT do Web (Gerente App Dashboard).
@@ -49,7 +50,7 @@ async function requireWebJwt(req, res, next) {
         }
 
         req.tenant = { id: tenantId, name: decoded.companyName || 'Unknown' };
-        req.user = { id: decoded.userId || decoded.sub };
+        req.user = { id: decoded.userId || decoded.sub, layoutVersion: decoded.layoutVersion };
 
         next();
     } catch (err) {
@@ -63,16 +64,6 @@ async function requireWebJwt(req, res, next) {
     }
 }
 
-/**
- * Middleware para autenticar rotas internas usadas pelo Worker (.NET).
- * 
- * Valida o header X-Internal-Key contra a chave configurada no servidor.
- * Extrai o tenantId do header X-Tenant-Id (enviado pelo Worker).
- *
- * @param {import('express').Request} req
- * @param {import('express').Response} res
- * @param {import('express').NextFunction} next
- */
 // Cache em memória (TenantId -> { valid: boolean, expiresAt: number })
 // Usado para evitar sobrecarregar o servidor de licenças nas chamadas frequentes do Worker.
 const validationCache = new Map();
@@ -151,7 +142,6 @@ async function requireInternalAuth(req, res, next) {
 
         if (response.status === 403) {
             const data = await response.json().catch(() => ({}));
-            // Suporta camelCase (.NET Core Default) ou PascalCase
             const reason = data.reason || data.Reason || data.error || data.Error || 'Módulo bloqueado (HTTP 403).';
             logger.warn(`[InternalAuth] Resposta real do Identity:`, data);
             
@@ -159,13 +149,11 @@ async function requireInternalAuth(req, res, next) {
             return res.status(403).json({ error: reason, code: 'MODULE_BLOCKED' });
         }
 
-        // Se for outro erro, lançamos para cair no catch e usar fallback
         throw new Error(`Identity API retornou status ${response.status}`);
         
     } catch (err) {
         logger.error('[InternalAuth] Erro ao validar no Identity API. Usando fallback.', { err: err.message, tenantId });
         
-        // Timeout ou queda do Identity: usar fallback estático do .env por precaução
         if (internalApiKey && internalKey === internalApiKey) {
             req.tenant = { id: tenantId };
             req.device = { id: 'worker' };
@@ -176,7 +164,40 @@ async function requireInternalAuth(req, res, next) {
     }
 }
 
+/**
+ * Middleware para vincular o contexto do banco de dados (AsyncLocalStorage).
+ * Determina se o tenant ou usuário ativo pertence ao Layout 4 (Vet) e ativa o pool apropriado.
+ */
+async function bindDbContext(req, res, next) {
+    let dbType = 'main';
+
+    if (req.user && req.user.layoutVersion === 'v4.0') {
+        dbType = 'vet';
+    } else if (req.tenant && req.tenant.id) {
+        // Para requisições do Worker (identificadas pelo X-Tenant-Id)
+        try {
+            const userRes = await db.poolMain.query(
+                'SELECT layout_version FROM dash_usuarios WHERE tenant_id = $1 LIMIT 1',
+                [req.tenant.id]
+            );
+            if (userRes.rowCount > 0 && userRes.rows[0].layout_version === 'v4.0') {
+                dbType = 'vet';
+            }
+        } catch (dbErr) {
+            logger.error('[DB-Context] Erro ao buscar layout_version do tenant para o sync', { 
+                tenantId: req.tenant.id, 
+                error: dbErr.message 
+            });
+        }
+    }
+
+    db.dbContext.run({ dbType }, () => {
+        next();
+    });
+}
+
 module.exports = {
     requireWebJwt,
-    requireInternalAuth
+    requireInternalAuth,
+    bindDbContext
 };

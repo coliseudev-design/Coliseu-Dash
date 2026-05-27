@@ -222,8 +222,8 @@ router.put('/:id/layout', async (req, res) => {
         const { layout_version } = req.body;
         const targetId = req.params.id;
 
-        if (!['v1.0', 'v2.0', 'v3.0'].includes(layout_version)) {
-            return res.status(400).json({ error: 'Versão de layout inválida. Opções: v1.0, v2.0, v3.0' });
+        if (!['v1.0', 'v2.0', 'v3.0', 'v4.0'].includes(layout_version)) {
+            return res.status(400).json({ error: 'Versão de layout inválida. Opções: v1.0, v2.0, v3.0, v4.0' });
         }
 
         let query = `UPDATE dash_usuarios SET layout_version = $1 WHERE id = $2`;

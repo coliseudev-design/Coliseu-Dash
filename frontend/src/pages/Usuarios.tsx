@@ -256,6 +256,7 @@ export default function Usuarios() {
                     <option value="v1.0">v1.0 (Padrão)</option>
                     <option value="v2.0">v2.0 (Moderno)</option>
                     <option value="v3.0">v3.0 (Escuro)</option>
+                    <option value="v4.0">v4.0 (Vet)</option>
                   </select>
                 </div>
               )

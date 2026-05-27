@@ -50,7 +50,8 @@ router.post('/login', async (req, res) => {
                 tenantId: user.tenant_id,
                 module: config.security.expectedModuleSlug,
                 companyName: user.tenant_id === '00000000-0000-0000-0000-000000000000' ? 'Coliseu Sistemas (Master)' : 'Empresa Cliente',
-                role: user.role
+                role: user.role,
+                layoutVersion: user.layout_version
             },
             config.security.jwtDeviceKey,
             { expiresIn: '12h' }

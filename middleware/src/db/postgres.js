@@ -1,10 +1,14 @@
 'use strict';
 
 const { Pool } = require('pg');
+const { AsyncLocalStorage } = require('async_hooks');
 const config = require('../config/env');
 const logger = require('../config/logger');
 
-// PostgreSQL Pool for Dashboard
+// AsyncLocalStorage to maintain the active database context for requests/syncs
+const dbContext = new AsyncLocalStorage();
+
+// PostgreSQL Pool for Dashboard (Coliseu)
 const pool = new Pool({
     host: config.postgres.host,
     port: config.postgres.port,
@@ -21,6 +25,23 @@ pool.on('error', (err) => {
     logger.error('[DB] Erro inesperado em cliente ocioso do PostgreSQL', err);
 });
 
+// PostgreSQL Pool for Vet (Siscom)
+const poolVet = new Pool({
+    host: config.postgresVet.host,
+    port: config.postgresVet.port,
+    database: config.postgresVet.database,
+    user: config.postgresVet.user,
+    password: config.postgresVet.password,
+    ssl: config.postgresVet.ssl ? { rejectUnauthorized: false } : false,
+    max: 20, // Max number of clients
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 5000,
+});
+
+poolVet.on('error', (err) => {
+    logger.error('[DB-Vet] Erro inesperado em cliente ocioso do PostgreSQL Vet', err);
+});
+
 /**
  * Executa uma query no PostgreSQL.
  * @param {string} text - Query SQL
@@ -29,14 +50,17 @@ pool.on('error', (err) => {
  */
 async function query(text, params) {
     const start = Date.now();
+    const store = dbContext.getStore();
+    const activePool = store && store.dbType === 'vet' ? poolVet : pool;
+    const dbLabel = store && store.dbType === 'vet' ? '[DB-Vet]' : '[DB]';
     try {
-        const res = await pool.query(text, params);
+        const res = await activePool.query(text, params);
         const duration = Date.now() - start;
         // Debug mode queries are extremely noisy, comment out or trace-level
-        // logger.debug('[DB] Executed query', { text: text.substring(0, 100), duration, rows: res.rowCount });
+        // logger.debug(`${dbLabel} Executed query`, { text: text.substring(0, 100), duration, rows: res.rowCount });
         return res;
     } catch (err) {
-        logger.error('[DB] Falha ao executar query', { text: text.substring(0, 150), error: err.message });
+        logger.error(`${dbLabel} Falha ao executar query`, { text: text.substring(0, 150), error: err.message });
         throw err;
     }
 }
@@ -45,13 +69,18 @@ async function query(text, params) {
  * Usado para inicialização e checagem de saúde.
  */
 async function checkConnection() {
+    let mainOk = false;
+    let vetOk = false;
+
+    // Check main database connection and run auto-migrations
     try {
-        await query('SELECT 1 AS ok', []);
-        logger.info('[DB] Conectado ao PostgreSQL (coliseu_dashboard)');
+        await pool.query('SELECT 1 AS ok', []);
+        logger.info(`[DB] Conectado ao PostgreSQL (${config.postgres.database})`);
+        mainOk = true;
         
         // Auto-migration: Garante que as novas tabelas e colunas existam em produção
         try {
-            await query(`
+            await pool.query(`
                 CREATE TABLE IF NOT EXISTS dash_caixas (
                     id SERIAL PRIMARY KEY,
                     tenant_id UUID NOT NULL,
@@ -62,12 +91,12 @@ async function checkConnection() {
                 );
             `, []);
             
-            await query(`
+            await pool.query(`
                 ALTER TABLE dash_vendas ADD COLUMN IF NOT EXISTS especie VARCHAR(100);
             `, []);
             
-            await query(`ALTER TABLE dash_vendas ADD COLUMN IF NOT EXISTS depto_id INTEGER;`, []);
-            await query(`ALTER TABLE dash_vendas_itens ADD COLUMN IF NOT EXISTS depto_id INTEGER;`, []);
+            await pool.query(`ALTER TABLE dash_vendas ADD COLUMN IF NOT EXISTS depto_id INTEGER;`, []);
+            await pool.query(`ALTER TABLE dash_vendas_itens ADD COLUMN IF NOT EXISTS depto_id INTEGER;`, []);
             
             logger.info('[DB] Auto-migration (dash_caixas e especie) verificada/aplicada com sucesso.');
         } catch (migErr1) {
@@ -75,15 +104,14 @@ async function checkConnection() {
         }
         
         // Mini-migrator silencioso para garantir colunas recém-adicionadas na v2.4.0
-        // Como o Postgres <= 15 não suporta IF NOT EXISTS para várias colunas de uma vez elegantemente num ALTER padrão, faremos col a col
         try {
-            await query(`ALTER TABLE dash_produtos ADD COLUMN IF NOT EXISTS preco DECIMAL(15,2) DEFAULT 0;`, []);
-            await query(`ALTER TABLE dash_produtos ADD COLUMN IF NOT EXISTS custo DECIMAL(15,2) DEFAULT 0;`, []);
-            await query(`ALTER TABLE dash_produtos ADD COLUMN IF NOT EXISTS estoque DECIMAL(15,3) DEFAULT 0;`, []);
-            await query(`ALTER TABLE dash_produtos ADD COLUMN IF NOT EXISTS estoque_minimo DECIMAL(15,3) DEFAULT 0;`, []);
+            await pool.query(`ALTER TABLE dash_produtos ADD COLUMN IF NOT EXISTS preco DECIMAL(15,2) DEFAULT 0;`, []);
+            await pool.query(`ALTER TABLE dash_produtos ADD COLUMN IF NOT EXISTS custo DECIMAL(15,2) DEFAULT 0;`, []);
+            await pool.query(`ALTER TABLE dash_produtos ADD COLUMN IF NOT EXISTS estoque DECIMAL(15,3) DEFAULT 0;`, []);
+            await pool.query(`ALTER TABLE dash_produtos ADD COLUMN IF NOT EXISTS estoque_minimo DECIMAL(15,3) DEFAULT 0;`, []);
             
             // Tabela de Caixas
-            await query(`
+            await pool.query(`
                 CREATE TABLE IF NOT EXISTS dash_caixas (
                     id SERIAL PRIMARY KEY,
                     tenant_id UUID NOT NULL,
@@ -93,23 +121,38 @@ async function checkConnection() {
                     UNIQUE(tenant_id, id_firebird)
                 );
             `, []);
-            await query(`ALTER TABLE dash_financeiro ADD COLUMN IF NOT EXISTS caixa_id_firebird INTEGER;`, []);
-            await query(`ALTER TABLE dash_financeiro ADD COLUMN IF NOT EXISTS depto_id INTEGER;`, []);
-            await query(`ALTER TABLE dash_financeiro ADD COLUMN IF NOT EXISTS centro_custo INTEGER;`, []);
-            await query(`ALTER TABLE dash_financeiro ADD COLUMN IF NOT EXISTS tipo_documento VARCHAR(50);`, []);
+            await pool.query(`ALTER TABLE dash_financeiro ADD COLUMN IF NOT EXISTS caixa_id_firebird INTEGER;`, []);
+            await pool.query(`ALTER TABLE dash_financeiro ADD COLUMN IF NOT EXISTS depto_id INTEGER;`, []);
+            await pool.query(`ALTER TABLE dash_financeiro ADD COLUMN IF NOT EXISTS centro_custo INTEGER;`, []);
+            await pool.query(`ALTER TABLE dash_financeiro ADD COLUMN IF NOT EXISTS tipo_documento VARCHAR(50);`, []);
         } catch (migErr) {
             logger.warn('[DB] Migração silenciosa falhou ou já executada', { erro: migErr.message });
         }
 
-        return true;
     } catch (err) {
-        logger.error('[DB] Falha ao conectar ao PostgreSQL', { error: err.message });
-        return false;
+        logger.error('[DB] Falha ao conectar ao PostgreSQL principal', { error: err.message });
     }
+
+    // Check Vet database connection
+    try {
+        await poolVet.query('SELECT 1 AS ok', []);
+        logger.info(`[DB-Vet] Conectado ao PostgreSQL Vet (${config.postgresVet.database})`);
+        vetOk = true;
+    } catch (err) {
+        logger.warn('[DB-Vet] Falha ao conectar ao PostgreSQL Vet', { error: err.message });
+    }
+
+    return mainOk; // Retorna status da principal para não quebrar fluxo original do health check do Docker
 }
 
 module.exports = {
     query,
-    pool,
-    checkConnection
+    get pool() {
+        const store = dbContext.getStore();
+        return store && store.dbType === 'vet' ? poolVet : pool;
+    },
+    poolMain: pool,
+    poolVet,
+    checkConnection,
+    dbContext
 };

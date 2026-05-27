@@ -95,8 +95,9 @@ async function startServer() {
             logger.info('[App] Recebido sinal de parada. Fechando servidor...');
             server.close(async () => {
                 logger.info('[App] Servidor HTTP fechado.');
-                await db.pool.end();
-                logger.info('[App] Conexão com PostgreSQL fechada.');
+                await db.poolMain.end();
+                await db.poolVet.end();
+                logger.info('[App] Conexões com PostgreSQL (Principal e Vet) fechadas.');
                 process.exit(0);
             });
 

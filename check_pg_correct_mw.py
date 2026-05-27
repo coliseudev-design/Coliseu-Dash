@@ -26,8 +26,8 @@ script = (
     # Now -> server date
     "p.query('SELECT NOW() as ts, CURRENT_DATE as hoje').then(r=>{"
     "console.log('SRV_DATE:'+JSON.stringify(r.rows[0]));"
-    # Sales last 10 days
-    "return p.query('SELECT data_venda::text, status, COUNT(*), COALESCE(SUM(valor_total),0) FROM dash_vendas WHERE data_venda>=CURRENT_DATE-10 GROUP BY 1,2 ORDER BY 1 DESC');"
+    # Sales in May 2026
+    "return p.query('SELECT data_venda::text, status, COUNT(*), COALESCE(SUM(valor_total),0) AS sum FROM dash_vendas WHERE data_venda >= \\'2026-05-01\\' AND data_venda < \\'2026-06-01\\' GROUP BY 1,2 ORDER BY 1 DESC');"
     "}).then(r=>{"
     "r.rows.forEach(x=>console.log('VENDA:'+JSON.stringify(x)));"
     "return p.end();"

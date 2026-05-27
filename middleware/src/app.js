@@ -5,7 +5,7 @@ const helmet = require('helmet');
 const cors = require('cors');
 
 const config = require('./config/env');
-const { requireWebJwt, requireInternalAuth } = require('./middleware/auth');
+const { requireWebJwt, requireInternalAuth, bindDbContext } = require('./middleware/auth');
 const { errorHandler } = require('./middleware/errorHandler');
 const { defaultLimit } = require('./middleware/rateLimiter');
 
@@ -46,6 +46,7 @@ app.use('/health', healthRouter);
 // Rotas do sistema (Frontend Web)
 app.use('/api', requireWebJwt);
 app.use('/api', defaultLimit);
+app.use('/api', bindDbContext);
 
 app.use('/api/vendas', vendasRouter);
 app.use('/api/produtos', produtosRouter);
@@ -62,6 +63,7 @@ app.use('/api/bi', biRouter); // Novas rotas de BI
 app.use('/api/debug', debugRouter);
 
 app.use('/internal', requireInternalAuth);
+app.use('/internal', bindDbContext);
 app.use('/internal/sync', syncRouter); // Mantém /internal/sync para o C# Worker
 
 app.use((req, res) => {
