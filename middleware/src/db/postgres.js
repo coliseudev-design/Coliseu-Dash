@@ -109,6 +109,8 @@ async function checkConnection() {
             await pool.query(`ALTER TABLE dash_produtos ADD COLUMN IF NOT EXISTS custo DECIMAL(15,2) DEFAULT 0;`, []);
             await pool.query(`ALTER TABLE dash_produtos ADD COLUMN IF NOT EXISTS estoque DECIMAL(15,3) DEFAULT 0;`, []);
             await pool.query(`ALTER TABLE dash_produtos ADD COLUMN IF NOT EXISTS estoque_minimo DECIMAL(15,3) DEFAULT 0;`, []);
+            await pool.query(`ALTER TABLE dash_produtos ADD COLUMN IF NOT EXISTS marca_id INTEGER DEFAULT NULL;`, []);
+            await pool.query(`ALTER TABLE dash_produtos ADD COLUMN IF NOT EXISTS grupo_id INTEGER DEFAULT NULL;`, []);
             
             // Tabela de Caixas
             await pool.query(`
@@ -121,10 +123,38 @@ async function checkConnection() {
                     UNIQUE(tenant_id, id_firebird)
                 );
             `, []);
+            
+            // Tabelas de Marcas e Grupos
+            await pool.query(`
+                CREATE TABLE IF NOT EXISTS dash_marcas (
+                    id SERIAL PRIMARY KEY,
+                    tenant_id UUID NOT NULL,
+                    id_firebird INTEGER NOT NULL,
+                    nome VARCHAR(255) NOT NULL,
+                    sincronizado_em TIMESTAMPTZ DEFAULT NOW(),
+                    UNIQUE(tenant_id, id_firebird)
+                );
+            `, []);
+            
+            await pool.query(`
+                CREATE TABLE IF NOT EXISTS dash_grupos (
+                    id SERIAL PRIMARY KEY,
+                    tenant_id UUID NOT NULL,
+                    id_firebird INTEGER NOT NULL,
+                    nome VARCHAR(255) NOT NULL,
+                    sincronizado_em TIMESTAMPTZ DEFAULT NOW(),
+                    UNIQUE(tenant_id, id_firebird)
+                );
+            `, []);
+
             await pool.query(`ALTER TABLE dash_financeiro ADD COLUMN IF NOT EXISTS caixa_id_firebird INTEGER;`, []);
             await pool.query(`ALTER TABLE dash_financeiro ADD COLUMN IF NOT EXISTS depto_id INTEGER;`, []);
             await pool.query(`ALTER TABLE dash_financeiro ADD COLUMN IF NOT EXISTS centro_custo INTEGER;`, []);
             await pool.query(`ALTER TABLE dash_financeiro ADD COLUMN IF NOT EXISTS tipo_documento VARCHAR(50);`, []);
+            
+            // Colunas de CFOP e numero_nota nas vendas
+            await pool.query(`ALTER TABLE dash_vendas ADD COLUMN IF NOT EXISTS cfop INTEGER DEFAULT NULL;`, []);
+            await pool.query(`ALTER TABLE dash_vendas ADD COLUMN IF NOT EXISTS numero_nota INTEGER DEFAULT NULL;`, []);
         } catch (migErr) {
             logger.warn('[DB] Migração silenciosa falhou ou já executada', { erro: migErr.message });
         }

@@ -77,6 +77,8 @@ CREATE TABLE IF NOT EXISTS dash_produtos (
     custo DECIMAL(15,2) NOT NULL DEFAULT 0,
     estoque DECIMAL(15,3) NOT NULL DEFAULT 0,
     estoque_minimo DECIMAL(15,3) DEFAULT 0,
+    marca_id INTEGER DEFAULT NULL,
+    grupo_id INTEGER DEFAULT NULL,
     ativo BOOLEAN DEFAULT TRUE,
     sincronizado_em TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(tenant_id, id_firebird)
@@ -112,6 +114,24 @@ CREATE TABLE IF NOT EXISTS dash_fornecedores (
     UNIQUE(tenant_id, id_firebird)
 );
 
+CREATE TABLE IF NOT EXISTS dash_marcas (
+    id SERIAL PRIMARY KEY,
+    tenant_id UUID NOT NULL,
+    id_firebird INTEGER NOT NULL,
+    nome VARCHAR(255) NOT NULL,
+    sincronizado_em TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(tenant_id, id_firebird)
+);
+
+CREATE TABLE IF NOT EXISTS dash_grupos (
+    id SERIAL PRIMARY KEY,
+    tenant_id UUID NOT NULL,
+    id_firebird INTEGER NOT NULL,
+    nome VARCHAR(255) NOT NULL,
+    sincronizado_em TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(tenant_id, id_firebird)
+);
+
 -- ------------------------------------------------------------
 -- VENDAS E RELACIONADOS
 -- ------------------------------------------------------------
@@ -132,6 +152,8 @@ CREATE TABLE IF NOT EXISTS dash_vendas (
     marca VARCHAR(100),
     categoria VARCHAR(100),
     especie VARCHAR(100),
+    cfop INTEGER DEFAULT NULL,
+    numero_nota INTEGER DEFAULT NULL,
     sincronizado_em TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(tenant_id, id_firebird)
 );
