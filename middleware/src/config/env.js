@@ -45,7 +45,7 @@ const config = {
     postgresVet: {
         host: optional('PG_HOST_VET', optional('PG_HOST', 'localhost')),
         port: parseInt(optional('PG_PORT_VET', optional('PG_PORT', '5432')), 10),
-        database: optional('PG_DATABASE_VET', 'siscom_dashboard'),
+        database: optional('PG_DATABASE_VET', optional('PG_DATABASE', 'coliseu_dashboard')),
         user: optional('PG_USER_VET', optional('PG_USER', 'postgres')),
         password: optional('PG_PASSWORD_VET', optional('PG_PASSWORD', '')),
         ssl: optional('PG_SSL_VET', optional('PG_SSL', 'false')) === 'true',
