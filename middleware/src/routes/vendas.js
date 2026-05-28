@@ -4,26 +4,35 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db/postgres');
 const { getPeriodRange } = require('../utils/period');
+const cfopUtil = require('../utils/cfop');
 
 // GET /api/vendas/faturadas?period=today
 router.get('/faturadas', async (req, res, next) => {
     try {
         const period = req.query.period || '7d';
         const tenantId = req.tenant.id;
-        const maxDate = new Date();
-        const { start, end } = getPeriodRange(period, null, null, maxDate);
+
+        // Âncora: usar MAX(data_venda) para bases sincronizadas do Firebird
+        const { rows: anchorRows } = await db.query(
+            'SELECT MAX(data_venda) AS max_date FROM dash_vendas WHERE tenant_id = $1',
+            [tenantId]
+        );
+        const anchorDate = anchorRows[0].max_date ? new Date(anchorRows[0].max_date) : new Date();
+        const { start, end } = getPeriodRange(period, null, null, anchorDate);
+
+        const salesFilter = cfopUtil.getSalesFilterClause('v');
 
         const { rows } = await db.query(`
             SELECT 
-                TO_CHAR(data_venda, 'YYYY-MM-DD') AS data,
-                SUM(valor_total) AS total,
+                TO_CHAR(v.data_venda, 'YYYY-MM-DD') AS data,
+                SUM(v.valor_total) AS total,
                 COUNT(*) AS quantidade
-            FROM dash_vendas
-            WHERE tenant_id = $1 
-              AND data_venda >= $2 
-              AND data_venda <= $3
-              AND TRIM(status) IN ('FATURADO', 'FINALIZADO')
-            GROUP BY TO_CHAR(data_venda, 'YYYY-MM-DD')
+            FROM dash_vendas v
+            WHERE v.tenant_id = $1 
+              AND v.data_venda >= $2 
+              AND v.data_venda <= $3
+              ${salesFilter}
+            GROUP BY TO_CHAR(v.data_venda, 'YYYY-MM-DD')
             ORDER BY data
         `, [tenantId, start, end]);
 
@@ -129,21 +138,29 @@ router.get('/kpis', async (req, res, next) => {
         const period = req.query.period || 'hoje';
         const tenantId = req.tenant.id;
         const { start_date, end_date } = req.query;
-        const maxDate = new Date();
-        const { start, end } = getPeriodRange(period, start_date, end_date, maxDate);
+
+        // Âncora: usar MAX(data_venda) para bases sincronizadas do Firebird
+        const { rows: anchorRows } = await db.query(
+            'SELECT MAX(data_venda) AS max_date FROM dash_vendas WHERE tenant_id = $1',
+            [tenantId]
+        );
+        const anchorDate = anchorRows[0].max_date ? new Date(anchorRows[0].max_date) : new Date();
+        const { start, end } = getPeriodRange(period, start_date, end_date, anchorDate);
+
+        const salesFilter = cfopUtil.getSalesFilterClause('v');
 
         const { rows } = await db.query(`
             SELECT 
-                COALESCE(SUM(valor_total), 0) AS total_faturado,
+                COALESCE(SUM(v.valor_total), 0) AS total_faturado,
                 COUNT(*) AS qtd_pedidos,
-                COALESCE(AVG(valor_total), 0) AS ticket_medio,
-                COALESCE(MAX(valor_total), 0) AS maior_venda,
-                COALESCE(MIN(valor_total), 0) AS menor_venda
-            FROM dash_vendas
-            WHERE tenant_id = $1
-              AND data_venda >= $2
-              AND data_venda <= $3
-              AND TRIM(status) IN ('FATURADO', 'FINALIZADO')
+                COALESCE(AVG(v.valor_total), 0) AS ticket_medio,
+                COALESCE(MAX(v.valor_total), 0) AS maior_venda,
+                COALESCE(MIN(v.valor_total), 0) AS menor_venda
+            FROM dash_vendas v
+            WHERE v.tenant_id = $1
+              AND v.data_venda >= $2
+              AND v.data_venda <= $3
+              ${salesFilter}
         `, [tenantId, start, end]);
 
         const kpis = {

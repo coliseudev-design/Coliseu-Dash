@@ -11,6 +11,9 @@ const SALES_CFOPS = [
     6401, 6402, 6403, 6404
 ];
 
+// CFOPs de devolução para cálculo de faturamento líquido
+const RETURN_CFOPS = [1201, 1202, 2201, 2202, 1411];
+
 const SALES_STATUS_EXCLUDE = [
     'CANCELADO', 'ABERTO', 'PENDENTE', 'ORÇAMENTO', 'ORCAMENTO', 'NULO', 'TESTE'
 ];
@@ -20,9 +23,10 @@ function isVetContext() {
     return store && store.dbType === 'vet';
 }
 
+// Null-safe: vendas sem CFOP também são válidas (cfop IS NULL OR cfop IN (...))
 function getCfopFilterClause(tableAlias = 'v') {
     if (isVetContext()) {
-        return `AND ${tableAlias}.cfop IN (${SALES_CFOPS.join(',')})`;
+        return `AND (${tableAlias}.cfop IS NULL OR ${tableAlias}.cfop IN (${SALES_CFOPS.join(',')}))`;
     }
     return '';
 }
@@ -40,6 +44,7 @@ function getSalesFilterClause(tableAlias = 'v') {
 
 module.exports = {
     SALES_CFOPS,
+    RETURN_CFOPS,
     SALES_STATUS_EXCLUDE,
     isVetContext,
     getCfopFilterClause,
