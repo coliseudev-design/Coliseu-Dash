@@ -141,7 +141,7 @@ router.post('/:tabela', async (req, res) => {
         await client.query('COMMIT');
 
         // Pós-Processamento: Atualizar Cache e Materialized Views
-        if (['dash_vendas', 'dash_vendas_itens', 'dash_financeiro'].includes(tabela)) {
+        if (['dash_vendas', 'dash_vendas_itens', 'dash_financeiro', 'dash_devolucoes'].includes(tabela)) {
             invalidateTenant(tenantId);
 
             // WORKAROUND: Correção para pedidos zerados (Apenas Serviços)
