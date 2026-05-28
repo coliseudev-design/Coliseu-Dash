@@ -104,6 +104,7 @@ export default function VisaoEstrategicaV4() {
   const prod = useBranchPeriodQuery<any>('/ranking/produtos')
   const cli = useBranchPeriodQuery<any>('/ranking/clientes')
   const marcas = useBranchPeriodQuery<any>('/ranking/marcas')
+  const cidades = useBranchPeriodQuery<any>('/ranking/cidades', { limit: 15 })
 
   const period = usePeriodStore((s) => s.period)
   
@@ -139,8 +140,8 @@ export default function VisaoEstrategicaV4() {
 
   const mockTopProducts = prod.data?.data?.map((p: any) => ({ name: p.nome || p.produto, value: p.total })) || [];
 
-  // Currently no /ranking/cidades exists, so we derive from top clients if possible or use empty
-  const mockTopCities = cli.data?.data?.map((c: any) => ({ name: c.cidade || 'NÃO INFORMADA', value: c.total })) || [];
+  // Real Top Cities from the ranking API
+  const mockTopCities = cidades.data?.data?.map((c: any) => ({ name: c.nome, value: c.total })) || [];
 
   const mockTopClients = cli.data?.data?.map((c: any, i: number) => ({ rank: i + 1, name: c.nome, value: c.total })) || [];
 
@@ -426,16 +427,9 @@ export default function VisaoEstrategicaV4() {
                 />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.4 }} />
                 <Bar dataKey="value" fill={CHART_COLORS.primary} radius={[0, 4, 4, 0]} barSize={16}>
-                   <Cell fill="#8B5CF6" />
-                   <Cell fill="#8B5CF6" />
-                   <Cell fill="#8B5CF6" />
-                   <Cell fill="#8B5CF6" />
-                   <Cell fill="#8B5CF6" />
-                   <Cell fill="#8B5CF6" />
-                   <Cell fill="#8B5CF6" />
-                   <Cell fill="#8B5CF6" />
-                   <Cell fill="#8B5CF6" />
-                   <Cell fill="#8B5CF6" />
+                  {mockTopCities.map((entry: any, index: number) => (
+                    <Cell key={`cell-${index}`} fill={barColors[index % barColors.length]} />
+                  ))}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
@@ -444,9 +438,15 @@ export default function VisaoEstrategicaV4() {
         <div className="lg:col-span-1 flex flex-col gap-4">
           <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex-1 flex flex-col justify-center">
             <div className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2">Cidade Destaque</div>
-            <div className="text-brand-500 font-extrabold text-sm mb-1 truncate">DOURADOS</div>
-            <div className="text-xl font-extrabold text-text-primary">{formatBRL(103432.05)}</div>
-            <div className="text-xs text-text-muted mt-1">Participação: 45.6%</div>
+            <div className="text-brand-500 font-extrabold text-sm mb-1 truncate">
+              {mockTopCities.length > 0 ? mockTopCities[0].name : '—'}
+            </div>
+            <div className="text-xl font-extrabold text-text-primary">
+              {mockTopCities.length > 0 ? formatBRL(mockTopCities[0].value) : formatBRL(0)}
+            </div>
+            <div className="text-xs text-text-muted mt-1">
+              Participação: {faturamentoAtual > 0 && mockTopCities.length > 0 ? ((mockTopCities[0].value / faturamentoAtual) * 100).toFixed(1) : '0.0'}%
+            </div>
           </div>
         </div>
       </div>
