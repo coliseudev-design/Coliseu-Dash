@@ -12,9 +12,20 @@ def run_query(sql, label):
     print(f"=== {label} ===")
     print(stdout.read().decode('utf-8'))
 
-# Search for Vetseed or other tenant details
-run_query("SELECT id, nome, razao_social, cnpj FROM dash_empresas WHERE nome ILIKE '%vetseed%' OR razao_social ILIKE '%vetseed%';", "dash_empresas")
-run_query("SELECT id, nome, email, tenant_id FROM dash_usuarios WHERE nome ILIKE '%vetseed%' OR email ILIKE '%vetseed%';", "dash_usuarios")
-run_query("SELECT DISTINCT tenant_id FROM dash_vendas;", "Distinct Tenants in Sales")
-
+# Search for companies and users
+run_query("SELECT id, nome, razao_social, cnpj FROM dash_empresas;", "dash_empresas")
+run_query("SELECT id, nome, email, tenant_id, layout_version FROM dash_usuarios;", "dash_usuarios")
+run_query("""
+    SELECT tenant_id, cfop, COUNT(*), SUM(valor_total) 
+    FROM dash_vendas 
+    WHERE data_venda >= '2025-12-01' AND data_venda <= '2025-12-31' 
+    GROUP BY tenant_id, cfop;
+""", "Sales by Tenant and CFOP in Dec 2025")
+run_query("""
+    SELECT tenant_id, status, COUNT(*), SUM(valor_total) 
+    FROM dash_vendas 
+    WHERE data_venda >= '2025-12-01' AND data_venda <= '2025-12-31' 
+    GROUP BY tenant_id, status;
+""", "Sales by Tenant and Status in Dec 2025")
+run_query("SELECT COUNT(*) FROM dash_devolucoes;", "dash_devolucoes row count")
 client.close()

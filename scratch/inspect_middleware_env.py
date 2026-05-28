@@ -10,13 +10,23 @@ def inspect_env(container_name):
     print(f"=== Env for {container_name} ===")
     lines = stdout.read().decode('utf-8').split('\n')
     for line in lines:
-        if any(k in line for k in ['PG', 'DB', 'PORT', 'URL', 'KEY', 'HOST', 'USER', 'PASSWORD']):
-            # Redact password for safety
-            if 'PASS' in line or 'KEY' in line:
-                parts = line.split('=')
-                print(f"{parts[0]}=******")
+        if not line.strip():
+            continue
+        if '=' in line:
+            parts = line.split('=', 1)
+            name = parts[0]
+            val = parts[1]
+            if any(k in name.upper() for k in ['PASS', 'KEY', 'SECRET', 'TOKEN', 'AUTH']):
+                print(f"{name}=******")
             else:
-                print(line)
+                print(f"{name}={val}")
+        else:
+            print(line)
 
-inspect_env("dashboard-middleware-irerzifjwjb4q8ucbpfk2gb8-000305782386")
+# Find MW container name
+stdin, stdout, stderr = client.exec_command("docker ps --format '{{.Names}}' | grep 'dashboard-middleware'")
+mw = stdout.read().decode('utf-8').strip()
+print(f"Active middleware container: {mw}")
+
+inspect_env(mw)
 client.close()

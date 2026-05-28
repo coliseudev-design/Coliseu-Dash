@@ -28,4 +28,4 @@ tables = [
 ]
 
 for t in tables:
-    run_query(f"SELECT COUNT(*) FROM {t} WHERE tenant_id = '3edd56b4-e002-48ed-8ecb-131c0c62dcfb';")
+    run_query(f"SELECT '{t}' as table, COUNT(*) as count_3edd, (SELECT COUNT(*) FROM {t} WHERE tenant_id = 'a822a7e7-fdd4-4483-bbb5-26587a72739f') as count_a822 FROM {t} WHERE tenant_id = '3edd56b4-e002-48ed-8ecb-131c0c62dcfb';")

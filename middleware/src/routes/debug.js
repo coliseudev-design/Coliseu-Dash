@@ -19,4 +19,43 @@ router.get('/vendas-17', async (req, res) => {
     }
 });
 
+router.get('/db-summary', async (req, res) => {
+    try {
+        const tenantId = req.tenant.id;
+        const salesRes = await db.query(`
+            SELECT 
+                COUNT(*) as total_sales,
+                SUM(CASE WHEN cfop IS NULL THEN 1 ELSE 0 END) as cfop_null,
+                SUM(CASE WHEN cfop IS NOT NULL THEN 1 ELSE 0 END) as cfop_not_null,
+                MIN(data_venda) as min_date,
+                MAX(data_venda) as max_date
+            FROM dash_vendas
+            WHERE tenant_id = $1
+        `, [tenantId]);
+
+        const distinctCfops = await db.query(`
+            SELECT cfop, COUNT(*) as count, SUM(valor_total) as total_value
+            FROM dash_vendas
+            WHERE tenant_id = $1
+            GROUP BY cfop
+            ORDER BY count DESC
+        `, [tenantId]);
+
+        const devCount = await db.query(`
+            SELECT COUNT(*) as count, SUM(valor) as total_value
+            FROM dash_devolucoes
+            WHERE tenant_id = $1
+        `, [tenantId]);
+
+        res.json({
+            tenant_id: tenantId,
+            sales: salesRes.rows[0],
+            cfops: distinctCfops.rows,
+            devolucoes: devCount.rows[0]
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 module.exports = router;

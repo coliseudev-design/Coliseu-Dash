@@ -1,7 +1,7 @@
 import urllib.request, urllib.error, json, ssl
 
 BASE = "https://dashboard.coliseusistemas.com.br"
-TENANT = "3edd56b4-e002-48ed-8ecb-131c0c62dcfb"
+TENANT = "c824cac2-6f4e-4871-a3d8-664c149e5f75"
 API_KEY = "COL-KGV7-UFY2-XEBX"
 
 ctx = ssl.create_default_context()

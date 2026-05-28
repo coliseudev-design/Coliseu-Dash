@@ -12,7 +12,8 @@ def run_query(sql, label):
     print(f"=== {label} ===")
     print(stdout.read().decode('utf-8'))
 
-run_query("SELECT id, nome, email, tenant_id, layout_version FROM dash_usuarios;", "dash_usuarios")
-run_query("SELECT DISTINCT tenant_id FROM dash_usuarios;", "Distinct Tenants in dash_usuarios")
-run_query("SELECT DISTINCT tenant_id FROM dash_clientes;", "Distinct Tenants in dash_clientes")
+run_query("SELECT COUNT(*), SUM(valor_total) FROM dash_vendas WHERE valor_total < 0;", "Total Negative Sales in DB")
+run_query("SELECT tenant_id, COUNT(*), SUM(valor_total) FROM dash_vendas WHERE valor_total < 0 GROUP BY tenant_id;", "Negative Sales by Tenant")
+run_query("SELECT id_firebird, tenant_id, data_venda::text, valor_total, status, cfop FROM dash_vendas WHERE valor_total < 0 LIMIT 20;", "Sample Negative Sales")
+
 client.close()

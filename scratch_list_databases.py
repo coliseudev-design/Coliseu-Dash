@@ -12,5 +12,6 @@ def run_query(sql, db="coliseu_dashboard"):
     print(f"=== DB: {db} | Query: {sql} ===")
     print(stdout.read().decode('utf-8'))
 
-run_query("SELECT datname FROM pg_database;")
+run_query("SELECT id, name, slug FROM companies;", db="coliseu_identity")
+run_query("SELECT company_id, module_slug, active, settings FROM company_modules;", db="coliseu_identity")
 client.close()

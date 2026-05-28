@@ -12,7 +12,12 @@ def run_query(sql, label):
     print(f"=== {label} ===")
     print(stdout.read().decode('utf-8'))
 
-run_query("SELECT id, nome, email, tenant_id, layout_version FROM dash_usuarios;", "dash_usuarios")
-run_query("SELECT DISTINCT tenant_id FROM dash_usuarios;", "Distinct Tenants in dash_usuarios")
-run_query("SELECT DISTINCT tenant_id FROM dash_clientes;", "Distinct Tenants in dash_clientes")
+run_query("""
+    SELECT TO_CHAR(data_venda, 'YYYY-MM') as mes, TRIM(status) as status, COUNT(*), SUM(valor_total) 
+    FROM dash_vendas 
+    WHERE tenant_id = 'a822a7e7-fdd4-4483-bbb5-26587a72739f' AND data_venda >= '2026-05-01'
+    GROUP BY 1, 2
+    ORDER BY 1 DESC;
+""", "Future sales by Month and Status")
+
 client.close()
