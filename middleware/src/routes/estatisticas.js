@@ -157,7 +157,13 @@ router.get('/kpis', async (req, res, next) => {
         const deptoId = req.query.depto_id;
 
         const maxDate = new Date();
-        const { start, end } = getPeriodRange(period, start_date, end_date, maxDate);
+        // Âncora: usar MAX(data_venda) para bases sincronizadas do Firebird
+        const { rows: anchorRowsKpi } = await db.query(
+            'SELECT MAX(data_venda) AS max_date FROM dash_vendas WHERE tenant_id = $1',
+            [tenantId]
+        );
+        const anchorKpi = anchorRowsKpi[0].max_date ? new Date(anchorRowsKpi[0].max_date) : maxDate;
+        const { start, end } = getPeriodRange(period, start_date, end_date, anchorKpi);
 
         const df = buildDeptoFilter(deptoId, 4, 'v');
         const dfFin = buildDeptoFilter(deptoId, 4, 'f');
