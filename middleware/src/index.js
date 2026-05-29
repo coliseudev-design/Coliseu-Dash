@@ -7,19 +7,16 @@ const db = require('./db/postgres');
 const fs = require('fs');
 const path = require('path');
 
-async function startServer() {
-    try {
-        const dbOk = await db.checkConnection();
-        if (!dbOk) {
-            logger.warn('[App] Banco de dados indisponível no boot. Servidor continuará iniciando para health-checks falharem graciosamente.');
-        } else {
+async function initDbForType(dbType) {
+    return new Promise((resolve, reject) => {
+        db.dbContext.run({ dbType }, async () => {
             try {
-                logger.info('[App] Sincronizando tabelas do banco de dados (schema.sql)...');
+                logger.info(`[App] Sincronizando tabelas do banco de dados (schema.sql) para ${dbType}...`);
                 const schemaPath = path.join(__dirname, 'db', 'schema.sql');
                 const schemaSql = fs.readFileSync(schemaPath, 'utf8');
                 await db.query(schemaSql);
 
-                logger.info('[App] Executando migração de permissões e admin...');
+                logger.info(`[App] Executando migração de permissões e admin para ${dbType}...`);
                 await db.query('ALTER TABLE dash_usuarios ADD COLUMN IF NOT EXISTS permissions JSONB DEFAULT NULL;');
 
                 const bcrypt = require('bcryptjs');
@@ -38,81 +35,56 @@ async function startServer() {
                         ['00000000-0000-0000-0000-000000000000', adminEmail, 'Admin Silenus', 'master', hash]
                     );
                 }
-                logger.info('[App] Tabelas inicializadas com sucesso.');
+                logger.info(`[App] Tabelas inicializadas com sucesso para ${dbType}.`);
 
-                logger.info('[App] Inicializando e migrando sistema RBAC (Grupos e Permissões)...');
+                logger.info(`[App] Inicializando e migrando sistema RBAC (Grupos e Permissões) para ${dbType}...`);
                 await initializeRbac(db);
 
-                // --- Migração 001: Filtro por Filial/Departamento ---
-                // Idempotente: usa IF NOT EXISTS em todas as instruções.
-                // Roda automaticamente a cada deploy via Coolify.
-                try {
-                    const migrationPath = path.join(__dirname, 'db', 'migrations', '001_add_depto_filial.sql');
-                    if (fs.existsSync(migrationPath)) {
-                        logger.info('[App] Aplicando migração 001_add_depto_filial.sql...');
-                        const migrationSql = fs.readFileSync(migrationPath, 'utf8');
-                        await db.query(migrationSql);
-                        logger.info('[App] Migração 001 (filtro filial) aplicada com sucesso.');
-                    }
-                } catch (migErr) {
-                    // Não bloqueia o startup — avisa no log
-                    logger.warn('[App] Aviso na migração 001 (pode já existir):', migErr.message);
-                }
+                // --- Migrações ---
+                const migrations = [
+                    { name: '001', file: '001_add_depto_filial.sql' },
+                    { name: '002', file: '002_add_centro_custo.sql' },
+                    { name: '003', file: '003_add_classificacao.sql' },
+                    { name: '004', file: '004_add_data_vencimento_vendas.sql' },
+                    { name: '005', file: '005_increase_varchar_limits.sql' }
+                ];
 
-                // --- Migração 002: Centro de Custo no Financeiro ---
-                try {
-                    const migrationPath2 = path.join(__dirname, 'db', 'migrations', '002_add_centro_custo.sql');
-                    if (fs.existsSync(migrationPath2)) {
-                        logger.info('[App] Aplicando migração 002_add_centro_custo.sql...');
-                        const migrationSql2 = fs.readFileSync(migrationPath2, 'utf8');
-                        await db.query(migrationSql2);
-                        logger.info('[App] Migração 002 aplicada com sucesso.');
+                for (const mig of migrations) {
+                    try {
+                        const migrationPath = path.join(__dirname, 'db', 'migrations', mig.file);
+                        if (fs.existsSync(migrationPath)) {
+                            logger.info(`[App] Aplicando migração ${mig.file} para ${dbType}...`);
+                            const migrationSql = fs.readFileSync(migrationPath, 'utf8');
+                            await db.query(migrationSql);
+                            logger.info(`[App] Migração ${mig.name} aplicada com sucesso para ${dbType}.`);
+                        }
+                    } catch (migErr) {
+                        logger.warn(`[App] Aviso na migração ${mig.name} para ${dbType}:`, migErr.message);
                     }
-                } catch (migErr) {
-                    logger.warn('[App] Aviso na migração 002:', migErr.message);
                 }
+                resolve();
+            } catch (err) {
+                reject(err);
+            }
+        });
+    });
+}
 
-                // --- Migração 004: Data de Vencimento nas Vendas ---
+async function startServer() {
+    try {
+        const dbOk = await db.checkConnection();
+        if (!dbOk) {
+            logger.warn('[App] Banco de dados indisponível no boot. Servidor continuará iniciando para health-checks falharem graciosamente.');
+        } else {
+            try {
+                await initDbForType('main');
                 try {
-                    const migrationPath4 = path.join(__dirname, 'db', 'migrations', '004_add_data_vencimento_vendas.sql');
-                    if (fs.existsSync(migrationPath4)) {
-                        logger.info('[App] Aplicando migração 004_add_data_vencimento_vendas.sql...');
-                        const migrationSql4 = fs.readFileSync(migrationPath4, 'utf8');
-                        await db.query(migrationSql4);
-                        logger.info('[App] Migração 004 aplicada com sucesso.');
-                    }
-                } catch (migErr) {
-                    logger.warn('[App] Aviso na migração 004:', migErr.message);
+                    await initDbForType('vet');
+                } catch (vetErr) {
+                    logger.error('[App] Falha ao inicializar o banco de dados VET (pode não estar ativo/criado ainda):', vetErr.message);
                 }
-
-                // --- Migração 003: Classificacao nos Clientes ---
-                try {
-                    const migrationPath3 = path.join(__dirname, 'db', 'migrations', '003_add_classificacao.sql');
-                    if (fs.existsSync(migrationPath3)) {
-                        logger.info('[App] Aplicando migração 003_add_classificacao.sql...');
-                        const migrationSql3 = fs.readFileSync(migrationPath3, 'utf8');
-                        await db.query(migrationSql3);
-                        logger.info('[App] Migração 003 aplicada com sucesso.');
-                    }
-                } catch (migErr) {
-                    logger.warn('[App] Aviso na migração 003:', migErr.message);
-                }
-
-                // --- Migração 005: Aumentar limites VARCHAR e padrão admin ---
-                try {
-                    const migrationPath5 = path.join(__dirname, 'db', 'migrations', '005_increase_varchar_limits.sql');
-                    if (fs.existsSync(migrationPath5)) {
-                        logger.info('[App] Aplicando migração 005_increase_varchar_limits.sql...');
-                        const migrationSql5 = fs.readFileSync(migrationPath5, 'utf8');
-                        await db.query(migrationSql5);
-                        logger.info('[App] Migração 005 aplicada com sucesso.');
-                    }
-                } catch (migErr) {
-                    logger.warn('[App] Aviso na migração 005:', migErr.message);
-                }
-
             } catch (dbErr) {
-                logger.error('[App] Erro ao sincronizar as tabelas do banco:', dbErr);
+                logger.error('[App] Erro ao sincronizar as tabelas do banco principal:', dbErr);
             }
         }
 
@@ -210,11 +182,17 @@ async function initializeRbac(db) {
             // Inserir as permissões padrão para esse grupo com base no layout
             const modules = layout === 'v4.0' ? vetModules : coliseuModules;
             for (const mod of modules) {
+                const shouldRestrict = layout === 'v4.0' && [
+                    'bi_abc', 'bi_finance', 'bi_customer', 'bi_comparative', 'bi_customer_analytics'
+                ].includes(mod);
+                const podeAcessar = !shouldRestrict;
+
                 await db.query(`
                     INSERT INTO dash_permissoes (grupo_id, recurso, pode_acessar)
-                    VALUES ($1, $2, true)
-                    ON CONFLICT (grupo_id, recurso) DO NOTHING
-                `, [groupId, mod]);
+                    VALUES ($1, $2, $3)
+                    ON CONFLICT (grupo_id, recurso) 
+                    DO UPDATE SET pode_acessar = EXCLUDED.pode_acessar
+                `, [groupId, mod, podeAcessar]);
             }
 
             // Vincular os usuários deste tenant/layout que não possuem grupo_id ainda
