@@ -1,17 +1,22 @@
-import paramiko
+import os
 
-client = paramiko.SSHClient()
-client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-client.connect('177.39.17.7', username='root', password='6EFBC!c0:wzr%Ij')
+def search_text(root_dir, text):
+    matches = []
+    for root, dirs, files in os.walk(root_dir):
+        if ".git" in root or "node_modules" in root or ".vite" in root:
+            continue
+        for file in files:
+            path = os.path.join(root, file)
+            try:
+                with open(path, 'r', encoding='utf-8', errors='ignore') as f:
+                    content = f.read()
+                    if text in content:
+                        matches.append(path)
+            except Exception:
+                pass
+    return matches
 
-DB_CONTAINER = "coliseu-db-thyqkc5gkvp7i1nld555wakz-172547374937"
-
-def run_query(sql, db="coliseu_dashboard"):
-    cmd = f'docker exec {DB_CONTAINER} psql -U coliseu_admin -d {db} -c "{sql}"'
-    stdin, stdout, stderr = client.exec_command(cmd)
-    print(f"=== DB: {db} | Query: {sql} ===")
-    print(stdout.read().decode('utf-8'))
-
-run_query("SELECT id, name, slug FROM companies;", db="coliseu_identity")
-run_query("SELECT company_id, module_slug, active, settings FROM company_modules;", db="coliseu_identity")
-client.close()
+print("Search for 3edd56b4:")
+print(search_text(r"c:\Mac\Home\Documents\GitHub\Coliseu-Dash", "3edd56b4"))
+print("Search for thiago:")
+print(search_text(r"c:\Mac\Home\Documents\GitHub\Coliseu-Dash", "thiago"))

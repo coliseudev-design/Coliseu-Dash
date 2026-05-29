@@ -20,7 +20,8 @@ queries = [
 ]
 
 for label, q in queries:
-    cmd = ['ssh', '-o', 'StrictHostKeyChecking=no', '-o', 'ConnectTimeout=8',
+    cmd = ['ssh', '-i', r'C:\Users\kleber\.ssh\id_rsa',
+           '-o', 'StrictHostKeyChecking=no', '-o', 'ConnectTimeout=8',
            'root@38.242.244.84', f'psql -U coliseu_user -d coliseu_db -c "{q}"']
     try:
         r = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
