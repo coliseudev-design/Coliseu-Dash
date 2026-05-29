@@ -148,16 +148,17 @@ router.get('/sales/executive-summary', async (req, res, next) => {
 
         // --- 3. Top Products ---
         const { rows: prods } = await db.query(`
-            SELECT COALESCE(vi.produto, 'Produto ' || COALESCE(vi.produto_id_firebird::text, '?')) AS nome, 
+            SELECT COALESCE(vi.produto, p.nome, 'Produto ' || COALESCE(vi.produto_id_firebird::text, '?')) AS nome, 
                    SUM(
                        vi.valor_total
                    ) as vendas
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+            LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
             WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 
               ${salesFilter}
-              AND COALESCE(vi.produto, vi.produto_id_firebird::text) IS NOT NULL${df.clause}
-            GROUP BY COALESCE(vi.produto, 'Produto ' || COALESCE(vi.produto_id_firebird::text, '?'))
+              AND COALESCE(vi.produto, p.nome, vi.produto_id_firebird::text) IS NOT NULL${df.clause}
+            GROUP BY COALESCE(vi.produto, p.nome, 'Produto ' || COALESCE(vi.produto_id_firebird::text, '?'))
             ORDER BY vendas DESC
             LIMIT 10
         `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
@@ -172,16 +173,17 @@ router.get('/sales/executive-summary', async (req, res, next) => {
 
         // --- 4. Top Brands ---
         const { rows: brands } = await db.query(`
-            SELECT COALESCE(vi.marca, v.marca, 'S/ MARCA') as nome, 
+            SELECT COALESCE(vi.marca, v.marca, p.marca, 'S/ MARCA') as nome, 
                    SUM(
                        vi.valor_total
                    ) as vendas
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+            LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
             WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 
               ${salesFilter}
-              AND COALESCE(vi.marca, v.marca) IS NOT NULL AND COALESCE(vi.marca, v.marca) != ''${df.clause}
-            GROUP BY COALESCE(vi.marca, v.marca, 'S/ MARCA')
+              AND COALESCE(vi.marca, v.marca, p.marca) IS NOT NULL AND COALESCE(vi.marca, v.marca, p.marca) != ''${df.clause}
+            GROUP BY COALESCE(vi.marca, v.marca, p.marca, 'S/ MARCA')
             ORDER BY vendas DESC
             LIMIT 10
         `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
@@ -219,16 +221,17 @@ router.get('/sales/executive-summary', async (req, res, next) => {
 
         // --- 6. Top Categories ---
         const { rows: categories } = await db.query(`
-            SELECT COALESCE(vi.categoria, v.categoria, 'S/ GRUPO') as nome, 
+            SELECT COALESCE(vi.categoria, v.categoria, p.categoria, 'S/ GRUPO') as nome, 
                    SUM(
                        vi.valor_total
                    ) as vendas
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+            LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
             WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 
               ${salesFilter}
-              AND COALESCE(vi.categoria, v.categoria) IS NOT NULL AND COALESCE(vi.categoria, v.categoria) != ''${df.clause}
-            GROUP BY COALESCE(vi.categoria, v.categoria, 'S/ GRUPO')
+              AND COALESCE(vi.categoria, v.categoria, p.categoria) IS NOT NULL AND COALESCE(vi.categoria, v.categoria, p.categoria) != ''${df.clause}
+            GROUP BY COALESCE(vi.categoria, v.categoria, p.categoria, 'S/ GRUPO')
             ORDER BY vendas DESC
             LIMIT 10
         `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
@@ -271,8 +274,8 @@ router.get('/sales/executive-summary', async (req, res, next) => {
             WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
               ${salesFilter}
               ${df.clause}
-            GROUP BY TO_CHAR(v.data_venda, 'DD/MM'), MIN(v.data_venda)
-            ORDER BY MIN(v.data_venda) ASC
+            GROUP BY DATE_TRUNC('day', v.data_venda), TO_CHAR(v.data_venda, 'DD/MM')
+            ORDER BY DATE_TRUNC('day', v.data_venda) ASC
         `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
 
         const revenue_trajectory = trajectory.map(t => ({
@@ -949,16 +952,17 @@ router.get('/comparative/summary', async (req, res, next) => {
 
         // --- Marcas ---
         const { rows: marcas } = await db.query(`
-            SELECT COALESCE(vi.marca, v.marca, 'S/ MARCA') as nome, 
+            SELECT COALESCE(vi.marca, v.marca, p.marca, 'S/ MARCA') as nome, 
                    SUM(vi.valor_total) as vendas,
                    SUM(vi.custo_unitario * vi.quantidade) as custo
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+            LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
             WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
               ${salesFilter}
-              AND COALESCE(vi.marca, v.marca) IS NOT NULL AND COALESCE(vi.marca, v.marca) != ''
+              AND COALESCE(vi.marca, v.marca, p.marca) IS NOT NULL AND COALESCE(vi.marca, v.marca, p.marca) != ''
               ${df.clause}
-            GROUP BY COALESCE(vi.marca, v.marca, 'S/ MARCA')
+            GROUP BY COALESCE(vi.marca, v.marca, p.marca, 'S/ MARCA')
             ORDER BY vendas DESC
             LIMIT 15
         `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
@@ -982,16 +986,17 @@ router.get('/comparative/summary', async (req, res, next) => {
 
         // --- Grupos/Categorias ---
         const { rows: grupos } = await db.query(`
-            SELECT COALESCE(vi.categoria, v.categoria, 'S/ GRUPO') as nome, 
+            SELECT COALESCE(vi.categoria, v.categoria, p.categoria, 'S/ GRUPO') as nome, 
                    SUM(vi.valor_total) as vendas,
                    SUM(vi.custo_unitario * vi.quantidade) as custo
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+            LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
             WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
               ${salesFilter}
-              AND COALESCE(vi.categoria, v.categoria) IS NOT NULL AND COALESCE(vi.categoria, v.categoria) != ''
+              AND COALESCE(vi.categoria, v.categoria, p.categoria) IS NOT NULL AND COALESCE(vi.categoria, v.categoria, p.categoria) != ''
               ${df.clause}
-            GROUP BY COALESCE(vi.categoria, v.categoria, 'S/ GRUPO')
+            GROUP BY COALESCE(vi.categoria, v.categoria, p.categoria, 'S/ GRUPO')
             ORDER BY vendas DESC
             LIMIT 15
         `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
@@ -1099,6 +1104,7 @@ router.get('/supplier/analytics', async (req, res, next) => {
                 COUNT(DISTINCT v.cliente_id_firebird) as clientes
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+            LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
             WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
               ${salesFilter}
               ${df.clause}
@@ -1106,7 +1112,7 @@ router.get('/supplier/analytics', async (req, res, next) => {
         let params = [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params];
         
         if (marca) {
-            baseQuery += ` AND vi.marca = $4`;
+            baseQuery += ` AND COALESCE(vi.marca, p.marca) = $4`;
             params.push(marca);
         }
 
@@ -1114,31 +1120,33 @@ router.get('/supplier/analytics', async (req, res, next) => {
 
         // Fetch top 3 products
         let prodQuery = `
-            SELECT COALESCE(vi.produto, 'S/ NOME') as nome, SUM(vi.quantidade) as qtde, SUM(vi.valor_total) as receita
+            SELECT COALESCE(vi.produto, p.nome, 'S/ NOME') as nome, SUM(vi.quantidade) as qtde, SUM(vi.valor_total) as receita
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+            LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
             WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
               ${salesFilter}
               ${df.clause}
         `;
-        if (marca) prodQuery += ` AND vi.marca = $4`;
-        prodQuery += ` GROUP BY vi.produto ORDER BY receita DESC LIMIT 30`;
+        if (marca) prodQuery += ` AND COALESCE(vi.marca, p.marca) = $4`;
+        prodQuery += ` GROUP BY COALESCE(vi.produto, p.nome, 'S/ NOME') ORDER BY receita DESC LIMIT 30`;
         
         const { rows: top_products } = await db.query(prodQuery, params);
 
         // Fetch Top Brands
         let brandQuery = `
             SELECT 
-                COALESCE(vi.marca, 'S/ MARCA') as nome, 
+                COALESCE(vi.marca, p.marca, 'S/ MARCA') as nome, 
                 SUM(vi.quantidade) as qtde, 
                 SUM(vi.valor_total) as receita,
                 RANK() OVER (ORDER BY SUM(vi.valor_total) DESC) as rank
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+            LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
             WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
               ${salesFilter}
               ${df.clause}
-            GROUP BY COALESCE(vi.marca, 'S/ MARCA')
+            GROUP BY COALESCE(vi.marca, p.marca, 'S/ MARCA')
             ORDER BY receita DESC
         `;
         const { rows: all_brands_ranked } = await db.query(brandQuery, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
@@ -1170,18 +1178,23 @@ router.get('/supplier/analytics', async (req, res, next) => {
                 SUM(vi.quantidade) as qtde
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+            LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
             WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
               ${salesFilter}
               ${df.clause}
         `;
-        if (marca) monthlyQuery += ` AND vi.marca = $4`;
-        monthlyQuery += ` GROUP BY TO_CHAR(v.data_venda, 'MM/YYYY') ORDER BY MIN(v.data_venda) ASC`;
+        if (marca) monthlyQuery += ` AND COALESCE(vi.marca, p.marca) = $4`;
+        monthlyQuery += ` GROUP BY DATE_TRUNC('month', v.data_venda), TO_CHAR(v.data_venda, 'MM/YYYY') ORDER BY DATE_TRUNC('month', v.data_venda) ASC`;
         
         const { rows: monthly } = await db.query(monthlyQuery, params);
 
         // Fetch all distinct brands for the dropdown filter
         const { rows: allBrands } = await db.query(`
-            SELECT DISTINCT marca FROM dash_vendas_itens WHERE tenant_id = $1 AND marca IS NOT NULL ORDER BY marca ASC
+            SELECT DISTINCT COALESCE(vi.marca, p.marca) as marca 
+            FROM dash_vendas_itens vi
+            LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
+            WHERE vi.tenant_id = $1 AND COALESCE(vi.marca, p.marca) IS NOT NULL AND COALESCE(vi.marca, p.marca) <> ''
+            ORDER BY marca ASC
         `, [tenantId]);
 
         res.json({

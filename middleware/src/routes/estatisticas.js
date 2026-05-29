@@ -110,10 +110,10 @@ router.get('/overview', async (req, res, next) => {
             db.query(`SELECT COALESCE(SUM((CASE WHEN f.valor_pago = 0 THEN f.valor ELSE f.valor_pago END)),0) AS v FROM dash_financeiro f WHERE f.tenant_id = $1 AND COALESCE(f.data_pagamento, f.data_vencimento, NOW()) >= $2 AND COALESCE(f.data_pagamento, f.data_vencimento, NOW()) <= $3 AND TRIM(f.tipo) = 'RECEBER' AND TRIM(f.status_pagamento) = 'PAGO'${dfFin.clause}`, [tenantId, finRange.start, finRange.end, ...dfFin.params]),
             db.query(`SELECT COALESCE(SUM(f.valor - f.valor_pago),0) AS v FROM dash_financeiro f WHERE f.tenant_id = $1 AND COALESCE(f.data_vencimento, f.data_emissao, NOW()) >= $2 AND COALESCE(f.data_vencimento, f.data_emissao, NOW()) <= $3 AND TRIM(f.tipo) = 'PAGAR' AND TRIM(f.status_pagamento) = 'ABERTO'${dfFin.clause}`, [tenantId, finRange.start, finRange.end, ...dfFin.params]),
             db.query(`SELECT COALESCE(SUM((CASE WHEN f.valor_pago = 0 THEN f.valor ELSE f.valor_pago END)),0) AS v FROM dash_financeiro f WHERE f.tenant_id = $1 AND COALESCE(f.data_pagamento, f.data_vencimento, NOW()) >= $2 AND COALESCE(f.data_pagamento, f.data_vencimento, NOW()) <= $3 AND TRIM(f.tipo) = 'PAGAR' AND TRIM(f.status_pagamento) = 'PAGO'${dfFin.clause}`, [tenantId, finRange.start, finRange.end, ...dfFin.params]),
-            // 11. Top marcas (por valor de venda — mais confiável que por itens quando itens não têm marca)
-            db.query(`SELECT v.marca, SUM(v.valor_total) AS total FROM dash_vendas v WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 ${salesFilter} AND v.marca IS NOT NULL AND v.marca != ''${df.clause} GROUP BY v.marca ORDER BY total DESC LIMIT 15`, [tenantId, start, end, ...df.params]),
-            // 12. Top categorias (por valor de venda)
-            db.query(`SELECT v.categoria, SUM(v.valor_total) AS total FROM dash_vendas v WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 ${salesFilter} AND v.categoria IS NOT NULL AND v.categoria != ''${df.clause} GROUP BY v.categoria ORDER BY total DESC LIMIT 15`, [tenantId, start, end, ...df.params])
+            // 11. Top marcas (por valor de venda - com fallback pelo cadastro do produto se o item estiver vazio)
+            db.query(`SELECT COALESCE(vi.marca, p.marca, 'S/ MARCA') AS marca, SUM(vi.valor_total) AS total FROM dash_vendas_itens vi JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 ${salesFilter} AND COALESCE(vi.marca, p.marca) IS NOT NULL AND COALESCE(vi.marca, p.marca) != ''${df.clause} GROUP BY COALESCE(vi.marca, p.marca) ORDER BY total DESC LIMIT 15`, [tenantId, start, end, ...df.params]),
+            // 12. Top categorias (por valor de venda - com fallback pelo cadastro do produto se o item estiver vazio)
+            db.query(`SELECT COALESCE(vi.categoria, p.categoria, 'S/ GRUPO') AS categoria, SUM(vi.valor_total) AS total FROM dash_vendas_itens vi JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 ${salesFilter} AND COALESCE(vi.categoria, p.categoria) IS NOT NULL AND COALESCE(vi.categoria, p.categoria) != ''${df.clause} GROUP BY COALESCE(vi.categoria, p.categoria) ORDER BY total DESC LIMIT 15`, [tenantId, start, end, ...df.params])
         ]);
 
         const totalHoje = parseFloat(vHoje.rows[0].total) - parseFloat(dHoje.rows[0].total);
@@ -225,12 +225,13 @@ router.get('/kpis', async (req, res, next) => {
         `, [tenantId, start, end, ...dfFin.params]);
 
         const { rows: topCats } = await db.query(`
-            SELECT vi.categoria as categoria, SUM(vi.valor_total) AS total
+            SELECT COALESCE(vi.categoria, p.categoria, 'S/ GRUPO') as categoria, SUM(vi.valor_total) AS total
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+            LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
             WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 ${salesFilter}
-              AND vi.categoria IS NOT NULL AND vi.categoria != ''${dfVi.clause}
-            GROUP BY vi.categoria ORDER BY total DESC LIMIT 5
+              AND COALESCE(vi.categoria, p.categoria) IS NOT NULL AND COALESCE(vi.categoria, p.categoria) != ''${dfVi.clause}
+            GROUP BY COALESCE(vi.categoria, p.categoria) ORDER BY total DESC LIMIT 5
         `, [tenantId, start, end, ...dfVi.params]);
 
         const { rows: rCli } = await db.query(`SELECT COUNT(DISTINCT v.cliente_id_firebird) AS ativos FROM dash_vendas v WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 ${salesFilter} ${df.clause}`, [tenantId, start, end, ...df.params]);
@@ -248,11 +249,12 @@ router.get('/kpis', async (req, res, next) => {
         const { rows: rEst } = await db.query(`SELECT COALESCE(SUM(estoque), 0) AS qtd, COALESCE(SUM(estoque * preco), 0) AS valor FROM dash_produtos WHERE tenant_id = $1 AND ativo = true`, [tenantId]);
 
         const { rows: topProd } = await db.query(`
-            SELECT COALESCE(vi.produto, 'Sem nome') AS nome, SUM(vi.quantidade) AS qtd
+            SELECT COALESCE(vi.produto, p.nome, 'Sem nome') AS nome, SUM(vi.quantidade) AS qtd
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
-            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 ${salesFilter} AND vi.produto IS NOT NULL${dfVi.clause}
-            GROUP BY vi.produto
+            LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
+            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 ${salesFilter} ${dfVi.clause}
+            GROUP BY COALESCE(vi.produto, p.nome)
             ORDER BY qtd DESC LIMIT 1
         `, [tenantId, start, end, ...dfVi.params]);
 

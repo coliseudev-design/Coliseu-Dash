@@ -159,15 +159,16 @@ router.get('/produtos', async (req, res, next) => {
 
         const { rows } = await db.query(`
             SELECT 
-                COALESCE(vi.produto, 'Produto ' || COALESCE(vi.produto_id_firebird::text, '?')) AS nome,
+                COALESCE(vi.produto, p.nome, 'Produto ' || COALESCE(vi.produto_id_firebird::text, '?')) AS nome,
                 SUM(vi.valor_total) AS total,
                 SUM(vi.quantidade) AS qtd_vendida,
                 AVG(vi.preco_unitario) AS preco_medio
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+            LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
             WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 ${salesFilter}
-              AND COALESCE(vi.produto, vi.produto_id_firebird::text) IS NOT NULL${df.clause}
-            GROUP BY COALESCE(vi.produto, 'Produto ' || COALESCE(vi.produto_id_firebird::text, '?'))
+              AND COALESCE(vi.produto, p.nome, vi.produto_id_firebird::text) IS NOT NULL${df.clause}
+            GROUP BY COALESCE(vi.produto, p.nome, 'Produto ' || COALESCE(vi.produto_id_firebird::text, '?'))
             ORDER BY total DESC LIMIT $${4 + df.params.length}
         `, [tenantId, start, end, ...df.params, limit]);
 
@@ -222,14 +223,15 @@ router.get('/marcas', async (req, res, next) => {
 
         const { rows } = await db.query(`
             SELECT 
-                COALESCE(vi.marca, v.marca) AS marca,
+                COALESCE(vi.marca, v.marca, p.marca) AS marca,
                 SUM(vi.valor_total) AS total,
                 COUNT(*) AS qtd_itens
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+            LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
             WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 ${salesFilter}
-              AND COALESCE(vi.marca, v.marca) IS NOT NULL AND COALESCE(vi.marca, v.marca) != ''${df.clause}
-            GROUP BY COALESCE(vi.marca, v.marca)
+              AND COALESCE(vi.marca, v.marca, p.marca) IS NOT NULL AND COALESCE(vi.marca, v.marca, p.marca) != ''${df.clause}
+            GROUP BY COALESCE(vi.marca, v.marca, p.marca)
             ORDER BY total DESC LIMIT $${4 + df.params.length}
         `, [tenantId, start, end, ...df.params, limit]);
 
@@ -303,12 +305,13 @@ router.get('/ranking', async (req, res, next) => {
             `, [tenantId, seller.id, start, end]);
 
             const { rows: rBestProduct } = await db.query(`
-                SELECT COALESCE(vi.produto, 'Sem nome') as produto_nome, SUM(vi.valor_total) as total
+                SELECT COALESCE(vi.produto, p.nome, 'Sem nome') as produto_nome, SUM(vi.valor_total) as total
                 FROM dash_vendas_itens vi
                 JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+                LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
                 WHERE v.tenant_id = $1 AND v.vendedor_id_firebird = $2 AND v.data_venda >= $3 AND v.data_venda <= $4 ${salesFilter}
-                  AND vi.produto IS NOT NULL
-                GROUP BY vi.produto
+                  AND COALESCE(vi.produto, p.nome) IS NOT NULL
+                GROUP BY COALESCE(vi.produto, p.nome, 'Sem nome')
                 ORDER BY total DESC LIMIT 1
             `, [tenantId, seller.id, start, end]);
 
@@ -341,12 +344,13 @@ router.get('/categorias', async (req, res, next) => {
         const salesFilter = cfopUtil.getSalesFilterClause('v');
 
         const { rows } = await db.query(`
-            SELECT COALESCE(vi.categoria, v.categoria) AS categoria, SUM(vi.valor_total) AS total
+            SELECT COALESCE(vi.categoria, v.categoria, p.categoria) AS categoria, SUM(vi.valor_total) AS total
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+            LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
             WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 ${salesFilter}
-              AND COALESCE(vi.categoria, v.categoria) IS NOT NULL AND COALESCE(vi.categoria, v.categoria) != ''${df.clause}
-            GROUP BY COALESCE(vi.categoria, v.categoria)
+              AND COALESCE(vi.categoria, v.categoria, p.categoria) IS NOT NULL AND COALESCE(vi.categoria, v.categoria, p.categoria) != ''${df.clause}
+            GROUP BY COALESCE(vi.categoria, v.categoria, p.categoria)
             ORDER BY total DESC LIMIT $${4 + df.params.length}
         `, [tenantId, start, end, ...df.params, limit]);
 
