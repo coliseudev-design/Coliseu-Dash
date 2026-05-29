@@ -117,10 +117,10 @@ router.post('/', async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const senhaHash = await bcrypt.hash(password, salt);
 
-        // Insere o usuário
+        // Insere o usuário (default role: admin)
         const insertQuery = `
             INSERT INTO dash_usuarios (tenant_id, email, nome, role, ativo, senha_hash, permissions, layout_version, filial_acesso, grupo_id)
-            VALUES ($1, $2, $3, 'viewer', true, $4, NULL, 'v1.0', 'todas', $5)
+            VALUES ($1, $2, $3, 'admin', true, $4, NULL, 'v1.0', 'todas', $5)
             RETURNING id, tenant_id, email, nome, role, ativo, created_at, permissions, layout_version, filial_acesso, grupo_id
         `;
         const result = await db.query(insertQuery, [companyKey, email, nome, senhaHash, grupo_id || null]);

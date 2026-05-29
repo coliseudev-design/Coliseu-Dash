@@ -85,6 +85,32 @@ async function startServer() {
                     logger.warn('[App] Aviso na migração 004:', migErr.message);
                 }
 
+                // --- Migração 003: Classificacao nos Clientes ---
+                try {
+                    const migrationPath3 = path.join(__dirname, 'db', 'migrations', '003_add_classificacao.sql');
+                    if (fs.existsSync(migrationPath3)) {
+                        logger.info('[App] Aplicando migração 003_add_classificacao.sql...');
+                        const migrationSql3 = fs.readFileSync(migrationPath3, 'utf8');
+                        await db.query(migrationSql3);
+                        logger.info('[App] Migração 003 aplicada com sucesso.');
+                    }
+                } catch (migErr) {
+                    logger.warn('[App] Aviso na migração 003:', migErr.message);
+                }
+
+                // --- Migração 005: Aumentar limites VARCHAR e padrão admin ---
+                try {
+                    const migrationPath5 = path.join(__dirname, 'db', 'migrations', '005_increase_varchar_limits.sql');
+                    if (fs.existsSync(migrationPath5)) {
+                        logger.info('[App] Aplicando migração 005_increase_varchar_limits.sql...');
+                        const migrationSql5 = fs.readFileSync(migrationPath5, 'utf8');
+                        await db.query(migrationSql5);
+                        logger.info('[App] Migração 005 aplicada com sucesso.');
+                    }
+                } catch (migErr) {
+                    logger.warn('[App] Aviso na migração 005:', migErr.message);
+                }
+
             } catch (dbErr) {
                 logger.error('[App] Erro ao sincronizar as tabelas do banco:', dbErr);
             }

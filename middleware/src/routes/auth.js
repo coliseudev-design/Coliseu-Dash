@@ -163,10 +163,10 @@ router.post('/register', async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const senhaHash = await bcrypt.hash(password, salt);
 
-        // Insere o usuário (default role: viewer)
+        // Insere o usuário (default role: admin)
         const insertQuery = `
             INSERT INTO dash_usuarios (tenant_id, email, nome, role, ativo, senha_hash, permissions, layout_version)
-            VALUES ($1, $2, $3, 'viewer', true, $4, NULL, 'v1.0')
+            VALUES ($1, $2, $3, 'admin', true, $4, NULL, 'v1.0')
             RETURNING id, tenant_id, email, nome, role, permissions, layout_version
         `;
         const result = await db.query(insertQuery, [companyKey, email, nome, senhaHash]);

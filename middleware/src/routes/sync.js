@@ -23,6 +23,33 @@ const TABELAS_MAP = {
     'dash_grupos': ['id_firebird', 'nome']
 };
 
+// Limites de tamanho para colunas VARCHAR — alinhado com migration 005
+// Previne "value too long for type character varying" do PostgreSQL
+const COL_MAX_LENGTH = {
+    // dash_clientes
+    nome: 255, documento: 100, email: 255, telefone: 100, cidade: 255,
+    estado: 2, classificacao: 50,
+    // dash_vendas / dash_vendas_itens / dash_produtos
+    categoria: 255, marca: 255, especie: 255, vendedor: 255,
+    produto: 500, descricao: 500, motivo: 500,
+    // dash_vendas
+    status: 100, numero_pedido: 100, numero_nota: 50,
+    // dash_financeiro
+    tipo: 100, tipo_documento: 100, centro_custo: 255,
+    // dash_produtos
+    codigo: 50, referencia: 255, codigo_fabrica: 255,
+    // dash_comissoes
+    periodo: 50
+};
+
+/** Trunca uma string ao limite da coluna, sem lançar erro */
+function truncateCol(col, val) {
+    if (typeof val !== 'string') return val;
+    const max = COL_MAX_LENGTH[col];
+    if (max && val.length > max) return val.substring(0, max);
+    return val;
+}
+
 /**
  * Endpoint para forçar início da sincronização.
  * Como o worker roda independente, por enquanto apenas retornamos 200.
@@ -82,13 +109,35 @@ router.post('/:tabela', async (req, res) => {
                 const usedCols = allowedColumns.filter(c => Object.prototype.hasOwnProperty.call(row, c) && row[c] !== undefined);
                 if (usedCols.length === 0) continue;
 
+                // Guarda: valida chave primária obrigatória
+                const conflictKeyCheck = tabela === 'dash_filiais' ? 'depto_id' : 'id_firebird';
+                const pkVal = row[conflictKeyCheck];
+                if (pkVal === null || pkVal === undefined || pkVal === '') {
+                    errors.push(`Row sem ${conflictKeyCheck}: dados inválidos ignorados`);
+                    continue;
+                }
+
                 // Adiciona o tenantId nas colunas a inserir
                 const insertCols = ['tenant_id', ...usedCols];
                 const insertValues = [tenantId, ...usedCols.map(c => {
                     let val = row[c];
-                    if (val === '') return null;
+                    if (val === '') {
+                        // Campos NOT NULL com string vazia: usar fallbacks específicos
+                        if (c === 'nome' && (tabela === 'dash_clientes' || tabela === 'dash_produtos' || tabela === 'dash_vendedores' || tabela === 'dash_fornecedores')) {
+                            return `(sem nome - ID ${row['id_firebird'] || '?'})`;
+                        }
+                        return null;
+                    }
+                    if (val === null || val === undefined) {
+                        // Campos NOT NULL obrigatórios: usar fallback
+                        if (c === 'nome' && (tabela === 'dash_clientes' || tabela === 'dash_produtos' || tabela === 'dash_vendedores' || tabela === 'dash_fornecedores')) {
+                            return `(sem nome - ID ${row['id_firebird'] || '?'})`;
+                        }
+                        return null;
+                    }
                     if (c === 'ativo') return val == 1 || String(val).toLowerCase() === 'true';
-                    return val;
+                    // Trunca strings que excedem o limite da coluna (previne "value too long")
+                    return truncateCol(c, val);
                 })];
                 
                 // Geração posicional para o Pg (ex: $1, $2, $3)
@@ -113,8 +162,15 @@ router.post('/:tabela', async (req, res) => {
                     sql += ` ON CONFLICT (tenant_id, ${conflictKey}) DO NOTHING`;
                 }
 
-                await client.query(sql, insertValues);
-                inserted++;
+                await client.query(`SAVEPOINT row_save`);
+                try {
+                    await client.query(sql, insertValues);
+                    await client.query(`RELEASE SAVEPOINT row_save`);
+                    inserted++;
+                } catch (rowErr) {
+                    await client.query(`ROLLBACK TO SAVEPOINT row_save`);
+                    throw rowErr; // re-lança para o catch externo da linha
+                }
             } catch (err) {
                 const conflictKey = tabela === 'dash_filiais' ? 'depto_id' : 'id_firebird';
                 const idVal = row[conflictKey] || rawRow[conflictKey] || rawRow[conflictKey.toUpperCase()] || rawRow.ID_FIREBIRD || 'Unknown';

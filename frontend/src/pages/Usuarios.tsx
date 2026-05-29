@@ -174,22 +174,6 @@ export default function Usuarios() {
     setFilialModalOpen(true)
   }
 
-  const togglePermission = (id: string) => {
-    setSelectedPermissions(prev => 
-      prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
-    )
-  }
-
-  const handleUnlock = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (adminPassInput === '13894645') {
-      setIsUnlocked(true)
-      setAdminPassError('')
-    } else {
-      setAdminPassError('Senha de administrador incorreta')
-    }
-  }
-
   // Removeram a tela de senha a pedido do usuário
 
   return (
@@ -404,7 +388,9 @@ export default function Usuarios() {
               </div>
             </form>
           </div>
-         {/* Modal de Permissões / Grupo */}
+        </div>
+      )}
+      {/* Modal de Permissões / Grupo */}
       {permissionsModalOpen && selectedUser && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-bg-primary rounded-2xl shadow-xl border border-border w-full max-w-md overflow-hidden animate-fade-in">
