@@ -25,12 +25,16 @@ def run_query(label, sql):
         client.close()
 
 run_query(
-    "ALL TENANTS IN SALES",
-    """SELECT 
-         tenant_id, 
-         COUNT(*) as total_vendas,
-         COUNT(cfop) as total_com_cfop,
-         MAX(data_venda) as ultima_venda
+    "FIND MARILIA IRENE IN VENDEDORES",
+    """SELECT tenant_id, id_firebird, nome
+       FROM dash_vendedores
+       WHERE nome LIKE '%MARILIA%' OR nome LIKE '%JAIME%'"""
+)
+
+run_query(
+    "FIND MARILIA IRENE IN SALES",
+    """SELECT tenant_id, vendedor, COUNT(*), SUM(valor_total)
        FROM dash_vendas
-       GROUP BY tenant_id"""
+       WHERE vendedor LIKE '%MARILIA%' OR vendedor LIKE '%JAIME%'
+       GROUP BY tenant_id, vendedor"""
 )

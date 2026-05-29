@@ -5,9 +5,9 @@ USER = 'root'
 PASS = '6EFBC!c0:wzr%Ij'
 CONTAINER = 'coliseu-db-thyqkc5gkvp7i1nld555wakz-172547374937'
 
-def run_query(label, sql):
+def run_query(label, sql, db="coliseu_dashboard"):
     sql_escaped = sql.replace('"', '\\"')
-    cmd = f'docker exec {CONTAINER} psql -U coliseu_admin -d coliseu_dashboard -c "{sql_escaped}"'
+    cmd = f'docker exec {CONTAINER} psql -U coliseu_admin -d {db} -c "{sql_escaped}"'
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     try:
@@ -24,13 +24,9 @@ def run_query(label, sql):
     finally:
         client.close()
 
-run_query(
-    "ALL TENANTS IN SALES",
-    """SELECT 
-         tenant_id, 
-         COUNT(*) as total_vendas,
-         COUNT(cfop) as total_com_cfop,
-         MAX(data_venda) as ultima_venda
-       FROM dash_vendas
-       GROUP BY tenant_id"""
-)
+# Let's check for any occurrence of thiago in the database.
+# What are the tables in coliseu_identity?
+# Let's check device serials or sessions
+run_query("SESSIONS IN IDENTITY", 'SELECT * FROM sessions', db="coliseu_identity")
+run_query("DEVICES IN IDENTITY", 'SELECT * FROM devices', db="coliseu_identity")
+run_query("DASH_USUARIOS ALL ROWS", "SELECT * FROM dash_usuarios", db="coliseu_dashboard")

@@ -25,12 +25,9 @@ def run_query(label, sql):
         client.close()
 
 run_query(
-    "ALL TENANTS IN SALES",
-    """SELECT 
-         tenant_id, 
-         COUNT(*) as total_vendas,
-         COUNT(cfop) as total_com_cfop,
-         MAX(data_venda) as ultima_venda
-       FROM dash_vendas
-       GROUP BY tenant_id"""
+    "ALL TABLES IN COLISEU_DASHBOARD",
+    """SELECT table_name 
+       FROM information_schema.tables 
+       WHERE table_schema = 'public'
+       ORDER BY table_name"""
 )

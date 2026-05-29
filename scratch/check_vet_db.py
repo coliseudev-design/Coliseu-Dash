@@ -5,9 +5,9 @@ USER = 'root'
 PASS = '6EFBC!c0:wzr%Ij'
 CONTAINER = 'coliseu-db-thyqkc5gkvp7i1nld555wakz-172547374937'
 
-def run_query(label, sql):
+def run_query(label, sql, db="coliseu_dashboard"):
     sql_escaped = sql.replace('"', '\\"')
-    cmd = f'docker exec {CONTAINER} psql -U coliseu_admin -d coliseu_dashboard -c "{sql_escaped}"'
+    cmd = f'docker exec {CONTAINER} psql -U coliseu_admin -d {db} -c "{sql_escaped}"'
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     try:
@@ -24,13 +24,23 @@ def run_query(label, sql):
     finally:
         client.close()
 
+# 1. Listar colunas de companies
 run_query(
-    "ALL TENANTS IN SALES",
-    """SELECT 
-         tenant_id, 
-         COUNT(*) as total_vendas,
-         COUNT(cfop) as total_com_cfop,
-         MAX(data_venda) as ultima_venda
-       FROM dash_vendas
-       GROUP BY tenant_id"""
+    "COLUNAS DE companies",
+    "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'companies'",
+    db="coliseu_identity"
+)
+
+# 2. Listar todas as empresas no coliseu_identity
+run_query(
+    "TODAS AS EMPRESAS (coliseu_identity)",
+    "SELECT * FROM companies",
+    db="coliseu_identity"
+)
+
+# 3. Listar todos os usuarios no coliseu_identity
+run_query(
+    "TODAS OS USUARIOS (coliseu_identity)",
+    "SELECT * FROM admin_users",
+    db="coliseu_identity"
 )

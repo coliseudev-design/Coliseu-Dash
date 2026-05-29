@@ -3,11 +3,9 @@ import paramiko
 HOST = '177.39.17.7'
 USER = 'root'
 PASS = '6EFBC!c0:wzr%Ij'
-CONTAINER = 'coliseu-db-thyqkc5gkvp7i1nld555wakz-172547374937'
+CONTAINER = 'dashboard-middleware-irerzifjwjb4q8ucbpfk2gb8-005649123523'
 
-def run_query(label, sql):
-    sql_escaped = sql.replace('"', '\\"')
-    cmd = f'docker exec {CONTAINER} psql -U coliseu_admin -d coliseu_dashboard -c "{sql_escaped}"'
+def run_cmd(label, cmd):
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     try:
@@ -24,13 +22,7 @@ def run_query(label, sql):
     finally:
         client.close()
 
-run_query(
-    "ALL TENANTS IN SALES",
-    """SELECT 
-         tenant_id, 
-         COUNT(*) as total_vendas,
-         COUNT(cfop) as total_com_cfop,
-         MAX(data_venda) as ultima_venda
-       FROM dash_vendas
-       GROUP BY tenant_id"""
+run_cmd(
+    "ALL ENVIRONMENT VARIABLES FOR MIDDLEWARE",
+    f"docker inspect {CONTAINER} | grep -A 30 -i '\"Env\"'"
 )

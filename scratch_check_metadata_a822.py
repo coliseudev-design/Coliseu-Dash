@@ -25,12 +25,9 @@ def run_query(label, sql):
         client.close()
 
 run_query(
-    "ALL TENANTS IN SALES",
-    """SELECT 
-         tenant_id, 
-         COUNT(*) as total_vendas,
-         COUNT(cfop) as total_com_cfop,
-         MAX(data_venda) as ultima_venda
-       FROM dash_vendas
-       GROUP BY tenant_id"""
+    "METADATA FOR a822a7e7",
+    """SELECT tabela, registros_sincronizados, status
+       FROM dash_sync_metadata
+       WHERE tenant_id = 'a822a7e7-fdd4-4483-bbb5-26587a72739f'
+       ORDER BY tabela"""
 )

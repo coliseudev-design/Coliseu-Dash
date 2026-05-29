@@ -25,12 +25,28 @@ def run_query(label, sql):
         client.close()
 
 run_query(
-    "ALL TENANTS IN SALES",
+    "VETSEED - GERAL CFOP COUNT",
     """SELECT 
-         tenant_id, 
-         COUNT(*) as total_vendas,
-         COUNT(cfop) as total_com_cfop,
-         MAX(data_venda) as ultima_venda
+         COUNT(*) as total_vendas, 
+         COUNT(cfop) as total_com_cfop, 
+         COUNT(*) - COUNT(cfop) as total_sem_cfop
        FROM dash_vendas
-       GROUP BY tenant_id"""
+       WHERE tenant_id = 'a822a7e7-fdd4-4483-bbb5-26587a72739f'"""
+)
+
+run_query(
+    "VETSEED - CFOPS DISTINTOS EM VENDAS",
+    """SELECT cfop, COUNT(*) as qtd
+       FROM dash_vendas
+       WHERE tenant_id = 'a822a7e7-fdd4-4483-bbb5-26587a72739f'
+       GROUP BY cfop"""
+)
+
+run_query(
+    "VETSEED - CFOPS DISTINTOS EM ITENS",
+    """SELECT cfop, COUNT(*) as qtd
+       FROM dash_vendas_itens
+       WHERE tenant_id = 'a822a7e7-fdd4-4483-bbb5-26587a72739f'
+       GROUP BY cfop
+       LIMIT 10"""
 )

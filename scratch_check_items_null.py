@@ -25,12 +25,11 @@ def run_query(label, sql):
         client.close()
 
 run_query(
-    "ALL TENANTS IN SALES",
+    "VENDAS ITENS NULL CHECK",
     """SELECT 
-         tenant_id, 
-         COUNT(*) as total_vendas,
-         COUNT(cfop) as total_com_cfop,
-         MAX(data_venda) as ultima_venda
-       FROM dash_vendas
-       GROUP BY tenant_id"""
+         COUNT(*) as total_itens,
+         SUM(CASE WHEN marca IS NULL OR marca = '' THEN 1 ELSE 0 END) as marca_nula_vazia,
+         SUM(CASE WHEN categoria IS NULL OR categoria = '' THEN 1 ELSE 0 END) as categoria_nula_vazia
+       FROM dash_vendas_itens
+       WHERE tenant_id = 'a822a7e7-fdd4-4483-bbb5-26587a72739f'"""
 )

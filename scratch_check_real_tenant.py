@@ -25,12 +25,22 @@ def run_query(label, sql):
         client.close()
 
 run_query(
-    "ALL TENANTS IN SALES",
-    """SELECT 
-         tenant_id, 
-         COUNT(*) as total_vendas,
-         COUNT(cfop) as total_com_cfop,
-         MAX(data_venda) as ultima_venda
+    "REAL TENANT - SALES COUNT",
+    """SELECT COUNT(*) as total_vendas, COUNT(cfop) as total_com_cfop, MAX(data_venda) as ultima_venda
        FROM dash_vendas
-       GROUP BY tenant_id"""
+       WHERE tenant_id = '3edd56b4-e002-48ed-8ecb-131c0c62dcfb'"""
+)
+
+run_query(
+    "REAL TENANT - SALES IN JAN 2026",
+    """SELECT COUNT(*) as total_vendas, SUM(valor_total) as total_valor
+       FROM dash_vendas
+       WHERE tenant_id = '3edd56b4-e002-48ed-8ecb-131c0c62dcfb'
+         AND data_venda >= '2026-01-01' AND data_venda < '2026-02-01'"""
+)
+
+run_query(
+    "REAL TENANT - USER COUNT",
+    """SELECT * FROM dash_usuarios
+       WHERE tenant_id = '3edd56b4-e002-48ed-8ecb-131c0c62dcfb'"""
 )

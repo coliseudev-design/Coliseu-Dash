@@ -25,12 +25,13 @@ def run_query(label, sql):
         client.close()
 
 run_query(
-    "ALL TENANTS IN SALES",
-    """SELECT 
-         tenant_id, 
-         COUNT(*) as total_vendas,
-         COUNT(cfop) as total_com_cfop,
-         MAX(data_venda) as ultima_venda
-       FROM dash_vendas
-       GROUP BY tenant_id"""
+    "METADATA FOR 3edd56b4",
+    """SELECT tenant_id, tabela, ultima_sincronizacao, registros_sincronizados, status
+       FROM dash_sync_metadata
+       WHERE tenant_id = '3edd56b4-e002-48ed-8ecb-131c0c62dcfb'"""
+)
+
+run_query(
+    "SALES FOR 3edd56b4",
+    """SELECT COUNT(*) FROM dash_vendas WHERE tenant_id = '3edd56b4-e002-48ed-8ecb-131c0c62dcfb'"""
 )

@@ -7,7 +7,7 @@ CONTAINER = 'coliseu-db-thyqkc5gkvp7i1nld555wakz-172547374937'
 
 def run_query(label, sql):
     sql_escaped = sql.replace('"', '\\"')
-    cmd = f'docker exec {CONTAINER} psql -U coliseu_admin -d coliseu_dashboard -c "{sql_escaped}"'
+    cmd = f'docker exec {CONTAINER} psql -U coliseu_admin -d coliseu_identity -c "{sql_escaped}"'
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     try:
@@ -25,12 +25,11 @@ def run_query(label, sql):
         client.close()
 
 run_query(
-    "ALL TENANTS IN SALES",
-    """SELECT 
-         tenant_id, 
-         COUNT(*) as total_vendas,
-         COUNT(cfop) as total_com_cfop,
-         MAX(data_venda) as ultima_venda
-       FROM dash_vendas
-       GROUP BY tenant_id"""
+    "ADMIN_USERS SAMPLE",
+    'SELECT * FROM admin_users LIMIT 1'
+)
+
+run_query(
+    "COMPANIES SAMPLE",
+    'SELECT * FROM companies LIMIT 1'
 )

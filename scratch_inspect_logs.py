@@ -1,13 +1,28 @@
 import paramiko
 
-client = paramiko.SSHClient()
-client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-client.connect('177.39.17.7', username='root', password='6EFBC!c0:wzr%Ij')
+HOST = '177.39.17.7'
+USER = 'root'
+PASS = '6EFBC!c0:wzr%Ij'
+CONTAINER = 'dashboard-middleware-irerzifjwjb4q8ucbpfk2gb8-005649123523'
 
-# Get middleware container name dynamically and print its last 150 log lines
-cmd = "docker logs $(docker ps -q --filter name=middleware | head -1) --tail 150 2>&1"
-stdin, stdout, stderr = client.exec_command(cmd)
-print("=== Middleware Logs ===")
-print(stdout.read().decode('utf-8'))
+def run_cmd(label, cmd):
+    client = paramiko.SSHClient()
+    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    try:
+        client.connect(HOST, username=USER, password=PASS)
+        _, stdout, stderr = client.exec_command(cmd)
+        out = stdout.read().decode('utf-8')
+        err = stderr.read().decode('utf-8')
+        print(f"\n=== {label} ===")
+        print(out or "(sem resultado)")
+        if err.strip():
+            print("ERR:", err)
+    except Exception as e:
+        print(f"[ERRO] {label}: {e}")
+    finally:
+        client.close()
 
-client.close()
+run_cmd(
+    "DOCKER LOGS FOR MIDDLEWARE",
+    f"docker logs --tail 200 {CONTAINER}"
+)
