@@ -7,6 +7,8 @@ const jwt = require('jsonwebtoken');
 const db = require('../db/postgres');
 const config = require('../config/env');
 const logger = require('../config/logger');
+const { getUserPermissions } = require('../utils/rbac');
+const { requireWebJwt } = require('../middleware/auth');
 
 /**
  * Login interno do Dashboard.
@@ -59,6 +61,8 @@ router.post('/login', async (req, res) => {
 
         logger.info('[Auth] Login interno bem-sucedido', { email: user.email, tenant: user.tenant_id });
 
+        const permissions = await getUserPermissions(user.id, user.tenant_id);
+
         res.status(200).json({
             token,
             user: {
@@ -67,7 +71,7 @@ router.post('/login', async (req, res) => {
                 nome: user.nome,
                 role: user.role,
                 tenant_id: user.tenant_id,
-                permissions: user.permissions,
+                permissions,
                 layout_version: user.layout_version
             }
         });
@@ -182,6 +186,45 @@ router.post('/register', async (req, res) => {
             return res.status(400).json({ error: 'ID da Empresa inválido. O CompanyKey deve ser um UUID válido.', code: 'INVALID_UUID' });
         }
         res.status(500).json({ error: 'Erro interno no servidor ao cadastrar', code: 'INTERNAL_ERROR' });
+    }
+});
+
+/**
+ * GET /api/auth/me
+ * Retorna o perfil do usuário logado com as permissões ativas.
+ */
+router.get('/me', requireWebJwt, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const tenantId = req.tenant.id;
+
+        const { rows } = await db.query(
+            'SELECT id, tenant_id, email, nome, role, layout_version, grupo_id FROM dash_usuarios WHERE id = $1 AND tenant_id = $2',
+            [userId, tenantId]
+        );
+
+        if (rows.length === 0) {
+            return res.status(404).json({ error: 'Usuário não encontrado', code: 'USER_NOT_FOUND' });
+        }
+
+        const user = rows[0];
+        const permissions = await getUserPermissions(user.id, user.tenant_id);
+
+        res.json({
+            user: {
+                id: user.id,
+                email: user.email,
+                nome: user.nome,
+                role: user.role,
+                tenant_id: user.tenant_id,
+                permissions,
+                layout_version: user.layout_version,
+                grupo_id: user.grupo_id
+            }
+        });
+    } catch (err) {
+        logger.error('[Auth] Erro no endpoint /me', err);
+        res.status(500).json({ error: 'Erro interno no servidor', code: 'INTERNAL_ERROR' });
     }
 });
 

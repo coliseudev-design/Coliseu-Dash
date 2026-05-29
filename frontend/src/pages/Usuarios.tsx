@@ -17,6 +17,7 @@ interface UserRow {
   tenant_id: string
   layout_version?: string
   filial_acesso?: string
+  grupo_id?: number | null
 }
 
 const AVAILABLE_MODULES = [
@@ -37,8 +38,18 @@ export default function Usuarios() {
   const [permissionsModalOpen, setPermissionsModalOpen] = useState(false)
   const [filialModalOpen, setFilialModalOpen] = useState(false)
   const [selectedUser, setSelectedUser] = useState<UserRow | null>(null)
-  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([])
+  const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null)
   const [selectedFilialAcesso, setSelectedFilialAcesso] = useState<string>('todas')
+
+  const { data: groups } = useQuery<any[]>({
+    queryKey: ['grupos', selectedUser?.layout_version || 'v1.0'],
+    queryFn: async () => {
+      if (!selectedUser) return []
+      const res = await api.get(`/grupos?layout_version=${selectedUser.layout_version || 'v1.0'}`)
+      return res.data
+    },
+    enabled: !!selectedUser
+  })
   
   // Admin lock
   const [isUnlocked, setIsUnlocked] = useState(false)
@@ -97,9 +108,9 @@ export default function Usuarios() {
     createUser.mutate()
   }
 
-  const updatePermissions = useMutation({
-    mutationFn: async ({ id, permissions }: { id: number, permissions: string[] | null }) => {
-      const res = await api.put(`/usuarios/${id}/permissions`, { permissions })
+  const updateGroupAssignment = useMutation({
+    mutationFn: async ({ id, grupo_id }: { id: number, grupo_id: number | null }) => {
+      const res = await api.put(`/usuarios/${id}/grupo`, { grupo_id })
       return res.data
     },
     onSuccess: () => {
@@ -108,19 +119,19 @@ export default function Usuarios() {
       queryClient.invalidateQueries({ queryKey: ['usuarios'] })
     },
     onError: (err: any) => {
-      alert(err.response?.data?.error || 'Erro ao alterar permissões')
+      alert(err.response?.data?.error || 'Erro ao alterar grupo de acesso')
     }
   })
 
   const openPermissionsModal = (user: UserRow) => {
     setSelectedUser(user)
-    setSelectedPermissions(user.permissions || AVAILABLE_MODULES.map(m => m.id))
+    setSelectedGroupId(user.grupo_id || null)
     setPermissionsModalOpen(true)
   }
 
   const handleSavePermissions = () => {
     if (!selectedUser) return
-    updatePermissions.mutate({ id: selectedUser.id, permissions: selectedPermissions })
+    updateGroupAssignment.mutate({ id: selectedUser.id, grupo_id: selectedGroupId })
   }
 
   const updateLayout = useMutation({
@@ -281,7 +292,7 @@ export default function Usuarios() {
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-brand-600 hover:bg-brand-50 transition-colors"
                   >
                     <Shield size={16} />
-                    <span>Módulos</span>
+                    <span>Grupo</span>
                   </button>
                   {filiais.length > 0 && (
                     <button
@@ -393,16 +404,13 @@ export default function Usuarios() {
               </div>
             </form>
           </div>
-        </div>
-      )}
-
-      {/* Modal de Permissões */}
+         {/* Modal de Permissões / Grupo */}
       {permissionsModalOpen && selectedUser && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-bg-primary rounded-2xl shadow-xl border border-border w-full max-w-md overflow-hidden animate-fade-in">
             <div className="p-5 border-b border-border flex justify-between items-center bg-bg-secondary/50">
               <h3 className="font-semibold text-lg text-text-primary">
-                Acessos: <span className="font-bold text-brand-500">{selectedUser.nome}</span>
+                Grupo de Acesso: <span className="font-bold text-brand-500">{selectedUser.nome}</span>
               </h3>
               <button onClick={() => setPermissionsModalOpen(false)} className="text-text-secondary hover:text-text-primary">
                 <XCircle size={24} />
@@ -411,21 +419,23 @@ export default function Usuarios() {
             
             <div className="p-6 space-y-4">
               <p className="text-sm text-text-secondary mb-4">
-                Selecione quais abas do sistema este usuário poderá visualizar e interagir.
+                Selecione o grupo de acesso para este usuário. Ele herdará todas as permissões configuradas para o grupo no layout <span className="font-semibold">{selectedUser.layout_version || 'v1.0'}</span>.
               </p>
 
-              <div className="space-y-3 max-h-60 overflow-y-auto">
-                {AVAILABLE_MODULES.map(mod => (
-                  <label key={mod.id} className="flex items-center gap-3 p-3 rounded-xl border border-border cursor-pointer hover:bg-bg-secondary transition-colors">
-                    <input
-                      type="checkbox"
-                      checked={selectedPermissions.includes(mod.id)}
-                      onChange={() => togglePermission(mod.id)}
-                      className="w-5 h-5 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
-                    />
-                    <span className="text-sm font-medium text-text-primary">{mod.label}</span>
-                  </label>
-                ))}
+              <div>
+                <label className="block text-sm font-medium text-text-primary mb-1">Grupo de Acesso</label>
+                <select
+                  className="w-full px-4 py-3 rounded-xl border border-border outline-none bg-bg-primary text-text-primary focus:border-brand-500 transition-colors"
+                  value={selectedGroupId || ''}
+                  onChange={(e) => setSelectedGroupId(e.target.value ? Number(e.target.value) : null)}
+                >
+                  <option value="">Sem grupo (Sem permissões)</option>
+                  {(groups || []).map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.nome}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="pt-4 flex gap-3">
@@ -438,10 +448,10 @@ export default function Usuarios() {
                 </button>
                 <button
                   onClick={handleSavePermissions}
-                  disabled={updatePermissions.isPending}
+                  disabled={updateGroupAssignment.isPending}
                   className="flex-1 px-4 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-medium transition-colors disabled:opacity-50 flex items-center justify-center"
                 >
-                  {updatePermissions.isPending ? 'Salvando...' : 'Salvar Acessos'}
+                  {updateGroupAssignment.isPending ? 'Salvando...' : 'Salvar Grupo'}
                 </button>
               </div>
             </div>

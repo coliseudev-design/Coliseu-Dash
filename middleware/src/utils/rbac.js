@@ -1,0 +1,56 @@
+'use strict';
+
+const db = require('../db/postgres');
+
+/**
+ * Recupera a lista de permissões ativa para o usuário do tenant correspondente.
+ * @param {number|string} userId
+ * @param {string} tenantId
+ * @returns {Promise<string[]>}
+ */
+async function getUserPermissions(userId, tenantId) {
+    const userRes = await db.query(
+        'SELECT role, grupo_id, layout_version, permissions FROM dash_usuarios WHERE id = $1 AND tenant_id = $2',
+        [userId, tenantId]
+    );
+
+    if (userRes.rowCount === 0) return [];
+
+    const user = userRes.rows[0];
+
+    // Se for master, tem acesso irrestrito a todos os layouts e abas
+    if (user.role === 'master') {
+        return [
+            'inicio', 'financeiro', 'fluxo-caixa', 'estoque', 'comissoes', 
+            'ranking', 'estatisticas', 'inteligencia', 'produtos', 
+            'clientes', 'vendas', 'usuarios', 'layout_1', 'layout_2', 'layout_3',
+            'bi_sales', 'bi_hub', 'bi_supplier', 'bi_abc', 'bi_finance', 
+            'bi_customer', 'bi_comparative', 'bi_customer_analytics', 
+            'bi_goals', 'bi_heatmap', 'bi_ai_insights', 'layout_4'
+        ];
+    }
+
+    // Se tiver grupo associado, retorna as permissões do grupo
+    if (user.grupo_id) {
+        const permRes = await db.query(
+            'SELECT recurso FROM dash_permissoes WHERE grupo_id = $1 AND pode_acessar = true',
+            [user.grupo_id]
+        );
+        return permRes.rows.map(r => r.recurso);
+    }
+
+    // Fallback: permissões estáticas do campo antigo
+    if (user.permissions) {
+        try {
+            return typeof user.permissions === 'string' ? JSON.parse(user.permissions) : user.permissions;
+        } catch (e) {
+            return [];
+        }
+    }
+
+    return [];
+}
+
+module.exports = {
+    getUserPermissions
+};

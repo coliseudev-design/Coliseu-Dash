@@ -22,7 +22,8 @@ const MODULES = [
 ]
 
 const CONFIG_MODULES = [
-  { to: '/usuarios',      label: 'Usuários',      icon: Shield,                         id: 'usuarios' }
+  { to: '/usuarios',      label: 'Usuários',      icon: Shield,                         id: 'usuarios' },
+  { to: '/grupos',        label: 'Grupos de Acesso', icon: Shield,                      id: 'usuarios' }
 ]
 
 export default function Sidebar({ open, onClose }: Props) {

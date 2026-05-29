@@ -5,7 +5,9 @@ import { useThemeStore } from './store/themeStore'
 
 import Login from './pages/Login'
 import Register from './pages/Register'
+import AcessoNegado from './pages/AcessoNegado'
 import DashboardLayout from './components/DashboardLayout'
+import ProtectedRoute from './components/ProtectedRoute'
 
 import Home from './pages/Home'
 import FinanceiroEmDesenvolvimento from './pages/FinanceiroEmDesenvolvimento'
@@ -19,6 +21,7 @@ import Clientes from './pages/Clientes'
 import Estoque from './pages/Estoque'
 import Vendas from './pages/Vendas'
 import Usuarios from './pages/Usuarios'
+import Grupos from './pages/Grupos'
 
 // BI Modules
 import BiDashboard from './pages/bi/BiDashboard'
@@ -71,35 +74,36 @@ export default function App() {
         }
       >
         <Route index element={<Home />} />
-        <Route path="financeiro" element={<FinanceiroEmDesenvolvimento />} />
-        <Route path="fluxo-caixa" element={<FluxoCaixa />} />
-        <Route path="estoque" element={<Estoque />} />
-        <Route path="comissoes" element={<Comissoes />} />
-        <Route path="ranking" element={<Ranking />} />
-        <Route path="estatisticas" element={<Estatisticas />} />
-        <Route path="inteligencia" element={<InteligenciaDashboard />} />
-        <Route path="produtos" element={<Produtos />} />
-        <Route path="clientes" element={<Clientes />} />
-        <Route path="vendas" element={<Vendas />} />
-        <Route path="usuarios" element={<Usuarios />} />
+        <Route path="financeiro" element={<ProtectedRoute permission="financeiro"><FinanceiroEmDesenvolvimento /></ProtectedRoute>} />
+        <Route path="fluxo-caixa" element={<ProtectedRoute permission="fluxo-caixa"><FluxoCaixa /></ProtectedRoute>} />
+        <Route path="estoque" element={<ProtectedRoute permission="estoque"><Estoque /></ProtectedRoute>} />
+        <Route path="comissoes" element={<ProtectedRoute permission="comissoes"><Comissoes /></ProtectedRoute>} />
+        <Route path="ranking" element={<ProtectedRoute permission="ranking"><Ranking /></ProtectedRoute>} />
+        <Route path="estatisticas" element={<ProtectedRoute permission="estatisticas"><Estatisticas /></ProtectedRoute>} />
+        <Route path="inteligencia" element={<ProtectedRoute permission="inteligencia"><InteligenciaDashboard /></ProtectedRoute>} />
+        <Route path="produtos" element={<ProtectedRoute permission="produtos"><Produtos /></ProtectedRoute>} />
+        <Route path="clientes" element={<ProtectedRoute permission="clientes"><Clientes /></ProtectedRoute>} />
+        <Route path="vendas" element={<ProtectedRoute permission="vendas"><Vendas /></ProtectedRoute>} />
+        <Route path="usuarios" element={<ProtectedRoute permission="usuarios"><Usuarios /></ProtectedRoute>} />
+        <Route path="grupos" element={<ProtectedRoute permission="usuarios"><Grupos /></ProtectedRoute>} />
         
         {/* Novas Rotas de BI */}
-        <Route path="bi" element={<BiDashboard />}>
-          <Route index element={<SalesIntelligenceDashboard />} />
-          <Route path="sales" element={<SalesIntelligenceDashboard />} />
-          <Route path="hub" element={<SalesHubDashboard />} />
-          <Route path="abc" element={<ABCAnalysisDashboard />} />
-          <Route path="finance" element={<FinancialIntelligenceDashboard />} />
-          <Route path="customer" element={<Radar360Dashboard />} />
-          <Route path="comparative" element={<ComparativeAnalysisDashboard />} />
-          <Route path="customer-analytics" element={<CustomerAnalyticsDashboard />} />
-          <Route path="goals" element={<GoalsPerformanceDashboard />} />
-          <Route path="supplier" element={<SupplierAnalyticsDashboard />} />
-          <Route path="heatmap" element={<HeatmapDashboard />} />
-          <Route path="ai-insights" element={<AIInsightsDashboard />} />
-          {/* Adicionaremos as sub-rotas nas Fases futuras */}
+        <Route path="bi" element={<ProtectedRoute permission="layout_4"><BiDashboard /></ProtectedRoute>}>
+          <Route index element={<ProtectedRoute permission="bi_sales"><SalesIntelligenceDashboard /></ProtectedRoute>} />
+          <Route path="sales" element={<ProtectedRoute permission="bi_sales"><SalesIntelligenceDashboard /></ProtectedRoute>} />
+          <Route path="hub" element={<ProtectedRoute permission="bi_hub"><SalesHubDashboard /></ProtectedRoute>} />
+          <Route path="abc" element={<ProtectedRoute permission="bi_abc"><ABCAnalysisDashboard /></ProtectedRoute>} />
+          <Route path="finance" element={<ProtectedRoute permission="bi_finance"><FinancialIntelligenceDashboard /></ProtectedRoute>} />
+          <Route path="customer" element={<ProtectedRoute permission="bi_customer"><Radar360Dashboard /></ProtectedRoute>} />
+          <Route path="comparative" element={<ProtectedRoute permission="bi_comparative"><ComparativeAnalysisDashboard /></ProtectedRoute>} />
+          <Route path="customer-analytics" element={<ProtectedRoute permission="bi_customer_analytics"><CustomerAnalyticsDashboard /></ProtectedRoute>} />
+          <Route path="goals" element={<ProtectedRoute permission="bi_goals"><GoalsPerformanceDashboard /></ProtectedRoute>} />
+          <Route path="supplier" element={<ProtectedRoute permission="bi_supplier"><SupplierAnalyticsDashboard /></ProtectedRoute>} />
+          <Route path="heatmap" element={<ProtectedRoute permission="bi_heatmap"><HeatmapDashboard /></ProtectedRoute>} />
+          <Route path="ai-insights" element={<ProtectedRoute permission="bi_ai_insights"><AIInsightsDashboard /></ProtectedRoute>} />
         </Route>
       </Route>
+      <Route path="/acesso-negado" element={<AcessoNegado />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
