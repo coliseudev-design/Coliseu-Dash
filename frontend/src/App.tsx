@@ -50,11 +50,14 @@ export default function App() {
   useEffect(() => {
     init()
     initTheme()
-    // Inicializa Web Worker de sincronização (opcional em dev)
+    // Inicializa Web Worker de sincronização com token JWT
     if (typeof Worker !== 'undefined') {
       try {
         const w = new Worker(new URL('./workers/syncWorker.ts', import.meta.url), { type: 'module' })
-        w.postMessage({ type: 'INIT' })
+        const token = localStorage.getItem('coliseu_token')
+        w.postMessage({ type: 'INIT', token: token || undefined })
+        // Guarda referência para atualizar o token quando o auth mudar
+        ;(window as any).__syncWorker = w
       } catch {
         /* ignore */
       }

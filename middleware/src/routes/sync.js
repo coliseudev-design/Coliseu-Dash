@@ -82,11 +82,32 @@ router.post('/:tabela', async (req, res) => {
                 const usedCols = allowedColumns.filter(c => Object.prototype.hasOwnProperty.call(row, c) && row[c] !== undefined);
                 if (usedCols.length === 0) continue;
 
+                // Guarda: valida chave primária obrigatória
+                const conflictKeyCheck = tabela === 'dash_filiais' ? 'depto_id' : 'id_firebird';
+                const pkVal = row[conflictKeyCheck];
+                if (pkVal === null || pkVal === undefined || pkVal === '') {
+                    errors.push(`Row sem ${conflictKeyCheck}: dados inválidos ignorados`);
+                    continue;
+                }
+
                 // Adiciona o tenantId nas colunas a inserir
                 const insertCols = ['tenant_id', ...usedCols];
                 const insertValues = [tenantId, ...usedCols.map(c => {
                     let val = row[c];
-                    if (val === '') return null;
+                    if (val === '') {
+                        // Campos NOT NULL com string vazia: usar fallbacks específicos
+                        if (c === 'nome' && (tabela === 'dash_clientes' || tabela === 'dash_produtos' || tabela === 'dash_vendedores' || tabela === 'dash_fornecedores')) {
+                            return `(sem nome - ID ${row['id_firebird'] || '?'})`;
+                        }
+                        return null;
+                    }
+                    if (val === null || val === undefined) {
+                        // Campos NOT NULL obrigatórios: usar fallback
+                        if (c === 'nome' && (tabela === 'dash_clientes' || tabela === 'dash_produtos' || tabela === 'dash_vendedores' || tabela === 'dash_fornecedores')) {
+                            return `(sem nome - ID ${row['id_firebird'] || '?'})`;
+                        }
+                        return null;
+                    }
                     if (c === 'ativo') return val == 1 || String(val).toLowerCase() === 'true';
                     return val;
                 })];
@@ -113,8 +134,15 @@ router.post('/:tabela', async (req, res) => {
                     sql += ` ON CONFLICT (tenant_id, ${conflictKey}) DO NOTHING`;
                 }
 
-                await client.query(sql, insertValues);
-                inserted++;
+                await client.query(`SAVEPOINT row_save`);
+                try {
+                    await client.query(sql, insertValues);
+                    await client.query(`RELEASE SAVEPOINT row_save`);
+                    inserted++;
+                } catch (rowErr) {
+                    await client.query(`ROLLBACK TO SAVEPOINT row_save`);
+                    throw rowErr; // re-lança para o catch externo da linha
+                }
             } catch (err) {
                 const conflictKey = tabela === 'dash_filiais' ? 'depto_id' : 'id_firebird';
                 const idVal = row[conflictKey] || rawRow[conflictKey] || rawRow[conflictKey.toUpperCase()] || rawRow.ID_FIREBIRD || 'Unknown';

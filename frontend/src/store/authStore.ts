@@ -54,6 +54,10 @@ export const useAuthStore = create<AuthState>((set) => ({
       localStorage.setItem('coliseu_token', token)
       localStorage.setItem('coliseu_user', JSON.stringify(user))
       
+      // Propaga o token para o syncWorker (se ativo)
+      const w = (window as any).__syncWorker
+      if (w) w.postMessage({ type: 'SET_TOKEN', token })
+      
       set({ user, token, loading: false })
       return true
     } catch (e: unknown) {
@@ -87,6 +91,12 @@ export const useAuthStore = create<AuthState>((set) => ({
     } catch { /* ignore */ }
     localStorage.removeItem('coliseu_token')
     localStorage.removeItem('coliseu_user')
+    // Para o worker e limpa o token
+    const w = (window as any).__syncWorker
+    if (w) {
+      w.postMessage({ type: 'STOP' })
+      ;(window as any).__syncWorker = null
+    }
     set({ user: null, token: null })
   },
 }))
