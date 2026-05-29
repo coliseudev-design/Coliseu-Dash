@@ -9,6 +9,17 @@ export default defineConfig({
     emptyOutDir: true,
     sourcemap: false,
     chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-charts': ['recharts'],
+          'vendor-icons': ['lucide-react'],
+          'vendor-query': ['@tanstack/react-query'],
+          'vendor-utils': ['axios', 'clsx', 'date-fns', 'zustand'],
+        },
+      },
+    },
   },
   server: {
     port: 5173,

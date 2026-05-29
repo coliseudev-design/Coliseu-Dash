@@ -6,14 +6,14 @@ WORKDIR /app
 # Copia os arquivos de dependência
 COPY package*.json ./
 
-# Instala dependências
-RUN npm install
+# Instala dependências de forma reproducível
+RUN npm install --frozen-lockfile || npm install
 
 # Copia o código-fonte inteiro
 COPY . .
 
 # Faz o build de produção (Vite criará a pasta /app/dist)
-RUN npm run build
+RUN NODE_OPTIONS="--max-old-space-size=4096" npm run build
 
 
 # Estágio de Serviço (Nginx)
