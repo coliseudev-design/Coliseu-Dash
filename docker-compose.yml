@@ -35,6 +35,14 @@ services:
       - PG_USER=${PG_USER}
       - PG_PASSWORD=${PG_PASSWORD}
       - PG_SSL=false
+
+      # Banco de dados Vet (Siscom Vet)
+      - PG_HOST_VET=${PG_HOST_VET:-coliseu-db}
+      - PG_PORT_VET=${PG_PORT_VET:-5432}
+      - PG_DATABASE_VET=${PG_DATABASE_VET:-coliseu_dashboard_vet}
+      - PG_USER_VET=${PG_USER_VET:-coliseu_admin}
+      - PG_PASSWORD_VET=${PG_PASSWORD_VET}
+      - PG_SSL_VET=false
       
       # Identity Server / Segurança
       - JWT_DEVICE_KEY=${JWT_DEVICE_KEY}

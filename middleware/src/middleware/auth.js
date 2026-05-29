@@ -171,7 +171,25 @@ async function requireInternalAuth(req, res, next) {
 async function bindDbContext(req, res, next) {
     let dbType = 'main';
 
-    if (req.user && req.user.layoutVersion === 'v4.0') {
+    if (req.user && req.user.id) {
+        try {
+            const userRes = await db.poolMain.query(
+                'SELECT layout_version FROM dash_usuarios WHERE id = $1 LIMIT 1',
+                [req.user.id]
+            );
+            if (userRes.rowCount > 0 && userRes.rows[0].layout_version === 'v4.0') {
+                dbType = 'vet';
+            }
+        } catch (dbErr) {
+            logger.error('[DB-Context] Erro ao buscar layout_version do usuário', { 
+                userId: req.user.id, 
+                error: dbErr.message 
+            });
+            if (req.user.layoutVersion === 'v4.0') {
+                dbType = 'vet';
+            }
+        }
+    } else if (req.user && req.user.layoutVersion === 'v4.0') {
         dbType = 'vet';
     } else if (req.tenant && req.tenant.id) {
         // Para requisições do Worker (identificadas pelo X-Tenant-Id)

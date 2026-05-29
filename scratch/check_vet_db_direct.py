@@ -16,7 +16,6 @@ def run_query(sql, db="coliseu_dashboard"):
     if err.strip():
         print("ERR:", err)
 
-# Find all users in coliseu_dashboard containing 'vet' or layout_version 'v4.0'
-run_query("SELECT id, tenant_id, email, nome, layout_version, ativo FROM dash_usuarios WHERE email LIKE '%vet%' OR layout_version = 'v4.0'")
+run_query("SELECT id, tenant_id, email, nome, layout_version, role, ativo FROM dash_usuarios")
 
 client.close()

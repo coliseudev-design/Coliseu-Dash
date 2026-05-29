@@ -96,25 +96,14 @@ const GaugeChart = ({ realizado, meta }: { realizado: number, meta: number }) =>
 }
 
 export default function VisaoEstrategicaV4() {
-  const user = useAuthStore((s) => s.user)
-  const [selectedVendedor, setSelectedVendedor] = useState<string>('all')
-
-  // List of sellers unfiltered for the dropdown list
-  const vdFull = useBranchPeriodQuery<any>('/ranking/vendedores', { limit: 100 })
-
-  // All dashboards queries filtered by the selected seller
-  const extraParams = useMemo(() => ({
-    vendedor_id: selectedVendedor !== 'all' ? selectedVendedor : undefined
-  }), [selectedVendedor])
-
-  const ov = useBranchPeriodQuery<any>('/estatisticas/overview', extraParams)
-  const kpisData = useBranchPeriodQuery<any>('/estatisticas/kpis', extraParams)
-  const fatMes = useBranchPeriodQuery<any>('/vendas/faturadas', extraParams)
-  const vd = useBranchPeriodQuery<any>('/ranking/vendedores', extraParams)
-  const prod = useBranchPeriodQuery<any>('/ranking/produtos', extraParams)
-  const cli = useBranchPeriodQuery<any>('/ranking/clientes', extraParams)
-  const marcas = useBranchPeriodQuery<any>('/ranking/marcas', extraParams)
-  const cidades = useBranchPeriodQuery<any>('/ranking/cidades', { limit: 15, ...extraParams })
+  const ov = useBranchPeriodQuery<any>('/estatisticas/overview')
+  const kpisData = useBranchPeriodQuery<any>('/estatisticas/kpis')
+  const fatMes = useBranchPeriodQuery<any>('/vendas/faturadas')
+  const vd = useBranchPeriodQuery<any>('/ranking/vendedores')
+  const prod = useBranchPeriodQuery<any>('/ranking/produtos')
+  const cli = useBranchPeriodQuery<any>('/ranking/clientes')
+  const marcas = useBranchPeriodQuery<any>('/ranking/marcas')
+  const cidades = useBranchPeriodQuery<any>('/ranking/cidades', { limit: 15 })
 
   const period = usePeriodStore((s) => s.period)
   
@@ -144,7 +133,6 @@ export default function VisaoEstrategicaV4() {
         { data: 'Ago', total: 240116 },
       ];
 
-  const mockTopSellers = vd.data?.data?.map((s: any) => ({ name: s.nome || s.vendedor, value: s.total || s.total_vendas })) || [];
 
   const mockTopBrands = marcas.data?.data?.map((m: any) => ({ name: m.nome || m.marca, value: m.total })) || [];
 
@@ -168,18 +156,6 @@ export default function VisaoEstrategicaV4() {
           <p className="text-sm text-text-secondary mt-1">Acompanhamento de metas e performance de vendas do sistema Siscom Vet</p>
         </div>
         <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-3">
-          <select
-            value={selectedVendedor}
-            onChange={(e) => setSelectedVendedor(e.target.value)}
-            className="px-3 py-1.5 bg-bg-primary border border-border text-text-primary rounded-lg text-xs font-medium shadow-sm focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300"
-          >
-            <option value="all">Todos os Vendedores</option>
-            {vdFull.data?.data?.map((seller: any) => (
-              <option key={seller.id} value={seller.id}>
-                {seller.nome}
-              </option>
-            ))}
-          </select>
           <PeriodFilter />
         </div>
       </div>
@@ -295,47 +271,6 @@ export default function VisaoEstrategicaV4() {
         </div>
       </div>
 
-      {/* ROW 5: VENDEDORES */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        <div className="lg:col-span-3 bg-bg-primary border border-border shadow-card rounded-xl p-5">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="font-bold text-text-primary text-sm uppercase tracking-wider">Vendedores (Top 10)</h3>
-          </div>
-          <div className="h-[260px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={mockTopSellers} layout="vertical" margin={{ top: 0, right: 30, left: 10, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--color-border)" opacity={0.5} />
-                <XAxis type="number" hide />
-                <YAxis 
-                  dataKey="name" 
-                  type="category" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tickFormatter={(v) => String(v).length > 12 ? String(v).substring(0, 12) + '...' : v}
-                  tick={{ fontSize: 11, fill: 'var(--color-text-primary)', fontWeight: 600 }} 
-                  width={80} 
-                />
-                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.4 }} />
-                <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={20}>
-                  {mockTopSellers.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={barColors[index % barColors.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-        <div className="lg:col-span-1 bg-bg-primary border border-border shadow-card rounded-xl p-5 flex flex-col justify-center space-y-4">
-          <div className="p-4 bg-bg-secondary rounded-xl border border-divider h-full flex flex-col justify-center">
-            <div className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2">Vendedor Destaque (Vet)</div>
-            <div className="text-brand-500 font-extrabold text-lg mb-1">{mockTopSellers.length > 0 ? mockTopSellers[0].name : '-'}</div>
-            <div className="text-2xl font-extrabold text-text-primary mb-2">{formatBRL(mockTopSellers.length > 0 ? mockTopSellers[0].value : 0)}</div>
-            <div className="text-sm text-text-secondary">
-              Participação: <span className="font-bold text-text-primary">{faturamentoAtual > 0 && mockTopSellers.length > 0 ? ((mockTopSellers[0].value / faturamentoAtual) * 100).toFixed(1) : 0}%</span>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* ROW 6: MARCAS */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
