@@ -12,6 +12,9 @@ RUN npm install --frozen-lockfile || npm install
 # Copia o código-fonte inteiro
 COPY . .
 
+# Verifica tipos TypeScript antes do build (erros aparecem nos logs)
+RUN npx tsc --noEmit 2>&1 || echo "[WARN] TypeScript errors found above - build may fail"
+
 # Faz o build de produção (Vite criará a pasta /app/dist)
 RUN NODE_OPTIONS="--max-old-space-size=4096" npm run build
 

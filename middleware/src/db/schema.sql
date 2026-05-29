@@ -46,10 +46,10 @@ CREATE TABLE IF NOT EXISTS dash_clientes (
     tenant_id UUID NOT NULL,
     id_firebird INTEGER NOT NULL,
     nome VARCHAR(255) NOT NULL,
-    documento VARCHAR(50),
-    email VARCHAR(150),
-    telefone VARCHAR(50),
-    cidade VARCHAR(150),
+    documento VARCHAR(100),
+    email VARCHAR(255),
+    telefone VARCHAR(100),
+    cidade VARCHAR(255),
     estado VARCHAR(2),
     classificacao VARCHAR(50),
     data_cadastro TIMESTAMPTZ,
@@ -71,8 +71,8 @@ CREATE TABLE IF NOT EXISTS dash_produtos (
     codigo VARCHAR(50),
     nome VARCHAR(255) NOT NULL,
     descricao TEXT,
-    categoria VARCHAR(100),
-    marca VARCHAR(100),
+    categoria VARCHAR(255),
+    marca VARCHAR(255),
     preco DECIMAL(15,2) NOT NULL DEFAULT 0,
     custo DECIMAL(15,2) NOT NULL DEFAULT 0,
     estoque DECIMAL(15,3) NOT NULL DEFAULT 0,
@@ -96,7 +96,7 @@ CREATE TABLE IF NOT EXISTS dash_vendedores (
     tenant_id UUID NOT NULL,
     id_firebird INTEGER NOT NULL,
     nome VARCHAR(255) NOT NULL,
-    email VARCHAR(150),
+    email VARCHAR(255),
     ativo BOOLEAN DEFAULT TRUE,
     sincronizado_em TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(tenant_id, id_firebird)
@@ -107,8 +107,8 @@ CREATE TABLE IF NOT EXISTS dash_fornecedores (
     tenant_id UUID NOT NULL,
     id_firebird INTEGER NOT NULL,
     nome VARCHAR(255) NOT NULL,
-    documento VARCHAR(50),
-    cidade VARCHAR(150),
+    documento VARCHAR(100),
+    cidade VARCHAR(255),
     estado VARCHAR(2),
     sincronizado_em TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(tenant_id, id_firebird)
@@ -148,10 +148,10 @@ CREATE TABLE IF NOT EXISTS dash_vendas (
     valor_total DECIMAL(15,2) NOT NULL DEFAULT 0,
     valor_custo DECIMAL(15,2) NOT NULL DEFAULT 0,
     valor_desconto DECIMAL(15,2) DEFAULT 0,
-    status VARCHAR(50) DEFAULT 'FATURADO',
-    marca VARCHAR(100),
-    categoria VARCHAR(100),
-    especie VARCHAR(100),
+    status VARCHAR(100) DEFAULT 'FATURADO',
+    marca VARCHAR(255),
+    categoria VARCHAR(255),
+    especie VARCHAR(255),
     cfop INTEGER DEFAULT NULL,
     numero_nota INTEGER DEFAULT NULL,
     sincronizado_em TIMESTAMPTZ DEFAULT NOW(),
@@ -172,23 +172,43 @@ CREATE TABLE IF NOT EXISTS dash_vendas_itens (
     preco_unitario DECIMAL(15,2) NOT NULL DEFAULT 0,
     custo_unitario DECIMAL(15,2) NOT NULL DEFAULT 0,
     valor_total DECIMAL(15,2) NOT NULL DEFAULT 0,
-    vendedor VARCHAR(150),
-    produto VARCHAR(200),
-    marca VARCHAR(100),
-    categoria VARCHAR(100),
+    vendedor VARCHAR(255),
+    produto VARCHAR(500),
+    marca VARCHAR(255),
+    categoria VARCHAR(255),
     sincronizado_em TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(tenant_id, id_firebird)
 );
 
 -- Migrações: adiciona colunas que podem não existir em instalações antigas
-ALTER TABLE dash_vendas ADD COLUMN IF NOT EXISTS marca VARCHAR(100);
-ALTER TABLE dash_vendas ADD COLUMN IF NOT EXISTS categoria VARCHAR(100);
-ALTER TABLE dash_vendas ADD COLUMN IF NOT EXISTS especie VARCHAR(100);
-ALTER TABLE dash_vendas_itens ADD COLUMN IF NOT EXISTS vendedor VARCHAR(150);
-ALTER TABLE dash_vendas_itens ADD COLUMN IF NOT EXISTS produto VARCHAR(200);
-ALTER TABLE dash_vendas_itens ADD COLUMN IF NOT EXISTS marca VARCHAR(100);
-ALTER TABLE dash_vendas_itens ADD COLUMN IF NOT EXISTS categoria VARCHAR(100);
+ALTER TABLE dash_vendas ADD COLUMN IF NOT EXISTS marca VARCHAR(255);
+ALTER TABLE dash_vendas ADD COLUMN IF NOT EXISTS categoria VARCHAR(255);
+ALTER TABLE dash_vendas ADD COLUMN IF NOT EXISTS especie VARCHAR(255);
+ALTER TABLE dash_vendas_itens ADD COLUMN IF NOT EXISTS vendedor VARCHAR(255);
+ALTER TABLE dash_vendas_itens ADD COLUMN IF NOT EXISTS produto VARCHAR(500);
+ALTER TABLE dash_vendas_itens ADD COLUMN IF NOT EXISTS marca VARCHAR(255);
+ALTER TABLE dash_vendas_itens ADD COLUMN IF NOT EXISTS categoria VARCHAR(255);
 ALTER TABLE dash_vendas_itens ALTER COLUMN produto_id_firebird DROP NOT NULL;
+
+-- Migration 005: Aumentar limites VARCHAR para dados do SISCOM VET (2026-05-29)
+ALTER TABLE dash_clientes ALTER COLUMN email     TYPE VARCHAR(255);
+ALTER TABLE dash_clientes ALTER COLUMN cidade    TYPE VARCHAR(255);
+ALTER TABLE dash_clientes ALTER COLUMN telefone  TYPE VARCHAR(100);
+ALTER TABLE dash_clientes ALTER COLUMN documento TYPE VARCHAR(100);
+ALTER TABLE dash_vendedores ALTER COLUMN email TYPE VARCHAR(255);
+ALTER TABLE dash_fornecedores ALTER COLUMN cidade TYPE VARCHAR(255);
+ALTER TABLE dash_produtos ALTER COLUMN categoria     TYPE VARCHAR(255);
+ALTER TABLE dash_produtos ALTER COLUMN marca         TYPE VARCHAR(255);
+ALTER TABLE dash_produtos ALTER COLUMN referencia    TYPE VARCHAR(255);
+ALTER TABLE dash_produtos ALTER COLUMN codigo_fabrica TYPE VARCHAR(255);
+ALTER TABLE dash_vendas ALTER COLUMN marca         TYPE VARCHAR(255);
+ALTER TABLE dash_vendas ALTER COLUMN categoria     TYPE VARCHAR(255);
+ALTER TABLE dash_vendas ALTER COLUMN especie       TYPE VARCHAR(255);
+ALTER TABLE dash_vendas ALTER COLUMN status        TYPE VARCHAR(100);
+ALTER TABLE dash_vendas_itens ALTER COLUMN vendedor  TYPE VARCHAR(255);
+ALTER TABLE dash_vendas_itens ALTER COLUMN produto   TYPE VARCHAR(500);
+ALTER TABLE dash_vendas_itens ALTER COLUMN marca     TYPE VARCHAR(255);
+ALTER TABLE dash_vendas_itens ALTER COLUMN categoria TYPE VARCHAR(255);
 
 CREATE INDEX IF NOT EXISTS idx_dash_vend_itens_venda ON dash_vendas_itens(tenant_id, venda_id_firebird);
 CREATE INDEX IF NOT EXISTS idx_dash_vend_itens_prod ON dash_vendas_itens(tenant_id, produto_id_firebird);

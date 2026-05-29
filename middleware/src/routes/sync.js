@@ -23,6 +23,33 @@ const TABELAS_MAP = {
     'dash_grupos': ['id_firebird', 'nome']
 };
 
+// Limites de tamanho para colunas VARCHAR — alinhado com migration 005
+// Previne "value too long for type character varying" do PostgreSQL
+const COL_MAX_LENGTH = {
+    // dash_clientes
+    nome: 255, documento: 100, email: 255, telefone: 100, cidade: 255,
+    estado: 2, classificacao: 50,
+    // dash_vendas / dash_vendas_itens / dash_produtos
+    categoria: 255, marca: 255, especie: 255, vendedor: 255,
+    produto: 500, descricao: 500, motivo: 500,
+    // dash_vendas
+    status: 100, numero_pedido: 100, numero_nota: 50,
+    // dash_financeiro
+    tipo: 100, tipo_documento: 100, centro_custo: 255,
+    // dash_produtos
+    codigo: 50, referencia: 255, codigo_fabrica: 255,
+    // dash_comissoes
+    periodo: 50
+};
+
+/** Trunca uma string ao limite da coluna, sem lançar erro */
+function truncateCol(col, val) {
+    if (typeof val !== 'string') return val;
+    const max = COL_MAX_LENGTH[col];
+    if (max && val.length > max) return val.substring(0, max);
+    return val;
+}
+
 /**
  * Endpoint para forçar início da sincronização.
  * Como o worker roda independente, por enquanto apenas retornamos 200.
@@ -109,7 +136,8 @@ router.post('/:tabela', async (req, res) => {
                         return null;
                     }
                     if (c === 'ativo') return val == 1 || String(val).toLowerCase() === 'true';
-                    return val;
+                    // Trunca strings que excedem o limite da coluna (previne "value too long")
+                    return truncateCol(c, val);
                 })];
                 
                 // Geração posicional para o Pg (ex: $1, $2, $3)
