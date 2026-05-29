@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useBiPeriodQuery } from '../../hooks/useBiPeriodQuery';
+import { useBranchPeriodQuery } from '../../hooks/useApi';
 import { BIService } from '../../services/biApi';
 import { BiPeriodFilter } from '../../types/bi.types';
 import { Box, DollarSign, Target, CheckCircle2 } from 'lucide-react';
@@ -29,10 +30,29 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 export default function SalesHubDashboard() {
   const { filter } = useOutletContext<{ filter: BiPeriodFilter }>();
 
+  const [selectedVendedor, setSelectedVendedor] = useState<string>('all');
+  const [selectedCidade, setSelectedCidade] = useState<string>('all');
+  const [selectedGrupo, setSelectedGrupo] = useState<string>('all');
+  const [selectedMarca, setSelectedMarca] = useState<string>('all');
+
+  // Fetch unfiltered lists to populate dropdown options
+  const vdFull = useBranchPeriodQuery<any>('/ranking/vendedores', { limit: 100 });
+  const cidFull = useBranchPeriodQuery<any>('/ranking/cidades', { limit: 100 });
+  const catFull = useBranchPeriodQuery<any>('/ranking/categorias', { limit: 100 });
+  const marFull = useBranchPeriodQuery<any>('/ranking/marcas', { limit: 100 });
+
+  const activeFilter = useMemo(() => ({
+    ...filter,
+    vendedor_id: selectedVendedor !== 'all' ? selectedVendedor : undefined,
+    cidade: selectedCidade !== 'all' ? selectedCidade : undefined,
+    grupo: selectedGrupo !== 'all' ? selectedGrupo : undefined,
+    marca: selectedMarca !== 'all' ? selectedMarca : undefined
+  }), [filter, selectedVendedor, selectedCidade, selectedGrupo, selectedMarca]);
+
   const { data, isLoading, isError } = useBiPeriodQuery(
-    ['bi', 'sales-hub'],
+    ['bi', 'sales-hub', activeFilter],
     BIService.getSalesHub,
-    filter
+    activeFilter
   );
 
   const [statusFilter, setStatusFilter] = useState('TODOS');
@@ -81,11 +101,76 @@ export default function SalesHubDashboard() {
     <div className="space-y-6 animate-in fade-in duration-300">
       
       {/* HEADER */}
-      <div className="mb-2">
-        <h2 className="text-2xl font-bold text-text-primary flex items-center gap-2">
-          Hub de Vendas
-        </h2>
-        <p className="text-sm text-text-secondary mt-1">Central de monitoramento de pedidos, status de faturamento e performance</p>
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 mb-2">
+        <div>
+          <h2 className="text-2xl font-bold text-text-primary flex items-center gap-2">
+            Hub de Vendas
+          </h2>
+          <p className="text-sm text-text-secondary mt-1">Central de monitoramento de pedidos, status de faturamento e performance</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* VENDEDOR */}
+          <select
+            value={selectedVendedor}
+            onChange={(e) => setSelectedVendedor(e.target.value)}
+            className="px-3 py-1.5 bg-bg-primary border border-border text-text-primary rounded-lg text-xs font-medium shadow-sm focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300"
+          >
+            <option value="all">Todos os Vendedores</option>
+            {vdFull.data?.data?.map((seller: any) => (
+              <option key={seller.id} value={seller.id}>
+                {seller.nome}
+              </option>
+            ))}
+          </select>
+
+          {/* CIDADE */}
+          <select
+            value={selectedCidade}
+            onChange={(e) => setSelectedCidade(e.target.value)}
+            className="px-3 py-1.5 bg-bg-primary border border-border text-text-primary rounded-lg text-xs font-medium shadow-sm focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300"
+          >
+            <option value="all">Todas as Cidades</option>
+            {cidFull.data?.data?.map((city: any) => (
+              <option key={city.nome} value={city.nome}>
+                {city.nome}
+              </option>
+            ))}
+          </select>
+
+          {/* GRUPO */}
+          <select
+            value={selectedGrupo}
+            onChange={(e) => setSelectedGrupo(e.target.value)}
+            className="px-3 py-1.5 bg-bg-primary border border-border text-text-primary rounded-lg text-xs font-medium shadow-sm focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300"
+          >
+            <option value="all">Todos os Grupos</option>
+            <option value="Sem Grupo">Sem Grupo</option>
+            {catFull.data?.data?.map((cat: any) => (
+              cat.nome !== 'Sem Grupo' && cat.nome !== 'S/ GRUPO' && (
+                <option key={cat.nome} value={cat.nome}>
+                  {cat.nome}
+                </option>
+              )
+            ))}
+          </select>
+
+          {/* MARCA */}
+          <select
+            value={selectedMarca}
+            onChange={(e) => setSelectedMarca(e.target.value)}
+            className="px-3 py-1.5 bg-bg-primary border border-border text-text-primary rounded-lg text-xs font-medium shadow-sm focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300"
+          >
+            <option value="all">Todas as Marcas</option>
+            <option value="Sem Marca">Sem Marca</option>
+            {marFull.data?.data?.map((brand: any) => (
+              brand.nome !== 'Sem Marca' && brand.nome !== 'S/ MARCA' && (
+                <option key={brand.nome} value={brand.nome}>
+                  {brand.nome}
+                </option>
+              )
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* TOP KPIs */}

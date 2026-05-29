@@ -5,7 +5,7 @@ const router = express.Router();
 const db = require('../db/postgres');
 const { getPeriodRange } = require('../utils/period');
 const { getCache, setCache } = require('../config/cache');
-const { buildDeptoFilter } = require('./filiais');
+const { buildDeptoFilter, buildVendedorFilter } = require('./filiais');
 
 // GET /api/estatisticas/overview
 router.get('/overview', async (req, res, next) => {
@@ -14,8 +14,9 @@ router.get('/overview', async (req, res, next) => {
         const period = req.query.period || 'last30';
         const { start_date, end_date } = req.query;
         const deptoId = req.query.depto_id;
+        const vendedorId = req.query.vendedor_id;
 
-        const cacheKey = `overview:${tenantId}:${period}:${start_date || 'null'}:${end_date || 'null'}:${deptoId || 'todas'}`;
+        const cacheKey = `overview:${tenantId}:${period}:${start_date || 'null'}:${end_date || 'null'}:${deptoId || 'todas'}:${vendedorId || 'todas'}`;
         const cached = getCache(cacheKey);
         if (cached) return res.json(cached);
 
@@ -43,6 +44,9 @@ router.get('/overview', async (req, res, next) => {
         const df = buildDeptoFilter(deptoId, 4, 'v');
         const dfFin = buildDeptoFilter(deptoId, 4, 'f');
 
+        // Filtro de vendedor
+        const vf = buildVendedorFilter(vendedorId, 4 + df.params.length, 'v');
+
         const cfopUtil = require('../utils/cfop');
         const salesFilter = cfopUtil.getSalesFilterClause('v');
         const cfopFilter = cfopUtil.getCfopFilterClause('v');
@@ -53,16 +57,30 @@ router.get('/overview', async (req, res, next) => {
 
         // Queries de devoluções parametrizadas por período
         const getDevQuery = (startStr, endStr) => {
+            const needsJoin = (vendedorId && vendedorId !== 'todas' && vendedorId !== 'all' && vendedorId !== 'TODOS');
+            
             if (cfopUtil.isVetContext()) {
-                return {
-                    sql: `SELECT COALESCE(SUM(d.valor),0) AS total FROM dash_devolucoes d WHERE d.tenant_id = $1 AND d.data_devolucao >= $2 AND d.data_devolucao <= $3`,
-                    params: [tenantId, startStr, endStr]
-                };
+                if (needsJoin) {
+                    return {
+                        sql: `SELECT COALESCE(SUM(d.valor),0) AS total FROM dash_devolucoes d LEFT JOIN dash_vendas v2 ON v2.id_firebird = d.venda_id_firebird AND v2.tenant_id = d.tenant_id WHERE d.tenant_id = $1 AND d.data_devolucao >= $2 AND d.data_devolucao <= $3 ${vf.clause.replace(/v\./g, 'v2.')}`,
+                        params: [tenantId, startStr, endStr, ...vf.params]
+                    };
+                } else {
+                    return {
+                        sql: `SELECT COALESCE(SUM(d.valor),0) AS total FROM dash_devolucoes d WHERE d.tenant_id = $1 AND d.data_devolucao >= $2 AND d.data_devolucao <= $3`,
+                        params: [tenantId, startStr, endStr]
+                    };
+                }
             } else {
-                return {
-                    sql: `SELECT COALESCE(SUM(d.valor),0) AS total FROM dash_devolucoes d LEFT JOIN dash_vendas v2 ON v2.id_firebird = d.venda_id_firebird AND v2.tenant_id = d.tenant_id WHERE d.tenant_id = $1 AND d.data_devolucao >= $2 AND d.data_devolucao <= $3 ${df.clause.replace(/v\./g, 'v2.')}`,
-                    params: [tenantId, startStr, endStr, ...df.params]
-                };
+                let sql = `SELECT COALESCE(SUM(d.valor),0) AS total FROM dash_devolucoes d LEFT JOIN dash_vendas v2 ON v2.id_firebird = d.venda_id_firebird AND v2.tenant_id = d.tenant_id WHERE d.tenant_id = $1 AND d.data_devolucao >= $2 AND d.data_devolucao <= $3 ${df.clause.replace(/v\./g, 'v2.')}`;
+                let params = [tenantId, startStr, endStr, ...df.params];
+                let nextIdx = 4 + df.params.length;
+                if (needsJoin) {
+                    const vfDev = buildVendedorFilter(vendedorId, nextIdx, 'v2');
+                    sql += vfDev.clause;
+                    params.push(...vfDev.params);
+                }
+                return { sql, params };
             }
         };
 
@@ -91,29 +109,29 @@ router.get('/overview', async (req, res, next) => {
             topMarcasVendas, topCatsVendas
         ] = await Promise.all([
             // 1. Vendas do dia âncora
-            db.query(`SELECT COALESCE(SUM(v.valor_total),0) AS total, COUNT(*) AS qtd FROM dash_vendas v WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 ${salesFilter} ${df.clause}`, [tenantId, startHojeStr, endHojeStr, ...df.params]),
+            db.query(`SELECT COALESCE(SUM(v.valor_total),0) AS total, COUNT(*) AS qtd FROM dash_vendas v WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 ${salesFilter} ${df.clause} ${vf.clause}`, [tenantId, startHojeStr, endHojeStr, ...df.params, ...vf.params]),
             db.query(devHoje.sql, devHoje.params),
             // 2. Vendas do período selecionado
-            db.query(`SELECT COALESCE(SUM(v.valor_total),0) AS total, COUNT(*) AS qtd FROM dash_vendas v WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 ${salesFilter} ${df.clause}`, [tenantId, start, end, ...df.params]),
+            db.query(`SELECT COALESCE(SUM(v.valor_total),0) AS total, COUNT(*) AS qtd FROM dash_vendas v WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 ${salesFilter} ${df.clause} ${vf.clause}`, [tenantId, start, end, ...df.params, ...vf.params]),
             db.query(devMes.sql, devMes.params),
             // 3. Período anterior de mesmo tamanho
-            db.query(`SELECT COALESCE(SUM(v.valor_total),0) AS total, COUNT(*) AS qtd FROM dash_vendas v WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 ${salesFilter} ${df.clause}`, [tenantId, prevStart, prevEnd, ...df.params]),
+            db.query(`SELECT COALESCE(SUM(v.valor_total),0) AS total, COUNT(*) AS qtd FROM dash_vendas v WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 ${salesFilter} ${df.clause} ${vf.clause}`, [tenantId, prevStart, prevEnd, ...df.params, ...vf.params]),
             db.query(devAnterior.sql, devAnterior.params),
             // 4. Status PENDENTE/ABERTO
-            db.query(`SELECT COUNT(*) AS qtd FROM dash_vendas v WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND UPPER(TRIM(v.status)) IN ('PENDENTE','ABERTO') ${cfopFilter} ${df.clause}`, [tenantId, start, end, ...df.params]),
+            db.query(`SELECT COUNT(*) AS qtd FROM dash_vendas v WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND UPPER(TRIM(v.status)) IN ('PENDENTE','ABERTO') ${cfopFilter} ${df.clause} ${vf.clause}`, [tenantId, start, end, ...df.params, ...vf.params]),
             // 5. Status faturado válido (usa SALES_FILTER completo)
-            db.query(`SELECT COUNT(*) AS qtd FROM dash_vendas v WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 ${cfopFilter} ${procStatusFilter} ${df.clause}`, [tenantId, start, end, ...df.params]),
+            db.query(`SELECT COUNT(*) AS qtd FROM dash_vendas v WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 ${cfopFilter} ${procStatusFilter} ${df.clause} ${vf.clause}`, [tenantId, start, end, ...df.params, ...vf.params]),
             // 6. Status CANCELADO
-            db.query(`SELECT COUNT(*) AS qtd FROM dash_vendas v WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND UPPER(TRIM(v.status)) = 'CANCELADO' ${cfopFilter} ${df.clause}`, [tenantId, start, end, ...df.params]),
+            db.query(`SELECT COUNT(*) AS qtd FROM dash_vendas v WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND UPPER(TRIM(v.status)) = 'CANCELADO' ${cfopFilter} ${df.clause} ${vf.clause}`, [tenantId, start, end, ...df.params, ...vf.params]),
             // 7-10. Financeiro
             db.query(`SELECT COALESCE(SUM(f.valor - f.valor_pago),0) AS v FROM dash_financeiro f WHERE f.tenant_id = $1 AND COALESCE(f.data_vencimento, f.data_emissao, NOW()) >= $2 AND COALESCE(f.data_vencimento, f.data_emissao, NOW()) <= $3 AND TRIM(f.tipo) = 'RECEBER' AND TRIM(f.status_pagamento) = 'ABERTO'${dfFin.clause}`, [tenantId, finRange.start, finRange.end, ...dfFin.params]),
             db.query(`SELECT COALESCE(SUM((CASE WHEN f.valor_pago = 0 THEN f.valor ELSE f.valor_pago END)),0) AS v FROM dash_financeiro f WHERE f.tenant_id = $1 AND COALESCE(f.data_pagamento, f.data_vencimento, NOW()) >= $2 AND COALESCE(f.data_pagamento, f.data_vencimento, NOW()) <= $3 AND TRIM(f.tipo) = 'RECEBER' AND TRIM(f.status_pagamento) = 'PAGO'${dfFin.clause}`, [tenantId, finRange.start, finRange.end, ...dfFin.params]),
             db.query(`SELECT COALESCE(SUM(f.valor - f.valor_pago),0) AS v FROM dash_financeiro f WHERE f.tenant_id = $1 AND COALESCE(f.data_vencimento, f.data_emissao, NOW()) >= $2 AND COALESCE(f.data_vencimento, f.data_emissao, NOW()) <= $3 AND TRIM(f.tipo) = 'PAGAR' AND TRIM(f.status_pagamento) = 'ABERTO'${dfFin.clause}`, [tenantId, finRange.start, finRange.end, ...dfFin.params]),
             db.query(`SELECT COALESCE(SUM((CASE WHEN f.valor_pago = 0 THEN f.valor ELSE f.valor_pago END)),0) AS v FROM dash_financeiro f WHERE f.tenant_id = $1 AND COALESCE(f.data_pagamento, f.data_vencimento, NOW()) >= $2 AND COALESCE(f.data_pagamento, f.data_vencimento, NOW()) <= $3 AND TRIM(f.tipo) = 'PAGAR' AND TRIM(f.status_pagamento) = 'PAGO'${dfFin.clause}`, [tenantId, finRange.start, finRange.end, ...dfFin.params]),
             // 11. Top marcas (por valor de venda - com fallback pelo cadastro do produto se o item estiver vazio)
-            db.query(`SELECT COALESCE(vi.marca, p.marca, 'S/ MARCA') AS marca, SUM(vi.valor_total) AS total FROM dash_vendas_itens vi JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 ${salesFilter} AND COALESCE(vi.marca, p.marca) IS NOT NULL AND COALESCE(vi.marca, p.marca) != ''${df.clause} GROUP BY COALESCE(vi.marca, p.marca) ORDER BY total DESC LIMIT 15`, [tenantId, start, end, ...df.params]),
+            db.query(`SELECT COALESCE(vi.marca, p.marca, 'S/ MARCA') AS marca, SUM(vi.valor_total) AS total FROM dash_vendas_itens vi JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 ${salesFilter} AND COALESCE(vi.marca, p.marca) IS NOT NULL AND COALESCE(vi.marca, p.marca) != ''${df.clause} ${vf.clause} GROUP BY 1 ORDER BY total DESC LIMIT 15`, [tenantId, start, end, ...df.params, ...vf.params]),
             // 12. Top categorias (por valor de venda - com fallback pelo cadastro do produto se o item estiver vazio)
-            db.query(`SELECT COALESCE(vi.categoria, p.categoria, 'S/ GRUPO') AS categoria, SUM(vi.valor_total) AS total FROM dash_vendas_itens vi JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 ${salesFilter} AND COALESCE(vi.categoria, p.categoria) IS NOT NULL AND COALESCE(vi.categoria, p.categoria) != ''${df.clause} GROUP BY COALESCE(vi.categoria, p.categoria) ORDER BY total DESC LIMIT 15`, [tenantId, start, end, ...df.params])
+            db.query(`SELECT COALESCE(vi.categoria, p.categoria, 'S/ GRUPO') AS categoria, SUM(vi.valor_total) AS total FROM dash_vendas_itens vi JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 ${salesFilter} AND COALESCE(vi.categoria, p.categoria) IS NOT NULL AND COALESCE(vi.categoria, p.categoria) != ''${df.clause} ${vf.clause} GROUP BY 1 ORDER BY total DESC LIMIT 15`, [tenantId, start, end, ...df.params, ...vf.params])
         ]);
 
         const totalHoje = parseFloat(vHoje.rows[0].total) - parseFloat(dHoje.rows[0].total);
@@ -140,13 +158,13 @@ router.get('/overview', async (req, res, next) => {
             top_categorias: topCatsVendas.rows.map(r => ({ categoria: r.categoria, total: parseFloat(r.total) }))
         };
 
-
         setCache(cacheKey, result, 120);
         res.json(result);
     } catch (err) {
         next(err);
     }
 });
+
 
 // GET /api/estatisticas/kpis
 router.get('/kpis', async (req, res, next) => {
@@ -155,6 +173,7 @@ router.get('/kpis', async (req, res, next) => {
         const period = req.query.period || 'last12m';
         const { start_date, end_date } = req.query;
         const deptoId = req.query.depto_id;
+        const vendedorId = req.query.vendedor_id;
 
         const maxDate = new Date();
         // Âncora: usar MAX(data_venda) para bases sincronizadas do Firebird
@@ -169,20 +188,37 @@ router.get('/kpis', async (req, res, next) => {
         const dfFin = buildDeptoFilter(deptoId, 4, 'f');
         const dfVi = buildDeptoFilter(deptoId, 4, 'vi');
 
+        const vf = buildVendedorFilter(vendedorId, 4 + df.params.length, 'v');
+        const vfVi = buildVendedorFilter(vendedorId, 4 + dfVi.params.length, 'v');
+
         const cfopUtil = require('../utils/cfop');
         const salesFilter = cfopUtil.getSalesFilterClause('v');
 
         const getDevQuery = (startStr, endStr) => {
+            const needsJoin = (vendedorId && vendedorId !== 'todas' && vendedorId !== 'all' && vendedorId !== 'TODOS');
+            
             if (cfopUtil.isVetContext()) {
-                return {
-                    sql: `SELECT COALESCE(SUM(d.valor),0) AS total FROM dash_devolucoes d WHERE d.tenant_id = $1 AND d.data_devolucao >= $2 AND d.data_devolucao <= $3`,
-                    params: [tenantId, startStr, endStr]
-                };
+                if (needsJoin) {
+                    return {
+                        sql: `SELECT COALESCE(SUM(d.valor),0) AS total FROM dash_devolucoes d LEFT JOIN dash_vendas v2 ON v2.id_firebird = d.venda_id_firebird AND v2.tenant_id = d.tenant_id WHERE d.tenant_id = $1 AND d.data_devolucao >= $2 AND d.data_devolucao <= $3 ${vf.clause.replace(/v\./g, 'v2.')}`,
+                        params: [tenantId, startStr, endStr, ...vf.params]
+                    };
+                } else {
+                    return {
+                        sql: `SELECT COALESCE(SUM(d.valor),0) AS total FROM dash_devolucoes d WHERE d.tenant_id = $1 AND d.data_devolucao >= $2 AND d.data_devolucao <= $3`,
+                        params: [tenantId, startStr, endStr]
+                    };
+                }
             } else {
-                return {
-                    sql: `SELECT COALESCE(SUM(d.valor),0) AS total FROM dash_devolucoes d LEFT JOIN dash_vendas v2 ON v2.id_firebird = d.venda_id_firebird AND v2.tenant_id = d.tenant_id WHERE d.tenant_id = $1 AND d.data_devolucao >= $2 AND d.data_devolucao <= $3 ${df.clause.replace(/v\./g, 'v2.')}`,
-                    params: [tenantId, startStr, endStr, ...df.params]
-                };
+                let sql = `SELECT COALESCE(SUM(d.valor),0) AS total FROM dash_devolucoes d LEFT JOIN dash_vendas v2 ON v2.id_firebird = d.venda_id_firebird AND v2.tenant_id = d.tenant_id WHERE d.tenant_id = $1 AND d.data_devolucao >= $2 AND d.data_devolucao <= $3 ${df.clause.replace(/v\./g, 'v2.')}`;
+                let params = [tenantId, startStr, endStr, ...df.params];
+                let nextIdx = 4 + df.params.length;
+                if (needsJoin) {
+                    const vfDev = buildVendedorFilter(vendedorId, nextIdx, 'v2');
+                    sql += vfDev.clause;
+                    params.push(...vfDev.params);
+                }
+                return { sql, params };
             }
         };
 
@@ -195,8 +231,8 @@ router.get('/kpis', async (req, res, next) => {
                     COUNT(DISTINCT v.id_firebird) AS qtd_pedidos,
                     COALESCE(SUM(v.valor_desconto), 0) AS total_descontos
                 FROM dash_vendas v
-                WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 ${salesFilter} ${df.clause}
-            `, [tenantId, start, end, ...df.params]),
+                WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 ${salesFilter} ${df.clause} ${vf.clause}
+            `, [tenantId, start, end, ...df.params, ...vf.params]),
             db.query(devQuery.sql, devQuery.params)
         ]);
 
@@ -230,21 +266,21 @@ router.get('/kpis', async (req, res, next) => {
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
             LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
             WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 ${salesFilter}
-              AND COALESCE(vi.categoria, p.categoria) IS NOT NULL AND COALESCE(vi.categoria, p.categoria) != ''${dfVi.clause}
-            GROUP BY COALESCE(vi.categoria, p.categoria) ORDER BY total DESC LIMIT 5
-        `, [tenantId, start, end, ...dfVi.params]);
+              AND COALESCE(vi.categoria, p.categoria) IS NOT NULL AND COALESCE(vi.categoria, p.categoria) != ''${dfVi.clause} ${vfVi.clause}
+            GROUP BY 1 ORDER BY total DESC LIMIT 5
+        `, [tenantId, start, end, ...dfVi.params, ...vfVi.params]);
 
-        const { rows: rCli } = await db.query(`SELECT COUNT(DISTINCT v.cliente_id_firebird) AS ativos FROM dash_vendas v WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 ${salesFilter} ${df.clause}`, [tenantId, start, end, ...df.params]);
+        const { rows: rCli } = await db.query(`SELECT COUNT(DISTINCT v.cliente_id_firebird) AS ativos FROM dash_vendas v WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 ${salesFilter} ${df.clause} ${vf.clause}`, [tenantId, start, end, ...df.params, ...vf.params]);
         const { rows: rTotCli } = await db.query(`SELECT COUNT(*) AS total FROM dash_clientes WHERE tenant_id = $1 AND ativo = true`, [tenantId]);
 
         const { rows: topClientes } = await db.query(`
             SELECT c.nome, SUM(v.valor_total) AS total
             FROM dash_vendas v
             JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
-            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 ${salesFilter} ${df.clause}
+            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 ${salesFilter} ${df.clause} ${vf.clause}
             GROUP BY c.id, c.nome
             ORDER BY total DESC LIMIT 5
-        `, [tenantId, start, end, ...df.params]);
+        `, [tenantId, start, end, ...df.params, ...vf.params]);
 
         const { rows: rEst } = await db.query(`SELECT COALESCE(SUM(estoque), 0) AS qtd, COALESCE(SUM(estoque * preco), 0) AS valor FROM dash_produtos WHERE tenant_id = $1 AND ativo = true`, [tenantId]);
 
@@ -253,10 +289,10 @@ router.get('/kpis', async (req, res, next) => {
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
             LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
-            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 ${salesFilter} ${dfVi.clause}
-            GROUP BY COALESCE(vi.produto, p.nome)
+            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 ${salesFilter} ${dfVi.clause} ${vfVi.clause}
+            GROUP BY 1
             ORDER BY qtd DESC LIMIT 1
-        `, [tenantId, start, end, ...dfVi.params]);
+        `, [tenantId, start, end, ...dfVi.params, ...vfVi.params]);
 
         const clientesAtivos = parseInt(rCli[0].ativos, 10);
         const totalClientes = parseInt(rTotCli[0].total, 10);

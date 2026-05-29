@@ -14,6 +14,10 @@ export interface BiPeriodFilter {
   companyId?: number;
   brandId?: string;
   groupId?: number;
+  vendedor_id?: string;
+  cidade?: string;
+  grupo?: string;
+  marca?: string;
 }
 
 export type BiTrend = 'UP' | 'DOWN' | 'STABLE' | 'UP_STRONG' | 'DOWN_STRONG';

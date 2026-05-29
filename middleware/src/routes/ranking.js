@@ -5,7 +5,7 @@ const router = express.Router();
 const db = require('../db/postgres');
 const { getPeriodRange, toSafeSqlString } = require('../utils/period');
 const { getCache, setCache } = require('../config/cache');
-const { buildDeptoFilter } = require('./filiais');
+const { buildDeptoFilter, buildVendedorFilter } = require('./filiais');
 const cfopUtil = require('../utils/cfop');
 
 /**
@@ -154,7 +154,9 @@ router.get('/produtos', async (req, res, next) => {
         const { start, end } = await getAnchoredRange(tenantId, req.query.period || 'last12m', req.query.start_date, req.query.end_date);
         const limit = parseInt(req.query.limit) || 10;
         const deptoId = req.query.depto_id;
+        const vendedorId = req.query.vendedor_id;
         const df = buildDeptoFilter(deptoId, 4, 'v');
+        const vf = buildVendedorFilter(vendedorId, 4 + df.params.length, 'v');
         const salesFilter = cfopUtil.getSalesFilterClause('v');
 
         const { rows } = await db.query(`
@@ -167,10 +169,10 @@ router.get('/produtos', async (req, res, next) => {
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
             LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
             WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 ${salesFilter}
-              AND COALESCE(vi.produto, p.nome, vi.produto_id_firebird::text) IS NOT NULL${df.clause}
-            GROUP BY COALESCE(vi.produto, p.nome, 'Produto ' || COALESCE(vi.produto_id_firebird::text, '?'))
-            ORDER BY total DESC LIMIT $${4 + df.params.length}
-        `, [tenantId, start, end, ...df.params, limit]);
+              AND COALESCE(vi.produto, p.nome, vi.produto_id_firebird::text) IS NOT NULL${df.clause} ${vf.clause}
+            GROUP BY 1
+            ORDER BY total DESC LIMIT $${4 + df.params.length + vf.params.length}
+        `, [tenantId, start, end, ...df.params, ...vf.params, limit]);
 
         res.json({ data: rows.map(r => ({
             name: r.nome, total: parseFloat(r.total || 0),
@@ -187,7 +189,9 @@ router.get('/clientes', async (req, res, next) => {
         const { start, end } = await getAnchoredRange(tenantId, req.query.period || 'last12m', req.query.start_date, req.query.end_date);
         const limit = parseInt(req.query.limit) || 10;
         const deptoId = req.query.depto_id;
+        const vendedorId = req.query.vendedor_id;
         const df = buildDeptoFilter(deptoId, 4, 'v');
+        const vf = buildVendedorFilter(vendedorId, 4 + df.params.length, 'v');
         const salesFilter = cfopUtil.getSalesFilterClause('v');
 
         const { rows } = await db.query(`
@@ -198,10 +202,10 @@ router.get('/clientes', async (req, res, next) => {
                 COUNT(DISTINCT v.id_firebird) AS qtd_pedidos
             FROM dash_vendas v
             LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
-            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 ${salesFilter} ${df.clause}
+            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 ${salesFilter} ${df.clause} ${vf.clause}
             GROUP BY v.cliente_id_firebird, c.nome
-            ORDER BY total DESC LIMIT $${4 + df.params.length}
-        `, [tenantId, start, end, ...df.params, limit]);
+            ORDER BY total DESC LIMIT $${4 + df.params.length + vf.params.length}
+        `, [tenantId, start, end, ...df.params, ...vf.params, limit]);
 
         res.json({ data: rows.map(r => ({
             id: r.id, nome: r.nome,
@@ -218,7 +222,9 @@ router.get('/marcas', async (req, res, next) => {
         const { start, end } = await getAnchoredRange(tenantId, req.query.period || 'last12m', req.query.start_date, req.query.end_date);
         const limit = parseInt(req.query.limit) || 10;
         const deptoId = req.query.depto_id;
+        const vendedorId = req.query.vendedor_id;
         const df = buildDeptoFilter(deptoId, 4, 'v');
+        const vf = buildVendedorFilter(vendedorId, 4 + df.params.length, 'v');
         const salesFilter = cfopUtil.getSalesFilterClause('v');
 
         const { rows } = await db.query(`
@@ -230,10 +236,10 @@ router.get('/marcas', async (req, res, next) => {
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
             LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
             WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 ${salesFilter}
-              AND COALESCE(vi.marca, v.marca, p.marca) IS NOT NULL AND COALESCE(vi.marca, v.marca, p.marca) != ''${df.clause}
-            GROUP BY COALESCE(vi.marca, v.marca, p.marca)
-            ORDER BY total DESC LIMIT $${4 + df.params.length}
-        `, [tenantId, start, end, ...df.params, limit]);
+              AND COALESCE(vi.marca, v.marca, p.marca) IS NOT NULL AND COALESCE(vi.marca, v.marca, p.marca) != ''${df.clause} ${vf.clause}
+            GROUP BY 1
+            ORDER BY total DESC LIMIT $${4 + df.params.length + vf.params.length}
+        `, [tenantId, start, end, ...df.params, ...vf.params, limit]);
 
         res.json({ data: rows.map(r => ({
             nome: r.marca, total: parseFloat(r.total || 0),
@@ -249,7 +255,9 @@ router.get('/especies', async (req, res, next) => {
         const { start, end } = await getAnchoredRange(tenantId, req.query.period || 'last12m', req.query.start_date, req.query.end_date);
         const limit = parseInt(req.query.limit) || 10;
         const deptoId = req.query.depto_id;
+        const vendedorId = req.query.vendedor_id;
         const df = buildDeptoFilter(deptoId, 4, 'v');
+        const vf = buildVendedorFilter(vendedorId, 4 + df.params.length, 'v');
         const salesFilter = cfopUtil.getSalesFilterClause('v');
 
         const { rows } = await db.query(`
@@ -258,9 +266,9 @@ router.get('/especies', async (req, res, next) => {
             WHERE v.tenant_id = $1
               AND v.data_venda >= $2
               AND v.data_venda <= $3
-              ${salesFilter} ${df.clause}
-            GROUP BY v.especie ORDER BY total DESC LIMIT $${4 + df.params.length}
-        `, [tenantId, start, end, ...df.params, limit]);
+              ${salesFilter} ${df.clause} ${vf.clause}
+            GROUP BY 1 ORDER BY total DESC LIMIT $${4 + df.params.length + vf.params.length}
+        `, [tenantId, start, end, ...df.params, ...vf.params, limit]);
 
         res.json({ data: rows.map(r => ({
             nome: r.nome, total: parseFloat(r.total || 0), qtd: parseInt(r.qtd)
@@ -340,7 +348,9 @@ router.get('/categorias', async (req, res, next) => {
         const { start, end } = await getAnchoredRange(tenantId, req.query.period || 'last12m', req.query.start_date, req.query.end_date);
         const limit = parseInt(req.query.limit) || 10;
         const deptoId = req.query.depto_id;
+        const vendedorId = req.query.vendedor_id;
         const df = buildDeptoFilter(deptoId, 4, 'v');
+        const vf = buildVendedorFilter(vendedorId, 4 + df.params.length, 'v');
         const salesFilter = cfopUtil.getSalesFilterClause('v');
 
         const { rows } = await db.query(`
@@ -349,10 +359,10 @@ router.get('/categorias', async (req, res, next) => {
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
             LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
             WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 ${salesFilter}
-              AND COALESCE(vi.categoria, v.categoria, p.categoria) IS NOT NULL AND COALESCE(vi.categoria, v.categoria, p.categoria) != ''${df.clause}
-            GROUP BY COALESCE(vi.categoria, v.categoria, p.categoria)
-            ORDER BY total DESC LIMIT $${4 + df.params.length}
-        `, [tenantId, start, end, ...df.params, limit]);
+              AND COALESCE(vi.categoria, v.categoria, p.categoria) IS NOT NULL AND COALESCE(vi.categoria, v.categoria, p.categoria) != ''${df.clause} ${vf.clause}
+            GROUP BY 1
+            ORDER BY total DESC LIMIT $${4 + df.params.length + vf.params.length}
+        `, [tenantId, start, end, ...df.params, ...vf.params, limit]);
 
         res.json({ data: rows.map(r => ({
             nome: r.categoria, total: parseFloat(r.total || 0)
@@ -367,7 +377,9 @@ router.get('/cidades', async (req, res, next) => {
         const { start, end } = await getAnchoredRange(tenantId, req.query.period || 'last12m', req.query.start_date, req.query.end_date);
         const limit = parseInt(req.query.limit) || 10;
         const deptoId = req.query.depto_id;
+        const vendedorId = req.query.vendedor_id;
         const df = buildDeptoFilter(deptoId, 4, 'v');
+        const vf = buildVendedorFilter(vendedorId, 4 + df.params.length, 'v');
         const salesFilter = cfopUtil.getSalesFilterClause('v');
 
         const { rows } = await db.query(`
@@ -377,10 +389,10 @@ router.get('/cidades', async (req, res, next) => {
                 COUNT(DISTINCT v.id_firebird) AS qtd_pedidos
             FROM dash_vendas v
             LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
-            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 ${salesFilter} ${df.clause}
-            GROUP BY COALESCE(c.cidade, 'NÃO INFORMADA')
-            ORDER BY total DESC LIMIT $${4 + df.params.length}
-        `, [tenantId, start, end, ...df.params, limit]);
+            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 ${salesFilter} ${df.clause} ${vf.clause}
+            GROUP BY 1
+            ORDER BY total DESC LIMIT $${4 + df.params.length + vf.params.length}
+        `, [tenantId, start, end, ...df.params, ...vf.params, limit]);
 
         res.json({ data: rows.map(r => ({
             nome: r.nome,

@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   Cell, PieChart, Pie
@@ -97,14 +97,24 @@ const GaugeChart = ({ realizado, meta }: { realizado: number, meta: number }) =>
 
 export default function VisaoEstrategicaV4() {
   const user = useAuthStore((s) => s.user)
-  const ov = useBranchPeriodQuery<any>('/estatisticas/overview')
-  const kpisData = useBranchPeriodQuery<any>('/estatisticas/kpis')
-  const fatMes = useBranchPeriodQuery<any>('/vendas/faturadas')
-  const vd = useBranchPeriodQuery<any>('/ranking/vendedores')
-  const prod = useBranchPeriodQuery<any>('/ranking/produtos')
-  const cli = useBranchPeriodQuery<any>('/ranking/clientes')
-  const marcas = useBranchPeriodQuery<any>('/ranking/marcas')
-  const cidades = useBranchPeriodQuery<any>('/ranking/cidades', { limit: 15 })
+  const [selectedVendedor, setSelectedVendedor] = useState<string>('all')
+
+  // List of sellers unfiltered for the dropdown list
+  const vdFull = useBranchPeriodQuery<any>('/ranking/vendedores', { limit: 100 })
+
+  // All dashboards queries filtered by the selected seller
+  const extraParams = useMemo(() => ({
+    vendedor_id: selectedVendedor !== 'all' ? selectedVendedor : undefined
+  }), [selectedVendedor])
+
+  const ov = useBranchPeriodQuery<any>('/estatisticas/overview', extraParams)
+  const kpisData = useBranchPeriodQuery<any>('/estatisticas/kpis', extraParams)
+  const fatMes = useBranchPeriodQuery<any>('/vendas/faturadas', extraParams)
+  const vd = useBranchPeriodQuery<any>('/ranking/vendedores', extraParams)
+  const prod = useBranchPeriodQuery<any>('/ranking/produtos', extraParams)
+  const cli = useBranchPeriodQuery<any>('/ranking/clientes', extraParams)
+  const marcas = useBranchPeriodQuery<any>('/ranking/marcas', extraParams)
+  const cidades = useBranchPeriodQuery<any>('/ranking/cidades', { limit: 15, ...extraParams })
 
   const period = usePeriodStore((s) => s.period)
   
@@ -158,6 +168,18 @@ export default function VisaoEstrategicaV4() {
           <p className="text-sm text-text-secondary mt-1">Acompanhamento de metas e performance de vendas do sistema Siscom Vet</p>
         </div>
         <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-3">
+          <select
+            value={selectedVendedor}
+            onChange={(e) => setSelectedVendedor(e.target.value)}
+            className="px-3 py-1.5 bg-bg-primary border border-border text-text-primary rounded-lg text-xs font-medium shadow-sm focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300"
+          >
+            <option value="all">Todos os Vendedores</option>
+            {vdFull.data?.data?.map((seller: any) => (
+              <option key={seller.id} value={seller.id}>
+                {seller.nome}
+              </option>
+            ))}
+          </select>
           <PeriodFilter />
         </div>
       </div>

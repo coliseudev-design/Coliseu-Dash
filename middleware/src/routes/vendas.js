@@ -5,12 +5,14 @@ const router = express.Router();
 const db = require('../db/postgres');
 const { getPeriodRange } = require('../utils/period');
 const cfopUtil = require('../utils/cfop');
+const { buildVendedorFilter } = require('./filiais');
 
 // GET /api/vendas/faturadas?period=today
 router.get('/faturadas', async (req, res, next) => {
     try {
         const period = req.query.period || '7d';
         const tenantId = req.tenant.id;
+        const vendedorId = req.query.vendedor_id;
 
         // Âncora: usar MAX(data_venda) para bases sincronizadas do Firebird
         const { rows: anchorRows } = await db.query(
@@ -21,6 +23,7 @@ router.get('/faturadas', async (req, res, next) => {
         const { start, end } = getPeriodRange(period, null, null, anchorDate);
 
         const salesFilter = cfopUtil.getSalesFilterClause('v');
+        const vf = buildVendedorFilter(vendedorId, 4, 'v');
 
         const { rows } = await db.query(`
             SELECT 
@@ -32,9 +35,10 @@ router.get('/faturadas', async (req, res, next) => {
               AND v.data_venda >= $2 
               AND v.data_venda <= $3
               ${salesFilter}
+              ${vf.clause}
             GROUP BY TO_CHAR(v.data_venda, 'YYYY-MM-DD')
             ORDER BY data
-        `, [tenantId, start, end]);
+        `, [tenantId, start, end, ...vf.params]);
 
         // Retorna numbers para o frontend em total e quantidade
         const formatted = rows.map(r => ({
@@ -182,6 +186,9 @@ router.get('/recentes', async (req, res, next) => {
     try {
         const limit = parseInt(req.query.limit, 10) || 20;
         const tenantId = req.tenant.id;
+        const vendedorId = req.query.vendedor_id;
+
+        const vf = buildVendedorFilter(vendedorId, 3, 'v');
 
         // join com tabelas sincronizadas usa id_firebird pq é ele quem vem nos FKs da tabela de vendas
         const { rows } = await db.query(`
@@ -196,10 +203,10 @@ router.get('/recentes', async (req, res, next) => {
             FROM dash_vendas v
             LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
             LEFT JOIN dash_vendedores vd ON vd.id_firebird = v.vendedor_id_firebird AND vd.tenant_id = v.tenant_id
-            WHERE v.tenant_id = $1 AND TRIM(v.status) != 'CANCELADO'
+            WHERE v.tenant_id = $1 AND TRIM(v.status) != 'CANCELADO' ${vf.clause}
             ORDER BY v.data_venda DESC
             LIMIT $2
-        `, [tenantId, limit]);
+        `, [tenantId, limit, ...vf.params]);
 
         res.json({ data: rows });
     } catch (err) {

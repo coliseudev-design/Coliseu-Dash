@@ -38,6 +38,60 @@ function buildCentroCustoFilter(centroCustoId, nextParamIndex, alias = 'f') {
     };
 }
 
+function buildVendedorFilter(vendedorId, nextParamIndex, alias = 'v') {
+    if (!vendedorId || vendedorId === 'todas' || vendedorId === 'all' || vendedorId === 'TODOS') {
+        return { clause: '', params: [] };
+    }
+    const num = parseInt(vendedorId, 10);
+    if (isNaN(num)) return { clause: '', params: [] };
+    return {
+        clause: ` AND ${alias}.vendedor_id_firebird = $${nextParamIndex}`,
+        params: [num]
+    };
+}
+
+function buildCidadeFilter(cidade, nextParamIndex, alias = 'c') {
+    if (!cidade || cidade === 'todas' || cidade === 'all' || cidade === 'TODOS') {
+        return { clause: '', params: [] };
+    }
+    return {
+        clause: ` AND TRIM(${alias}.cidade) = $${nextParamIndex}`,
+        params: [cidade]
+    };
+}
+
+function buildGrupoFilter(grupo, nextParamIndex, itemAlias = 'vi', prodAlias = 'p') {
+    if (!grupo || grupo === 'todas' || grupo === 'all' || grupo === 'TODOS') {
+        return { clause: '', params: [] };
+    }
+    if (grupo === 'Sem Grupo' || grupo === 'S/ GRUPO') {
+        return {
+            clause: ` AND (COALESCE(${itemAlias}.categoria, ${prodAlias}.categoria, 'S/ GRUPO') = 'S/ GRUPO' OR COALESCE(${itemAlias}.categoria, ${prodAlias}.categoria) IS NULL OR COALESCE(${itemAlias}.categoria, ${prodAlias}.categoria) = '')`,
+            params: []
+        };
+    }
+    return {
+        clause: ` AND COALESCE(${itemAlias}.categoria, ${prodAlias}.categoria, 'S/ GRUPO') = $${nextParamIndex}`,
+        params: [grupo]
+    };
+}
+
+function buildMarcaFilter(marca, nextParamIndex, itemAlias = 'vi', prodAlias = 'p') {
+    if (!marca || marca === 'todas' || marca === 'all' || marca === 'TODOS') {
+        return { clause: '', params: [] };
+    }
+    if (marca === 'Sem Marca' || marca === 'S/ MARCA') {
+        return {
+            clause: ` AND (COALESCE(${itemAlias}.marca, ${prodAlias}.marca, 'S/ MARCA') = 'S/ MARCA' OR COALESCE(${itemAlias}.marca, ${prodAlias}.marca) IS NULL OR COALESCE(${itemAlias}.marca, ${prodAlias}.marca) = '')`,
+            params: []
+        };
+    }
+    return {
+        clause: ` AND COALESCE(${itemAlias}.marca, ${prodAlias}.marca, 'S/ MARCA') = $${nextParamIndex}`,
+        params: [marca]
+    };
+}
+
 // ----------------------------------------------------------------
 // GET /api/filiais  →  Lista filiais do tenant
 // ----------------------------------------------------------------
@@ -154,4 +208,12 @@ router.get('/check/:deptoId', async (req, res, next) => {
     }
 });
 
-module.exports = { router, buildDeptoFilter, buildCentroCustoFilter };
+module.exports = { 
+    router, 
+    buildDeptoFilter, 
+    buildCentroCustoFilter, 
+    buildVendedorFilter, 
+    buildCidadeFilter, 
+    buildGrupoFilter, 
+    buildMarcaFilter 
+};

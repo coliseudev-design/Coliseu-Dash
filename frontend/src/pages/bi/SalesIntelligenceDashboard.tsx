@@ -1,5 +1,7 @@
+import { useState, useMemo } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useBiPeriodQuery } from '../../hooks/useBiPeriodQuery';
+import { useBranchPeriodQuery } from '../../hooks/useApi';
 import { BIService } from '../../services/biApi';
 import { BiPeriodFilter } from '../../types/bi.types';
 import { TrendingUp, TrendingDown, DollarSign, Box, Target, Trophy, Users } from 'lucide-react';
@@ -60,11 +62,20 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 export default function SalesIntelligenceDashboard() {
   const { filter } = useOutletContext<{ filter: BiPeriodFilter }>();
+  const [selectedVendedor, setSelectedVendedor] = useState<string>('all');
+
+  // List of sellers unfiltered for the dropdown list
+  const vdFull = useBranchPeriodQuery<any>('/ranking/vendedores', { limit: 100 });
+
+  const activeFilter = useMemo(() => ({
+    ...filter,
+    vendedor_id: selectedVendedor !== 'all' ? selectedVendedor : undefined
+  }), [filter, selectedVendedor]);
 
   const { data, isLoading, isError } = useBiPeriodQuery(
     ['bi', 'sales-intelligence'],
     BIService.getSalesIntelligence,
-    filter
+    activeFilter
   );
 
   if (isLoading) {
@@ -98,11 +109,27 @@ export default function SalesIntelligenceDashboard() {
     <div className="space-y-6 animate-in fade-in duration-300">
       
       {/* HEADER SECTION */}
-      <div className="mb-2">
-        <h2 className="text-2xl font-bold text-text-primary flex items-center gap-2">
-          Inteligência de Vendas
-        </h2>
-        <p className="text-sm text-text-secondary mt-1">Análise detalhada de vendas, ticket médio e performance</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
+        <div>
+          <h2 className="text-2xl font-bold text-text-primary flex items-center gap-2">
+            Inteligência de Vendas
+          </h2>
+          <p className="text-sm text-text-secondary mt-1">Análise detalhada de vendas, ticket médio e performance</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <select
+            value={selectedVendedor}
+            onChange={(e) => setSelectedVendedor(e.target.value)}
+            className="px-3 py-1.5 bg-bg-primary border border-border text-text-primary rounded-lg text-xs font-medium shadow-sm focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300"
+          >
+            <option value="all">Todos os Vendedores</option>
+            {vdFull.data?.data?.map((seller: any) => (
+              <option key={seller.id} value={seller.id}>
+                {seller.nome}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* TOP KPIs - 3 BLOCKS */}
