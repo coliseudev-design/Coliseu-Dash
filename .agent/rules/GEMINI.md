@@ -175,10 +175,13 @@ When user's prompt is NOT in English:
 
 **Protocol:**
 
-1. **Never Assume:** If even 1% is unclear, ASK.
-2. **Handle Spec-heavy Requests:** When user gives a list (Answers 1, 2, 3...), do NOT skip the gate. Instead, ask about **Trade-offs** or **Edge Cases** (e.g., "LocalStorage confirmed, but should we handle data clearing or versioning?") before starting.
-3. **Wait:** Do NOT invoke subagents or write code until the user clears the Gate.
-4. **Reference:** Full protocol in `@[skills/brainstorming]`.
+1. **System Identification (CRITICAL):** Before any code analysis or execution, you MUST ask the user to explicitly identify which system the request applies to:
+   - **SISTEMA COLISEU** (Layouts 1, 2 e 3): Normal calendar dates, sales status `TRIM(status) IN ('FATURADO', 'FINALIZADO')` without CFOP filters.
+   - **SISTEMA SISCOM VET** (Layout 4 / Vet): Anchored date (`MAX(data_venda)`), faturamento líquido (Vendas - Devoluções), and strict CFOP filter clause (`cfop.js`).
+2. **Never Assume:** If even 1% is unclear, ASK.
+3. **Handle Spec-heavy Requests:** When user gives a list (Answers 1, 2, 3...), do NOT skip the gate. Instead, ask about **Trade-offs** or **Edge Cases** (e.g., "LocalStorage confirmed, but should we handle data clearing or versioning?") before starting.
+4. **Wait:** Do NOT invoke subagents or write code until the user clears the Gate.
+5. **Reference:** Full protocol in `@[skills/brainstorming]`.
 
 ### 🏁 Final Checklist Protocol
 
