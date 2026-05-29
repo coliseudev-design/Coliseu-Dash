@@ -3,7 +3,7 @@ import paramiko
 HOST = '177.39.17.7'
 USER = 'root'
 PASS = '6EFBC!c0:wzr%Ij'
-CONTAINER = 'dashboard-middleware-irerzifjwjb4q8ucbpfk2gb8-144356492056'
+CONTAINER = 'api-nsnopymisrq9qphl5qjc3w5l-123757509887'
 
 def run_cmd(label, cmd):
     client = paramiko.SSHClient()
@@ -23,6 +23,6 @@ def run_cmd(label, cmd):
         client.close()
 
 run_cmd(
-    "ENVIRONMENT FOR MIDDLEWARE",
-    f"docker exec {CONTAINER} env | grep -i 'PG_'"
+    "INSPECT OTHER API ENV",
+    f"docker inspect {CONTAINER} | grep -i 'PG_'"
 )
