@@ -1,0 +1,387 @@
+Line 16: const { rows } = await db.query(
+  [17]: 'SELECT MAX(data_venda) AS max_date FROM dash_vendas WHERE tenant_id = $1',
+  [18]: [tenantId]
+  [19]: );
+  [20]: const anchorDate = rows[0].max_date ? new Date(rows[0].max_date) : new Date();
+  [21]: 
+  [22]: if (period && period !== 'custom') {
+  [23]: const pr = getPeriodRange(period, null, null, anchorDate);
+--------------------------------------------------
+Line 61: const { rows: v } = await db.query(`
+  [62]: SELECT
+  [63]: COALESCE(SUM(
+  [64]: v.valor_total
+  [65]: ), 0) AS faturamento_total,
+  [66]: COUNT(DISTINCT v.id_firebird) AS total_pedidos
+  [67]: FROM dash_vendas v
+  [68]: WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
+--------------------------------------------------
+Line 73: const { rows: vPrev } = await db.query(`
+  [74]: SELECT
+  [75]: COALESCE(SUM(
+  [76]: v.valor_total
+  [77]: ), 0) AS faturamento_total,
+  [78]: COUNT(DISTINCT v.id_firebird) AS total_pedidos
+  [79]: FROM dash_vendas v
+  [80]: WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
+--------------------------------------------------
+Line 103: db.query(devMes.sql, devMes.params),
+  [104]: db.query(devAnt.sql, devAnt.params)
+  [105]: ]);
+  [106]: 
+  [107]: const devolucoes = parseFloat(devRes.rows[0].total);
+  [108]: const devolucoes_anterior = parseFloat(devPrevRes.rows[0].total);
+  [109]: 
+  [110]: const faturamento = parseFloat(v[0].faturamento_total) - devolucoes;
+--------------------------------------------------
+Line 104: db.query(devAnt.sql, devAnt.params)
+  [105]: ]);
+  [106]: 
+  [107]: const devolucoes = parseFloat(devRes.rows[0].total);
+  [108]: const devolucoes_anterior = parseFloat(devPrevRes.rows[0].total);
+  [109]: 
+  [110]: const faturamento = parseFloat(v[0].faturamento_total) - devolucoes;
+  [111]: const faturamento_anterior = parseFloat(vPrev[0].faturamento_total) - devolucoes_anterior;
+--------------------------------------------------
+Line 124: const { rows: sellers } = await db.query(`
+  [125]: SELECT COALESCE(vend.nome, 'Vendedor ' || COALESCE(v.vendedor_id_firebird::text, '?')) as nome,
+  [126]: SUM(
+  [127]: v.valor_total
+  [128]: ) as vendas
+  [129]: FROM dash_vendas v
+  [130]: LEFT JOIN dash_vendedores vend ON vend.id_firebird = v.vendedor_id_firebird AND vend.tenant_id = v.tenant_id
+  [131]: WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
+--------------------------------------------------
+Line 150: const { rows: prods } = await db.query(`
+  [151]: SELECT COALESCE(vi.produto, 'Produto ' || COALESCE(vi.produto_id_firebird::text, '?')) AS nome,
+  [152]: SUM(
+  [153]: vi.valor_total
+  [154]: ) as vendas
+  [155]: FROM dash_vendas_itens vi
+  [156]: JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+  [157]: WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
+--------------------------------------------------
+Line 174: const { rows: brands } = await db.query(`
+  [175]: SELECT COALESCE(vi.marca, v.marca, 'S/ MARCA') as nome,
+  [176]: SUM(
+  [177]: vi.valor_total
+  [178]: ) as vendas
+  [179]: FROM dash_vendas_itens vi
+  [180]: JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+  [181]: WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
+--------------------------------------------------
+Line 198: const { rows: regions } = await db.query(`
+  [199]: SELECT COALESCE(c.cidade, 'NÃO INFORMADA') as nome,
+  [200]: SUM(
+  [201]: v.valor_total
+  [202]: ) as vendas
+  [203]: FROM dash_vendas v
+  [204]: LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
+  [205]: WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
+--------------------------------------------------
+Line 221: const { rows: categories } = await db.query(`
+  [222]: SELECT COALESCE(vi.categoria, v.categoria, 'S/ GRUPO') as nome,
+  [223]: SUM(
+  [224]: vi.valor_total
+  [225]: ) as vendas
+  [226]: FROM dash_vendas_itens vi
+  [227]: JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+  [228]: WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
+--------------------------------------------------
+Line 245: const { rows: clients } = await db.query(`
+  [246]: SELECT COALESCE(c.nome, 'Cliente ' || COALESCE(v.cliente_id_firebird::text, '?')) as nome,
+  [247]: SUM(
+  [248]: v.valor_total
+  [249]: ) as vendas
+  [250]: FROM dash_vendas v
+  [251]: LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
+  [252]: WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
+--------------------------------------------------
+Line 266: const { rows: trajectory } = await db.query(`
+  [267]: SELECT
+  [268]: TO_CHAR(v.data_venda, 'DD/MM') AS dia,
+  [269]: SUM(v.valor_total) AS valor
+  [270]: FROM dash_vendas v
+  [271]: WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
+  [272]: ${salesFilter}
+  [273]: ${df.clause}
+--------------------------------------------------
+Line 311: const { rows: pItems } = await db.query(`
+  [312]: SELECT COALESCE(SUM(quantidade), 0) AS qtd
+  [313]: FROM dash_vendas_itens
+  [314]: WHERE tenant_id = $1 AND venda_id_firebird IN (
+  [315]: SELECT id_firebird FROM dash_vendas v WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
+  [316]: ${salesFilter}
+  [317]: ${df.clause}
+  [318]: )
+--------------------------------------------------
+Line 321: const { rows: pVendas } = await db.query(`
+  [322]: SELECT
+  [323]: COUNT(DISTINCT v.id_firebird) as pedidos,
+  [324]: COALESCE(SUM(
+  [325]: v.valor_total
+  [326]: ), 0) as faturamento_total
+  [327]: FROM dash_vendas v
+  [328]: WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
+--------------------------------------------------
+Line 334: const { rows: d } = await db.query(`
+  [335]: SELECT COALESCE(SUM(v.valor_desconto), 0) AS descontos
+  [336]: FROM dash_vendas v
+  [337]: WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
+  [338]: ${salesFilter}
+  [339]: ${df.clause}
+  [340]: `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
+  [341]: 
+--------------------------------------------------
+Line 343: const { rows: vends } = await db.query(`
+  [344]: SELECT COALESCE(vend.nome, 'Vendedor ' || COALESCE(v.vendedor_id_firebird::text, '?')) as nome,
+  [345]: SUM(v.valor_total) as vendas
+  [346]: FROM dash_vendas v
+  [347]: LEFT JOIN dash_vendedores vend ON vend.id_firebird = v.vendedor_id_firebird AND vend.tenant_id = v.tenant_id
+  [348]: WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
+  [349]: ${salesFilter}
+  [350]: ${df.clause}
+--------------------------------------------------
+Line 371: const { rows: dev_rows } = await db.query(devQuery.sql, devQuery.params);
+  [372]: const devolucoes = parseFloat(dev_rows[0].total);
+  [373]: 
+  [374]: // Calcula total faturado para share (usando faturamento_total real)
+  [375]: const totalFaturamento = parseFloat(pVendas[0].faturamento_total || 0) - devolucoes;
+  [376]: 
+  [377]: const top_sellers = vends.map((v, i) => {
+  [378]: const colors = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#14B8A6'];
+--------------------------------------------------
+Line 390: const { rows: recent } = await db.query(`
+  [391]: SELECT
+  [392]: v.id_firebird as id,
+  [393]: v.numero_pedido as numero_nota,
+  [394]: c.nome as cliente,
+  [395]: vend.nome as vendedor,
+  [396]: TO_CHAR(v.data_venda, 'DD/MM/YYYY') as data,
+  [397]: v.valor_total as valor,
+--------------------------------------------------
+Line 440: const { rows } = await db.query(`
+  [441]: SELECT
+  [442]: vend.nome as nome_vendedor,
+  [443]: SUM(v.valor_total) as faturamento,
+  [444]: COUNT(v.id_firebird) as pedidos,
+  [445]: COALESCE(AVG(v.valor_total), 0) as ticket_medio,
+  [446]: COALESCE(SUM(v.valor_total - v.valor_custo), 0) as lucro,
+  [447]: MAX(v.data_venda) as ultima_venda
+--------------------------------------------------
+Line 479: const { rows: inv } = await db.query(`
+  [480]: SELECT
+  [481]: COALESCE(SUM(estoque * custo), 0) AS valor_estoque_custo,
+  [482]: COALESCE(SUM(estoque * preco), 0) AS valor_estoque_venda,
+  [483]: COALESCE(SUM(estoque), 0) AS total_volume,
+  [484]: COUNT(CASE WHEN estoque > 0 THEN 1 END) AS skus_com_saldo,
+  [485]: COUNT(id_firebird) AS total_skus
+  [486]: FROM dash_produtos
+--------------------------------------------------
+Line 500: const { rows: prods } = await db.query(`
+  [501]: SELECT
+  [502]: p.id_firebird, p.nome, COALESCE(p.marca, 'DIVERSAS') as marca,
+  [503]: COALESCE(p.categoria, 'OUTROS') as grupo, p.estoque, p.custo, p.preco,
+  [504]: COALESCE(SUM(vi.valor_total), 0) as faturamento_historico
+  [505]: FROM dash_produtos p
+  [506]: LEFT JOIN dash_vendas_itens vi ON vi.produto_id_firebird = p.id_firebird AND vi.tenant_id = p.tenant_id
+  [507]: LEFT JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id ${salesFilter}
+--------------------------------------------------
+Line 552: const { rows: distGrupo } = await db.query(`
+  [553]: SELECT COALESCE(categoria, 'OUTROS') as name, COUNT(id_firebird) as value
+  [554]: FROM dash_produtos WHERE tenant_id = $1 AND ativo = true GROUP BY categoria ORDER BY value DESC LIMIT 10
+  [555]: `, [tenantId]);
+  [556]: 
+  [557]: // Distribution by Marca
+  [558]: const { rows: distMarca } = await db.query(`
+  [559]: SELECT COALESCE(marca, 'DIVERSAS') as name, COUNT(id_firebird) as value
+--------------------------------------------------
+Line 558: const { rows: distMarca } = await db.query(`
+  [559]: SELECT COALESCE(marca, 'DIVERSAS') as name, COUNT(id_firebird) as value
+  [560]: FROM dash_produtos WHERE tenant_id = $1 AND ativo = true GROUP BY marca ORDER BY value DESC LIMIT 10
+  [561]: `, [tenantId]);
+  [562]: 
+  [563]: // Bar Chart (Top 15 Marcas por Estoque)
+  [564]: const { rows: barChart } = await db.query(`
+  [565]: SELECT COALESCE(marca, 'DIVERSAS') as name, SUM(estoque * custo) as estoque
+--------------------------------------------------
+Line 564: const { rows: barChart } = await db.query(`
+  [565]: SELECT COALESCE(marca, 'DIVERSAS') as name, SUM(estoque * custo) as estoque
+  [566]: FROM dash_produtos WHERE tenant_id = $1 AND ativo = true GROUP BY marca ORDER BY estoque DESC LIMIT 15
+  [567]: `, [tenantId]);
+  [568]: 
+  [569]: res.json({
+  [570]: kpis: {
+  [571]: valor_estoque_custo,
+--------------------------------------------------
+Line 607: const { rows: f } = await db.query(`
+  [608]: SELECT
+  [609]: COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'RECEBER' AND TRIM(f.status_pagamento) = 'ABERTO' THEN f.valor - (CASE WHEN f.valor_pago = 0 THEN 0 ELSE f.valor_pago END) ELSE 0 END), 0) AS contas_receber,
+  [610]: COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'PAGAR' AND TRIM(f.status_pagamento) = 'ABERTO' THEN f.valor - (CASE WHEN f.valor_pago = 0 THEN 0 ELSE f.valor_pago END) ELSE 0 END), 0) AS contas_pagar,
+  [611]: COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'RECEBER' AND TRIM(f.status_pagamento) = 'ABERTO' AND f.data_vencimento < NOW() THEN f.valor - (CASE WHEN f.valor_pago = 0 THEN 0 ELSE f.valor_pago END) ELSE 0 END), 0) AS receber_vencido,
+  [612]: COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'PAGAR' AND TRIM(f.status_pagamento) = 'ABERTO' AND f.data_vencimento < NOW() THEN f.valor - (CASE WHEN f.valor_pago = 0 THEN 0 ELSE f.valor_pago END) ELSE 0 END), 0) AS pagar_vencido,
+  [613]: COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'RECEBER' AND TRIM(f.status_pagamento) = 'PAGO' AND COALESCE(f.data_pagamento, f.data_vencimento, NOW()) >= $2 AND COALESCE(f.data_pagamento, f.data_vencimento, NOW()) <= $3 THEN (CASE WHEN f.valor_pago = 0 THEN f.valor ELSE f.valor_pago END) ELSE 0 END), 0) AS recebimentos_realizados,
+  [614]: COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'PAGAR' AND TRIM(f.status_pagamento) = 'PAGO' AND COALESCE(f.data_pagamento, f.data_vencimento, NOW()) >= $2 AND COALESCE(f.data_pagamento, f.data_vencimento, NOW()) <= $3 THEN (CASE WHEN f.valor_pago = 0 THEN f.valor ELSE f.valor_pago END) ELSE 0 END), 0) AS pagamentos_realizados
+--------------------------------------------------
+Line 674: const { rows: atv } = await db.query(`
+  [675]: SELECT COUNT(DISTINCT v.cliente_id_firebird) AS ativos
+  [676]: FROM dash_vendas v
+  [677]: WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
+  [678]: ${salesFilter}
+  [679]: ${df.clause}
+  [680]: `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
+  [681]: 
+--------------------------------------------------
+Line 682: const { rows: tot } = await db.query(`
+  [683]: SELECT COUNT(*) AS totais,
+  [684]: SUM(CASE WHEN data_cadastro >= $2 AND data_cadastro <= $3 THEN 1 ELSE 0 END) AS novos
+  [685]: FROM dash_clientes
+  [686]: WHERE tenant_id = $1 AND ativo = true
+  [687]: `, [tenantId, toSafeSqlString(start), toSafeSqlString(end)]);
+  [688]: 
+  [689]: // Top 50 clientes em risco (compraram antes do inicio, mas nao no periodo atual)
+--------------------------------------------------
+Line 690: const { rows: risco } = await db.query(`
+  [691]: SELECT c.id_firebird, c.nome, MAX(v.data_venda) as ultima_compra, SUM(v.valor_total) as LTV
+  [692]: FROM dash_clientes c
+  [693]: JOIN dash_vendas v ON v.cliente_id_firebird = c.id_firebird AND v.tenant_id = c.tenant_id
+  [694]: WHERE c.tenant_id = $1 AND v.data_venda < $2 AND c.ativo = true
+  [695]: ${salesFilter}
+  [696]: AND c.id_firebird NOT IN (
+  [697]: SELECT DISTINCT cliente_id_firebird FROM dash_vendas v
+--------------------------------------------------
+Line 749: const { rows } = await db.query(`
+  [750]: WITH matched_clientes AS (
+  [751]: SELECT id_firebird, nome, documento, tenant_id
+  [752]: FROM dash_clientes
+  [753]: WHERE tenant_id = $1
+  [754]: AND (UPPER(nome) LIKE $2 OR documento LIKE $2)
+  [755]: ORDER BY nome ASC
+  [756]: LIMIT 10
+--------------------------------------------------
+Line 814: const { rows: c } = await db.query(`SELECT * FROM dash_clientes WHERE tenant_id = $1 AND id_firebird = $2`, [tenantId, searchId]);
+  [815]: 
+  [816]: if (c.length === 0) return res.status(404).json({ error: 'Cliente não encontrado' });
+  [817]: 
+  [818]: const cliente = c[0];
+  [819]: 
+  [820]: const salesFilter = cfopUtil.getSalesFilterClause('v');
+  [821]: 
+--------------------------------------------------
+Line 823: const { rows: vInfo } = await db.query(`
+  [824]: SELECT
+  [825]: COALESCE(SUM(v.valor_total), 0) as ltv,
+  [826]: COUNT(DISTINCT v.id_firebird) as total_pedidos,
+  [827]: MAX(v.data_venda) as ultima_compra
+  [828]: FROM dash_vendas v
+  [829]: WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2
+  [830]: ${salesFilter}
+--------------------------------------------------
+Line 847: const { rows: vendedores } = await db.query(`
+  [848]: SELECT v.vendedor, SUM(v.valor_total) as total_vendido
+  [849]: FROM dash_vendas v
+  [850]: WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2 AND v.vendedor IS NOT NULL AND v.vendedor != ''
+  [851]: ${salesFilter}
+  [852]: GROUP BY v.vendedor
+  [853]: ORDER BY total_vendido DESC
+  [854]: LIMIT 1
+--------------------------------------------------
+Line 859: const { rows: heatmap } = await db.query(`
+  [860]: SELECT EXTRACT(HOUR FROM v.data_venda) as hora, COUNT(*) as qtd
+  [861]: FROM dash_vendas v
+  [862]: WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2
+  [863]: ${salesFilter}
+  [864]: GROUP BY hora
+  [865]: ORDER BY qtd DESC
+  [866]: LIMIT 1
+--------------------------------------------------
+Line 871: const { rows: history } = await db.query(`
+  [872]: SELECT v.id_firebird as id, v.numero_pedido as numero_nota, v.data_venda as data_emissao, v.vendedor as vendedor_nome, v.valor_total, v.status
+  [873]: FROM dash_vendas v
+  [874]: WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2
+  [875]: ${salesFilter}
+  [876]: ORDER BY v.data_venda DESC
+  [877]: LIMIT 10
+  [878]: `, [tenantId, searchId]);
+--------------------------------------------------
+Line 935: const { rows: kpis } = await db.query(`
+  [936]: SELECT
+  [937]: COALESCE(SUM(v.valor_total), 0) AS faturamento,
+  [938]: COALESCE(SUM(v.valor_custo), 0) AS custo
+  [939]: FROM dash_vendas v
+  [940]: WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
+  [941]: ${salesFilter}
+  [942]: ${df.clause}
+--------------------------------------------------
+Line 951: const { rows: marcas } = await db.query(`
+  [952]: SELECT COALESCE(vi.marca, v.marca, 'S/ MARCA') as nome,
+  [953]: SUM(vi.valor_total) as vendas,
+  [954]: SUM(vi.custo_unitario * vi.quantidade) as custo
+  [955]: FROM dash_vendas_itens vi
+  [956]: JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+  [957]: WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
+  [958]: ${salesFilter}
+--------------------------------------------------
+Line 984: const { rows: grupos } = await db.query(`
+  [985]: SELECT COALESCE(vi.categoria, v.categoria, 'S/ GRUPO') as nome,
+  [986]: SUM(vi.valor_total) as vendas,
+  [987]: SUM(vi.custo_unitario * vi.quantidade) as custo
+  [988]: FROM dash_vendas_itens vi
+  [989]: JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+  [990]: WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
+  [991]: ${salesFilter}
+--------------------------------------------------
+Line 1014: const { rows: vends } = await db.query(`
+  [1015]: SELECT COALESCE(vend.nome, 'Vendedor ' || COALESCE(v.vendedor_id_firebird::text, '?')) as nome,
+  [1016]: SUM(v.valor_total) as vendas,
+  [1017]: SUM(v.valor_custo) as custo
+  [1018]: FROM dash_vendas v
+  [1019]: LEFT JOIN dash_vendedores vend ON vend.id_firebird = v.vendedor_id_firebird AND vend.tenant_id = v.tenant_id
+  [1020]: WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
+  [1021]: ${salesFilter}
+--------------------------------------------------
+Line 1113: const { rows: kpis } = await db.query(baseQuery, params);
+  [1114]: 
+  [1115]: // Fetch top 3 products
+  [1116]: let prodQuery = `
+  [1117]: SELECT COALESCE(vi.produto, 'S/ NOME') as nome, SUM(vi.quantidade) as qtde, SUM(vi.valor_total) as receita
+  [1118]: FROM dash_vendas_itens vi
+  [1119]: JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+  [1120]: WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
+--------------------------------------------------
+Line 1127: const { rows: top_products } = await db.query(prodQuery, params);
+  [1128]: 
+  [1129]: // Fetch Top Brands
+  [1130]: let brandQuery = `
+  [1131]: SELECT
+  [1132]: COALESCE(vi.marca, 'S/ MARCA') as nome,
+  [1133]: SUM(vi.quantidade) as qtde,
+  [1134]: SUM(vi.valor_total) as receita,
+--------------------------------------------------
+Line 1144: const { rows: all_brands_ranked } = await db.query(brandQuery, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
+  [1145]: 
+  [1146]: let top_brands = all_brands_ranked.slice(0, 10).map(b => ({
+  [1147]: rank: parseInt(b.rank),
+  [1148]: name: b.nome,
+  [1149]: volume: parseFloat(b.qtde || 0),
+  [1150]: receita: parseFloat(b.receita || 0)
+  [1151]: }));
+--------------------------------------------------
+Line 1180: const { rows: monthly } = await db.query(monthlyQuery, params);
+  [1181]: 
+  [1182]: // Fetch all distinct brands for the dropdown filter
+  [1183]: const { rows: allBrands } = await db.query(`
+  [1184]: SELECT DISTINCT marca FROM dash_vendas_itens WHERE tenant_id = $1 AND marca IS NOT NULL ORDER BY marca ASC
+  [1185]: `, [tenantId]);
+  [1186]: 
+  [1187]: res.json({
+--------------------------------------------------
+Line 1183: const { rows: allBrands } = await db.query(`
+  [1184]: SELECT DISTINCT marca FROM dash_vendas_itens WHERE tenant_id = $1 AND marca IS NOT NULL ORDER BY marca ASC
+  [1185]: `, [tenantId]);
+  [1186]: 
+  [1187]: res.json({
+  [1188]: overview: {
+  [1189]: receita: parseFloat(kpis[0]?.receita || 0),
+  [1190]: custo: parseFloat(kpis[0]?.custo || 0),
+--------------------------------------------------

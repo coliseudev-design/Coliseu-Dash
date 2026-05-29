@@ -5,21 +5,29 @@ const router = express.Router();
 const db = require('../db/postgres');
 const { getPeriodRange, toSafeSqlString } = require('../utils/period');
 const { buildDeptoFilter, buildCentroCustoFilter } = require('./filiais');
+const cfopUtil = require('../utils/cfop');
 
-const getBiDateRange = (req) => {
+const getBiDateRange = async (req, tenantId) => {
     const period = req.query.period;
     const inicioParam = req.query.inicio || req.query.startDate || req.query.start_date;
     const fimParam = req.query.fim || req.query.endDate || req.query.end_date;
     
+    // REGRA DE ANCORAGEM: obter a data máxima de venda registrada
+    const { rows } = await db.query(
+        'SELECT MAX(data_venda) AS max_date FROM dash_vendas WHERE tenant_id = $1',
+        [tenantId]
+    );
+    const anchorDate = rows[0].max_date ? new Date(rows[0].max_date) : new Date();
+
     if (period && period !== 'custom') {
-        const pr = getPeriodRange(period);
+        const pr = getPeriodRange(period, null, null, anchorDate);
         // getPeriodRange retorna strings, precisamos converter para Date
         return { start: new Date(pr.start), end: new Date(pr.end) };
     }
 
-    const now = new Date();
     let start = new Date(1970, 0, 1);
-    let end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    let end = new Date(anchorDate);
+    end.setHours(23, 59, 59, 999);
 
     if (inicioParam) {
         start = new Date(`${inicioParam}T00:00:00`);
@@ -34,15 +42,15 @@ const getBiDateRange = (req) => {
 
 // ==========================================
 // MÓDULO: SALES INTELLIGENCE
-// ==========================================
-
-// GET /api/bi/sales/executive-summary
+// ==========================================// GET /api/bi/sales/executive-summary
 router.get('/sales/executive-summary', async (req, res, next) => {
     try {
         const tenantId = req.tenant.id;
-        const { start, end } = getBiDateRange(req);
+        const { start, end } = await getBiDateRange(req, tenantId);
         const deptoId = req.query.depto_id;
         const df = buildDeptoFilter(deptoId, 4, 'v');
+        
+        const salesFilter = cfopUtil.getSalesFilterClause('v');
         
         // Calcular período anterior de mesmo tamanho
         const diffTime = Math.abs(end - start);
@@ -58,7 +66,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
                 COUNT(DISTINCT v.id_firebird) AS total_pedidos
             FROM dash_vendas v
             WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 
-              AND UPPER(TRIM(v.status)) NOT IN ('CANCELADO', 'ABERTO', 'PENDENTE', 'ORÇAMENTO', 'ORCAMENTO', 'NULO')
+              ${salesFilter}
               ${df.clause}
         `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
 
@@ -70,28 +78,34 @@ router.get('/sales/executive-summary', async (req, res, next) => {
                 COUNT(DISTINCT v.id_firebird) AS total_pedidos
             FROM dash_vendas v
             WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 
-              AND UPPER(TRIM(v.status)) NOT IN ('CANCELADO', 'ABERTO', 'PENDENTE', 'ORÇAMENTO', 'ORCAMENTO', 'NULO')
+              ${salesFilter}
               ${df.clause}
         `, [tenantId, toSafeSqlString(prevStart), toSafeSqlString(prevEnd), ...df.params]);
 
+        const getDevQuery = (startStr, endStr) => {
+            if (cfopUtil.isVetContext()) {
+                return {
+                    sql: `SELECT COALESCE(SUM(d.valor), 0) AS total FROM dash_devolucoes d WHERE d.tenant_id = $1 AND d.data_devolucao >= $2 AND d.data_devolucao <= $3`,
+                    params: [tenantId, startStr, endStr]
+                };
+            } else {
+                return {
+                    sql: `SELECT COALESCE(SUM(d.valor), 0) AS total FROM dash_devolucoes d LEFT JOIN dash_vendas v ON v.id_firebird = d.venda_id_firebird AND v.tenant_id = d.tenant_id WHERE d.tenant_id = $1 AND d.data_devolucao >= $2 AND d.data_devolucao <= $3 ${df.clause}`,
+                    params: [tenantId, startStr, endStr, ...df.params]
+                };
+            }
+        };
 
-        const { rows: dev_rows } = await db.query(`
-            SELECT COALESCE(SUM(d.valor), 0) AS devolucao_total
-            FROM dash_devolucoes d
-            LEFT JOIN dash_vendas v ON v.id_firebird = d.venda_id_firebird AND v.tenant_id = d.tenant_id
-            WHERE d.tenant_id = \$1 AND d.data_devolucao >= \$2 AND d.data_devolucao <= \$3
-            ${df.clause}
-        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
-        const devolucoes = parseFloat(dev_rows[0].devolucao_total);
+        const devMes = getDevQuery(toSafeSqlString(start), toSafeSqlString(end));
+        const devAnt = getDevQuery(toSafeSqlString(prevStart), toSafeSqlString(prevEnd));
 
-        const { rows: dev_prev_rows } = await db.query(`
-            SELECT COALESCE(SUM(d.valor), 0) AS devolucao_total
-            FROM dash_devolucoes d
-            LEFT JOIN dash_vendas v ON v.id_firebird = d.venda_id_firebird AND v.tenant_id = d.tenant_id
-            WHERE d.tenant_id = \$1 AND d.data_devolucao >= \$2 AND d.data_devolucao <= \$3
-            ${df.clause}
-        `, [tenantId, toSafeSqlString(prevStart), toSafeSqlString(prevEnd), ...df.params]);
-        const devolucoes_anterior = parseFloat(dev_prev_rows[0].devolucao_total);
+        const [devRes, devPrevRes] = await Promise.all([
+            db.query(devMes.sql, devMes.params),
+            db.query(devAnt.sql, devAnt.params)
+        ]);
+
+        const devolucoes = parseFloat(devRes.rows[0].total);
+        const devolucoes_anterior = parseFloat(devPrevRes.rows[0].total);
 
         const faturamento = parseFloat(v[0].faturamento_total) - devolucoes;
         const faturamento_anterior = parseFloat(vPrev[0].faturamento_total) - devolucoes_anterior;
@@ -115,7 +129,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
             FROM dash_vendas v
             LEFT JOIN dash_vendedores vend ON vend.id_firebird = v.vendedor_id_firebird AND vend.tenant_id = v.tenant_id
             WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 
-              AND UPPER(TRIM(v.status)) NOT IN ('CANCELADO', 'ABERTO', 'PENDENTE', 'ORÇAMENTO', 'ORCAMENTO', 'NULO')
+              ${salesFilter}
               ${df.clause}
             GROUP BY v.vendedor_id_firebird, vend.nome
             ORDER BY vendas DESC
@@ -141,7 +155,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
             WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 
-              AND UPPER(TRIM(v.status)) NOT IN ('CANCELADO', 'ABERTO', 'PENDENTE', 'ORÇAMENTO', 'ORCAMENTO', 'NULO')
+              ${salesFilter}
               AND COALESCE(vi.produto, vi.produto_id_firebird::text) IS NOT NULL${df.clause}
             GROUP BY COALESCE(vi.produto, 'Produto ' || COALESCE(vi.produto_id_firebird::text, '?'))
             ORDER BY vendas DESC
@@ -165,7 +179,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
             WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 
-              AND UPPER(TRIM(v.status)) NOT IN ('CANCELADO', 'ABERTO', 'PENDENTE', 'ORÇAMENTO', 'ORCAMENTO', 'NULO')
+              ${salesFilter}
               AND COALESCE(vi.marca, v.marca) IS NOT NULL AND COALESCE(vi.marca, v.marca) != ''${df.clause}
             GROUP BY COALESCE(vi.marca, v.marca, 'S/ MARCA')
             ORDER BY vendas DESC
@@ -189,7 +203,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
             FROM dash_vendas v
             LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
             WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 
-              AND UPPER(TRIM(v.status)) NOT IN ('CANCELADO', 'ABERTO', 'PENDENTE', 'ORÇAMENTO', 'ORCAMENTO', 'NULO')
+              ${salesFilter}
               ${df.clause}
             GROUP BY c.cidade
             ORDER BY vendas DESC
@@ -212,7 +226,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
             WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 
-              AND UPPER(TRIM(v.status)) NOT IN ('CANCELADO', 'ABERTO', 'PENDENTE', 'ORÇAMENTO', 'ORCAMENTO', 'NULO')
+              ${salesFilter}
               AND COALESCE(vi.categoria, v.categoria) IS NOT NULL AND COALESCE(vi.categoria, v.categoria) != ''${df.clause}
             GROUP BY COALESCE(vi.categoria, v.categoria, 'S/ GRUPO')
             ORDER BY vendas DESC
@@ -236,7 +250,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
             FROM dash_vendas v
             LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
             WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 
-              AND UPPER(TRIM(v.status)) NOT IN ('CANCELADO', 'ABERTO', 'PENDENTE', 'ORÇAMENTO', 'ORCAMENTO', 'NULO')
+              ${salesFilter}
             GROUP BY v.cliente_id_firebird, c.nome
             ORDER BY vendas DESC
             LIMIT 10
@@ -246,6 +260,24 @@ router.get('/sales/executive-summary', async (req, res, next) => {
             rank: i + 1,
             name: c.nome,
             value: parseFloat(c.vendas)
+        }));
+
+        // --- 8. Trajetória da Receita (Evolução Diária) ---
+        const { rows: trajectory } = await db.query(`
+            SELECT 
+                TO_CHAR(v.data_venda, 'DD/MM') AS dia,
+                SUM(v.valor_total) AS valor
+            FROM dash_vendas v
+            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
+              ${salesFilter}
+              ${df.clause}
+            GROUP BY TO_CHAR(v.data_venda, 'DD/MM'), MIN(v.data_venda)
+            ORDER BY MIN(v.data_venda) ASC
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
+
+        const revenue_trajectory = trajectory.map(t => ({
+            dia: t.dia,
+            valor: parseFloat(t.valor)
         }));
 
         res.json({
@@ -260,7 +292,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
             top_regions,
             top_categories,
             top_clients,
-            revenue_trajectory: [] // Will be mapped properly if required
+            revenue_trajectory
         });
     } catch (err) { next(err); }
 });
@@ -269,9 +301,11 @@ router.get('/sales/executive-summary', async (req, res, next) => {
 router.get('/sales/commercial-kpis', async (req, res, next) => {
     try {
         const tenantId = req.tenant.id;
-        const { start, end } = getBiDateRange(req);
+        const { start, end } = await getBiDateRange(req, tenantId);
         const deptoId = req.query.depto_id;
         const df = buildDeptoFilter(deptoId, 4, 'v');
+        
+        const salesFilter = cfopUtil.getSalesFilterClause('v');
 
         // Produtos vendidos e Faturamento Total (separando para não duplicar faturamento por causa do JOIN)
         const { rows: pItems } = await db.query(`
@@ -279,7 +313,7 @@ router.get('/sales/commercial-kpis', async (req, res, next) => {
             FROM dash_vendas_itens
             WHERE tenant_id = $1 AND venda_id_firebird IN (
                 SELECT id_firebird FROM dash_vendas v WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 
-                AND UPPER(TRIM(v.status)) NOT IN ('CANCELADO', 'ABERTO', 'PENDENTE', 'ORÇAMENTO', 'ORCAMENTO', 'NULO')
+                ${salesFilter}
                 ${df.clause}
             )
         `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
@@ -292,16 +326,17 @@ router.get('/sales/commercial-kpis', async (req, res, next) => {
                 ), 0) as faturamento_total
             FROM dash_vendas v
             WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 
-              AND UPPER(TRIM(v.status)) NOT IN ('CANCELADO', 'ABERTO', 'PENDENTE', 'ORÇAMENTO', 'ORCAMENTO', 'NULO')
-        ${df.clause}
+              ${salesFilter}
+              ${df.clause}
         `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
 
         // Total descontos
         const { rows: d } = await db.query(`
             SELECT COALESCE(SUM(v.valor_desconto), 0) AS descontos
             FROM dash_vendas v
-            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
-            ${df.clause}
+            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
+              ${salesFilter}
+              ${df.clause}
         `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
 
         // --- Vendedores ---
@@ -310,22 +345,31 @@ router.get('/sales/commercial-kpis', async (req, res, next) => {
                    SUM(v.valor_total) as vendas
             FROM dash_vendas v
             LEFT JOIN dash_vendedores vend ON vend.id_firebird = v.vendedor_id_firebird AND vend.tenant_id = v.tenant_id
-            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO', 'PAGO', 'EMITIDO', 'CONCLUIDO', 'VENDIDO', 'DEVOLVIDO', 'DEVOLUCAO', 'DEVOLUÇÃO', 'TROCA')
-            ${df.clause}
+            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 
+              ${salesFilter}
+              ${df.clause}
             GROUP BY v.vendedor_id_firebird, vend.nome
             ORDER BY vendas DESC
             LIMIT 10
         `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
 
+        const getDevQuery = (startStr, endStr) => {
+            if (cfopUtil.isVetContext()) {
+                return {
+                    sql: `SELECT COALESCE(SUM(d.valor), 0) AS total FROM dash_devolucoes d WHERE d.tenant_id = $1 AND d.data_devolucao >= $2 AND d.data_devolucao <= $3`,
+                    params: [tenantId, startStr, endStr]
+                };
+            } else {
+                return {
+                    sql: `SELECT COALESCE(SUM(d.valor), 0) AS total FROM dash_devolucoes d LEFT JOIN dash_vendas v ON v.id_firebird = d.venda_id_firebird AND v.tenant_id = d.tenant_id WHERE d.tenant_id = $1 AND d.data_devolucao >= $2 AND d.data_devolucao <= $3 ${df.clause}`,
+                    params: [tenantId, startStr, endStr, ...df.params]
+                };
+            }
+        };
 
-        const { rows: dev_rows } = await db.query(`
-            SELECT COALESCE(SUM(d.valor), 0) AS devolucao_total
-            FROM dash_devolucoes d
-            LEFT JOIN dash_vendas v ON v.id_firebird = d.venda_id_firebird AND v.tenant_id = d.tenant_id
-            WHERE d.tenant_id = \$1 AND d.data_devolucao >= \$2 AND d.data_devolucao <= \$3
-            ${df.clause}
-        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
-        const devolucoes = parseFloat(dev_rows[0].devolucao_total);
+        const devQuery = getDevQuery(toSafeSqlString(start), toSafeSqlString(end));
+        const { rows: dev_rows } = await db.query(devQuery.sql, devQuery.params);
+        const devolucoes = parseFloat(dev_rows[0].total);
 
         // Calcula total faturado para share (usando faturamento_total real)
         const totalFaturamento = parseFloat(pVendas[0].faturamento_total || 0) - devolucoes;
@@ -356,7 +400,8 @@ router.get('/sales/commercial-kpis', async (req, res, next) => {
             LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
             LEFT JOIN dash_vendedores vend ON vend.id_firebird = v.vendedor_id_firebird AND vend.tenant_id = v.tenant_id
             WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
-            ${df.clause}
+              ${salesFilter}
+              ${df.clause}
             ORDER BY v.data_venda DESC, v.id_firebird DESC
         `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
 
@@ -386,9 +431,11 @@ router.get('/sales/commercial-kpis', async (req, res, next) => {
 router.get('/sales/sellers', async (req, res, next) => {
     try {
         const tenantId = req.tenant.id;
-        const { start, end } = getBiDateRange(req);
+        const { start, end } = await getBiDateRange(req, tenantId);
         const deptoId = req.query.depto_id;
         const df = buildDeptoFilter(deptoId, 4, 'v');
+        
+        const salesFilter = cfopUtil.getSalesFilterClause('v');
 
         const { rows } = await db.query(`
             SELECT 
@@ -400,8 +447,9 @@ router.get('/sales/sellers', async (req, res, next) => {
                 MAX(v.data_venda) as ultima_venda
             FROM dash_vendas v
             JOIN dash_vendedores vend ON vend.id_firebird = v.vendedor_id_firebird AND vend.tenant_id = v.tenant_id
-            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO', 'PAGO', 'EMITIDO', 'CONCLUIDO', 'VENDIDO', 'DEVOLVIDO', 'DEVOLUCAO', 'DEVOLUÇÃO', 'TROCA')
-            ${df.clause}
+            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
+              ${salesFilter}
+              ${df.clause}
             GROUP BY vend.id_firebird, vend.nome
             ORDER BY faturamento DESC
         `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
@@ -446,6 +494,8 @@ router.get('/sales/abc-analysis', async (req, res, next) => {
         const total_skus = parseInt(inv[0].total_skus, 10);
         const ruptura_pct = total_skus > 0 ? ((total_skus - skus_com_saldo) / total_skus) * 100 : 0;
 
+        const salesFilter = cfopUtil.getSalesFilterClause('v');
+
         // Fetch product list and calculate ABC
         const { rows: prods } = await db.query(`
             SELECT 
@@ -454,6 +504,7 @@ router.get('/sales/abc-analysis', async (req, res, next) => {
                 COALESCE(SUM(vi.valor_total), 0) as faturamento_historico
             FROM dash_produtos p
             LEFT JOIN dash_vendas_itens vi ON vi.produto_id_firebird = p.id_firebird AND vi.tenant_id = p.tenant_id
+            LEFT JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id ${salesFilter}
             WHERE p.tenant_id = $1 AND p.ativo = true
             GROUP BY p.id_firebird, p.nome, p.marca, p.categoria, p.estoque, p.custo, p.preco
             ORDER BY faturamento_historico DESC
@@ -542,7 +593,7 @@ router.get('/sales/abc-analysis', async (req, res, next) => {
 router.get('/financial/summary', async (req, res, next) => {
     try {
         const tenantId = req.tenant.id;
-        const { start, end } = getBiDateRange(req);
+        const { start, end } = await getBiDateRange(req, tenantId);
         const centroCusto = req.query.centro_custo;
         const deptoId = req.query.depto_id;
         
@@ -613,16 +664,19 @@ router.get('/financial/cash-flow', async (req, res, next) => {
 router.get('/customer/analytics', async (req, res, next) => {
     try {
         const tenantId = req.tenant.id;
-        const { start, end } = getBiDateRange(req);
+        const { start, end } = await getBiDateRange(req, tenantId);
         const deptoId = req.query.depto_id;
         const df = buildDeptoFilter(deptoId, 4, 'v');
+        
+        const salesFilter = cfopUtil.getSalesFilterClause('v');
 
         // Clientes ativos vs Novos
         const { rows: atv } = await db.query(`
             SELECT COUNT(DISTINCT v.cliente_id_firebird) AS ativos
             FROM dash_vendas v
-            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
-            ${df.clause}
+            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 
+              ${salesFilter}
+              ${df.clause}
         `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
 
         const { rows: tot } = await db.query(`
@@ -638,9 +692,11 @@ router.get('/customer/analytics', async (req, res, next) => {
             FROM dash_clientes c
             JOIN dash_vendas v ON v.cliente_id_firebird = c.id_firebird AND v.tenant_id = c.tenant_id
             WHERE c.tenant_id = $1 AND v.data_venda < $2 AND c.ativo = true
+              ${salesFilter}
               AND c.id_firebird NOT IN (
-                  SELECT DISTINCT cliente_id_firebird FROM dash_vendas 
+                  SELECT DISTINCT cliente_id_firebird FROM dash_vendas v
                   WHERE tenant_id = $1 AND data_venda >= $2 AND data_venda <= $3
+                    ${salesFilter}
               )
               ${df.clause}
             GROUP BY c.id_firebird, c.nome
@@ -688,6 +744,8 @@ router.get('/customer/search', async (req, res, next) => {
             return res.json([]);
         }
 
+        const salesFilter = cfopUtil.getSalesFilterClause('v');
+
         const { rows } = await db.query(`
             WITH matched_clientes AS (
                 SELECT id_firebird, nome, documento, tenant_id
@@ -705,11 +763,13 @@ router.get('/customer/search', async (req, res, next) => {
                     SELECT SUM(v.valor_total) 
                     FROM dash_vendas v 
                     WHERE v.cliente_id_firebird = c.id_firebird AND v.tenant_id = c.tenant_id
+                      ${salesFilter}
                 ), 0) as ltv,
                 (
                     SELECT MAX(data_venda) 
                     FROM dash_vendas v 
                     WHERE v.cliente_id_firebird = c.id_firebird AND v.tenant_id = c.tenant_id
+                      ${salesFilter}
                 ) as ultima_compra
             FROM matched_clientes c
             ORDER BY c.nome ASC
@@ -756,6 +816,8 @@ router.get('/customer/radar-360', async (req, res, next) => {
         if (c.length === 0) return res.status(404).json({ error: 'Cliente não encontrado' });
 
         const cliente = c[0];
+        
+        const salesFilter = cfopUtil.getSalesFilterClause('v');
 
         // LTV e Ticket Medio Histórico
         const { rows: vInfo } = await db.query(`
@@ -764,7 +826,8 @@ router.get('/customer/radar-360', async (req, res, next) => {
                 COUNT(DISTINCT v.id_firebird) as total_pedidos,
                 MAX(v.data_venda) as ultima_compra
             FROM dash_vendas v
-            WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO', 'PAGO', 'EMITIDO', 'CONCLUIDO', 'VENDIDO', 'DEVOLVIDO', 'DEVOLUCAO', 'DEVOLUÇÃO', 'TROCA')
+            WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2 
+              ${salesFilter}
         `, [tenantId, searchId]);
 
         const ltv = parseFloat(vInfo[0].ltv);
@@ -782,10 +845,11 @@ router.get('/customer/radar-360', async (req, res, next) => {
 
         // Vendedor Estrela
         const { rows: vendedores } = await db.query(`
-            SELECT vendedor, SUM(valor_total) as total_vendido
-            FROM dash_vendas
-            WHERE tenant_id = $1 AND cliente_id_firebird = $2 AND vendedor IS NOT NULL AND vendedor != ''
-            GROUP BY vendedor
+            SELECT v.vendedor, SUM(v.valor_total) as total_vendido
+            FROM dash_vendas v
+            WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2 AND v.vendedor IS NOT NULL AND v.vendedor != ''
+              ${salesFilter}
+            GROUP BY v.vendedor
             ORDER BY total_vendido DESC
             LIMIT 1
         `, [tenantId, searchId]);
@@ -793,9 +857,10 @@ router.get('/customer/radar-360', async (req, res, next) => {
 
         // Melhor Horário (Densidade)
         const { rows: heatmap } = await db.query(`
-            SELECT EXTRACT(HOUR FROM data_venda) as hora, COUNT(*) as qtd
-            FROM dash_vendas
-            WHERE tenant_id = $1 AND cliente_id_firebird = $2
+            SELECT EXTRACT(HOUR FROM v.data_venda) as hora, COUNT(*) as qtd
+            FROM dash_vendas v
+            WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2
+              ${salesFilter}
             GROUP BY hora
             ORDER BY qtd DESC
             LIMIT 1
@@ -804,10 +869,11 @@ router.get('/customer/radar-360', async (req, res, next) => {
 
         // Order History
         const { rows: history } = await db.query(`
-            SELECT id_firebird as id, numero_pedido as numero_nota, data_venda as data_emissao, vendedor as vendedor_nome, valor_total, status 
-            FROM dash_vendas
-            WHERE tenant_id = $1 AND cliente_id_firebird = $2
-            ORDER BY data_venda DESC
+            SELECT v.id_firebird as id, v.numero_pedido as numero_nota, v.data_venda as data_emissao, v.vendedor as vendedor_nome, v.valor_total, v.status 
+            FROM dash_vendas v
+            WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2
+              ${salesFilter}
+            ORDER BY v.data_venda DESC
             LIMIT 10
         `, [tenantId, searchId]);
 
@@ -859,9 +925,11 @@ router.get('/customer/radar-360', async (req, res, next) => {
 router.get('/comparative/summary', async (req, res, next) => {
     try {
         const tenantId = req.tenant.id;
-        const { start, end } = getBiDateRange(req);
+        const { start, end } = await getBiDateRange(req, tenantId);
         const deptoId = req.query.depto_id;
         const df = buildDeptoFilter(deptoId, 4, 'v');
+        
+        const salesFilter = cfopUtil.getSalesFilterClause('v');
 
         // --- KPI Overview ---
         const { rows: kpis } = await db.query(`
@@ -869,8 +937,9 @@ router.get('/comparative/summary', async (req, res, next) => {
                 COALESCE(SUM(v.valor_total), 0) AS faturamento,
                 COALESCE(SUM(v.valor_custo), 0) AS custo
             FROM dash_vendas v
-            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO', 'PAGO', 'EMITIDO', 'CONCLUIDO', 'VENDIDO', 'DEVOLVIDO', 'DEVOLUCAO', 'DEVOLUÇÃO', 'TROCA')
-            ${df.clause}
+            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
+              ${salesFilter}
+              ${df.clause}
         `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
 
         const faturamento = parseFloat(kpis[0].faturamento);
@@ -885,7 +954,8 @@ router.get('/comparative/summary', async (req, res, next) => {
                    SUM(vi.custo_unitario * vi.quantidade) as custo
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
-            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO', 'PAGO', 'EMITIDO', 'CONCLUIDO', 'VENDIDO', 'DEVOLVIDO', 'DEVOLUCAO', 'DEVOLUÇÃO', 'TROCA')
+            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
+              ${salesFilter}
               AND COALESCE(vi.marca, v.marca) IS NOT NULL AND COALESCE(vi.marca, v.marca) != ''
               ${df.clause}
             GROUP BY COALESCE(vi.marca, v.marca, 'S/ MARCA')
@@ -917,7 +987,8 @@ router.get('/comparative/summary', async (req, res, next) => {
                    SUM(vi.custo_unitario * vi.quantidade) as custo
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
-            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO', 'PAGO', 'EMITIDO', 'CONCLUIDO', 'VENDIDO', 'DEVOLVIDO', 'DEVOLUCAO', 'DEVOLUÇÃO', 'TROCA')
+            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
+              ${salesFilter}
               AND COALESCE(vi.categoria, v.categoria) IS NOT NULL AND COALESCE(vi.categoria, v.categoria) != ''
               ${df.clause}
             GROUP BY COALESCE(vi.categoria, v.categoria, 'S/ GRUPO')
@@ -946,8 +1017,9 @@ router.get('/comparative/summary', async (req, res, next) => {
                    SUM(v.valor_custo) as custo
             FROM dash_vendas v
             LEFT JOIN dash_vendedores vend ON vend.id_firebird = v.vendedor_id_firebird AND vend.tenant_id = v.tenant_id
-            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO', 'PAGO', 'EMITIDO', 'CONCLUIDO', 'VENDIDO', 'DEVOLVIDO', 'DEVOLUCAO', 'DEVOLUÇÃO', 'TROCA')
-            ${df.clause}
+            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
+              ${salesFilter}
+              ${df.clause}
             GROUP BY v.vendedor_id_firebird, vend.nome
             ORDER BY vendas DESC
             LIMIT 15
@@ -1008,13 +1080,16 @@ router.get('/goals/summary', async (req, res, next) => {
     } catch (err) { next(err); }
 });
 
+// GET /api/bi/supplier/analytics
 router.get('/supplier/analytics', async (req, res, next) => {
     try {
         const tenantId = req.tenant.id;
-        const { start, end } = getBiDateRange(req);
+        const { start, end } = await getBiDateRange(req, tenantId);
         const deptoId = req.query.depto_id;
         const df = buildDeptoFilter(deptoId, 4, 'v');
         const { marca } = req.query;
+
+        const salesFilter = cfopUtil.getSalesFilterClause('v');
 
         let baseQuery = `
             SELECT 
@@ -1024,9 +1099,11 @@ router.get('/supplier/analytics', async (req, res, next) => {
                 COUNT(DISTINCT v.cliente_id_firebird) as clientes
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
-            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO', 'PAGO', 'EMITIDO', 'CONCLUIDO', 'VENDIDO', 'DEVOLVIDO', 'DEVOLUCAO', 'DEVOLUÇÃO', 'TROCA')
+            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
+              ${salesFilter}
+              ${df.clause}
         `;
-        let params = [tenantId, toSafeSqlString(start), toSafeSqlString(end)];
+        let params = [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params];
         
         if (marca) {
             baseQuery += ` AND vi.marca = $4`;
@@ -1040,10 +1117,12 @@ router.get('/supplier/analytics', async (req, res, next) => {
             SELECT COALESCE(vi.produto, 'S/ NOME') as nome, SUM(vi.quantidade) as qtde, SUM(vi.valor_total) as receita
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
-            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO', 'PAGO', 'EMITIDO', 'CONCLUIDO', 'VENDIDO', 'DEVOLVIDO', 'DEVOLUCAO', 'DEVOLUÇÃO', 'TROCA')
+            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
+              ${salesFilter}
+              ${df.clause}
         `;
         if (marca) prodQuery += ` AND vi.marca = $4`;
-        prodQuery += ` GROUP BY vi.produto ORDER BY receita DESC LIMIT 30`; // Top 30 for the ranking table, top 3 for cards
+        prodQuery += ` GROUP BY vi.produto ORDER BY receita DESC LIMIT 30`;
         
         const { rows: top_products } = await db.query(prodQuery, params);
 
@@ -1056,11 +1135,13 @@ router.get('/supplier/analytics', async (req, res, next) => {
                 RANK() OVER (ORDER BY SUM(vi.valor_total) DESC) as rank
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
-            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO', 'PAGO', 'EMITIDO', 'CONCLUIDO', 'VENDIDO', 'DEVOLVIDO', 'DEVOLUCAO', 'DEVOLUÇÃO', 'TROCA')
+            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
+              ${salesFilter}
+              ${df.clause}
             GROUP BY COALESCE(vi.marca, 'S/ MARCA')
             ORDER BY receita DESC
         `;
-        const { rows: all_brands_ranked } = await db.query(brandQuery, [tenantId, toSafeSqlString(start), toSafeSqlString(end)]);
+        const { rows: all_brands_ranked } = await db.query(brandQuery, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
         
         let top_brands = all_brands_ranked.slice(0, 10).map(b => ({
             rank: parseInt(b.rank),
@@ -1089,7 +1170,9 @@ router.get('/supplier/analytics', async (req, res, next) => {
                 SUM(vi.quantidade) as qtde
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
-            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO', 'PAGO', 'EMITIDO', 'CONCLUIDO', 'VENDIDO', 'DEVOLVIDO', 'DEVOLUCAO', 'DEVOLUÇÃO', 'TROCA')
+            WHERE vi.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
+              ${salesFilter}
+              ${df.clause}
         `;
         if (marca) monthlyQuery += ` AND vi.marca = $4`;
         monthlyQuery += ` GROUP BY TO_CHAR(v.data_venda, 'MM/YYYY') ORDER BY MIN(v.data_venda) ASC`;
@@ -1119,7 +1202,7 @@ router.get('/supplier/analytics', async (req, res, next) => {
                 mes: m.mes_ano,
                 valor: parseFloat(m.receita || 0),
                 qtde: parseFloat(m.qtde || 0),
-                margem: 30 // Mock margin for now since we didn't fetch cost per month
+                margem: 30
             })),
             available_brands: allBrands.map(b => b.marca)
         });
