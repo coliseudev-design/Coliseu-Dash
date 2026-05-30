@@ -50,7 +50,7 @@ async function requireWebJwt(req, res, next) {
         }
 
         req.tenant = { id: tenantId, name: decoded.companyName || 'Unknown' };
-        req.user = { id: decoded.userId || decoded.sub, layoutVersion: decoded.layoutVersion };
+        req.user = { id: decoded.userId || decoded.sub, layoutVersion: decoded.layoutVersion, useVetDb: decoded.useVetDb };
 
         next();
     } catch (err) {
@@ -174,35 +174,35 @@ async function bindDbContext(req, res, next) {
     if (req.user && req.user.id) {
         try {
             const userRes = await db.poolMain.query(
-                'SELECT layout_version FROM dash_usuarios WHERE id = $1 LIMIT 1',
+                'SELECT layout_version, use_vet_db FROM dash_usuarios WHERE id = $1 LIMIT 1',
                 [req.user.id]
             );
-            if (userRes.rowCount > 0 && userRes.rows[0].layout_version === 'v4.0') {
+            if (userRes.rowCount > 0 && userRes.rows[0].use_vet_db === true) {
                 dbType = 'vet';
             }
         } catch (dbErr) {
-            logger.error('[DB-Context] Erro ao buscar layout_version do usuário', { 
+            logger.error('[DB-Context] Erro ao buscar use_vet_db do usuário', { 
                 userId: req.user.id, 
                 error: dbErr.message 
             });
-            if (req.user.layoutVersion === 'v4.0') {
+            if (req.user.useVetDb === true) {
                 dbType = 'vet';
             }
         }
-    } else if (req.user && req.user.layoutVersion === 'v4.0') {
+    } else if (req.user && req.user.useVetDb === true) {
         dbType = 'vet';
     } else if (req.tenant && req.tenant.id) {
         // Para requisições do Worker (identificadas pelo X-Tenant-Id)
         try {
             const userRes = await db.poolMain.query(
-                'SELECT layout_version FROM dash_usuarios WHERE tenant_id = $1 LIMIT 1',
+                'SELECT layout_version, use_vet_db FROM dash_usuarios WHERE tenant_id = $1 LIMIT 1',
                 [req.tenant.id]
             );
-            if (userRes.rowCount > 0 && userRes.rows[0].layout_version === 'v4.0') {
+            if (userRes.rowCount > 0 && userRes.rows[0].use_vet_db === true) {
                 dbType = 'vet';
             }
         } catch (dbErr) {
-            logger.error('[DB-Context] Erro ao buscar layout_version do tenant para o sync', { 
+            logger.error('[DB-Context] Erro ao buscar use_vet_db do tenant para o sync', { 
                 tenantId: req.tenant.id, 
                 error: dbErr.message 
             });
