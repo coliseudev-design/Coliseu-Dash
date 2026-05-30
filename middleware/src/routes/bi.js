@@ -1542,11 +1542,27 @@ router.get('/seller/summary', async (req, res, next) => {
             });
         }
 
-        const start = new Date(ano, mes - 1, 1, 0, 0, 0, 0);
-        const end = new Date(ano, mes, 0, 23, 59, 59, 999);
+        // Obter start e end baseado no date range padrão (com suporte a mes/ano legado)
+        let start, end;
+        if (mes && ano && !req.query.period && !req.query.startDate && !req.query.start_date) {
+            start = new Date(ano, mes - 1, 1, 0, 0, 0, 0);
+            end = new Date(ano, mes, 0, 23, 59, 59, 999);
+        } else {
+            const range = await getBiDateRange(req, tenantId);
+            start = range.start;
+            end = range.end;
+        }
 
-        const prevStart = new Date(ano, mes - 2, 1, 0, 0, 0, 0);
-        const prevEnd = new Date(ano, mes - 1, 0, 23, 59, 59, 999);
+        // Para faturamento anterior (mês anterior relativo ao período atual)
+        let prevStart, prevEnd;
+        if (mes && ano && !req.query.period && !req.query.startDate && !req.query.start_date) {
+            prevStart = new Date(ano, mes - 2, 1, 0, 0, 0, 0);
+            prevEnd = new Date(ano, mes - 1, 0, 23, 59, 59, 999);
+        } else {
+            const diffMs = end.getTime() - start.getTime();
+            prevStart = new Date(start.getTime() - diffMs - 1);
+            prevEnd = new Date(start.getTime() - 1);
+        }
 
         const salesFilter = cfopUtil.getSalesFilterClause('v');
 

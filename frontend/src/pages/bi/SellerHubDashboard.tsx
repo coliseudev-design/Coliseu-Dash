@@ -83,8 +83,6 @@ export default function SellerHubDashboard() {
   const vdFull = useBranchPeriodQuery<any>('/ranking/vendedores', { limit: 100 });
 
   // Local Filter state matching mock
-  const [selectedMes, setSelectedMes] = useState<number>(() => new Date().getMonth() + 1);
-  const [selectedAno, setSelectedAno] = useState<number>(() => new Date().getFullYear());
   const [selectedVendedor, setSelectedVendedor] = useState<string>('');
 
   // Set default seller when list loaded
@@ -94,28 +92,15 @@ export default function SellerHubDashboard() {
     }
   }, [vdFull.data, selectedVendedor]);
 
-  // Form active filters that query backend on submit
-  const [queryFilter, setQueryFilter] = useState({
-    mes: selectedMes,
-    ano: selectedAno,
-    vendedor_id: selectedVendedor
-  });
-
   const activeFilter = useMemo(() => ({
     ...globalFilter,
-    mes: queryFilter.mes,
-    ano: queryFilter.ano,
-    vendedor_id: queryFilter.vendedor_id || undefined
-  }), [globalFilter, queryFilter]);
+    vendedor_id: selectedVendedor || undefined
+  }), [globalFilter, selectedVendedor]);
 
   const { data, isLoading, isError } = useBiPeriodQuery<any>(
-    ['bi', 'seller-summary', queryFilter],
+    ['bi', 'seller-summary', activeFilter],
     async (f) => {
-      const response = await BIService.getSellerSummary({
-        mes: f.mes,
-        ano: f.ano,
-        vendedor_id: f.vendedor_id
-      });
+      const response = await BIService.getSellerSummary(f);
       return response;
     },
     activeFilter
@@ -125,15 +110,10 @@ export default function SellerHubDashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
 
-  const handleFilter = (e: React.FormEvent) => {
-    e.preventDefault();
-    setQueryFilter({
-      mes: selectedMes,
-      ano: selectedAno,
-      vendedor_id: selectedVendedor
-    });
+  // Reset pagination when selected vendor or global filter changes
+  useEffect(() => {
     setCurrentPage(1);
-  };
+  }, [selectedVendedor, globalFilter]);
 
   // Safe metrics extraction
   const faturamento = data?.faturamento || 0;
@@ -169,7 +149,7 @@ export default function SellerHubDashboard() {
     return Math.max(...heatmapDados.map((h: any) => h.valor), 1);
   }, [heatmapDados]);
 
-  const months = [
+  const months = useMemo(() => [
     { value: 1, label: 'Janeiro' },
     { value: 2, label: 'Fevereiro' },
     { value: 3, label: 'Março' },
@@ -182,14 +162,33 @@ export default function SellerHubDashboard() {
     { value: 10, label: 'Outubro' },
     { value: 11, label: 'Novembro' },
     { value: 12, label: 'Dezembro' }
-  ];
+  ], []);
 
-  const years = [2025, 2026];
+  const { mes, ano } = useMemo(() => {
+    if (globalFilter.startDate) {
+      const parts = globalFilter.startDate.split('-');
+      if (parts.length === 3) {
+        return {
+          mes: parseInt(parts[1], 10),
+          ano: parseInt(parts[0], 10)
+        };
+      }
+    }
+    const today = new Date();
+    return {
+      mes: today.getMonth() + 1,
+      ano: today.getFullYear()
+    };
+  }, [globalFilter.startDate]);
+
+  const activeMonthLabel = useMemo(() => {
+    return months.find(m => m.value === mes)?.label || 'Atual';
+  }, [mes, months]);
 
   const cronogramaDias = useMemo(() => {
-    const totalDias = new Date(queryFilter.ano, queryFilter.mes, 0).getDate();
+    const totalDias = new Date(ano, mes, 0).getDate();
     return `${totalDias}/${totalDias} dias - 0 úteis`;
-  }, [queryFilter.mes, queryFilter.ano]);
+  }, [mes, ano]);
 
   if (isLoading) {
     return (
@@ -213,34 +212,8 @@ export default function SellerHubDashboard() {
           <p className="text-[11px] sm:text-xs text-text-secondary">Hub estratégico para acelerar seus resultados</p>
         </div>
         
-        <form onSubmit={handleFilter} className="flex flex-wrap items-end gap-3 w-full lg:w-auto">
-          <div className="flex flex-col gap-1 min-w-[100px] flex-1 sm:flex-initial">
-            <span className="text-[9px] font-bold text-text-muted uppercase tracking-wider">Mês</span>
-            <select
-              value={selectedMes}
-              onChange={(e) => setSelectedMes(Number(e.target.value))}
-              className="px-2.5 py-1.5 bg-bg-secondary border border-divider text-text-primary rounded-lg text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300"
-            >
-              {months.map(m => (
-                <option key={m.value} value={m.value}>{m.label}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-1 min-w-[80px] flex-1 sm:flex-initial">
-            <span className="text-[9px] font-bold text-text-muted uppercase tracking-wider">Ano</span>
-            <select
-              value={selectedAno}
-              onChange={(e) => setSelectedAno(Number(e.target.value))}
-              className="px-2.5 py-1.5 bg-bg-secondary border border-divider text-text-primary rounded-lg text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300"
-            >
-              {years.map(y => (
-                <option key={y} value={y}>{y}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-1 min-w-[200px] flex-1 sm:flex-initial">
+        <div className="flex flex-wrap items-end gap-3 w-full lg:w-auto">
+          <div className="flex flex-col gap-1 min-w-[240px] flex-1 sm:flex-initial">
             <span className="text-[9px] font-bold text-text-muted uppercase tracking-wider">Vendedor</span>
             <select
               value={selectedVendedor}
@@ -253,15 +226,7 @@ export default function SellerHubDashboard() {
               ))}
             </select>
           </div>
-
-          <button
-            type="submit"
-            disabled={!selectedVendedor}
-            className="px-4 py-1.5 bg-brand-500 hover:bg-brand-600 active:bg-brand-700 text-white rounded-lg text-xs font-bold transition-all duration-200 flex items-center gap-1.5 disabled:opacity-50 h-[30px]"
-          >
-            <span>Filtrar</span>
-          </button>
-        </form>
+        </div>
       </div>
 
       {/* CORE LAYOUT GRID */}
@@ -301,11 +266,11 @@ export default function SellerHubDashboard() {
 
               <div className="flex items-center justify-between py-2 border-b border-divider/10 text-xs">
                 <div>
-                  <div className="text-[10px] font-bold text-text-secondary uppercase">Janeiro (Atual)</div>
+                  <div className="text-[10px] font-bold text-text-secondary uppercase">{activeMonthLabel} (Atual)</div>
                   <div className="font-extrabold text-text-primary text-sm mt-0.5">{formatBRL(faturamento)}</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-[10px] font-bold text-text-secondary">{months.find(m => m.value === queryFilter.mes)?.label}</div>
+                  <div className="text-[10px] font-bold text-text-secondary">{activeMonthLabel}</div>
                   <div className="text-[11px] text-text-muted font-semibold mt-0.5">
                     {notasEmitidas} notas | TM {formatBRL(ticketMedio)}
                   </div>
