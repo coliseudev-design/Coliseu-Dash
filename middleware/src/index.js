@@ -159,9 +159,9 @@ async function initializeRbac(db) {
         ];
 
         const vetModules = [
-            'inicio', 'bi_sales', 'bi_hub', 'bi_supplier', 'bi_abc', 
+            'inicio', 'bi_seller_hub', 'bi_sales', 'bi_hub', 'bi_supplier', 'bi_abc', 
             'bi_finance', 'bi_customer', 'bi_comparative', 'bi_customer_analytics', 
-            'bi_goals', 'bi_heatmap', 'bi_ai_insights', 'usuarios', 'layout_4'
+            'usuarios', 'layout_4'
         ];
 
         for (const combo of userCombos) {
