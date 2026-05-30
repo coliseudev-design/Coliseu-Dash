@@ -36,6 +36,7 @@ const COLISEU_MODULES = [
 
 const VET_MODULES = [
   { id: 'inicio', label: 'Visão Estratégica (Início)' },
+  { id: 'bi_seller_hub', label: 'Hub do Vendedor (BI)' },
   { id: 'bi_sales', label: 'Inteligência de Vendas (BI)' },
   { id: 'bi_hub', label: 'Hub de Vendas (BI)' },
   { id: 'bi_supplier', label: 'Hub do Fornecedor (BI)' },
@@ -44,9 +45,6 @@ const VET_MODULES = [
   { id: 'bi_customer', label: 'Radar 360 (BI)' },
   { id: 'bi_comparative', label: 'Lucratividade (BI)' },
   { id: 'bi_customer_analytics', label: 'Análise de Clientes (BI)' },
-  { id: 'bi_goals', label: 'Análise de Metas (BI)' },
-  { id: 'bi_heatmap', label: 'Mapa de Calor (BI)' },
-  { id: 'bi_ai_insights', label: 'Siscom AI (BI)' },
   { id: 'usuarios', label: 'Usuários (Configurações)' },
   { id: 'layout_4', label: 'Acesso Layout v4.0' }
 ]

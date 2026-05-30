@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, ShoppingCart, Wallet,
   Trophy, BarChart3, Users, X, LogOut, Shield, DollarSign,
-  Truck, Map, BrainCircuit
+  Truck
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useAuthStore } from '../../store/authStore'
@@ -15,27 +15,110 @@ interface Props {
 }
 
 const MODULES = [
-  { to: '/',              label: 'Visão Estratégica',        icon: LayoutDashboard,  exact: true,  id: 'inicio' },
+  { 
+    to: '/', 
+    label: 'Visão Estratégica', 
+    icon: LayoutDashboard, 
+    exact: true, 
+    id: 'inicio',
+    iconColor: 'text-indigo-500 dark:text-indigo-400',
+    iconBg: 'bg-indigo-50 dark:bg-indigo-500/10'
+  },
 ]
 
 const BI_MODULES = [
-  { to: '/bi/vendedor',   label: 'Hub do Vendedor',          icon: Trophy,                         id: 'bi_seller_hub' },
-  { to: '/bi',            label: 'Inteligência de Vendas',   icon: BarChart3,        exact: true,  id: 'bi_sales' },
-  { to: '/bi/hub',        label: 'Hub de Vendas',     icon: ShoppingCart,                   id: 'bi_hub' },
-  { to: '/bi/supplier',   label: 'Hub do Fornecedor', icon: Truck,                          id: 'bi_supplier' },
-  { to: '/bi/abc',        label: 'Gestão de Inventário', icon: Package,                        id: 'bi_abc' },
-  { to: '/bi/finance',    label: 'Financeiro',    icon: Wallet,                         id: 'bi_finance' },
-  { to: '/bi/customer',   label: 'Radar 360',     icon: Users,                          id: 'bi_customer' },
-  { to: '/bi/comparative',label: 'Lucratividade',   icon: DollarSign,                     id: 'bi_comparative' },
-  { to: '/bi/customer-analytics',label: 'Análise de Clientes', icon: Users,             id: 'bi_customer_analytics' },
-  { to: '/bi/goals',      label: 'Análise de Metas',icon: Trophy,                       id: 'bi_goals' },
-  { to: '/bi/heatmap',    label: 'Mapa de Calor', icon: Map,                            id: 'bi_heatmap' },
-  { to: '/bi/ai-insights',label: 'Siscom AI',    icon: BrainCircuit,                   id: 'bi_ai_insights' }, // Custom label for Layout 4
+  { 
+    to: '/bi/vendedor', 
+    label: 'Hub do Vendedor', 
+    icon: Trophy, 
+    id: 'bi_seller_hub',
+    iconColor: 'text-amber-500 dark:text-amber-400',
+    iconBg: 'bg-amber-50/80 dark:bg-amber-500/10'
+  },
+  { 
+    to: '/bi', 
+    label: 'Inteligência de Vendas', 
+    icon: BarChart3, 
+    exact: true, 
+    id: 'bi_sales',
+    iconColor: 'text-sky-500 dark:text-sky-400',
+    iconBg: 'bg-sky-50 dark:bg-sky-500/10'
+  },
+  { 
+    to: '/bi/hub', 
+    label: 'Hub de Vendas', 
+    icon: ShoppingCart, 
+    id: 'bi_hub',
+    iconColor: 'text-emerald-500 dark:text-emerald-400',
+    iconBg: 'bg-emerald-50 dark:bg-emerald-500/10'
+  },
+  { 
+    to: '/bi/supplier', 
+    label: 'Hub do Fornecedor', 
+    icon: Truck, 
+    id: 'bi_supplier',
+    iconColor: 'text-purple-500 dark:text-purple-400',
+    iconBg: 'bg-purple-50 dark:bg-purple-500/10'
+  },
+  { 
+    to: '/bi/abc', 
+    label: 'Gestão de Inventário', 
+    icon: Package, 
+    id: 'bi_abc',
+    iconColor: 'text-rose-500 dark:text-rose-400',
+    iconBg: 'bg-rose-50 dark:bg-rose-500/10'
+  },
+  { 
+    to: '/bi/finance', 
+    label: 'Financeiro', 
+    icon: Wallet, 
+    id: 'bi_finance',
+    iconColor: 'text-teal-500 dark:text-teal-400',
+    iconBg: 'bg-teal-50 dark:bg-teal-500/10'
+  },
+  { 
+    to: '/bi/customer', 
+    label: 'Radar 360', 
+    icon: Users, 
+    id: 'bi_customer',
+    iconColor: 'text-cyan-500 dark:text-cyan-400',
+    iconBg: 'bg-cyan-50 dark:bg-cyan-500/10'
+  },
+  { 
+    to: '/bi/comparative', 
+    label: 'Lucratividade', 
+    icon: DollarSign, 
+    id: 'bi_comparative',
+    iconColor: 'text-lime-500 dark:text-lime-400',
+    iconBg: 'bg-lime-50 dark:bg-lime-500/10'
+  },
+  { 
+    to: '/bi/customer-analytics', 
+    label: 'Análise de Clientes', 
+    icon: Users, 
+    id: 'bi_customer_analytics',
+    iconColor: 'text-blue-500 dark:text-blue-400',
+    iconBg: 'bg-blue-50 dark:bg-blue-500/10'
+  },
 ]
 
 const CONFIG_MODULES = [
-  { to: '/usuarios',      label: 'Usuários',      icon: Shield,                         id: 'usuarios' },
-  { to: '/grupos',        label: 'Grupos de Acesso', icon: Shield,                      id: 'usuarios' }
+  { 
+    to: '/usuarios', 
+    label: 'Usuários', 
+    icon: Shield, 
+    id: 'usuarios',
+    iconColor: 'text-red-500 dark:text-red-400',
+    iconBg: 'bg-red-50 dark:bg-red-500/10'
+  },
+  { 
+    to: '/grupos', 
+    label: 'Grupos de Acesso', 
+    icon: Shield, 
+    id: 'usuarios',
+    iconColor: 'text-violet-500 dark:text-violet-400',
+    iconBg: 'bg-violet-50 dark:bg-violet-500/10'
+  }
 ]
 
 export default function Sidebar({ open, onClose }: Props) {
@@ -92,7 +175,7 @@ export default function Sidebar({ open, onClose }: Props) {
             <div className="px-3 mb-2 text-xs font-semibold text-text-secondary uppercase tracking-wider">
               Menu Principal
             </div>
-            {allowedModules.map(({ to, label, icon: Icon, exact }) => (
+            {allowedModules.map(({ to, label, icon: Icon, exact, iconColor, iconBg }) => (
               <NavLink
                 key={to}
                 to={to}
@@ -100,14 +183,16 @@ export default function Sidebar({ open, onClose }: Props) {
                 onClick={onClose}
                 className={({ isActive }) =>
                   clsx(
-                    'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors mb-1',
+                    'group flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 mb-1 border',
                     isActive
-                      ? 'bg-brand-500/10 text-brand-500'
-                      : 'text-text-secondary hover:bg-bg-secondary hover:text-text-primary',
+                      ? 'bg-white dark:bg-slate-800/60 text-text-primary shadow-sm border-slate-200/60 dark:border-slate-700/60 font-semibold'
+                      : 'text-text-secondary hover:bg-bg-secondary/60 hover:text-text-primary border-transparent',
                   )
                 }
               >
-                <Icon size={18} className="flex-shrink-0" />
+                <div className={clsx("p-1.5 rounded-lg flex-shrink-0 transition-colors", iconBg)}>
+                  <Icon size={16} className={clsx("transition-transform duration-200 group-hover:scale-110", iconColor)} />
+                </div>
                 <span className="truncate">{label}</span>
               </NavLink>
             ))}
@@ -118,7 +203,7 @@ export default function Sidebar({ open, onClose }: Props) {
               <div className="px-3 mb-2 text-xs font-semibold text-text-secondary uppercase tracking-wider">
                 Business Intelligence (Vet)
               </div>
-              {allowedBiModules.map(({ to, label, icon: Icon, exact }) => (
+              {allowedBiModules.map(({ to, label, icon: Icon, exact, iconColor, iconBg }) => (
                 <NavLink
                   key={to}
                   to={to}
@@ -126,14 +211,16 @@ export default function Sidebar({ open, onClose }: Props) {
                   onClick={onClose}
                   className={({ isActive }) =>
                     clsx(
-                      'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors mb-1',
+                      'group flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 mb-1 border',
                       isActive
-                        ? 'bg-brand-500/10 text-brand-500'
-                        : 'text-text-secondary hover:bg-bg-secondary hover:text-text-primary',
+                        ? 'bg-white dark:bg-slate-800/60 text-text-primary shadow-sm border-slate-200/60 dark:border-slate-700/60 font-semibold'
+                        : 'text-text-secondary hover:bg-bg-secondary/60 hover:text-text-primary border-transparent',
                     )
                   }
                 >
-                  <Icon size={18} className="flex-shrink-0" />
+                  <div className={clsx("p-1.5 rounded-lg flex-shrink-0 transition-colors", iconBg)}>
+                    <Icon size={16} className={clsx("transition-transform duration-200 group-hover:scale-110", iconColor)} />
+                  </div>
                   <span className="truncate">{label}</span>
                 </NavLink>
               ))}
@@ -155,7 +242,7 @@ export default function Sidebar({ open, onClose }: Props) {
               
               {configOpen && (
                 <div className="pl-4 mt-1 space-y-1 border-l-2 border-divider ml-3">
-                  {allowedConfigModules.map(({ to, label, icon: Icon, exact }) => (
+                  {allowedConfigModules.map(({ to, label, icon: Icon, exact, iconColor, iconBg }) => (
                     <NavLink
                       key={to}
                       to={to}
@@ -163,14 +250,16 @@ export default function Sidebar({ open, onClose }: Props) {
                       onClick={onClose}
                       className={({ isActive }) =>
                         clsx(
-                          'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                          'group flex items-center gap-3 px-3 py-1.5 rounded-xl text-sm font-medium transition-all duration-200 border',
                           isActive
-                            ? 'bg-brand-500/10 text-brand-500'
-                            : 'text-text-secondary hover:bg-bg-secondary hover:text-text-primary',
+                            ? 'bg-white dark:bg-slate-800/60 text-text-primary shadow-sm border-slate-200/60 dark:border-slate-700/60 font-semibold'
+                            : 'text-text-secondary hover:bg-bg-secondary/60 hover:text-text-primary border-transparent',
                         )
                       }
                     >
-                      <Icon size={16} className="flex-shrink-0" />
+                      <div className={clsx("p-1.5 rounded-lg flex-shrink-0 transition-colors", iconBg)}>
+                        <Icon size={14} className={clsx("transition-transform duration-200 group-hover:scale-110", iconColor)} />
+                      </div>
                       <span className="truncate">{label}</span>
                     </NavLink>
                   ))}
