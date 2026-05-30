@@ -23,7 +23,7 @@ const SALES_STATUS_EXCLUDE = [
 
 function isVetContext() {
     const store = db.dbContext.getStore();
-    return store && store.dbType === 'vet';
+    return store && (store.isVet === true || store.dbType === 'vet');
 }
 
 /**

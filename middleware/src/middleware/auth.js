@@ -170,6 +170,7 @@ async function requireInternalAuth(req, res, next) {
  */
 async function bindDbContext(req, res, next) {
     let dbType = 'main';
+    let isVet = false;
 
     if (req.user && req.user.id) {
         try {
@@ -177,8 +178,14 @@ async function bindDbContext(req, res, next) {
                 'SELECT layout_version, use_vet_db FROM dash_usuarios WHERE id = $1 LIMIT 1',
                 [req.user.id]
             );
-            if (userRes.rowCount > 0 && userRes.rows[0].use_vet_db === true) {
-                dbType = 'vet';
+            if (userRes.rowCount > 0) {
+                const user = userRes.rows[0];
+                if (user.use_vet_db === true) {
+                    dbType = 'vet';
+                }
+                if (user.layout_version === 'v4.0') {
+                    isVet = true;
+                }
             }
         } catch (dbErr) {
             logger.error('[DB-Context] Erro ao buscar use_vet_db do usuário', { 
@@ -188,9 +195,15 @@ async function bindDbContext(req, res, next) {
             if (req.user.useVetDb === true) {
                 dbType = 'vet';
             }
+            if (req.user.layoutVersion === 'v4.0') {
+                isVet = true;
+            }
         }
     } else if (req.user && req.user.useVetDb === true) {
         dbType = 'vet';
+        if (req.user.layoutVersion === 'v4.0') {
+            isVet = true;
+        }
     } else if (req.tenant && req.tenant.id) {
         // Para requisições do Worker (identificadas pelo X-Tenant-Id)
         try {
@@ -198,8 +211,14 @@ async function bindDbContext(req, res, next) {
                 'SELECT layout_version, use_vet_db FROM dash_usuarios WHERE tenant_id = $1 LIMIT 1',
                 [req.tenant.id]
             );
-            if (userRes.rowCount > 0 && userRes.rows[0].use_vet_db === true) {
-                dbType = 'vet';
+            if (userRes.rowCount > 0) {
+                const user = userRes.rows[0];
+                if (user.use_vet_db === true) {
+                    dbType = 'vet';
+                }
+                if (user.layout_version === 'v4.0') {
+                    isVet = true;
+                }
             }
         } catch (dbErr) {
             logger.error('[DB-Context] Erro ao buscar use_vet_db do tenant para o sync', { 
@@ -209,7 +228,7 @@ async function bindDbContext(req, res, next) {
         }
     }
 
-    db.dbContext.run({ dbType }, () => {
+    db.dbContext.run({ dbType, isVet }, () => {
         next();
     });
 }

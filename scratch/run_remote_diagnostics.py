@@ -1,4 +1,5 @@
 import paramiko
+import json
 
 def run_remote():
     client = paramiko.SSHClient()
@@ -7,30 +8,53 @@ def run_remote():
         client.connect('177.39.17.7', username='root', password='6EFBC!c0:wzr%Ij')
         print("Conectado ao SSH com sucesso!")
         
-        db_container = "coliseu-db-thyqkc5gkvp7i1nld555wakz-172547374937"
+        fe_name = "dashboard-frontend-irerzifjwjb4q8ucbpfk2gb8-151703817606"
         
-        # REVERTER: Setar use_vet_db = false para todos os usuários que 
-        # foram marcados incorretamente (tenant a822a7e7 não tem dados no VET)
-        # e o cliente@teste.com.br também não tem dados no VET.
-        # Vamos zerar TODOS e só manter o que faz sentido.
-        sql_revert = """
-            UPDATE dash_usuarios 
-            SET use_vet_db = false 
-            WHERE use_vet_db = true;
-        """
-        cmd_revert = f'docker exec {db_container} psql -U coliseu_admin -d coliseu_dashboard -c "{sql_revert}"'
-        print("\n--- REVERTENDO use_vet_db PARA TODOS OS USUÁRIOS ---")
-        stdin, stdout, stderr = client.exec_command(cmd_revert)
+        # 1. Fazer login diretamente pelo nginx proxy (como o browser faz)
+        print("\n--- LOGIN VIA NGINX PROXY ---")
+        login_cmd = f"""docker exec {fe_name} wget -q -O - --post-data='{{"email":"coliseudev@gmail.com","password":"any"}}' --header='Content-Type: application/json' http://dashboard-middleware:3200/api/auth/login 2>&1"""
+        stdin, stdout, stderr = client.exec_command(login_cmd)
+        login_response = stdout.read().decode('utf-8')
+        
+        try:
+            login_data = json.loads(login_response)
+            token = login_data.get('token', '')
+            print(f"Login OK, tenant: {login_data.get('user', {}).get('tenant_id')}")
+            
+            if token:
+                # 2. Testar /api/sync/status via proxy interno
+                print(f"\n--- TESTE /api/sync/status VIA PROXY ---")
+                test_cmd = f"""docker exec {fe_name} wget -q -O - --header='Authorization: Bearer {token}' http://dashboard-middleware:3200/api/sync/status 2>&1"""
+                stdin, stdout, stderr = client.exec_command(test_cmd)
+                result = stdout.read().decode('utf-8')
+                print(result[:500])
+                
+                # 3. Testar /api/estatisticas/kpis
+                print(f"\n--- TESTE /api/estatisticas/kpis VIA PROXY ---")
+                test_cmd2 = f"""docker exec {fe_name} wget -q -O - --header='Authorization: Bearer {token}' 'http://dashboard-middleware:3200/api/estatisticas/kpis?period=last12m' 2>&1"""
+                stdin, stdout, stderr = client.exec_command(test_cmd2)
+                result2 = stdout.read().decode('utf-8')
+                print(result2[:500])
+                
+                # 4. Testar /api/ranking/vendedores
+                print(f"\n--- TESTE /api/ranking/vendedores VIA PROXY ---")
+                test_cmd3 = f"""docker exec {fe_name} wget -q -O - --header='Authorization: Bearer {token}' 'http://dashboard-middleware:3200/api/ranking/vendedores?period=last12m' 2>&1"""
+                stdin, stdout, stderr = client.exec_command(test_cmd3)
+                result3 = stdout.read().decode('utf-8')
+                print(result3[:500])
+        except json.JSONDecodeError:
+            print(f"Login failed: {login_response[:200]}")
+
+        # 5. Verificar se há containers mortos que podem interferir
+        print("\n--- CONTAINERS MORTOS/PARADOS ---")
+        stdin, stdout, stderr = client.exec_command("docker ps -a --format '{{.Names}}\t{{.Status}}' | grep -v Up | grep -i 'middleware\\|frontend'")
+        print(stdout.read().decode('utf-8'))
+
+        # 6. Recarregar nginx no frontend para limpar cache de DNS
+        print("\n--- RECARREGANDO NGINX NO FRONTEND ---")
+        stdin, stdout, stderr = client.exec_command(f"docker exec {fe_name} nginx -s reload 2>&1")
         print(stdout.read().decode('utf-8'))
         print(stderr.read().decode('utf-8'))
-        
-        # Confirmar que todos estão como false
-        sql_check = "SELECT id, email, tenant_id, use_vet_db FROM dash_usuarios ORDER BY email LIMIT 20;"
-        cmd_check = f'docker exec {db_container} psql -U coliseu_admin -d coliseu_dashboard -c "{sql_check}"'
-        print("\n--- VERIFICANDO ESTADO FINAL ---")
-        stdin2, stdout2, stderr2 = client.exec_command(cmd_check)
-        print(stdout2.read().decode('utf-8'))
-        print(stderr2.read().decode('utf-8'))
 
     except Exception as e:
         print(f"Erro ao conectar ou executar comandos: {e}")
