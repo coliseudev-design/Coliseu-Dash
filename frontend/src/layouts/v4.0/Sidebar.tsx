@@ -171,7 +171,7 @@ export default function Sidebar({ open, onClose }: Props) {
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto py-3 px-2 flex flex-col">
-          <div className="flex-1">
+          <div>
             <div className="px-3 mb-2 text-xs font-semibold text-text-secondary uppercase tracking-wider">
               Menu Principal
             </div>
@@ -199,7 +199,7 @@ export default function Sidebar({ open, onClose }: Props) {
           </div>
 
           {allowedBiModules.length > 0 && (
-            <div className="flex-1 mt-4">
+            <div className="mt-6">
               <div className="px-3 mb-2 text-xs font-semibold text-text-secondary uppercase tracking-wider">
                 Business Intelligence (Vet)
               </div>
