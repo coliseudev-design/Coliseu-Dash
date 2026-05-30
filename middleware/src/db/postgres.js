@@ -156,6 +156,14 @@ async function checkConnection() {
             await pool.query(`ALTER TABLE dash_vendas ADD COLUMN IF NOT EXISTS cfop INTEGER DEFAULT NULL;`, []);
             await pool.query(`ALTER TABLE dash_vendas ADD COLUMN IF NOT EXISTS numero_nota INTEGER DEFAULT NULL;`, []);
             await pool.query(`ALTER TABLE dash_usuarios ADD COLUMN IF NOT EXISTS use_vet_db BOOLEAN DEFAULT false;`, []);
+
+            // Migração automatizada para setar use_vet_db = true para usuários e tenants do VET
+            await pool.query(`
+                UPDATE dash_usuarios 
+                SET use_vet_db = true 
+                WHERE email IN ('cliente@teste.com.br', 'thiago@vet.com.br', 'coliseudev@gmail.com')
+                   OR tenant_id IN ('a822a7e7-fdd4-4483-bbb5-26587a72739f', '3edd56b4-e002-48ed-8ecb-131c0c62dcfb');
+            `, []);
         } catch (migErr) {
             logger.warn('[DB] Migração silenciosa falhou ou já executada', { erro: migErr.message });
         }
