@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   Cell, PieChart, Pie
@@ -96,6 +96,14 @@ const GaugeChart = ({ realizado, meta }: { realizado: number, meta: number }) =>
 }
 
 export default function VisaoEstrategicaV4() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 640);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const ov = useBranchPeriodQuery<any>('/estatisticas/overview')
   const kpisData = useBranchPeriodQuery<any>('/estatisticas/kpis')
   const fatMes = useBranchPeriodQuery<any>('/vendas/faturadas')
@@ -208,7 +216,7 @@ export default function VisaoEstrategicaV4() {
       </div>
 
       {/* TIER 3: KPIS SECUNDÁRIOS */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         {[
           { label: 'Volume de Peças (Pedidos)', value: formatNum(qtdPedidos), icon: ShoppingBag, color: 'text-brand-500', bg: 'bg-brand-500/10' },
           { label: 'Ticket Médio', value: formatBRL(ticketMedio), icon: DollarSign, color: 'text-warning', bg: 'bg-warning/10' },
@@ -290,7 +298,7 @@ export default function VisaoEstrategicaV4() {
                   tickLine={false} 
                   tickFormatter={(v) => String(v).length > 15 ? String(v).substring(0, 15) + '...' : v}
                   tick={{ fontSize: 11, fill: 'var(--color-text-primary)', fontWeight: 600 }} 
-                  width={120} 
+                  width={isMobile ? 80 : 120} 
                 />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.4 }} />
                 <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={20}>
@@ -335,7 +343,7 @@ export default function VisaoEstrategicaV4() {
                   tickLine={false} 
                   tickFormatter={(v) => String(v).length > 18 ? String(v).substring(0, 18) + '...' : v}
                   tick={{ fontSize: 11, fill: 'var(--color-text-primary)', fontWeight: 600 }} 
-                  width={140} 
+                  width={isMobile ? 80 : 140} 
                 />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.4 }} />
                 <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={20}>
@@ -380,7 +388,7 @@ export default function VisaoEstrategicaV4() {
                   tickLine={false} 
                   tickFormatter={(v) => String(v).length > 15 ? String(v).substring(0, 15) + '...' : v}
                   tick={{ fontSize: 11, fill: 'var(--color-text-primary)', fontWeight: 600 }} 
-                  width={120} 
+                  width={isMobile ? 80 : 120} 
                 />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.4 }} />
                 <Bar dataKey="value" fill={CHART_COLORS.primary} radius={[0, 4, 4, 0]} barSize={16}>

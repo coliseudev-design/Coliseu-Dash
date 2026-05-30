@@ -19,6 +19,7 @@ const MODULES = [
 ]
 
 const BI_MODULES = [
+  { to: '/bi/vendedor',   label: 'Hub do Vendedor',          icon: Trophy,                         id: 'bi_seller_hub' },
   { to: '/bi',            label: 'Inteligência de Vendas',   icon: BarChart3,        exact: true,  id: 'bi_sales' },
   { to: '/bi/hub',        label: 'Hub de Vendas',     icon: ShoppingCart,                   id: 'bi_hub' },
   { to: '/bi/supplier',   label: 'Hub do Fornecedor', icon: Truck,                          id: 'bi_supplier' },

@@ -1474,4 +1474,327 @@ router.get('/ai-insights', async (req, res, next) => {
     } catch (err) { next(err); }
 });
 
+// ==========================================
+// MÓDULO: SELLER HUB
+// ==========================================
+
+router.get('/seller/summary', async (req, res, next) => {
+    try {
+        const tenantId = req.tenant.id;
+        let mes = parseInt(req.query.mes);
+        let ano = parseInt(req.query.ano);
+        let vendedorId = req.query.vendedor_id;
+
+        if (vendedorId === 'undefined' || vendedorId === 'null') {
+            vendedorId = null;
+        }
+
+        // Se não vier mes/ano, busca a data máxima das vendas do tenant
+        if (!mes || !ano) {
+            const maxRes = await db.query(
+                'SELECT MAX(data_venda) AS max_date FROM dash_vendas WHERE tenant_id = $1',
+                [tenantId]
+            );
+            const anchor = maxRes.rows[0].max_date ? new Date(maxRes.rows[0].max_date) : new Date();
+            mes = anchor.getMonth() + 1;
+            ano = anchor.getFullYear();
+        }
+
+        if (!vendedorId) {
+            // Tenta pegar o primeiro vendedor ativo com vendas no período, ou qualquer vendedor ativo
+            const sellerRes = await db.query(`
+                SELECT v.vendedor_id_firebird AS id
+                FROM dash_vendas v
+                WHERE v.tenant_id = $1 AND v.vendedor_id_firebird IS NOT NULL
+                GROUP BY 1 ORDER BY COUNT(*) DESC LIMIT 1
+            `, [tenantId]);
+            if (sellerRes.rowCount > 0) {
+                vendedorId = sellerRes.rows[0].id;
+            } else {
+                const altRes = await db.query(`
+                    SELECT id_firebird AS id FROM dash_vendedores WHERE tenant_id = $1 LIMIT 1
+                `, [tenantId]);
+                vendedorId = altRes.rowCount > 0 ? altRes.rows[0].id : null;
+            }
+        }
+
+        if (!vendedorId) {
+            return res.json({
+                faturamento: 0,
+                ticket_medio: 0,
+                notas_emitidas: 0,
+                clientes_novos: 0,
+                novos_pct: 0,
+                antigos_pct: 0,
+                cidade_top: 'N/A',
+                cidade_top_valor: 0,
+                crescimento_pct: 0,
+                meta_vendedor: 0,
+                faturamento_anterior: 0,
+                top_marcas: [],
+                top_clientes: [],
+                top_grupos: [],
+                top_produtos: [],
+                historico_vendas: [],
+                vendas_por_dia_semana: [],
+                heatmap_dados: [],
+                notas_fiscais: []
+            });
+        }
+
+        const start = new Date(ano, mes - 1, 1, 0, 0, 0, 0);
+        const end = new Date(ano, mes, 0, 23, 59, 59, 999);
+
+        const prevStart = new Date(ano, mes - 2, 1, 0, 0, 0, 0);
+        const prevEnd = new Date(ano, mes - 1, 0, 23, 59, 59, 999);
+
+        const salesFilter = cfopUtil.getSalesFilterClause('v');
+
+        // 1. Faturamento Mês Atual (Bruto)
+        const salesRes = await db.query(`
+            SELECT 
+                COALESCE(SUM(v.valor_total), 0) AS total_bruto,
+                COUNT(DISTINCT v.id_firebird) AS total_pedidos
+            FROM dash_vendas v
+            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND v.vendedor_id_firebird = $4
+              ${salesFilter}
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), vendedorId]);
+
+        const devRes = await db.query(`
+            SELECT COALESCE(SUM(d.valor), 0) AS total
+            FROM dash_devolucoes d
+            LEFT JOIN dash_vendas v2 ON v2.id_firebird = d.venda_id_firebird AND v2.tenant_id = d.tenant_id
+            WHERE d.tenant_id = $1 AND d.data_devolucao >= $2 AND d.data_devolucao <= $3 AND v2.vendedor_id_firebird = $4
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), vendedorId]);
+
+        const faturamento = parseFloat(salesRes.rows[0].total_bruto || 0) - parseFloat(devRes.rows[0].total || 0);
+        const total_pedidos = parseInt(salesRes.rows[0].total_pedidos || 0, 10);
+        const ticket_medio = total_pedidos > 0 ? faturamento / total_pedidos : 0;
+
+        // 2. Faturamento Anterior (Mês Anterior)
+        const salesPrevRes = await db.query(`
+            SELECT 
+                COALESCE(SUM(v.valor_total), 0) AS total_bruto
+            FROM dash_vendas v
+            WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 AND v.vendedor_id_firebird = $4
+              ${salesFilter}
+        `, [tenantId, toSafeSqlString(prevStart), toSafeSqlString(prevEnd), vendedorId]);
+
+        const devPrevRes = await db.query(`
+            SELECT COALESCE(SUM(d.valor), 0) AS total
+            FROM dash_devolucoes d
+            LEFT JOIN dash_vendas v2 ON v2.id_firebird = d.venda_id_firebird AND v2.tenant_id = d.tenant_id
+            WHERE d.tenant_id = $1 AND d.data_devolucao >= $2 AND d.data_devolucao <= $3 AND v2.vendedor_id_firebird = $4
+        `, [tenantId, toSafeSqlString(prevStart), toSafeSqlString(prevEnd), vendedorId]);
+
+        const faturamento_anterior = parseFloat(salesPrevRes.rows[0].total_bruto || 0) - parseFloat(devPrevRes.rows[0].total || 0);
+        const crescimento_pct = faturamento_anterior > 0 ? ((faturamento - faturamento_anterior) / faturamento_anterior) * 100 : 0;
+
+        // 3. Clientes Novos
+        const newClientsRes = await db.query(`
+            SELECT COUNT(DISTINCT c.id_firebird) AS total
+            FROM dash_clientes c
+            JOIN dash_vendas v ON v.cliente_id_firebird = c.id_firebird AND v.tenant_id = c.tenant_id
+            WHERE c.tenant_id = $1 
+              AND c.data_cadastro >= $2 AND c.data_cadastro <= $3
+              AND v.vendedor_id_firebird = $4
+              ${salesFilter}
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), vendedorId]);
+
+        const activeClientsRes = await db.query(`
+            SELECT COUNT(DISTINCT v.cliente_id_firebird) AS total
+            FROM dash_vendas v
+            WHERE v.tenant_id = $1 
+              AND v.data_venda >= $2 AND v.data_venda <= $3
+              AND v.vendedor_id_firebird = $4
+              ${salesFilter}
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), vendedorId]);
+
+        const clientes_novos = parseInt(newClientsRes.rows[0].total || 0, 10);
+        const clientes_ativos = parseInt(activeClientsRes.rows[0].total || 0, 10);
+        const novos_pct = clientes_ativos > 0 ? (clientes_novos / clientes_ativos) * 100 : 0;
+        const antigos_pct = 100 - novos_pct;
+
+        // 4. Cidade Top
+        const topCityRes = await db.query(`
+            SELECT COALESCE(c.cidade, 'Não Informada') AS cidade, SUM(v.valor_total) AS total
+            FROM dash_vendas v
+            LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
+            WHERE v.tenant_id = $1 
+              AND v.data_venda >= $2 AND v.data_venda <= $3
+              AND v.vendedor_id_firebird = $4
+              ${salesFilter}
+            GROUP BY 1 ORDER BY total DESC LIMIT 1
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), vendedorId]);
+        const cidade_top = topCityRes.rowCount > 0 ? topCityRes.rows[0].cidade : 'N/A';
+        const cidade_top_valor = topCityRes.rowCount > 0 ? parseFloat(topCityRes.rows[0].total || 0) : 0;
+
+        // 5. Top Lists
+        const topBrandsRes = await db.query(`
+            SELECT COALESCE(vi.marca, v.marca, p.marca, 'S/ MARCA') AS nome, SUM(vi.valor_total) AS total
+            FROM dash_vendas_itens vi
+            JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+            LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
+            WHERE vi.tenant_id = $1 
+              AND v.data_venda >= $2 AND v.data_venda <= $3
+              AND v.vendedor_id_firebird = $4
+              ${salesFilter}
+            GROUP BY 1 ORDER BY total DESC LIMIT 15
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), vendedorId]);
+        const top_marcas = topBrandsRes.rows.map((r, i) => ({ rank: i + 1, name: r.nome, value: parseFloat(r.total || 0) }));
+
+        const topClientsRes = await db.query(`
+            SELECT COALESCE(c.nome, 'Cliente ' || COALESCE(v.cliente_id_firebird::text, '?')) AS nome, SUM(v.valor_total) AS total
+            FROM dash_vendas v
+            LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
+            WHERE v.tenant_id = $1 
+              AND v.data_venda >= $2 AND v.data_venda <= $3
+              AND v.vendedor_id_firebird = $4
+              ${salesFilter}
+            GROUP BY 1 ORDER BY total DESC LIMIT 10
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), vendedorId]);
+        const top_clientes = topClientsRes.rows.map((r, i) => ({ rank: i + 1, name: r.nome, value: parseFloat(r.total || 0) }));
+
+        const topGroupsRes = await db.query(`
+            SELECT COALESCE(vi.categoria, v.categoria, p.categoria, 'S/ GRUPO') AS nome, SUM(vi.valor_total) AS total
+            FROM dash_vendas_itens vi
+            JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+            LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
+            WHERE vi.tenant_id = $1 
+              AND v.data_venda >= $2 AND v.data_venda <= $3
+              AND v.vendedor_id_firebird = $4
+              ${salesFilter}
+            GROUP BY 1 ORDER BY total DESC LIMIT 10
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), vendedorId]);
+        const top_grupos = topGroupsRes.rows.map((r, i) => ({ rank: i + 1, name: r.nome, value: parseFloat(r.total || 0) }));
+
+        const topProductsRes = await db.query(`
+            SELECT COALESCE(vi.produto, p.nome, 'Produto ' || COALESCE(vi.produto_id_firebird::text, '?')) AS nome, SUM(vi.valor_total) AS total
+            FROM dash_vendas_itens vi
+            JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+            LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
+            WHERE vi.tenant_id = $1 
+              AND v.data_venda >= $2 AND v.data_venda <= $3
+              AND v.vendedor_id_firebird = $4
+              ${salesFilter}
+            GROUP BY 1 ORDER BY total DESC LIMIT 10
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), vendedorId]);
+        const top_produtos = topProductsRes.rows.map((r, i) => ({ rank: i + 1, name: r.nome, value: parseFloat(r.total || 0) }));
+
+        // 6. Histórico de Vendas (Evolução Diária)
+        const trajectoryRes = await db.query(`
+            SELECT 
+                TO_CHAR(v.data_venda, 'DD/MM') AS dia,
+                SUM(v.valor_total) AS total
+            FROM dash_vendas v
+            WHERE v.tenant_id = $1 
+              AND v.data_venda >= $2 AND v.data_venda <= $3
+              AND v.vendedor_id_firebird = $4
+              ${salesFilter}
+            GROUP BY DATE_TRUNC('day', v.data_venda), TO_CHAR(v.data_venda, 'DD/MM')
+            ORDER BY DATE_TRUNC('day', v.data_venda) ASC
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), vendedorId]);
+        const historico_vendas = trajectoryRes.rows.map(t => ({ dia: t.dia, valor: parseFloat(t.total || 0) }));
+
+        // 7. Vendas por Dia da Semana
+        const dowRes = await db.query(`
+            SELECT 
+                EXTRACT(ISODOW FROM v.data_venda) AS dow_num,
+                SUM(v.valor_total) AS total
+            FROM dash_vendas v
+            WHERE v.tenant_id = $1 
+              AND v.data_venda >= $2 AND v.data_venda <= $3
+              AND v.vendedor_id_firebird = $4
+              ${salesFilter}
+            GROUP BY 1 ORDER BY 1 ASC
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), vendedorId]);
+        
+        const dowNames = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+        const vendas_por_dia_semana = Array.from({ length: 7 }, (_, i) => {
+            const row = dowRes.rows.find(r => parseInt(r.dow_num) === i + 1);
+            return {
+                dia: dowNames[i],
+                valor: row ? parseFloat(row.total || 0) : 0
+            };
+        });
+
+        // 8. Mapa de Calor (Dia vs Semana do Mês)
+        const heatmapRes = await db.query(`
+            SELECT 
+                EXTRACT(ISODOW FROM v.data_venda) AS dow,
+                CEIL(EXTRACT(DAY FROM v.data_venda) / 7.0) AS week,
+                SUM(v.valor_total) AS total
+            FROM dash_vendas v
+            WHERE v.tenant_id = $1 
+              AND v.data_venda >= $2 AND v.data_venda <= $3
+              AND v.vendedor_id_firebird = $4
+              ${salesFilter}
+            GROUP BY 1, 2
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), vendedorId]);
+        
+        const heatmap_dados = [];
+        for (let dow = 1; dow <= 7; dow++) {
+            const diaNome = dowNames[dow - 1];
+            for (let week = 1; week <= 5; week++) {
+                const match = heatmapRes.rows.find(r => parseInt(r.dow) === dow && parseInt(r.week) === week);
+                heatmap_dados.push({
+                    dia: diaNome,
+                    semana: `S${week}`,
+                    valor: match ? parseFloat(match.total || 0) : 0
+                });
+            }
+        }
+
+        // 9. Notas Fiscais do Vendedor
+        const invoicesRes = await db.query(`
+            SELECT 
+                v.id_firebird as id,
+                v.numero_pedido as numero_nota,
+                c.nome as cliente,
+                TO_CHAR(v.data_venda, 'DD/MM/YYYY') as data,
+                v.valor_total as valor,
+                v.status
+            FROM dash_vendas v
+            LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
+            WHERE v.tenant_id = $1 
+              AND v.data_venda >= $2 AND v.data_venda <= $3
+              AND v.vendedor_id_firebird = $4
+              ${salesFilter}
+            ORDER BY v.data_venda DESC, v.id_firebird DESC
+            LIMIT 30
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), vendedorId]);
+        
+        const notas_fiscais = invoicesRes.rows.map(r => ({
+            cod: String(r.id),
+            numero_nota: r.numero_nota || '-',
+            cliente: r.cliente || 'Consumidor',
+            data: r.data,
+            valor: parseFloat(r.valor || 0),
+            status: r.status
+        }));
+
+        res.json({
+            faturamento,
+            ticket_medio,
+            notas_emitidas: total_pedidos,
+            clientes_novos,
+            novos_pct,
+            antigos_pct,
+            cidade_top,
+            cidade_top_valor,
+            crescimento_pct,
+            meta_vendedor: 0, // Sem meta por padrão
+            faturamento_anterior,
+            top_marcas,
+            top_clientes,
+            top_grupos,
+            top_produtos,
+            historico_vendas,
+            vendas_por_dia_semana,
+            heatmap_dados,
+            notas_fiscais
+        });
+    } catch (err) { next(err); }
+});
+
 module.exports = router;

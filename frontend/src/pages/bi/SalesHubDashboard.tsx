@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useBiPeriodQuery } from '../../hooks/useBiPeriodQuery';
 import { useBranchPeriodQuery } from '../../hooks/useApi';
@@ -28,6 +28,14 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function SalesHubDashboard() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 640);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const { filter } = useOutletContext<{ filter: BiPeriodFilter }>();
 
   const [selectedVendedor, setSelectedVendedor] = useState<string>('all');
@@ -108,12 +116,12 @@ export default function SalesHubDashboard() {
           </h2>
           <p className="text-sm text-text-secondary mt-1">Central de monitoramento de pedidos, status de faturamento e performance</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
           {/* VENDEDOR */}
           <select
             value={selectedVendedor}
             onChange={(e) => setSelectedVendedor(e.target.value)}
-            className="px-3 py-1.5 bg-bg-primary border border-border text-text-primary rounded-lg text-xs font-medium shadow-sm focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300"
+            className="px-3 py-1.5 bg-bg-primary border border-border text-text-primary rounded-lg text-xs font-medium shadow-sm focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300 w-full sm:w-auto"
           >
             <option value="all">Todos os Vendedores</option>
             {vdFull.data?.data?.map((seller: any) => (
@@ -127,7 +135,7 @@ export default function SalesHubDashboard() {
           <select
             value={selectedCidade}
             onChange={(e) => setSelectedCidade(e.target.value)}
-            className="px-3 py-1.5 bg-bg-primary border border-border text-text-primary rounded-lg text-xs font-medium shadow-sm focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300"
+            className="px-3 py-1.5 bg-bg-primary border border-border text-text-primary rounded-lg text-xs font-medium shadow-sm focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300 w-full sm:w-auto"
           >
             <option value="all">Todas as Cidades</option>
             {cidFull.data?.data?.map((city: any) => (
@@ -141,7 +149,7 @@ export default function SalesHubDashboard() {
           <select
             value={selectedGrupo}
             onChange={(e) => setSelectedGrupo(e.target.value)}
-            className="px-3 py-1.5 bg-bg-primary border border-border text-text-primary rounded-lg text-xs font-medium shadow-sm focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300"
+            className="px-3 py-1.5 bg-bg-primary border border-border text-text-primary rounded-lg text-xs font-medium shadow-sm focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300 w-full sm:w-auto"
           >
             <option value="all">Todos os Grupos</option>
             <option value="Sem Grupo">Sem Grupo</option>
@@ -158,7 +166,7 @@ export default function SalesHubDashboard() {
           <select
             value={selectedMarca}
             onChange={(e) => setSelectedMarca(e.target.value)}
-            className="px-3 py-1.5 bg-bg-primary border border-border text-text-primary rounded-lg text-xs font-medium shadow-sm focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300"
+            className="px-3 py-1.5 bg-bg-primary border border-border text-text-primary rounded-lg text-xs font-medium shadow-sm focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300 w-full sm:w-auto"
           >
             <option value="all">Todas as Marcas</option>
             <option value="Sem Marca">Sem Marca</option>
@@ -313,7 +321,7 @@ export default function SalesHubDashboard() {
                   axisLine={{ stroke: 'var(--color-border)' }} 
                   tickLine={false} 
                   tick={{ fontSize: 10, fill: 'var(--color-text-secondary)', fontWeight: 500 }} 
-                  width={60} 
+                  width={isMobile ? 50 : 60} 
                 />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.4 }} />
                 <Bar dataKey="value" fill="#10B981" radius={[0, 4, 4, 0]} barSize={12} />

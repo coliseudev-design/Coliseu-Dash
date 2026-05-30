@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useBiPeriodQuery } from '../../hooks/useBiPeriodQuery';
 import { useBranchPeriodQuery } from '../../hooks/useApi';
@@ -61,6 +61,14 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function SalesIntelligenceDashboard() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 640);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const { filter } = useOutletContext<{ filter: BiPeriodFilter }>();
   const [selectedVendedor, setSelectedVendedor] = useState<string>('all');
 
@@ -116,11 +124,11 @@ export default function SalesIntelligenceDashboard() {
           </h2>
           <p className="text-sm text-text-secondary mt-1">Análise detalhada de vendas, ticket médio e performance</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 w-full sm:w-auto">
           <select
             value={selectedVendedor}
             onChange={(e) => setSelectedVendedor(e.target.value)}
-            className="px-3 py-1.5 bg-bg-primary border border-border text-text-primary rounded-lg text-xs font-medium shadow-sm focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300"
+            className="px-3 py-1.5 bg-bg-primary border border-border text-text-primary rounded-lg text-xs font-medium shadow-sm focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300 w-full sm:w-auto"
           >
             <option value="all">Todos os Vendedores</option>
             {vdFull.data?.data?.map((seller: any) => (
@@ -316,7 +324,7 @@ export default function SalesIntelligenceDashboard() {
               <BarChart data={productsList} layout="vertical" margin={{ top: 0, right: 30, left: 10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--color-border)" opacity={0.3} />
                 <XAxis type="number" hide />
-                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tickFormatter={(v) => String(v).length > 15 ? String(v).substring(0, 15) + '...' : v} tick={{ fontSize: 10, fill: 'var(--color-text-secondary)', fontWeight: 500 }} width={120} />
+                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tickFormatter={(v) => String(v).length > 15 ? String(v).substring(0, 15) + '...' : v} tick={{ fontSize: 10, fill: 'var(--color-text-secondary)', fontWeight: 500 }} width={isMobile ? 80 : 120} />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.4 }} />
                 <Bar dataKey="current" fill="#10B981" radius={[0, 4, 4, 0]} barSize={12} />
               </BarChart>

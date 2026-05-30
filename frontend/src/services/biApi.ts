@@ -68,5 +68,11 @@ export const BIService = {
   getGoals: async (filter: BiPeriodFilter): Promise<GoalsResponse> => {
     const { data } = await api.get<BiApiResponse<any>>('/bi/goals/summary', { params: filter });
     return data.data || data;
+  },
+
+  // Hub do Vendedor
+  getSellerSummary: async (filter: { mes?: number; ano?: number; vendedor_id?: string }): Promise<any> => {
+    const { data } = await api.get<any>('/bi/seller/summary', { params: filter });
+    return data;
   }
 };

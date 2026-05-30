@@ -36,6 +36,7 @@ import GoalsPerformanceDashboard from './pages/bi/GoalsPerformanceDashboard'
 import SupplierAnalyticsDashboard from './pages/bi/SupplierAnalyticsDashboard'
 import HeatmapDashboard from './pages/bi/HeatmapDashboard'
 import AIInsightsDashboard from './pages/bi/AIInsightsDashboard'
+import SellerHubDashboard from './pages/bi/SellerHubDashboard'
 
 function Protected({ children }: { children: JSX.Element }) {
   const user = useAuthStore((s) => s.user)
@@ -94,6 +95,7 @@ export default function App() {
         <Route path="bi" element={<ProtectedRoute permission="layout_4"><BiDashboard /></ProtectedRoute>}>
           <Route index element={<ProtectedRoute permission="bi_sales"><SalesIntelligenceDashboard /></ProtectedRoute>} />
           <Route path="sales" element={<ProtectedRoute permission="bi_sales"><SalesIntelligenceDashboard /></ProtectedRoute>} />
+          <Route path="vendedor" element={<ProtectedRoute permission="bi_seller_hub"><SellerHubDashboard /></ProtectedRoute>} />
           <Route path="hub" element={<ProtectedRoute permission="bi_hub"><SalesHubDashboard /></ProtectedRoute>} />
           <Route path="abc" element={<ProtectedRoute permission="bi_abc"><ABCAnalysisDashboard /></ProtectedRoute>} />
           <Route path="finance" element={<ProtectedRoute permission="bi_finance"><FinancialIntelligenceDashboard /></ProtectedRoute>} />
