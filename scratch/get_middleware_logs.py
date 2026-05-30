@@ -6,8 +6,11 @@ client.connect('177.39.17.7', username='root', password='6EFBC!c0:wzr%Ij')
 
 CONTAINER = "dashboard-middleware-irerzifjwjb4q8ucbpfk2gb8-194727891772"
 
-stdin, stdout, stderr = client.exec_command(f"docker inspect {CONTAINER} --format '{{{{json .Config.Env}}}}'")
-print("=== Env Variables ===")
+stdin, stdout, stderr = client.exec_command(f"docker logs --tail 100 {CONTAINER}")
+print("=== Logs Middleware ===")
 print(stdout.read().decode('utf-8'))
+err = stderr.read().decode('utf-8')
+if err.strip():
+    print("ERR:", err)
 
 client.close()
