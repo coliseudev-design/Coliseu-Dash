@@ -179,13 +179,10 @@ async function initializeRbac(db) {
 
             const groupId = groupRes.rows[0].id;
 
-            // Inserir as permissões padrão para esse grupo com base no layout
+            // Inserir as permissões padrão para esse grupo com base no layout (grupo Administrador tem acesso total por padrão)
             const modules = layout === 'v4.0' ? vetModules : coliseuModules;
             for (const mod of modules) {
-                const shouldRestrict = layout === 'v4.0' && [
-                    'bi_abc', 'bi_finance', 'bi_customer', 'bi_comparative', 'bi_customer_analytics'
-                ].includes(mod);
-                const podeAcessar = !shouldRestrict;
+                const podeAcessar = true;
 
                 await db.query(`
                     INSERT INTO dash_permissoes (grupo_id, recurso, pode_acessar)
