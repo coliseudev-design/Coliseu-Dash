@@ -18,6 +18,11 @@ export default function ProtectedRoute({ permission, children }: ProtectedRouteP
     return children
   }
 
+  // Usuários nos layouts 1, 2 e 3 (diferentes de v4.0) têm acesso liberado no frontend
+  if (!user.layout_version || user.layout_version !== 'v4.0') {
+    return children
+  }
+
   const permissions = user.permissions || []
   if (!permissions.includes(permission)) {
     return <Navigate to="/acesso-negado" replace />
