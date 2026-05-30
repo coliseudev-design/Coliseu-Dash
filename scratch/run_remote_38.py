@@ -3,7 +3,7 @@ import sys
 
 HOST = '2.24.82.19'
 USER = 'root'
-PASS = '6EFBC!c0:wzr%Ij'
+PASS = 'ColiseuDB2026Prod'
 
 client = paramiko.SSHClient()
 client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
