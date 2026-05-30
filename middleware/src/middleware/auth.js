@@ -50,7 +50,7 @@ async function requireWebJwt(req, res, next) {
         }
 
         req.tenant = { id: tenantId, name: decoded.companyName || 'Unknown' };
-        req.user = { id: decoded.userId || decoded.sub, layoutVersion: decoded.layoutVersion, useVetDb: decoded.useVetDb };
+        req.user = { id: decoded.userId || decoded.sub, layoutVersion: decoded.layoutVersion, useVetDb: decoded.useVetDb, role: decoded.role };
 
         next();
     } catch (err) {

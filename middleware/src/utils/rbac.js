@@ -39,6 +39,24 @@ async function getUserPermissions(userId, tenantId) {
         return permRes.rows.map(r => r.recurso);
     }
 
+    // Se for administrador do tenant e não tiver grupo associado, libera todos os acessos do layout dele por padrão
+    if (user.role === 'admin') {
+        const layout = user.layout_version || 'v1.0';
+        if (layout === 'v4.0') {
+            return [
+                'inicio', 'bi_seller_hub', 'bi_sales', 'bi_hub', 'bi_supplier', 'bi_abc', 
+                'bi_finance', 'bi_customer', 'bi_comparative', 'bi_customer_analytics', 
+                'usuarios', 'layout_4'
+            ];
+        } else {
+            return [
+                'inicio', 'financeiro', 'fluxo-caixa', 'estoque', 'comissoes', 
+                'ranking', 'estatisticas', 'inteligencia', 'produtos', 
+                'clientes', 'vendas', 'usuarios', 'layout_1', 'layout_2', 'layout_3'
+            ];
+        }
+    }
+
     // Fallback: permissões estáticas do campo antigo
     if (user.permissions) {
         try {
