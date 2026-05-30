@@ -30,11 +30,9 @@ export default function Sidebar({ open, onClose }: Props) {
   const user = useAuthStore((s) => s.user)
   const [configOpen, setConfigOpen] = useState(false)
 
-  // Filtra as rotas se o usuário não for master e tiver permissions configurado
+  // Filtra as rotas (sempre ativo para layouts 1, 2 e 3)
   const hasAccess = (moduleId: string) => {
-    if (!user) return false
-    if (user.role === 'master' || !user.permissions) return true
-    return user.permissions.includes(moduleId)
+    return true
   }
 
   const allowedModules = MODULES.filter((m) => hasAccess(m.id))
