@@ -9,7 +9,7 @@ function required(key) {
 }
 
 function optional(key, defaultValue = '') {
-    return process.env[key] ?? defaultValue;
+    return process.env[key] || defaultValue;
 }
 
 const config = {

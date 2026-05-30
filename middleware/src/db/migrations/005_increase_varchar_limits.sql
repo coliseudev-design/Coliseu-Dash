@@ -5,6 +5,10 @@
 -- Autor: Antigrafit | Data: 2026-05-29
 -- ============================================================
 
+-- Dropar as materialized views dependentes temporariamente para permitir alteração de tipos
+DROP MATERIALIZED VIEW IF EXISTS mv_dash_vendas_diario;
+DROP MATERIALIZED VIEW IF EXISTS mv_dash_financeiro_diario;
+
 -- dash_clientes: email e cidade
 ALTER TABLE dash_clientes ALTER COLUMN email     TYPE VARCHAR(255);
 ALTER TABLE dash_clientes ALTER COLUMN cidade    TYPE VARCHAR(255);
@@ -46,8 +50,39 @@ ALTER TABLE dash_financeiro ALTER COLUMN tipo           TYPE VARCHAR(100);
 UPDATE dash_usuarios SET role = 'admin' WHERE role = 'viewer';
 ALTER TABLE dash_usuarios ALTER COLUMN role SET DEFAULT 'admin';
 
+-- Recriar as visões materializadas diárias com a nova estrutura de colunas e tipos
+CREATE MATERIALIZED VIEW mv_dash_vendas_diario AS
+SELECT 
+    tenant_id,
+    depto_id,
+    DATE(COALESCE(data_vencimento, data_venda)) AS data_venda,
+    COALESCE(SUM(valor_total), 0) AS faturamento,
+    COUNT(DISTINCT id_firebird) AS qtd_pedidos,
+    COALESCE(SUM(valor_desconto), 0) AS total_descontos,
+    COALESCE(AVG(valor_total), 0) AS ticket_medio
+FROM dash_vendas
+GROUP BY tenant_id, depto_id, DATE(COALESCE(data_vencimento, data_venda));
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_vendas_diario 
+    ON mv_dash_vendas_diario(tenant_id, depto_id, data_venda);
+
+CREATE MATERIALIZED VIEW mv_dash_financeiro_diario AS
+SELECT 
+    tenant_id,
+    depto_id,
+    COALESCE(DATE(data_vencimento), DATE(data_emissao)) AS data_ref,
+    tipo,
+    status_pagamento,
+    COALESCE(SUM(valor), 0) AS valor_bruto,
+    COALESCE(SUM(valor_pago), 0) AS valor_pago
+FROM dash_financeiro
+GROUP BY tenant_id, depto_id, COALESCE(DATE(data_vencimento), DATE(data_emissao)), tipo, status_pagamento;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_financeiro_diario 
+    ON mv_dash_financeiro_diario(tenant_id, depto_id, data_ref, tipo, status_pagamento);
+
 -- Confirma migration registrada
 DO $$
 BEGIN
-  RAISE NOTICE 'Migration 005 aplicada com sucesso: limites VARCHAR aumentados e padrão admin configurado.';
+  RAISE NOTICE 'Migration 005 aplicada com sucesso: limites VARCHAR aumentados, materialized views atualizadas e padrão admin configurado.';
 END $$;
