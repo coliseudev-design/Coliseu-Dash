@@ -26,7 +26,7 @@ async function getUserPermissions(userId, tenantId) {
             'clientes', 'vendas', 'usuarios', 'layout_1', 'layout_2', 'layout_3',
             'bi_sales', 'bi_hub', 'bi_supplier', 'bi_abc', 'bi_finance', 
             'bi_customer', 'bi_comparative', 'bi_customer_analytics', 
-            'bi_goals', 'bi_heatmap', 'bi_ai_insights', 'layout_4'
+            'layout_4', 'bi_seller_hub'
         ];
     }
 
