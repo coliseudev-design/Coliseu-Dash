@@ -231,15 +231,8 @@ export default function Sidebar({ open, onClose }: Props) {
 
           {allowedBiModules.length > 0 && (
             <div className="mt-6">
-              <div className="px-3 mb-2 text-xs font-semibold text-text-secondary uppercase tracking-wider flex items-center justify-between">
-                <span>Inteligência de Negócios</span>
-                <button
-                  onClick={() => setIsCustomizing(true)}
-                  className="p-1 hover:bg-bg-secondary rounded-md text-text-muted hover:text-text-primary transition-colors cursor-pointer"
-                  title="Personalizar Menus"
-                >
-                  <Settings size={14} />
-                </button>
+              <div className="px-3 mb-2 text-xs font-semibold text-text-secondary uppercase tracking-wider">
+                Inteligência de Negócios
               </div>
               {allowedBiModules.map(({ to, label, icon: Icon, exact, iconColor, iconBg }) => (
                 <NavLink
@@ -265,46 +258,59 @@ export default function Sidebar({ open, onClose }: Props) {
             </div>
           )}
 
-          {allowedConfigModules.length > 0 && (
-            <div className="mt-auto pt-4 border-t border-divider">
-              <button
-                onClick={() => setConfigOpen(!configOpen)}
-                className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium text-text-secondary hover:bg-bg-secondary hover:text-text-primary transition-colors mb-1 cursor-pointer"
-              >
-                <div className="flex items-center gap-3">
-                  <Settings size={18} className="flex-shrink-0" />
-                  <span className="truncate">Configurações</span>
-                </div>
-                {configOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-              </button>
-              
-              {configOpen && (
-                <div className="pl-4 mt-1 space-y-1 border-l-2 border-divider ml-3">
-                  {allowedConfigModules.map(({ to, label, icon: Icon, exact, iconColor, iconBg }) => (
-                    <NavLink
-                      key={to}
-                      to={to}
-                      end={exact}
-                      onClick={onClose}
-                      className={({ isActive }) =>
-                        clsx(
-                          'group flex items-center gap-3 px-3 py-1.5 rounded-xl text-sm font-medium transition-all duration-200 border',
-                          isActive
-                            ? 'bg-bg-secondary text-text-primary shadow-sm border-border font-semibold'
-                            : 'text-text-secondary hover:bg-bg-secondary/60 hover:text-text-primary border-transparent',
-                        )
-                      }
-                    >
-                      <div className={clsx("p-1.5 rounded-lg flex-shrink-0 transition-colors", iconBg)}>
-                        <Icon size={14} className={clsx("transition-transform duration-200 group-hover:scale-110", iconColor)} />
-                      </div>
-                      <span className="truncate">{label}</span>
-                    </NavLink>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+          <div className="mt-auto pt-4 border-t border-divider">
+            <button
+              onClick={() => setConfigOpen(!configOpen)}
+              className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium text-text-secondary hover:bg-bg-secondary hover:text-text-primary transition-colors mb-1 cursor-pointer"
+            >
+              <div className="flex items-center gap-3">
+                <Settings size={18} className="flex-shrink-0" />
+                <span className="truncate">Configurações</span>
+              </div>
+              {configOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            </button>
+            
+            {configOpen && (
+              <div className="pl-4 mt-1 space-y-1 border-l-2 border-divider ml-3">
+                {/* Botão de Personalização de Menus */}
+                <button
+                  onClick={() => {
+                    onClose();
+                    setIsCustomizing(true);
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-1.5 rounded-xl text-sm font-medium transition-all duration-200 border border-transparent text-text-secondary hover:bg-bg-secondary/60 hover:text-text-primary text-left cursor-pointer"
+                >
+                  <div className="p-1.5 rounded-lg flex-shrink-0 bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400">
+                    <Settings size={14} className="transition-transform duration-200 hover:scale-110" />
+                  </div>
+                  <span className="truncate">Personalizar Menus</span>
+                </button>
+
+                {/* Submenus Originais se existirem */}
+                {allowedConfigModules.map(({ to, label, icon: Icon, exact, iconColor, iconBg }) => (
+                  <NavLink
+                    key={to}
+                    to={to}
+                    end={exact}
+                    onClick={onClose}
+                    className={({ isActive }) =>
+                      clsx(
+                        'group flex items-center gap-3 px-3 py-1.5 rounded-xl text-sm font-medium transition-all duration-200 border',
+                        isActive
+                          ? 'bg-bg-secondary text-text-primary shadow-sm border-border font-semibold'
+                          : 'text-text-secondary hover:bg-bg-secondary/60 hover:text-text-primary border-transparent',
+                      )
+                    }
+                  >
+                    <div className={clsx("p-1.5 rounded-lg flex-shrink-0 transition-colors", iconBg)}>
+                      <Icon size={14} className={clsx("transition-transform duration-200 group-hover:scale-110", iconColor)} />
+                    </div>
+                    <span className="truncate">{label}</span>
+                  </NavLink>
+                ))}
+              </div>
+            )}
+          </div>
         </nav>
 
         {/* Footer com Sair */}
