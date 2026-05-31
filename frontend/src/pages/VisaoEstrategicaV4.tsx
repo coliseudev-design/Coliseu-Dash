@@ -249,6 +249,21 @@ export default function VisaoEstrategicaV4() {
 
   const mockTopClients = cli.data?.data?.map((c: any, i: number) => ({ rank: i + 1, name: c.nome, value: c.total })) || [];
 
+  const bestSeller = useMemo(() => {
+    if (mockTopSellers.length === 0) return null;
+    const first = mockTopSellers[0];
+    const pct = faturamentoAtual > 0 ? (first.value / faturamentoAtual) * 100 : 0;
+    return {
+      name: first.name,
+      value: first.value,
+      pct: pct
+    };
+  }, [mockTopSellers, faturamentoAtual]);
+
+  const totalVendedores = vd.data?.data?.length || 0;
+  const mediaPorVendedor = totalVendedores > 0 ? faturamentoAtual / totalVendedores : 0;
+  const cidadeLider = mockTopCities[0]?.name || '—';
+
 
   const barColors = [
     '#3B82F6', '#10B981', '#8B5CF6', '#F59E0B', '#EF4444', 
@@ -345,17 +360,21 @@ export default function VisaoEstrategicaV4() {
 
         <div className="bg-bg-primary rounded-xl p-5 border border-divider shadow-card flex flex-col justify-center items-center text-center relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1 bg-brand-500"></div>
-          <span className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2">Clientes Ativos no Período (Vet)</span>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-3xl font-extrabold text-text-primary">{clientesAtivos}</span>
-            <span className="text-sm text-text-secondary">/ {totalClientes}</span>
-          </div>
-          <div className="w-full bg-bg-secondary rounded-full h-2 mt-1">
-            <div className="bg-brand-500 h-2 rounded-full" style={{ width: `${totalClientes > 0 ? (clientesAtivos / totalClientes) * 100 : 0}%` }}></div>
-          </div>
-          <div className="text-[10px] text-text-secondary mt-2">
-            Taxa de Atividade: {totalClientes > 0 ? ((clientesAtivos / totalClientes) * 100).toFixed(1) : 0}%
-          </div>
+          <span className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2">Melhor Vendedor do Período</span>
+          {bestSeller && bestSeller.value > 0 ? (
+            <div className="w-full flex flex-col items-center">
+              <span className="text-lg font-bold text-brand-500 truncate max-w-[220px] mb-1">{bestSeller.name}</span>
+              <span className="text-2xl font-extrabold text-text-primary mb-1">{formatBRL(bestSeller.value)}</span>
+              <div className="w-full max-w-[200px] bg-bg-secondary rounded-full h-1.5 mt-1 overflow-hidden">
+                <div className="bg-brand-500 h-1.5 rounded-full" style={{ width: `${bestSeller.pct}%` }}></div>
+              </div>
+              <span className="text-[10px] font-bold text-text-secondary mt-1">
+                {bestSeller.pct.toFixed(1)}% do faturamento total
+              </span>
+            </div>
+          ) : (
+            <div className="text-text-muted text-xs italic py-4">Sem vendas no período</div>
+          )}
         </div>
 
         <div className="bg-bg-primary rounded-xl p-5 border border-divider shadow-card flex flex-col justify-center items-center text-center relative overflow-hidden">
@@ -374,8 +393,8 @@ export default function VisaoEstrategicaV4() {
           { label: 'Volume de Peças', value: formatNum(qtdPedidos), icon: Box, color: 'text-brand-500', bg: 'bg-brand-50/80 dark:bg-brand-500/10' },
           { label: 'Ticket Médio', value: formatBRL(ticketMedio), icon: Target, color: 'text-brand-600', bg: 'bg-brand-50/80 dark:bg-brand-500/10' },
           { label: 'Taxa de Conversão', value: `${taxaConversao.toFixed(1)}%`, icon: TrendingUp, color: 'text-brand-500', bg: 'bg-brand-50/80 dark:bg-brand-500/10' },
-          { label: 'Clientes Ativos', value: `${clientesAtivos} / ${totalClientes}`, icon: Users, color: 'text-brand-600', bg: 'bg-brand-50/80 dark:bg-brand-500/10' },
-          { label: 'Vendedores Ativos', value: vd.data?.data?.length || 0, icon: Briefcase, color: 'text-brand-500', bg: 'bg-brand-50/80 dark:bg-brand-500/10' }
+          { label: 'Clientes com Compra', value: formatNum(clientesAtivos), icon: Users, color: 'text-brand-600', bg: 'bg-brand-50/80 dark:bg-brand-500/10' },
+          { label: 'Cidade Líder', value: cidadeLider, icon: Map, color: 'text-brand-500', bg: 'bg-brand-50/80 dark:bg-brand-500/10' }
         ].map((kpi, idx) => (
           <div key={idx} className="bg-bg-primary rounded-xl p-4 border border-divider shadow-card flex items-center gap-4">
             <div className={clsx('p-3 rounded-lg', kpi.bg, kpi.color)}>
@@ -383,7 +402,7 @@ export default function VisaoEstrategicaV4() {
             </div>
             <div>
               <div className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">{kpi.label}</div>
-              <div className="text-lg font-bold text-text-primary">{kpi.value}</div>
+              <div className="text-lg font-bold text-text-primary truncate max-w-[120px] sm:max-w-none">{kpi.value}</div>
             </div>
           </div>
         ))}
@@ -574,7 +593,7 @@ export default function VisaoEstrategicaV4() {
           <div className="h-[260px]">
             {viewMode.vendedores === 'chart' ? (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={mockTopSellers} layout="vertical" margin={{ top: 0, right: 30, left: 10, bottom: 0 }}>
+                <BarChart data={mockTopSellers.slice(1)} layout="vertical" margin={{ top: 0, right: 30, left: 10, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--color-border)" opacity={0.5} />
                   <XAxis type="number" hide />
                   <YAxis 
@@ -588,7 +607,7 @@ export default function VisaoEstrategicaV4() {
                   />
                   <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.4 }} />
                   <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={20}>
-                    {mockTopSellers.map((entry: any, index: number) => (
+                    {mockTopSellers.slice(1).map((entry: any, index: number) => (
                       <Cell key={`cell-${index}`} fill={barColors[index % barColors.length]} />
                     ))}
                   </Bar>
@@ -596,9 +615,9 @@ export default function VisaoEstrategicaV4() {
               </ResponsiveContainer>
             ) : (
               <div className="h-[260px] overflow-y-auto pr-1 space-y-2">
-                {mockTopSellers.map((seller: any, index: number) => {
+                {mockTopSellers.slice(1).map((seller: any, index: number) => {
                   const pct = faturamentoAtual > 0 ? (seller.value / faturamentoAtual) * 100 : 0
-                  const rank = index + 1
+                  const rank = index + 2
                   return (
                     <div
                       key={index}
@@ -638,11 +657,11 @@ export default function VisaoEstrategicaV4() {
         </div>
         
         <div className="lg:col-span-1 bg-bg-primary border border-divider shadow-card rounded-xl p-5 flex flex-col justify-center space-y-2">
-          <div className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-1">Vendedor Destaque</div>
-          <div className="text-brand-500 font-extrabold text-sm mb-1 truncate">{mockTopSellers.length > 0 ? mockTopSellers[0].name : '-'}</div>
-          <div className="text-xl font-extrabold text-text-primary">{formatBRL(mockTopSellers.length > 0 ? mockTopSellers[0].value : 0)}</div>
+          <div className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-1">Desempenho da Equipe</div>
+          <div className="text-brand-500 font-extrabold text-sm mb-1 truncate">Vendedores Ativos: {totalVendedores}</div>
+          <div className="text-xl font-extrabold text-text-primary">{formatBRL(mediaPorVendedor)}</div>
           <div className="text-[10px] text-text-secondary mt-1">
-            Participação: {faturamentoAtual > 0 && mockTopSellers.length > 0 ? ((mockTopSellers[0].value / faturamentoAtual) * 100).toFixed(1) : 0}%
+            Média por vendedor no período
           </div>
         </div>
       </div>

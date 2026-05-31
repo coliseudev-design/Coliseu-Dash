@@ -274,11 +274,11 @@ router.get('/kpis', async (req, res, next) => {
         const { rows: rTotCli } = await db.query(`SELECT COUNT(*) AS total FROM dash_clientes WHERE tenant_id = $1 AND ativo = true`, [tenantId]);
 
         const { rows: topClientes } = await db.query(`
-            SELECT c.nome, SUM(v.valor_total) AS total
+            SELECT COALESCE(c.nome, 'Cliente ' || COALESCE(v.cliente_id_firebird::text, '?')) AS nome, SUM(v.valor_total) AS total
             FROM dash_vendas v
-            JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
+            LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
             WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3 ${salesFilter} ${df.clause} ${vf.clause}
-            GROUP BY c.id, c.nome
+            GROUP BY v.cliente_id_firebird, c.nome
             ORDER BY total DESC LIMIT 5
         `, [tenantId, start, end, ...df.params, ...vf.params]);
 

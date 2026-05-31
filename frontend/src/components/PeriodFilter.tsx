@@ -13,7 +13,7 @@ export default function PeriodFilter({ excludePeriods = [] }: Props) {
   const endDate = usePeriodStore((s) => s.endDate)
   const setPeriod = usePeriodStore((s) => s.setPeriod)
   const setCustomRange = usePeriodStore((s) => s.setCustomRange)
-  const [showCustom, setShowCustom] = useState(false)
+  const [showCustom, setShowCustom] = useState(period === 'custom')
 
   const handleClick = (p: PeriodKey) => {
     if (p === 'custom') {

@@ -17,6 +17,22 @@ function toSafeSqlString(dateObj) {
     return `${dateObj.getFullYear()}-${pad(dateObj.getMonth() + 1)}-${pad(dateObj.getDate())} ${pad(dateObj.getHours())}:${pad(dateObj.getMinutes())}:${pad(dateObj.getSeconds())}`;
 }
 
+function parseDateString(dateStr) {
+    if (!dateStr) return null;
+    const cleanStr = dateStr.split('T')[0].split(' ')[0];
+    const parts = cleanStr.includes('-') ? cleanStr.split('-') : cleanStr.split('/');
+    if (parts.length === 3) {
+        if (parts[0].length === 4) {
+            // YYYY-MM-DD or YYYY/MM/DD
+            return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+        } else if (parts[2].length === 4) {
+            // DD-MM-YYYY or DD/MM/YYYY
+            return new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
+        }
+    }
+    return new Date(dateStr);
+}
+
 function getPeriodRange(period, startDate, endDate, anchorDate) {
     const now = anchorDate ? new Date(anchorDate) : new Date();
     let start = new Date(now);
@@ -54,11 +70,16 @@ function getPeriodRange(period, startDate, endDate, anchorDate) {
             break;
         case 'custom':
             if (startDate && endDate) {
-                const [sy, sm, sd] = startDate.split('T')[0].split('-');
-                start = new Date(parseInt(sy), parseInt(sm) - 1, parseInt(sd), 0, 0, 0, 0);
-                
-                const [ey, em, ed] = endDate.split('T')[0].split('-');
-                end = new Date(parseInt(ey), parseInt(em) - 1, parseInt(ed), 23, 59, 59, 999);
+                const sDate = parseDateString(startDate);
+                const eDate = parseDateString(endDate);
+                if (sDate && !isNaN(sDate.getTime())) {
+                    start = sDate;
+                    start.setHours(0, 0, 0, 0);
+                }
+                if (eDate && !isNaN(eDate.getTime())) {
+                    end = eDate;
+                    end.setHours(23, 59, 59, 999);
+                }
             } else {
                 // fallback
                 start.setDate(start.getDate() - 30);
@@ -97,5 +118,6 @@ function getPeriodRange(period, startDate, endDate, anchorDate) {
 module.exports = {
     getPeriodRange,
     toBrazilTZString,
-    toSafeSqlString
+    toSafeSqlString,
+    parseDateString
 };

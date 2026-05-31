@@ -3,7 +3,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db/postgres');
-const { getPeriodRange, toSafeSqlString } = require('../utils/period');
+const { getPeriodRange, toSafeSqlString, parseDateString } = require('../utils/period');
 const { getCache, setCache } = require('../config/cache');
 const { buildDeptoFilter, buildVendedorFilter } = require('./filiais');
 const cfopUtil = require('../utils/cfop');
@@ -50,11 +50,17 @@ async function getAnchoredRange(tenantId, period, start_date, end_date) {
             break;
         case 'custom':
             if (start_date && end_date) {
-                const [sy, sm, sd] = start_date.split('T')[0].split('-');
-                const s = new Date(parseInt(sy), parseInt(sm) - 1, parseInt(sd), 0, 0, 0, 0);
-                const [ey, em, ed] = end_date.split('T')[0].split('-');
-                const e = new Date(parseInt(ey), parseInt(em) - 1, parseInt(ed), 23, 59, 59, 999);
-                return { start: toSafeSqlString(s), end: toSafeSqlString(e) };
+                const sDate = parseDateString(start_date);
+                const eDate = parseDateString(end_date);
+                if (sDate && !isNaN(sDate.getTime())) {
+                    start = sDate;
+                    start.setHours(0, 0, 0, 0);
+                }
+                if (eDate && !isNaN(eDate.getTime())) {
+                    end = eDate;
+                    end.setHours(23, 59, 59, 999);
+                }
+                return { start: toSafeSqlString(start), end: toSafeSqlString(end) };
             }
             start.setFullYear(start.getFullYear() - 1);
             break;
