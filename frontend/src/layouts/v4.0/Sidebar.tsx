@@ -37,19 +37,11 @@ const BI_MODULES = [
   },
   { 
     to: '/bi', 
-    label: 'Inteligência de Vendas', 
+    label: 'Inteligência Comercial', 
     icon: BarChart3, 
     exact: true, 
     id: 'bi_sales',
     iconColor: 'text-teal-700 dark:text-teal-300',
-    iconBg: 'bg-teal-50 dark:bg-teal-900/20'
-  },
-  { 
-    to: '/bi/hub', 
-    label: 'Hub de Vendas', 
-    icon: ShoppingCart, 
-    id: 'bi_hub',
-    iconColor: 'text-teal-600 dark:text-teal-400',
     iconBg: 'bg-teal-50 dark:bg-teal-900/20'
   },
   { 

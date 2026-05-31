@@ -6,12 +6,12 @@ import { BIService } from '../../services/biApi';
 import { BiPeriodFilter } from '../../types/bi.types';
 import { 
   Trophy, Users, Box, Award, DollarSign, TrendingUp, TrendingDown, 
-  Calendar, MapPin, FileText, ChevronLeft, ChevronRight, Activity, Percent,
-  BarChart3, ArrowUpDown
+  Calendar, MapPin, FileText, ChevronLeft, ChevronRight, Activity,
+  BarChart3, ArrowUpDown, Clock, Search, EyeOff, Tag
 } from 'lucide-react';
 import { 
-  ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip 
+  ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, 
+  CartesianGrid, Tooltip 
 } from 'recharts';
 import { formatBRL, formatNum, formatBRLCompact } from '../../utils/format';
 import clsx from 'clsx';
@@ -49,6 +49,14 @@ export default function SellerHubDashboard() {
     diaSemana: 'chart'
   });
 
+  // Table filtering and sorting states
+  const [clientQuery, setClientQuery] = useState('');
+  const [invoiceStatusFilter, setInvoiceStatusFilter] = useState('TODOS');
+  const [invoiceSortField, setInvoiceSortField] = useState<'numero' | 'data' | 'valor'>('data');
+  const [invoiceSortOrder, setInvoiceSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 50;
+
   // Set default seller when list loaded
   useEffect(() => {
     if (vdFull.data?.data && vdFull.data.data.length > 0 && !selectedVendedor) {
@@ -70,14 +78,10 @@ export default function SellerHubDashboard() {
     activeFilter
   );
 
-  // Pagination for Invoices Table
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 8;
-
-  // Reset pagination when selected vendor or global filter changes
+  // Reset pagination when selected vendor, query, or filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedVendedor, globalFilter]);
+  }, [selectedVendedor, globalFilter, clientQuery, invoiceStatusFilter]);
 
   // Safe metrics extraction
   const faturamento = data?.faturamento || 0;
@@ -89,7 +93,6 @@ export default function SellerHubDashboard() {
   const cidadeTop = data?.cidade_top || 'N/A';
   const cidadeTopValor = data?.cidade_top_valor || 0;
   const crescimentoPct = data?.crescimento_pct || 0;
-  const faturamentoAnterior = data?.faturamento_anterior || 0;
 
   const topMarcas = data?.top_marcas || [];
   const topClientes = data?.top_clientes || [];
@@ -98,24 +101,88 @@ export default function SellerHubDashboard() {
   
   const historicoVendas = data?.historico_vendas || [];
   const vendasPorDiaSemana = data?.vendas_por_dia_semana || [];
-  const heatmapDados = data?.heatmap_dados || [];
   const invoicesList = data?.notas_fiscais || [];
-
-  // Pagination compute
-  const totalPages = Math.ceil(invoicesList.length / itemsPerPage) || 1;
-  const currentInvoices = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
-    return invoicesList.slice(start, start + itemsPerPage);
-  }, [invoicesList, currentPage]);
-
-  const maxHeatmapVal = useMemo(() => {
-    return Math.max(...heatmapDados.map((h: any) => h.valor), 1);
-  }, [heatmapDados]);
 
   const maxBrandValue = useMemo(() => {
     if (topMarcas.length === 0) return 0;
     return Math.max(...topMarcas.map((m: any) => m.value));
   }, [topMarcas]);
+
+  // Calculate total values for percentage share display in rankings
+  const totalMarcasVal = useMemo(() => topMarcas.reduce((acc: number, curr: any) => acc + curr.value, 0), [topMarcas]);
+  const totalClientesVal = useMemo(() => topClientes.reduce((acc: number, curr: any) => acc + curr.value, 0), [topClientes]);
+  const totalGruposVal = useMemo(() => topGrupos.reduce((acc: number, curr: any) => acc + curr.value, 0), [topGrupos]);
+  const totalProdutosVal = useMemo(() => topProdutos.reduce((acc: number, curr: any) => acc + curr.value, 0), [topProdutos]);
+
+  // Filter Invoices by search and status
+  const filteredInvoices = useMemo(() => {
+    let result = invoicesList;
+    
+    // Search by client or note number
+    if (clientQuery.trim()) {
+      const query = clientQuery.toLowerCase();
+      result = result.filter((inv: any) => 
+        String(inv.cliente || '').toLowerCase().includes(query) ||
+        String(inv.numero_nota || '').toLowerCase().includes(query)
+      );
+    }
+    
+    // Filter by status
+    if (invoiceStatusFilter !== 'TODOS') {
+      result = result.filter((inv: any) => 
+        String(inv.status || '').trim().toUpperCase() === invoiceStatusFilter.toUpperCase()
+      );
+    }
+    
+    return result;
+  }, [invoicesList, clientQuery, invoiceStatusFilter]);
+
+  // Sort Invoices
+  const sortedInvoices = useMemo(() => {
+    const list = [...filteredInvoices];
+    return list.sort((a: any, b: any) => {
+      let comparison = 0;
+      if (invoiceSortField === 'numero') {
+        comparison = String(a.numero_nota || '').localeCompare(String(b.numero_nota || ''));
+      } else if (invoiceSortField === 'data') {
+        const parseDate = (dStr: string) => {
+          if (!dStr) return 0;
+          const parts = dStr.split('/');
+          if (parts.length === 3) {
+            // dd/mm/yyyy -> timestamp
+            return new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0])).getTime();
+          }
+          return new Date(dStr).getTime();
+        };
+        comparison = parseDate(a.data) - parseDate(b.data);
+      } else if (invoiceSortField === 'valor') {
+        comparison = (a.valor || 0) - (b.valor || 0);
+      }
+      return invoiceSortOrder === 'asc' ? comparison : -comparison;
+    });
+  }, [filteredInvoices, invoiceSortField, invoiceSortOrder]);
+
+  // Extract unique statuses for filter pills
+  const availableInvoiceStatuses = useMemo<string[]>(() => {
+    const statuses = invoicesList.map((inv: any) => String(inv.status || '').trim().toUpperCase()).filter(Boolean);
+    return Array.from(new Set(statuses)) as string[];
+  }, [invoicesList]);
+
+  // Pagination compute
+  const totalPages = Math.ceil(sortedInvoices.length / itemsPerPage) || 1;
+  const currentInvoices = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return sortedInvoices.slice(start, start + itemsPerPage);
+  }, [sortedInvoices, currentPage]);
+
+  const handleInvoiceSort = (field: 'numero' | 'data' | 'valor') => {
+    if (invoiceSortField === field) {
+      setInvoiceSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setInvoiceSortField(field);
+      setInvoiceSortOrder('desc');
+    }
+  };
 
   const getHistoricoVendasSummary = () => {
     if (historicoVendas.length === 0) return "Sem histórico de faturamento neste período.";
@@ -143,6 +210,8 @@ export default function SellerHubDashboard() {
     );
   }
 
+  const isHistoricoEmpty = historicoVendas.length === 0 || historicoVendas.every((v: any) => v.valor === 0);
+
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       
@@ -153,7 +222,7 @@ export default function SellerHubDashboard() {
             <Activity className="text-brand-500" size={22} />
             Hub do Vendedor
           </h2>
-          <p className="text-[11px] sm:text-xs text-text-secondary">Hub estratégico para acelerar seus resultados</p>
+          <p className="text-[11px] sm:text-xs text-text-secondary">Consulta consolidada de faturamento e desempenho comercial realizado</p>
         </div>
         
         <div className="flex flex-wrap items-end gap-3 w-full lg:w-auto">
@@ -173,17 +242,17 @@ export default function SellerHubDashboard() {
         </div>
       </div>
 
-      {/* 5 KPI CARDS - FULL WIDTH ON TOP */}
+      {/* 5 KPI CARDS - FULL WIDTH ON TOP (PREMIUM p-6 LAYOUT, SAGE GREEN IDENTITY) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        {/* Card 1: Faturamento */}
-        <div className="bg-bg-primary border border-divider shadow-card hover:shadow-card-hover rounded-xl p-5 flex items-center gap-4 transition-all duration-300 relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-[3px] bg-brand-500/80"></div>
-          <div className="p-3 bg-brand-500/10 text-brand-500 rounded-lg">
+        {/* Card 1: Faturamento (Highlighted with bold border accent) */}
+        <div className="bg-bg-primary border border-divider shadow-card hover:shadow-card-hover rounded-xl p-6 flex items-center gap-4 transition-all duration-300 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-[3px] bg-brand-500"></div>
+          <div className="p-3 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
             <DollarSign size={24} />
           </div>
           <div className="space-y-0.5 min-w-0">
             <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Faturamento</span>
-            <div className="text-lg font-extrabold text-text-primary tracking-tight truncate">
+            <div className="text-xl font-black text-text-primary tracking-tight truncate">
               {formatBRL(faturamento)}
             </div>
             <span className={clsx(
@@ -197,44 +266,44 @@ export default function SellerHubDashboard() {
         </div>
 
         {/* Card 2: Ticket Médio */}
-        <div className="bg-bg-primary border border-divider shadow-card hover:shadow-card-hover rounded-xl p-5 flex items-center gap-4 transition-all duration-300 relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-[3px] bg-brand-500/80"></div>
-          <div className="p-3 bg-brand-500/10 text-brand-500 rounded-lg">
+        <div className="bg-bg-primary border border-divider shadow-card hover:shadow-card-hover rounded-xl p-6 flex items-center gap-4 transition-all duration-300 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-[3px] bg-brand-500"></div>
+          <div className="p-3 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
             <Trophy size={24} />
           </div>
           <div className="space-y-0.5 min-w-0">
             <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Ticket Médio</span>
-            <div className="text-lg font-extrabold text-text-primary tracking-tight truncate">
+            <div className="text-xl font-black text-text-primary tracking-tight truncate">
               {formatBRL(ticketMedio)}
             </div>
-            <span className="text-[9px] text-text-muted font-medium block mt-1">Por nota faturada</span>
+            <span className="text-[9px] text-text-muted font-medium block mt-1">Média por venda</span>
           </div>
         </div>
 
         {/* Card 3: Notas Emitidas */}
-        <div className="bg-bg-primary border border-divider shadow-card hover:shadow-card-hover rounded-xl p-5 flex items-center gap-4 transition-all duration-300 relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-[3px] bg-brand-500/80"></div>
-          <div className="p-3 bg-brand-500/10 text-brand-500 rounded-lg">
+        <div className="bg-bg-primary border border-divider shadow-card hover:shadow-card-hover rounded-xl p-6 flex items-center gap-4 transition-all duration-300 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-[3px] bg-brand-500"></div>
+          <div className="p-3 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
             <FileText size={24} />
           </div>
           <div className="space-y-0.5 min-w-0">
             <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Notas Emitidas</span>
-            <div className="text-lg font-extrabold text-text-primary tracking-tight truncate">
+            <div className="text-xl font-black text-text-primary tracking-tight truncate">
               {notasEmitidas}
             </div>
-            <span className="text-[9px] text-text-muted font-medium block mt-1">Total de documentos</span>
+            <span className="text-[9px] text-text-muted font-medium block mt-1">Total documentos</span>
           </div>
         </div>
 
-        {/* Card 4: Clientes Novos */}
-        <div className="bg-bg-primary border border-divider shadow-card hover:shadow-card-hover rounded-xl p-5 flex items-center gap-4 transition-all duration-300 relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-[3px] bg-brand-500/80"></div>
-          <div className="p-3 bg-brand-500/10 text-brand-500 rounded-lg">
+        {/* Card 4: Clientes Atendidos */}
+        <div className="bg-bg-primary border border-divider shadow-card hover:shadow-card-hover rounded-xl p-6 flex items-center gap-4 transition-all duration-300 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-[3px] bg-brand-500"></div>
+          <div className="p-3 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
             <Users size={24} />
           </div>
           <div className="space-y-0.5 min-w-0 flex-1">
-            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Clientes Novos</span>
-            <div className="text-lg font-extrabold text-text-primary tracking-tight truncate">
+            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Clientes Atendidos</span>
+            <div className="text-xl font-black text-text-primary tracking-tight truncate">
               {clientesNovos}
             </div>
             <div className="flex justify-between items-center text-[8px] text-text-muted font-bold mt-1">
@@ -245,14 +314,14 @@ export default function SellerHubDashboard() {
         </div>
 
         {/* Card 5: Cidade Top */}
-        <div className="bg-bg-primary border border-divider shadow-card hover:shadow-card-hover rounded-xl p-5 flex items-center gap-4 transition-all duration-300 relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-[3px] bg-brand-500/80"></div>
-          <div className="p-3 bg-brand-500/10 text-brand-500 rounded-lg">
+        <div className="bg-bg-primary border border-divider shadow-card hover:shadow-card-hover rounded-xl p-6 flex items-center gap-4 transition-all duration-300 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-[3px] bg-brand-500"></div>
+          <div className="p-3 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
             <MapPin size={24} />
           </div>
           <div className="space-y-0.5 min-w-0">
             <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Cidade Top</span>
-            <div className="text-lg font-extrabold text-text-primary tracking-tight truncate" title={cidadeTop}>
+            <div className="text-xl font-black text-text-primary tracking-tight truncate" title={cidadeTop}>
               {cidadeTop}
             </div>
             <span className="text-[10px] font-extrabold text-brand-500 block mt-0.5">
@@ -262,7 +331,7 @@ export default function SellerHubDashboard() {
         </div>
       </div>
 
-      {/* 4 TOP LISTS - FULL WIDTH */}
+      {/* 4 TOP LISTS / RANKINGS - COMPACTED AND CLEAN WITH STATE EMPTY FALLBACKS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Top Marcas */}
         <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-4 flex flex-col min-h-[300px]">
@@ -271,17 +340,26 @@ export default function SellerHubDashboard() {
             <h4 className="text-[10px] font-bold text-text-primary uppercase tracking-wider">Top 15 Marcas</h4>
           </div>
           <div className="flex-1 overflow-y-auto max-h-[220px] text-[11px] space-y-2 pr-1">
-            {topMarcas.map((m: any) => (
-              <div key={m.rank} className="flex justify-between items-center py-0.5 border-b border-divider/5 hover:bg-bg-secondary/50 px-1 rounded transition-colors">
-                <span className="text-text-secondary truncate max-w-[110px]" title={m.name}>
-                  <span className="font-bold text-brand-500/80 mr-1 font-mono">{m.rank}.</span>
-                  {m.name}
-                </span>
-                <span className="font-bold text-brand-500">{formatBRLCompact(m.value)}</span>
-              </div>
-            ))}
+            {topMarcas.map((m: any) => {
+              const share = totalMarcasVal > 0 ? (m.value / totalMarcasVal) * 100 : 0;
+              return (
+                <div key={m.rank} className="flex justify-between items-center py-1.5 border-b border-divider/5 hover:bg-bg-secondary/50 px-1.5 rounded transition-colors">
+                  <span className="text-text-secondary truncate max-w-[110px]" title={m.name}>
+                    <span className="font-bold text-brand-500/80 mr-1.5 font-mono">#{m.rank}</span>
+                    {m.name}
+                  </span>
+                  <div className="text-right shrink-0">
+                    <span className="font-bold text-text-primary block font-mono">{formatBRLCompact(m.value)}</span>
+                    <span className="text-[9px] text-text-muted block font-semibold">{share.toFixed(1)}% share</span>
+                  </div>
+                </div>
+              );
+            })}
             {topMarcas.length === 0 && (
-              <div className="text-center text-text-muted mt-12">Nenhuma marca</div>
+              <div className="h-full flex flex-col items-center justify-center text-center p-4">
+                <EyeOff size={24} className="text-text-muted mb-1 stroke-[1.5]" />
+                <span className="text-xs text-text-muted font-medium">Nenhuma marca registrada.</span>
+              </div>
             )}
           </div>
         </div>
@@ -293,17 +371,26 @@ export default function SellerHubDashboard() {
             <h4 className="text-[10px] font-bold text-text-primary uppercase tracking-wider">Top 10 Clientes</h4>
           </div>
           <div className="flex-1 overflow-y-auto max-h-[220px] text-[11px] space-y-2 pr-1">
-            {topClientes.map((c: any) => (
-              <div key={c.rank} className="flex justify-between items-center py-0.5 border-b border-divider/5 hover:bg-bg-secondary/50 px-1 rounded transition-colors">
-                <span className="text-text-secondary truncate max-w-[110px]" title={c.name}>
-                  <span className="font-bold text-brand-500/80 mr-1 font-mono">{c.rank}.</span>
-                  {c.name}
-                </span>
-                <span className="font-bold text-brand-500">{formatBRLCompact(c.value)}</span>
-              </div>
-            ))}
+            {topClientes.map((c: any) => {
+              const share = totalClientesVal > 0 ? (c.value / totalClientesVal) * 100 : 0;
+              return (
+                <div key={c.rank} className="flex justify-between items-center py-1.5 border-b border-divider/5 hover:bg-bg-secondary/50 px-1.5 rounded transition-colors">
+                  <span className="text-text-secondary truncate max-w-[110px]" title={c.name}>
+                    <span className="font-bold text-brand-500/80 mr-1.5 font-mono">#{c.rank}</span>
+                    {c.name}
+                  </span>
+                  <div className="text-right shrink-0">
+                    <span className="font-bold text-text-primary block font-mono">{formatBRLCompact(c.value)}</span>
+                    <span className="text-[9px] text-text-muted block font-semibold">{share.toFixed(1)}% share</span>
+                  </div>
+                </div>
+              );
+            })}
             {topClientes.length === 0 && (
-              <div className="text-center text-text-muted mt-12">Nenhum cliente</div>
+              <div className="h-full flex flex-col items-center justify-center text-center p-4">
+                <EyeOff size={24} className="text-text-muted mb-1 stroke-[1.5]" />
+                <span className="text-xs text-text-muted font-medium">Nenhum cliente faturado.</span>
+              </div>
             )}
           </div>
         </div>
@@ -315,17 +402,26 @@ export default function SellerHubDashboard() {
             <h4 className="text-[10px] font-bold text-text-primary uppercase tracking-wider">Top 10 Grupos</h4>
           </div>
           <div className="flex-1 overflow-y-auto max-h-[220px] text-[11px] space-y-2 pr-1">
-            {topGrupos.map((g: any) => (
-              <div key={g.rank} className="flex justify-between items-center py-0.5 border-b border-divider/5 hover:bg-bg-secondary/50 px-1 rounded transition-colors">
-                <span className="text-text-secondary truncate max-w-[110px]" title={g.name}>
-                  <span className="font-bold text-brand-500/80 mr-1 font-mono">{g.rank}.</span>
-                  {g.name}
-                </span>
-                <span className="font-bold text-brand-500">{formatBRLCompact(g.value)}</span>
-              </div>
-            ))}
+            {topGrupos.map((g: any) => {
+              const share = totalGruposVal > 0 ? (g.value / totalGruposVal) * 100 : 0;
+              return (
+                <div key={g.rank} className="flex justify-between items-center py-1.5 border-b border-divider/5 hover:bg-bg-secondary/50 px-1.5 rounded transition-colors">
+                  <span className="text-text-secondary truncate max-w-[110px]" title={g.name}>
+                    <span className="font-bold text-brand-500/80 mr-1.5 font-mono">#{g.rank}</span>
+                    {g.name}
+                  </span>
+                  <div className="text-right shrink-0">
+                    <span className="font-bold text-text-primary block font-mono">{formatBRLCompact(g.value)}</span>
+                    <span className="text-[9px] text-text-muted block font-semibold">{share.toFixed(1)}% share</span>
+                  </div>
+                </div>
+              );
+            })}
             {topGrupos.length === 0 && (
-              <div className="text-center text-text-muted mt-12">Nenhum grupo</div>
+              <div className="h-full flex flex-col items-center justify-center text-center p-4">
+                <EyeOff size={24} className="text-text-muted mb-1 stroke-[1.5]" />
+                <span className="text-xs text-text-muted font-medium">Nenhum grupo faturado.</span>
+              </div>
             )}
           </div>
         </div>
@@ -337,17 +433,26 @@ export default function SellerHubDashboard() {
             <h4 className="text-[10px] font-bold text-text-primary uppercase tracking-wider">Top 10 Produtos</h4>
           </div>
           <div className="flex-1 overflow-y-auto max-h-[220px] text-[11px] space-y-2 pr-1">
-            {topProdutos.map((p: any) => (
-              <div key={p.rank} className="flex justify-between items-center py-0.5 border-b border-divider/5 hover:bg-bg-secondary/50 px-1 rounded transition-colors">
-                <span className="text-text-secondary truncate max-w-[110px]" title={p.name}>
-                  <span className="font-bold text-brand-500/80 mr-1 font-mono">{p.rank}.</span>
-                  {p.name}
-                </span>
-                <span className="font-bold text-brand-500">{formatBRLCompact(p.value)}</span>
-              </div>
-            ))}
+            {topProdutos.map((p: any) => {
+              const share = totalProdutosVal > 0 ? (p.value / totalProdutosVal) * 100 : 0;
+              return (
+                <div key={p.rank} className="flex justify-between items-center py-1.5 border-b border-divider/5 hover:bg-bg-secondary/50 px-1.5 rounded transition-colors">
+                  <span className="text-text-secondary truncate max-w-[110px]" title={p.name}>
+                    <span className="font-bold text-brand-500/80 mr-1.5 font-mono">#{p.rank}</span>
+                    {p.name}
+                  </span>
+                  <div className="text-right shrink-0">
+                    <span className="font-bold text-text-primary block font-mono">{formatBRLCompact(p.value)}</span>
+                    <span className="text-[9px] text-text-muted block font-semibold">{share.toFixed(1)}% share</span>
+                  </div>
+                </div>
+              );
+            })}
             {topProdutos.length === 0 && (
-              <div className="text-center text-text-muted mt-12">Nenhum produto</div>
+              <div className="h-full flex flex-col items-center justify-center text-center p-4">
+                <EyeOff size={24} className="text-text-muted mb-1 stroke-[1.5]" />
+                <span className="text-xs text-text-muted font-medium">Nenhum produto faturado.</span>
+              </div>
             )}
           </div>
         </div>
@@ -357,7 +462,7 @@ export default function SellerHubDashboard() {
       <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-5">
         <div className="border-b border-divider/20 pb-3 mb-4">
           <h3 className="text-sm font-bold text-text-primary uppercase tracking-wider">Desempenho por Marca</h3>
-          <p className="text-[11px] text-text-secondary mt-0.5">Distribuição e representação de vendas por marca</p>
+          <p className="text-[11px] text-text-secondary mt-0.5">Distribuição e representação de faturamento realizado por marca (sem metas)</p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
@@ -394,23 +499,24 @@ export default function SellerHubDashboard() {
         </div>
       </div>
 
-      {/* SECTION: CHARTS WITH TOGGLES */}
+      {/* SECTION: CHARTS WITH HEIGHT DYNAMICALLY CONTROLLED (280px-360px desktop, 220px-280px mobile) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
-        {/* Histórico de Vendas */}
-        <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-5 flex flex-col min-h-[360px]">
+        {/* Histórico de Vendas (Altura Controlada) */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-5 flex flex-col justify-between">
           <div className="border-b border-divider/20 pb-3 mb-4 flex justify-between items-center">
             <div>
               <h3 className="text-xs font-bold text-text-primary uppercase tracking-wider">Histórico de Vendas</h3>
               <p className="text-[11px] text-text-secondary mt-0.5">Evolução diária de faturamento do vendedor</p>
             </div>
             
-            {/* Chaveador de Visualização */}
+            {/* View Mode Toggle */}
             <div className="flex items-center gap-1 bg-bg-secondary p-0.5 rounded-lg border border-divider">
               <button
                 onClick={() => setViewMode(prev => ({ ...prev, historico: 'chart' }))}
+                disabled={isHistoricoEmpty}
                 className={clsx(
-                  "p-1.5 rounded-md transition-all cursor-pointer",
+                  "p-1.5 rounded-md transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed",
                   viewMode.historico === 'chart'
                     ? "bg-bg-primary text-brand-500 shadow-sm"
                     : "text-text-secondary hover:text-text-primary"
@@ -434,49 +540,48 @@ export default function SellerHubDashboard() {
             </div>
           </div>
 
-          <div className="flex-1 min-h-[220px]">
-            {viewMode.historico === 'chart' ? (
-              historicoVendas.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={historicoVendas} margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-divider)" opacity={0.3} />
-                    <XAxis 
-                      dataKey="dia" 
-                      axisLine={{ stroke: 'var(--color-border)' }} 
-                      tickLine={false}
-                      tick={{ fontSize: 9, fill: 'var(--color-text-secondary)', fontWeight: 500 }} 
-                    />
-                    <YAxis 
-                      tickFormatter={(v) => formatBRLCompact(v)}
-                      axisLine={false} 
-                      tickLine={false} 
-                      tick={{ fontSize: 9, fill: 'var(--color-text-secondary)', fontWeight: 500 }}
-                    />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Line 
-                      type="monotone" 
-                      dataKey="valor" 
-                      name="Faturamento"
-                      stroke="#0D9488" 
-                      strokeWidth={3}
-                      dot={{ r: 3, stroke: '#0D9488', strokeWidth: 1, fill: '#FFFFFF' }}
-                      activeDot={{ r: 5 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="h-full flex items-center justify-center text-text-muted text-xs">
-                  Sem histórico de faturamento neste período.
-                </div>
-              )
+          <div className="h-[240px] sm:h-[300px] w-full flex-1">
+            {isHistoricoEmpty ? (
+              <div className="h-full flex flex-col items-center justify-center text-center p-6 border border-dashed border-border rounded-xl bg-bg-secondary/10">
+                <EyeOff size={32} className="text-text-muted mb-2 stroke-[1.5]" />
+                <p className="text-xs text-text-secondary font-medium">Sem faturamento registrado para este vendedor no período.</p>
+              </div>
+            ) : viewMode.historico === 'chart' ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={historicoVendas} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-divider)" opacity={0.3} />
+                  <XAxis 
+                    dataKey="dia" 
+                    axisLine={{ stroke: 'var(--color-border)' }} 
+                    tickLine={false}
+                    tick={{ fontSize: 9, fill: 'var(--color-text-secondary)', fontWeight: 500 }} 
+                  />
+                  <YAxis 
+                    tickFormatter={(v) => formatBRLCompact(v)}
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fontSize: 9, fill: 'var(--color-text-secondary)', fontWeight: 500 }}
+                  />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Line 
+                    type="monotone" 
+                    dataKey="valor" 
+                    name="Faturamento"
+                    stroke="#0D9488" 
+                    strokeWidth={3}
+                    dot={{ r: 3, stroke: '#0D9488', strokeWidth: 1, fill: '#FFFFFF' }}
+                    activeDot={{ r: 5 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
             ) : (
-              <div className="space-y-4 h-full flex flex-col justify-between">
+              <div className="space-y-4 h-full flex flex-col justify-between overflow-y-auto">
                 <p className="text-xs text-text-secondary italic leading-relaxed border-l-2 border-brand-500 pl-3">
                   {getHistoricoVendasSummary()}
                 </p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 overflow-y-auto max-h-[160px] pr-1">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pr-1 max-h-[140px] overflow-y-auto">
                   {historicoVendas.map((item: any, index: number) => (
-                    <div key={index} className="p-2.5 rounded-lg bg-bg-secondary/40 border border-divider">
+                    <div key={index} className="p-2 rounded-lg bg-bg-secondary/40 border border-divider">
                       <div className="text-[10px] text-text-secondary font-semibold uppercase">{item.dia}</div>
                       <div className="text-xs font-bold text-text-primary font-mono mt-0.5">{formatBRL(item.valor)}</div>
                     </div>
@@ -487,18 +592,16 @@ export default function SellerHubDashboard() {
           </div>
         </div>
 
-        {/* Vendas por Dia da Semana & Mapa de Calor */}
-        <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-5 flex flex-col min-h-[360px]">
+        {/* Vendas por Dia da Semana & Resumo de Atividade (2 colunas internas, Altura Controlada) */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-5 flex flex-col justify-between">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
             
             {/* Weekdays bar chart */}
-            <div className="flex flex-col h-full">
+            <div className="flex flex-col h-full justify-between">
               <div className="border-b border-divider/20 pb-2 mb-3 flex justify-between items-center">
-                <div>
-                  <h4 className="text-[10px] font-bold text-text-primary uppercase tracking-wider">Dia da Semana</h4>
-                </div>
+                <h4 className="text-[10px] font-bold text-text-primary uppercase tracking-wider">Dia da Semana</h4>
                 
-                {/* Chaveador de Visualização */}
+                {/* View Mode Toggle */}
                 <div className="flex items-center gap-1 bg-bg-secondary p-0.5 rounded-lg border border-divider">
                   <button
                     onClick={() => setViewMode(prev => ({ ...prev, diaSemana: 'chart' }))}
@@ -527,7 +630,7 @@ export default function SellerHubDashboard() {
                 </div>
               </div>
               
-              <div className="flex-1 min-h-[180px]">
+              <div className="h-[180px] sm:h-[220px] w-full flex-1">
                 {viewMode.diaSemana === 'chart' ? (
                   vendasPorDiaSemana.some((v: any) => v.valor > 0) ? (
                     <ResponsiveContainer width="100%" height="100%">
@@ -551,11 +654,11 @@ export default function SellerHubDashboard() {
                     </div>
                   )
                 ) : (
-                  <div className="space-y-4 h-full flex flex-col justify-between">
+                  <div className="space-y-3 h-full flex flex-col justify-between overflow-y-auto">
                     <p className="text-xs text-text-secondary italic leading-relaxed border-l-2 border-brand-500 pl-3">
                       {getVendasDiaSemanaSummary()}
                     </p>
-                    <div className="space-y-2 overflow-y-auto max-h-[140px] pr-1">
+                    <div className="space-y-1.5 pr-1 max-h-[140px] overflow-y-auto">
                       {vendasPorDiaSemana.map((item: any, index: number) => {
                         const totalVal = vendasPorDiaSemana.reduce((acc: number, curr: any) => acc + curr.valor, 0);
                         const pct = totalVal > 0 ? (item.valor / totalVal) * 100 : 0;
@@ -575,69 +678,57 @@ export default function SellerHubDashboard() {
               </div>
             </div>
 
-            {/* CSS Grid Heatmap */}
-            <div className="flex flex-col h-full">
-              <div className="border-b border-divider/20 pb-2 mb-3 flex justify-between items-center">
-                <h4 className="text-[10px] font-bold text-text-primary uppercase tracking-wider">Mapa de Calor</h4>
-                <span className="text-[8px] font-bold text-text-muted uppercase">S1 a S5</span>
+            {/* Resumo de Atividade (Heatmap Replacement) */}
+            <div className="flex flex-col h-full bg-bg-secondary/20 border border-divider/40 rounded-xl p-4 justify-between">
+              <div className="border-b border-divider pb-2 mb-3">
+                <h4 className="text-[10px] font-extrabold text-text-primary uppercase tracking-wider flex items-center gap-1.5">
+                  <Clock size={12} className="text-brand-500" />
+                  Resumo de Atividade
+                </h4>
               </div>
               
-              <div className="flex-1 flex flex-col justify-center">
-                {heatmapDados.length > 0 ? (
-                  <div className="grid grid-cols-6 gap-1.5 text-center px-1">
-                    {/* Header Row */}
-                    <div className="text-[9px] font-bold text-text-muted"></div>
-                    {['S1', 'S2', 'S3', 'S4', 'S5'].map(w => (
-                      <div key={w} className="text-[9px] font-bold text-text-muted uppercase">{w}</div>
-                    ))}
-                    
-                    {/* Activity Row Grid */}
-                    {['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map(dia => (
-                      <React.Fragment key={dia}>
-                        <div className="text-[9px] font-bold text-text-secondary flex items-center justify-end pr-1.5 font-mono">{dia}</div>
-                        {['S1', 'S2', 'S3', 'S4', 'S5'].map(sem => {
-                          const item = heatmapDados.find((h: any) => h.dia === dia && h.semana === sem);
-                          const valor = item ? item.valor : 0;
-                          
-                          // Interpolate color values safely (Emerald shades - compliant with Purple Ban)
-                          const opacity = maxHeatmapVal > 0 ? (valor / maxHeatmapVal) : 0;
-                          const bgStyle = opacity === 0 
-                            ? 'var(--color-bg-secondary)' 
-                            : `rgba(13, 148, 136, ${0.15 + opacity * 0.85})`;
-
-                          return (
-                            <div 
-                              key={sem} 
-                              className="h-6 rounded border border-divider/10 transition-all duration-300 hover:scale-105 hover:border-brand-500 relative group cursor-pointer"
-                              style={{ backgroundColor: bgStyle }}
-                            >
-                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block bg-bg-primary border border-border shadow-card p-2 rounded-lg z-50 text-[10px] whitespace-nowrap">
-                                <p className="font-bold text-text-primary">{dia} - {sem}</p>
-                                <p className="text-brand-500 font-bold mt-0.5">{formatBRL(valor)}</p>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </React.Fragment>
-                    ))}
+              <div className="flex-1 flex flex-col justify-between space-y-2">
+                {/* Stats */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="p-2 bg-bg-primary border border-divider/60 rounded-xl shadow-sm">
+                    <span className="text-[9px] text-text-secondary uppercase tracking-wider block font-semibold">Total Emitido</span>
+                    <span className="text-md font-extrabold text-text-primary mt-0.5 block">{notasEmitidas} notas</span>
                   </div>
-                ) : (
-                  <div className="h-full flex items-center justify-center text-text-muted text-xs">
-                    Sem faturamento.
+                  <div className="p-2 bg-bg-primary border border-divider/60 rounded-xl shadow-sm">
+                    <span className="text-[9px] text-text-secondary uppercase tracking-wider block font-semibold">Ticket Médio</span>
+                    <span className="text-md font-extrabold text-text-primary mt-0.5 block truncate">{formatBRLCompact(ticketMedio)}</span>
                   </div>
-                )}
-                
-                <div className="flex justify-between items-center mt-3 text-[8px] text-text-muted uppercase font-bold px-1">
-                  <span>Mínimo</span>
-                  <span className="flex gap-0.5">
-                    <span className="w-2 h-2 bg-bg-secondary border border-divider/10 rounded"></span>
-                    <span className="w-2 h-2 bg-brand-500/20 rounded"></span>
-                    <span className="w-2 h-2 bg-brand-500/50 rounded"></span>
-                    <span className="w-2 h-2 bg-brand-500/80 rounded"></span>
-                  </span>
-                  <span>Máx</span>
                 </div>
 
+                {/* Best sales day */}
+                <div className="p-2 bg-bg-primary border border-divider/60 rounded-xl shadow-sm">
+                  <span className="text-[9px] text-text-secondary uppercase tracking-wider font-semibold block mb-1">Melhor Dia do Período</span>
+                  {vendasPorDiaSemana.length > 0 ? (
+                    (() => {
+                      const sorted = [...vendasPorDiaSemana].sort((a: any, b: any) => b.valor - a.valor);
+                      const peak = sorted[0];
+                      return (
+                        <div className="flex justify-between items-center text-xs font-bold">
+                          <span className="text-text-primary">{peak.dia}</span>
+                          <span className="text-brand-500 font-mono">{formatBRL(peak.valor)}</span>
+                        </div>
+                      );
+                    })()
+                  ) : (
+                    <span className="text-xs text-text-muted">Nenhum registro.</span>
+                  )}
+                </div>
+
+                {/* Recent trajectory indicator */}
+                <div className="p-2 bg-bg-primary border border-divider/60 rounded-xl shadow-sm">
+                  <span className="text-[9px] text-text-secondary uppercase tracking-wider font-semibold block mb-1">Evolução Recente</span>
+                  <p className="text-[10px] text-text-secondary leading-normal">
+                    {historicoVendas.length > 0 
+                      ? `Registros indicam média diária de ${formatBRLCompact(historicoVendas.reduce((acc: number, curr: any) => acc + curr.valor, 0) / historicoVendas.length)}.`
+                      : "Sem histórico de evolução disponível."
+                    }
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -646,40 +737,89 @@ export default function SellerHubDashboard() {
 
       </div>
 
-      {/* SECTION: NOTAS FISCAIS DO VENDEDOR (MODERNIZED TABLE) */}
+      {/* SECTION: NOTAS FISCAIS DO VENDEDOR (PAGINATION 50-BY-50, SEARCH BY CLIENT & COLUMN SORTING) */}
       <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-5 flex flex-col">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-divider/20 pb-3 mb-4 gap-2">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-divider pb-4 mb-4 gap-4">
           <div>
             <h3 className="text-sm font-bold text-text-primary uppercase tracking-wider">Notas Fiscais do Vendedor</h3>
             <p className="text-[11px] text-text-secondary mt-0.5">Fila de notas faturadas no período consultado</p>
           </div>
-          <span className="text-[10px] font-bold text-text-muted uppercase bg-bg-secondary px-2.5 py-1 rounded-full border border-divider/10">
-            {invoicesList.length} registros
+          <span className="text-[10px] font-bold text-text-muted uppercase bg-bg-secondary px-2.5 py-1 rounded-full border border-divider/10 shrink-0">
+            {filteredInvoices.length} encontrados / {invoicesList.length} total
           </span>
         </div>
 
-        <div className="overflow-x-auto w-full border border-divider/50 rounded-xl">
+        {/* Filter Inputs (Client Search + Status Filter Pills) */}
+        <div className="flex flex-col md:flex-row gap-4 mb-4 items-stretch md:items-center">
+          {/* Client & Nota Search */}
+          <div className="relative flex-1 max-w-md">
+            <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-text-muted">
+              <Search size={14} />
+            </span>
+            <input
+              type="text"
+              placeholder="Buscar por cliente ou nº nota..."
+              value={clientQuery}
+              onChange={(e) => setClientQuery(e.target.value)}
+              className="w-full pl-9 pr-3 py-1.5 bg-bg-secondary border border-divider text-text-primary text-xs rounded-lg shadow-sm focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300"
+            />
+          </div>
+
+          {/* Status filter pills */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[10px] text-text-secondary font-bold uppercase tracking-wider mr-1.5 flex items-center gap-1">
+              <Tag size={12} className="text-brand-500" />
+              Filtrar Status:
+            </span>
+            {['TODOS', ...availableInvoiceStatuses].map((status) => (
+              <button
+                key={status}
+                onClick={() => setInvoiceStatusFilter(status)}
+                className={clsx(
+                  "px-2.5 py-1 text-[10px] font-extrabold rounded-full border transition-all uppercase tracking-wider cursor-pointer",
+                  invoiceStatusFilter === status
+                    ? "bg-brand-500 text-white border-brand-500"
+                    : "bg-bg-secondary text-text-secondary border-divider hover:text-text-primary"
+                )}
+              >
+                {status}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="hidden sm:block overflow-x-auto w-full border border-divider/50 rounded-xl">
           <table className="w-full text-left text-xs whitespace-nowrap">
             <thead>
               <tr className="border-b border-divider text-[10px] text-text-secondary uppercase font-extrabold tracking-wider bg-bg-secondary/60">
                 <th className="py-3 px-4 font-mono text-[9px]">COD</th>
-                <th className="py-3 px-4">
+                <th 
+                  onClick={() => handleInvoiceSort('numero')}
+                  className="py-3 px-4 cursor-pointer hover:bg-bg-secondary/80 select-none transition-colors"
+                >
                   <div className="flex items-center gap-1">
                     Nº NOTA
-                    <ArrowUpDown size={11} className="text-text-muted/65" />
+                    <ArrowUpDown size={11} className={clsx(invoiceSortField === 'numero' ? "text-brand-500" : "text-text-muted/65")} />
                   </div>
                 </th>
                 <th className="py-3 px-4">CLIENTE</th>
-                <th className="py-3 px-4">
+                <th 
+                  onClick={() => handleInvoiceSort('data')}
+                  className="py-3 px-4 cursor-pointer hover:bg-bg-secondary/80 select-none transition-colors"
+                >
                   <div className="flex items-center gap-1">
                     DATA
-                    <ArrowUpDown size={11} className="text-text-muted/65" />
+                    <ArrowUpDown size={11} className={clsx(invoiceSortField === 'data' ? "text-brand-500" : "text-text-muted/65")} />
                   </div>
                 </th>
-                <th className="py-3 px-4 text-right">
+                <th 
+                  onClick={() => handleInvoiceSort('valor')}
+                  className="py-3 px-4 text-right cursor-pointer hover:bg-bg-secondary/80 select-none transition-colors"
+                >
                   <div className="flex items-center gap-1 justify-end">
                     VALOR TOTAL
-                    <ArrowUpDown size={11} className="text-text-muted/65" />
+                    <ArrowUpDown size={11} className={clsx(invoiceSortField === 'valor' ? "text-brand-500" : "text-text-muted/65")} />
                   </div>
                 </th>
                 <th className="py-3 px-4 text-center">STATUS</th>
@@ -712,7 +852,7 @@ export default function SellerHubDashboard() {
               {currentInvoices.length === 0 && (
                 <tr>
                   <td colSpan={6} className="py-8 text-center text-text-muted font-medium">
-                    Nenhuma nota fiscal emitida para este vendedor no período.
+                    Nenhuma nota fiscal emitida para os filtros selecionados.
                   </td>
                 </tr>
               )}
@@ -720,11 +860,48 @@ export default function SellerHubDashboard() {
           </table>
         </div>
 
+        {/* Mobile Card View Fallback */}
+        <div className="sm:hidden space-y-3">
+          {currentInvoices.map((inv: any, i: number) => (
+            <div key={inv.cod || i} className="p-4 border border-divider rounded-xl bg-bg-secondary/10 flex flex-col gap-2">
+              <div className="flex justify-between items-center">
+                <span className="font-mono text-[10px] text-text-muted">COD: {inv.cod}</span>
+                <span className={clsx(
+                  "text-[9px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider border",
+                  inv.status && ['FATURADO', 'FINALIZADO'].includes(inv.status.trim()) 
+                    ? 'bg-success/15 text-success border-success/10' 
+                    : 'bg-text-muted/10 text-text-muted border-divider/10'
+                )}>
+                  {inv.status ? inv.status.trim() : 'Normal'}
+                </span>
+              </div>
+              <div>
+                <h4 className="text-xs font-bold text-text-primary leading-tight">{inv.cliente}</h4>
+                <p className="text-[10px] text-text-secondary mt-0.5">Nota: {inv.numero_nota}</p>
+              </div>
+              <div className="flex justify-between items-center pt-2 border-t border-divider mt-1">
+                <div className="flex items-center gap-1 text-[10px] text-text-muted">
+                  <Calendar size={12} />
+                  {inv.data}
+                </div>
+                <div className="text-xs font-mono font-bold text-success">
+                  {formatBRL(inv.valor)}
+                </div>
+              </div>
+            </div>
+          ))}
+          {currentInvoices.length === 0 && (
+            <div className="py-8 text-center text-text-muted text-xs">
+              Nenhuma nota fiscal encontrada.
+            </div>
+          )}
+        </div>
+
         {/* PAGINATION PANEL */}
         {totalPages > 1 && (
           <div className="flex justify-between items-center mt-4 pt-4 border-t border-divider/20 text-xs">
             <span className="text-[11px] text-text-secondary">
-              Mostrando {currentInvoices.length} de {invoicesList.length} notas
+              Mostrando {currentPage * itemsPerPage - itemsPerPage + 1}–{Math.min(currentPage * itemsPerPage, sortedInvoices.length)} de {sortedInvoices.length} pedidos
             </span>
             
             <div className="flex items-center gap-2">

@@ -96,7 +96,7 @@ export default function App() {
           <Route index element={<ProtectedRoute permission="bi_sales"><SalesIntelligenceDashboard /></ProtectedRoute>} />
           <Route path="sales" element={<ProtectedRoute permission="bi_sales"><SalesIntelligenceDashboard /></ProtectedRoute>} />
           <Route path="vendedor" element={<ProtectedRoute permission="bi_seller_hub"><SellerHubDashboard /></ProtectedRoute>} />
-          <Route path="hub" element={<ProtectedRoute permission="bi_hub"><SalesHubDashboard /></ProtectedRoute>} />
+          <Route path="hub" element={<ProtectedRoute permission="bi_hub"><SalesIntelligenceDashboard /></ProtectedRoute>} />
           <Route path="abc" element={<ProtectedRoute permission="bi_abc"><ABCAnalysisDashboard /></ProtectedRoute>} />
           <Route path="finance" element={<ProtectedRoute permission="bi_finance"><FinancialIntelligenceDashboard /></ProtectedRoute>} />
           <Route path="customer" element={<ProtectedRoute permission="bi_customer"><Radar360Dashboard /></ProtectedRoute>} />
