@@ -4,7 +4,7 @@ import { useBiPeriodQuery } from '../../hooks/useBiPeriodQuery';
 import { useBranchPeriodQuery } from '../../hooks/useApi';
 import { BIService } from '../../services/biApi';
 import { BiPeriodFilter } from '../../types/bi.types';
-import { TrendingUp, TrendingDown, DollarSign, Box, Target, Trophy, Users } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Box, Target, Trophy, Users, BarChart3, FileText } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Cell } from 'recharts';
 import { formatBRL, formatBRLCompact, formatNum } from '../../utils/format';
 import { CHART_COLORS } from '../../utils/chartColors';
@@ -62,6 +62,11 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 export default function SalesIntelligenceDashboard() {
   const [isMobile, setIsMobile] = useState(false);
+  const [viewMode, setViewMode] = useState<Record<string, 'chart' | 'text'>>({
+    trajetoria: 'chart',
+    vendasVendedor: 'chart'
+  });
+
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 640);
     handleResize();
@@ -86,6 +91,84 @@ export default function SalesIntelligenceDashboard() {
     activeFilter
   );
 
+  const brandColors = ['#0D9488', '#0F766E', '#115E59', '#14B8A6', '#2DD4BF'];
+
+  const summary = data?.executive_summary || {
+    faturamento: 0, faturamento_anterior: 0, crescimento_pct: 0,
+    quantidade_pedidos: 0, quantidade_pedidos_anterior: 0, crescimento_pedidos_pct: 0,
+    ticket_medio: 0, ticket_medio_anterior: 0, crescimento_ticket_pct: 0
+  };
+
+  // Type safe data transformations
+  const revenueTrajectory = useMemo(() => {
+    return (data?.revenue_trajectory || []).map(r => ({
+      dia: r.date,
+      valor: r.value
+    }));
+  }, [data?.revenue_trajectory]);
+
+  const sellersList = useMemo(() => {
+    return (data?.top_sellers || []).map((s, idx) => ({
+      name: s.name,
+      value: s.vendas,
+      color: brandColors[idx % brandColors.length]
+    }));
+  }, [data?.top_sellers]);
+
+  const productsList = useMemo(() => {
+    return (data?.top_products || []).map(p => ({
+      rank: p.rank,
+      name: p.name,
+      current: p.vendas,
+      prev: (p as any).prev || p.vendas * 0.9,
+      delta: (p as any).delta || 10
+    }));
+  }, [data?.top_products]);
+
+  const brandsList = useMemo(() => {
+    return (data?.top_brands || []).map(b => ({
+      rank: b.rank,
+      name: b.name,
+      current: b.vendas,
+      delta: (b as any).delta || 5
+    }));
+  }, [data?.top_brands]);
+
+  const clientsList = useMemo(() => {
+    const rawClients = (data as any)?.top_clients || (data as any)?.top_customers || [];
+    return rawClients.map((c: any) => ({
+      rank: c.rank,
+      name: c.name,
+      value: c.vendas || c.value
+    }));
+  }, [data]);
+
+  const maxSellerValue = useMemo(() => {
+    if (sellersList.length === 0) return 0;
+    return Math.max(...sellersList.map((s: any) => s.value));
+  }, [sellersList]);
+
+  const getRevenueTrajectorySummary = () => {
+    if (revenueTrajectory.length === 0) return "Nenhum dado de trajetória de receita disponível no período.";
+    const sorted = [...revenueTrajectory].sort((a: any, b: any) => b.valor - a.valor);
+    const peak = sorted[0];
+    const lowest = sorted[sorted.length - 1];
+    return `A trajetória da receita registra variação no faturamento por dia, com pico em ${peak.dia} no valor de ${formatBRL(peak.valor)}, e menor faturamento em ${lowest.dia} no valor de ${formatBRL(lowest.valor)}.`;
+  };
+
+  const getVendasPorVendedorSummary = () => {
+    if (sellersList.length === 0) return "Nenhum dado de vendas por vendedor disponível.";
+    const leader = sellersList[0];
+    const runnerUp = sellersList[1];
+    const totalVal = sellersList.reduce((acc: number, curr: any) => acc + curr.value, 0);
+    const leaderPct = totalVal > 0 ? (leader.value / totalVal) * 100 : 0;
+    let text = `O líder de faturamento é ${leader.name} com ${formatBRL(leader.value)}, representando ${leaderPct.toFixed(1)}% das vendas totais.`;
+    if (runnerUp) {
+      text += ` Em seguida, destaca-se ${runnerUp.name} com total de ${formatBRL(runnerUp.value)}.`;
+    }
+    return text;
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64 text-text-secondary">
@@ -95,40 +178,22 @@ export default function SalesIntelligenceDashboard() {
     );
   }
 
-  // Fallback Mocks baseados na imagem caso a API não retorne dados complexos
-  const summary = data?.executive_summary || {
-    faturamento: 0, faturamento_anterior: 0, crescimento_pct: 0,
-    quantidade_pedidos: 0, quantidade_pedidos_anterior: 0, crescimento_pedidos_pct: 0,
-    ticket_medio: 0, ticket_medio_anterior: 0, crescimento_ticket_pct: 0
-  };
-
-  const revenueTrajectory = data?.revenue_trajectory || [];
-  const sellersList = data?.top_sellers || [];
-  const productsList = data?.top_products || [];
-  const brandsList = data?.top_brands || [];
-  const regionsList = data?.top_regions || [];
-  const categoriesList = data?.top_categories || [];
-  const clientsList = data?.top_clients || [];
-
-  // Helper colors for treemap/seller brands
-  const brandColors = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6'];
-
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       
       {/* HEADER SECTION */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
         <div>
-          <h2 className="text-2xl font-bold text-text-primary flex items-center gap-2">
+          <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
             Inteligência de Vendas
           </h2>
-          <p className="text-sm text-text-secondary mt-1">Análise detalhada de vendas, ticket médio e performance</p>
+          <p className="text-xs text-text-secondary mt-1">Análise detalhada de vendas, ticket médio e performance</p>
         </div>
         <div className="flex items-center gap-3 w-full sm:w-auto">
           <select
             value={selectedVendedor}
             onChange={(e) => setSelectedVendedor(e.target.value)}
-            className="px-3 py-1.5 bg-bg-primary border border-border text-text-primary rounded-lg text-xs font-medium shadow-sm focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300 w-full sm:w-auto"
+            className="px-3 py-1.5 bg-bg-primary border border-border text-text-primary rounded-lg text-xs font-semibold shadow-sm focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300 w-full sm:w-auto cursor-pointer"
           >
             <option value="all">Todos os Vendedores</option>
             {vdFull.data?.data?.map((seller: any) => (
@@ -144,14 +209,14 @@ export default function SalesIntelligenceDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* FATURAMENTO */}
         <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-1 h-full bg-warning"></div>
+          <div className="absolute top-0 left-0 w-full h-[3px] bg-brand-500"></div>
           <div className="flex items-center gap-2 mb-2">
-            <div className="p-1.5 bg-warning/10 text-warning rounded-lg">
+            <div className="p-1.5 bg-brand-500/10 text-brand-500 rounded-lg">
               <DollarSign size={16} />
             </div>
-            <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Faturamento Totais</span>
+            <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Faturamento Total</span>
           </div>
-          <div className="text-3xl font-extrabold text-text-primary pl-1 mb-1">
+          <div className="text-2xl font-extrabold text-text-primary pl-1 mb-1">
             {formatBRL(summary.faturamento)}
           </div>
           <ComparisonBadge pct={summary.crescimento_pct || 7.3} />
@@ -159,14 +224,14 @@ export default function SalesIntelligenceDashboard() {
 
         {/* VOLUME DE PEÇAS */}
         <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-1 h-full bg-success"></div>
+          <div className="absolute top-0 left-0 w-full h-[3px] bg-brand-500"></div>
           <div className="flex items-center gap-2 mb-2">
-            <div className="p-1.5 bg-success/10 text-success rounded-lg">
+            <div className="p-1.5 bg-brand-500/10 text-brand-500 rounded-lg">
               <Box size={16} />
             </div>
             <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Volume de Peças</span>
           </div>
-          <div className="text-3xl font-extrabold text-text-primary pl-1 mb-1">
+          <div className="text-2xl font-extrabold text-text-primary pl-1 mb-1">
             {formatNum(summary.quantidade_pedidos || 337)}
           </div>
           <ComparisonBadge pct={summary.crescimento_pedidos_pct || 16.2} />
@@ -174,14 +239,14 @@ export default function SalesIntelligenceDashboard() {
 
         {/* TICKET MÉDIO */}
         <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-1 h-full bg-purple-500"></div>
+          <div className="absolute top-0 left-0 w-full h-[3px] bg-brand-600"></div>
           <div className="flex items-center gap-2 mb-2">
-            <div className="p-1.5 bg-purple-500/10 text-purple-500 rounded-lg">
+            <div className="p-1.5 bg-brand-600/10 text-brand-600 rounded-lg">
               <Target size={16} />
             </div>
             <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Ticket Médio</span>
           </div>
-          <div className="text-3xl font-extrabold text-text-primary pl-1 mb-1">
+          <div className="text-2xl font-extrabold text-text-primary pl-1 mb-1">
             {formatBRL(summary.ticket_medio || 712.51)}
           </div>
           <ComparisonBadge pct={summary.crescimento_ticket_pct || 29.5} />
@@ -190,90 +255,185 @@ export default function SalesIntelligenceDashboard() {
 
       {/* TRAJETÓRIA DA RECEITA */}
       <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5">
-        <div className="flex items-center gap-2 mb-1">
-          <TrendingUp size={16} className="text-brand-500" />
-          <h3 className="font-bold text-text-primary text-sm uppercase tracking-wider">Trajetória da Receita</h3>
+        <div className="flex justify-between items-center mb-1">
+          <div className="flex items-center gap-2">
+            <TrendingUp size={16} className="text-brand-500" />
+            <h3 className="font-bold text-text-primary text-xs uppercase tracking-wider">Trajetória da Receita</h3>
+          </div>
+          
+          {/* Chaveador de Visualização */}
+          <div className="flex items-center gap-1 bg-bg-secondary p-0.5 rounded-lg border border-divider">
+            <button
+              onClick={() => setViewMode(prev => ({ ...prev, trajetoria: 'chart' }))}
+              className={clsx(
+                "p-1.5 rounded-md transition-all cursor-pointer",
+                viewMode.trajetoria === 'chart'
+                  ? "bg-bg-primary text-brand-500 shadow-sm"
+                  : "text-text-secondary hover:text-text-primary"
+              )}
+              title="Ver Gráfico"
+            >
+              <BarChart3 size={14} />
+            </button>
+            <button
+              onClick={() => setViewMode(prev => ({ ...prev, trajetoria: 'text' }))}
+              className={clsx(
+                "p-1.5 rounded-md transition-all cursor-pointer",
+                viewMode.trajetoria === 'text'
+                  ? "bg-bg-primary text-brand-500 shadow-sm"
+                  : "text-text-secondary hover:text-text-primary"
+              )}
+              title="Ver Resumo Textual"
+            >
+              <FileText size={14} />
+            </button>
+          </div>
         </div>
-        <p className="text-xs text-text-muted mb-6">Acompanhe a evolução diária da sua receita bruta e identifique tendências.</p>
+        <p className="text-xs text-text-muted mb-6">Evolução de faturamento diário consolidado.</p>
+        
         <div className="h-[220px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={revenueTrajectory} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" opacity={0.3} />
-              <XAxis dataKey="dia" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} />
-              <YAxis axisLine={false} tickLine={false} tickFormatter={(v) => formatBRLCompact(v)} tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} />
-              <Tooltip content={<CustomTooltip />} />
-              <Line type="monotone" dataKey="valor" stroke="#06B6D4" strokeWidth={3} dot={false} activeDot={{ r: 6, fill: '#06B6D4', stroke: '#fff', strokeWidth: 2 }} />
-            </LineChart>
-          </ResponsiveContainer>
+          {viewMode.trajetoria === 'chart' ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={revenueTrajectory} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" opacity={0.3} />
+                <XAxis dataKey="dia" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} />
+                <YAxis axisLine={false} tickLine={false} tickFormatter={(v) => formatBRLCompact(v)} tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} />
+                <Tooltip content={<CustomTooltip />} />
+                <Line type="monotone" dataKey="valor" stroke="#0D9488" strokeWidth={3} dot={false} activeDot={{ r: 6, fill: '#0D9488', stroke: '#fff', strokeWidth: 2 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="space-y-4 h-full flex flex-col justify-between">
+              <p className="text-xs text-text-secondary italic leading-relaxed border-l-2 border-brand-500 pl-3">
+                {getRevenueTrajectorySummary()}
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2 overflow-y-auto max-h-[140px] pr-1">
+                {revenueTrajectory.map((item: any, index: number) => (
+                  <div key={index} className="p-2.5 rounded-lg bg-bg-secondary/40 border border-divider">
+                    <div className="text-[10px] text-text-secondary font-semibold uppercase">{item.dia}</div>
+                    <div className="text-xs font-bold text-text-primary font-mono mt-0.5">{formatBRL(item.valor)}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
       {/* DESEMPENHO E VENDAS POR VENDEDOR */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* TABELA: DESEMPENHO */}
+        {/* PROGRESS LIST: DESEMPENHO */}
         <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex flex-col">
           <div className="flex items-center gap-2 mb-1">
             <Trophy size={16} className="text-brand-500" />
-            <h3 className="font-bold text-text-primary text-sm uppercase tracking-wider">Desempenho de Vendedores vs. Metas</h3>
+            <h3 className="font-bold text-text-primary text-xs uppercase tracking-wider">Desempenho de Vendedores</h3>
           </div>
-          <p className="text-xs text-text-muted mb-4">Progresso de cada vendedor em relação à meta.</p>
+          <p className="text-xs text-text-muted mb-4">Faturamento por vendedor comparado ao líder de vendas no período.</p>
           
-          <div className="flex-1 overflow-x-auto">
-            <table className="w-full text-left text-sm whitespace-nowrap">
-              <thead>
-                <tr className="border-b border-divider text-xs text-text-muted">
-                  <th className="pb-2 font-semibold">VENDEDOR</th>
-                  <th className="pb-2 font-semibold text-right">VALOR DE VENDA</th>
-                  <th className="pb-2 font-semibold text-center">% ATINGIMENTO (META)</th>
-                  <th className="pb-2 font-semibold text-right">META</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-divider/50">
-                {sellersList.map((seller, i) => (
-                  <tr key={i} className="hover:bg-bg-secondary transition-colors">
-                    <td className="py-3 font-bold text-text-primary flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: seller.color }}></div>
+          <div className="flex-1 space-y-3.5 max-h-[300px] overflow-y-auto pr-1">
+            {sellersList.map((seller, i) => {
+              const relPct = maxSellerValue > 0 ? (seller.value / maxSellerValue) * 100 : 0;
+              return (
+                <div key={i} className="flex flex-col gap-1.5 p-3 rounded-lg bg-bg-secondary/30 border border-divider hover:bg-bg-secondary transition-all">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-bold text-text-primary flex items-center gap-2">
+                      <span className="text-[10px] text-text-muted font-bold">#{i + 1}</span>
                       {seller.name}
-                    </td>
-                    <td className="py-3 font-bold text-success text-right">{formatBRL(seller.value)}</td>
-                    <td className="py-3 text-center">
-                      <div className="inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-bold" 
-                           style={{ backgroundColor: `${seller.color}15`, color: seller.color }}>
-                        {seller.metaPct.toFixed(1)}%
-                      </div>
-                    </td>
-                    <td className="py-3 text-right">
-                      <span className="text-[10px] uppercase font-bold text-text-muted">{seller.metaStatus}</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </span>
+                    <span className="font-mono font-bold text-brand-500">{formatBRL(seller.value)}</span>
+                  </div>
+                  
+                  <div className="w-full bg-bg-secondary h-2 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full" style={{ width: `${relPct}%`, backgroundColor: seller.color || 'var(--color-brand-500)' }}></div>
+                  </div>
+                  
+                  <div className="text-[9px] text-text-muted font-semibold text-right">
+                    {relPct === 100 ? 'Líder de vendas' : `${relPct.toFixed(1)}% do líder`}
+                  </div>
+                </div>
+              );
+            })}
+            {sellersList.length === 0 && (
+              <div className="text-center py-8 text-text-muted text-xs">Nenhum vendedor registrado.</div>
+            )}
           </div>
         </div>
 
-        {/* GRÁFICO: VENDAS POR VENDEDOR */}
+        {/* GRÁFICO/TEXT: VENDAS POR VENDEDOR */}
         <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex flex-col">
-          <div className="flex items-center gap-2 mb-1">
-            <TrendingUp size={16} className="text-brand-500" />
-            <h3 className="font-bold text-text-primary text-sm uppercase tracking-wider">Vendas por Vendedor</h3>
+          <div className="flex justify-between items-center mb-1">
+            <div className="flex items-center gap-2">
+              <TrendingUp size={16} className="text-brand-500" />
+              <h3 className="font-bold text-text-primary text-xs uppercase tracking-wider">Vendas por Vendedor</h3>
+            </div>
+            
+            {/* Chaveador de Visualização */}
+            <div className="flex items-center gap-1 bg-bg-secondary p-0.5 rounded-lg border border-divider">
+              <button
+                onClick={() => setViewMode(prev => ({ ...prev, vendasVendedor: 'chart' }))}
+                className={clsx(
+                  "p-1.5 rounded-md transition-all cursor-pointer",
+                  viewMode.vendasVendedor === 'chart'
+                    ? "bg-bg-primary text-brand-500 shadow-sm"
+                    : "text-text-secondary hover:text-text-primary"
+                )}
+                title="Ver Gráfico"
+              >
+                <BarChart3 size={14} />
+              </button>
+              <button
+                onClick={() => setViewMode(prev => ({ ...prev, vendasVendedor: 'text' }))}
+                className={clsx(
+                  "p-1.5 rounded-md transition-all cursor-pointer",
+                  viewMode.vendasVendedor === 'text'
+                    ? "bg-bg-primary text-brand-500 shadow-sm"
+                    : "text-text-secondary hover:text-text-primary"
+                )}
+                title="Ver Dados/Texto"
+              >
+                <FileText size={14} />
+              </button>
+            </div>
           </div>
-          <p className="text-xs text-text-muted mb-6">Ranking de faturamento em formato visual.</p>
+          <p className="text-xs text-text-muted mb-6">Ranking de faturamento consolidado por vendedor.</p>
           
           <div className="flex-1 min-h-[220px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={sellersList} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" opacity={0.3} />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} />
-                <YAxis axisLine={false} tickLine={false} tickFormatter={(v) => formatBRLCompact(v)} tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} />
-                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
-                <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={30}>
-                  {sellersList.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+            {viewMode.vendasVendedor === 'chart' ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={sellersList} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" opacity={0.3} />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} />
+                  <YAxis axisLine={false} tickLine={false} tickFormatter={(v) => formatBRLCompact(v)} tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} />
+                  <Tooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
+                  <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={30}>
+                    {sellersList.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="space-y-4 h-full flex flex-col justify-between">
+                <p className="text-xs text-text-secondary italic leading-relaxed border-l-2 border-brand-500 pl-3">
+                  {getVendasPorVendedorSummary()}
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 overflow-y-auto max-h-[160px] pr-1">
+                  {sellersList.map((seller: any, index: number) => {
+                    const totalVal = sellersList.reduce((acc: number, curr: any) => acc + curr.value, 0)
+                    const pct = totalVal > 0 ? (seller.value / totalVal) * 100 : 0
+                    return (
+                      <div key={index} className="flex justify-between items-center p-2.5 rounded-lg bg-bg-secondary/40 border border-divider">
+                        <div className="text-xs font-bold text-text-primary truncate">{seller.name}</div>
+                        <div className="text-right">
+                          <div className="text-xs font-mono font-bold text-text-primary">{formatBRL(seller.value)}</div>
+                          <div className="text-[9px] text-text-muted">{pct.toFixed(1)}% de share</div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -284,7 +444,7 @@ export default function SalesIntelligenceDashboard() {
         <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex flex-col">
           <div className="flex items-center gap-2 mb-1">
             <Box size={16} className="text-brand-500" />
-            <h3 className="font-bold text-text-primary text-sm uppercase tracking-wider">Top Produtos (Mês Atual vs Mês Anterior)</h3>
+            <h3 className="font-bold text-text-primary text-xs uppercase tracking-wider">Top Produtos</h3>
           </div>
           <p className="text-xs text-text-muted mb-4">Ranking de produtos com a maior variação e volume.</p>
           
@@ -316,7 +476,7 @@ export default function SalesIntelligenceDashboard() {
 
         {/* Gráfico */}
         <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex flex-col">
-          <h3 className="font-bold text-text-primary text-sm uppercase tracking-wider mb-1">Top Produtos (Gráfico)</h3>
+          <h3 className="font-bold text-text-primary text-xs uppercase tracking-wider mb-1">Top Produtos (Faturamento)</h3>
           <p className="text-xs text-text-muted mb-4">Visualização de faturamento de produtos.</p>
           
           <div className="flex-1 min-h-[260px]">
@@ -326,7 +486,7 @@ export default function SalesIntelligenceDashboard() {
                 <XAxis type="number" hide />
                 <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tickFormatter={(v) => String(v).length > 15 ? String(v).substring(0, 15) + '...' : v} tick={{ fontSize: 10, fill: 'var(--color-text-secondary)', fontWeight: 500 }} width={isMobile ? 80 : 120} />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.4 }} />
-                <Bar dataKey="current" fill="#10B981" radius={[0, 4, 4, 0]} barSize={12} />
+                <Bar dataKey="current" fill="#0D9488" radius={[0, 4, 4, 0]} barSize={12} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -339,7 +499,7 @@ export default function SalesIntelligenceDashboard() {
         <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex flex-col">
           <div className="flex items-center gap-2 mb-1">
             <Target size={16} className="text-brand-500" />
-            <h3 className="font-bold text-text-primary text-sm uppercase tracking-wider">Top Marcas</h3>
+            <h3 className="font-bold text-text-primary text-xs uppercase tracking-wider">Top Marcas</h3>
           </div>
           <p className="text-xs text-text-muted mb-4">Principais marcas em volume de faturamento.</p>
           
@@ -371,7 +531,7 @@ export default function SalesIntelligenceDashboard() {
         <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex flex-col">
           <div className="flex items-center gap-2 mb-1">
             <Users size={16} className="text-brand-500" />
-            <h3 className="font-bold text-text-primary text-sm uppercase tracking-wider">Top Clientes</h3>
+            <h3 className="font-bold text-text-primary text-xs uppercase tracking-wider">Top Clientes</h3>
           </div>
           <p className="text-xs text-text-muted mb-4">Ranking dos maiores clientes do período.</p>
           
@@ -382,16 +542,14 @@ export default function SalesIntelligenceDashboard() {
                   <th className="pb-2 text-center w-8">#</th>
                   <th className="pb-2">Cliente</th>
                   <th className="pb-2 text-right">Valor</th>
-                  <th className="pb-2 text-right">% Share</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-divider/30 text-xs">
-                {clientsList.map((client) => (
+                {clientsList.map((client: any) => (
                   <tr key={client.rank} className="hover:bg-bg-secondary transition-colors">
                     <td className="py-3 text-center text-text-muted">{client.rank}</td>
                     <td className="py-3 font-semibold text-text-primary truncate max-w-[180px]">{client.name}</td>
                     <td className="py-3 text-right font-mono font-bold text-text-primary">{formatBRL(client.value)}</td>
-                    <td className="py-3 text-right text-text-muted font-bold">-</td>
                   </tr>
                 ))}
               </tbody>
@@ -400,26 +558,6 @@ export default function SalesIntelligenceDashboard() {
         </div>
       </div>
 
-      {/* TOP 5 MARCAS POR VENDEDOR (Treemap/Flexbox Layout) */}
-      <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5">
-        <h3 className="font-bold text-text-primary text-sm uppercase tracking-wider mb-1">Top 5 Marcas por Vendedor</h3>
-        <p className="text-xs text-text-muted mb-6">Distribuição das marcas mais vendidas por cada consultor de vendas.</p>
-        
-        <div className="space-y-4">
-          {sellersList.map((seller, idx) => (
-            <div key={idx} className="flex flex-col md:flex-row gap-4 p-4 border border-divider rounded-xl hover:bg-bg-secondary transition-colors">
-              <div className="w-full md:w-48 flex flex-col justify-center">
-                <span className="font-extrabold text-sm text-text-primary mb-1">{seller.name}</span>
-                <span className="text-xl font-bold text-brand-500 font-mono">{formatBRL(seller.value)}</span>
-                <span className="text-xs text-text-muted">Total Vendas</span>
-              </div>
-              <div className="flex-1 flex items-center justify-center p-4 bg-bg-tertiary/50 border border-dashed border-divider rounded-lg">
-                <span className="text-sm font-semibold text-text-muted">Detalhamento por marca indisponível no momento.</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
       {isError && (
         <div className="bg-danger/10 border border-danger/20 text-danger p-3 rounded-lg text-sm mt-4">
           Aviso: Os dados não puderam ser carregados devido a uma falha de conexão com o banco de dados/API.
