@@ -5,7 +5,8 @@ import {
 } from 'recharts'
 import {
   TrendingUp, TrendingDown, DollarSign, ShoppingBag, 
-  Users, Award, Map, Target, Briefcase, Box, AlertCircle
+  Users, Award, Map, Target, Briefcase, Box, AlertCircle,
+  FileText, BarChart3
 } from 'lucide-react'
 import { useBranchPeriodQuery } from '../hooks/useApi'
 import { useAuthStore } from '../store/authStore'
@@ -97,6 +98,14 @@ const GaugeChart = ({ realizado, meta }: { realizado: number, meta: number }) =>
 
 export default function VisaoEstrategicaV4() {
   const [isMobile, setIsMobile] = useState(false);
+  const [viewMode, setViewMode] = useState<Record<string, 'chart' | 'text'>>({
+    vendedores: 'chart',
+    marcas: 'chart',
+    grupos: 'chart',
+    cidades: 'chart',
+    faturamento: 'chart',
+  })
+
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 640);
     handleResize();
@@ -112,6 +121,7 @@ export default function VisaoEstrategicaV4() {
   const cli = useBranchPeriodQuery<any>('/ranking/clientes')
   const marcas = useBranchPeriodQuery<any>('/ranking/marcas')
   const cidades = useBranchPeriodQuery<any>('/ranking/cidades', { limit: 15 })
+  const grupos = useBranchPeriodQuery<any>('/ranking/categorias')
 
   const period = usePeriodStore((s) => s.period)
   
@@ -124,7 +134,6 @@ export default function VisaoEstrategicaV4() {
   const taxaConversao = kpisData.data?.kpis?.taxa_conversao_pct || 0;
   
   const mockFaturamentoAnterior = ov.data?.anterior?.total || 0;
-  const metaFaturamento = ov.data?.meta_total || faturamentoAtual * 1.2;
 
   const faturamentoCrescimento = mockFaturamentoAnterior > 0 ? ((faturamentoAtual - mockFaturamentoAnterior) / mockFaturamentoAnterior) * 100 : 0;
 
@@ -141,8 +150,11 @@ export default function VisaoEstrategicaV4() {
         { data: 'Ago', total: 240116 },
       ];
 
+  const mockTopSellers = vd.data?.data?.map((s: any) => ({ name: s.nome || s.vendedor, value: s.total || s.total_vendas })) || [];
 
   const mockTopBrands = marcas.data?.data?.map((m: any) => ({ name: m.nome || m.marca, value: m.total })) || [];
+
+  const mockTopGroups = grupos.data?.data?.map((g: any) => ({ name: g.nome || g.grupo || g.categoria, value: g.total })) || [];
 
   const mockTopProducts = prod.data?.data?.map((p: any) => ({ name: p.nome || p.produto, value: p.total })) || [];
 
@@ -151,26 +163,90 @@ export default function VisaoEstrategicaV4() {
 
   const mockTopClients = cli.data?.data?.map((c: any, i: number) => ({ rank: i + 1, name: c.nome, value: c.total })) || [];
 
+
   const barColors = [
     '#3B82F6', '#10B981', '#8B5CF6', '#F59E0B', '#EF4444', 
-    '#06B6D4', '#EC4899', '#6366F1', '#14B8A6', '#F97316'
   ];
+
+  const getFaturamentoSummary = () => {
+    if (faturamentoPeriodoData.length === 0) return "Nenhum dado de faturamento disponível no período."
+    const sorted = [...faturamentoPeriodoData].sort((a: any, b: any) => b.total - a.total)
+    const peak = sorted[0]
+    const lowest = sorted[sorted.length - 1]
+    return `O faturamento mensal demonstra variação no período de consulta, registrando um pico de faturamento em ${peak.data} no valor de ${formatBRL(peak.total)}, e o menor faturamento em ${lowest.data} no valor de ${formatBRL(lowest.total)}.`
+  }
+
+  const getVendedoresSummary = () => {
+    if (mockTopSellers.length === 0) return "Nenhum dado de consultores disponível no período."
+    const leader = mockTopSellers[0]
+    const runnerUp = mockTopSellers[1]
+    const totalVal = mockTopSellers.reduce((acc: number, curr: any) => acc + curr.value, 0)
+    const leaderPct = totalVal > 0 ? (leader.value / totalVal) * 100 : 0
+    
+    let text = `O consultor destaque de vendas é ${leader.name} com faturamento acumulado de ${formatBRL(leader.value)}, representando ${leaderPct.toFixed(1)}% das vendas do grupo.`
+    if (runnerUp) {
+      text += ` Na sequência, destaca-se ${runnerUp.name} com vendas de ${formatBRL(runnerUp.value)}.`
+    }
+    return text
+  }
+
+  const getMarcasSummary = () => {
+    if (mockTopBrands.length === 0) return "Nenhum dado de marcas disponível no período."
+    const leader = mockTopBrands[0]
+    const runnerUp = mockTopBrands[1]
+    const totalVal = mockTopBrands.reduce((acc: number, curr: any) => acc + curr.value, 0)
+    const leaderPct = totalVal > 0 ? (leader.value / totalVal) * 100 : 0
+    
+    let text = `A marca líder de vendas é ${leader.name} com receita de ${formatBRL(leader.value)}, correspondendo a ${leaderPct.toFixed(1)}% do faturamento de marcas.`
+    if (runnerUp) {
+      text += ` A marca ${runnerUp.name} ocupa a segunda posição registrando ${formatBRL(runnerUp.value)}.`
+    }
+    return text
+  }
+
+  const getGruposSummary = () => {
+    if (mockTopGroups.length === 0) return "Nenhum dado de categorias/grupos disponível."
+    const leader = mockTopGroups[0]
+    const runnerUp = mockTopGroups[1]
+    const totalVal = mockTopGroups.reduce((acc: number, curr: any) => acc + curr.value, 0)
+    const leaderPct = totalVal > 0 ? (leader.value / totalVal) * 100 : 0
+    
+    let text = `O grupo/categoria de produtos líder em volume financeiro é ${leader.name} com ${formatBRL(leader.value)}, concentrando ${leaderPct.toFixed(1)}% do giro total.`
+    if (runnerUp) {
+      text += ` O grupo ${runnerUp.name} fica em segundo com faturamento de ${formatBRL(runnerUp.value)}.`
+    }
+    return text
+  }
+
+  const getCidadesSummary = () => {
+    if (mockTopCities.length === 0) return "Nenhum dado de cidades disponível no período."
+    const leader = mockTopCities[0]
+    const runnerUp = mockTopCities[1]
+    const totalVal = mockTopCities.reduce((acc: number, curr: any) => acc + curr.value, 0)
+    const leaderPct = totalVal > 0 ? (leader.value / totalVal) * 100 : 0
+    
+    let text = `O faturamento regional é liderado pela cidade de ${leader.name} com vendas de ${formatBRL(leader.value)}, representando ${leaderPct.toFixed(1)}% da receita regional.`
+    if (runnerUp) {
+      text += ` A cidade de ${runnerUp.name} se posiciona logo em seguida com faturamento de ${formatBRL(runnerUp.value)}.`
+    }
+    return text
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-text-primary">Visão Estratégica (Vet)</h2>
-          <p className="text-sm text-text-secondary mt-1">Acompanhamento de metas e performance de vendas do sistema Siscom Vet</p>
+          <h2 className="text-xl font-bold text-text-primary">Inteligência de Negócios</h2>
+          <p className="text-sm text-text-secondary mt-1">Visão Estratégica e análise de performance do sistema Siscom Vet</p>
         </div>
         <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-3">
           <PeriodFilter />
         </div>
       </div>
 
-      {/* TIER 1: FATURAMENTO & META */}
+      {/* TIER 1: FATURAMENTO & CLIENTES ATIVOS */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="bg-bg-primary rounded-xl p-5 border border-border shadow-card flex flex-col justify-center items-center text-center relative overflow-hidden">
+        <div className="bg-bg-primary rounded-xl p-5 border border-divider shadow-card flex flex-col justify-center items-center text-center relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1 bg-brand-500"></div>
           <span className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2">Faturamento Mês Atual (Vet)</span>
           <div className="flex items-center gap-2 mb-2">
@@ -180,12 +256,22 @@ export default function VisaoEstrategicaV4() {
           <ComparisonBadge pct={faturamentoCrescimento} />
         </div>
 
-        <div className="bg-bg-primary rounded-xl p-5 border border-border shadow-card flex flex-col justify-center items-center">
-          <span className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-0">Atingimento de Meta (Vet)</span>
-          <GaugeChart realizado={faturamentoAtual} meta={metaFaturamento} />
+        <div className="bg-bg-primary rounded-xl p-5 border border-divider shadow-card flex flex-col justify-center items-center text-center relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1 bg-brand-500"></div>
+          <span className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2">Clientes Ativos no Período (Vet)</span>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-3xl font-extrabold text-text-primary">{clientesAtivos}</span>
+            <span className="text-sm text-text-secondary">/ {totalClientes}</span>
+          </div>
+          <div className="w-full bg-bg-secondary rounded-full h-2 mt-1">
+            <div className="bg-brand-500 h-2 rounded-full" style={{ width: `${totalClientes > 0 ? (clientesAtivos / totalClientes) * 100 : 0}%` }}></div>
+          </div>
+          <div className="text-[10px] text-text-secondary mt-2">
+            Taxa de Atividade: {totalClientes > 0 ? ((clientesAtivos / totalClientes) * 100).toFixed(1) : 0}%
+          </div>
         </div>
 
-        <div className="bg-bg-primary rounded-xl p-5 border border-border shadow-card flex flex-col justify-center items-center text-center relative overflow-hidden">
+        <div className="bg-bg-primary rounded-xl p-5 border border-divider shadow-card flex flex-col justify-center items-center text-center relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1 bg-text-muted/30"></div>
           <span className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2">Faturamento Mês Anterior (Vet)</span>
           <div className="flex items-center gap-2 mb-2">
@@ -195,15 +281,16 @@ export default function VisaoEstrategicaV4() {
         </div>
       </div>
 
-      {/* TIER 2: KPIS PRIMÁRIOS */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* OPERATIONAL KPIS */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         {[
-          { label: 'Vendas Totais', value: formatBRL(faturamentoAtual), icon: DollarSign, color: 'text-success', bg: 'bg-success/10' },
-          { label: 'Volume de Peças', value: formatNum(qtdPedidos), icon: Box, color: 'text-brand-500', bg: 'bg-brand-500/10' },
-          { label: 'Ticket Médio', value: formatBRL(ticketMedio), icon: Target, color: 'text-warning', bg: 'bg-warning/10' },
-          { label: 'Taxa de Conversão', value: `${taxaConversao.toFixed(1)}%`, icon: TrendingUp, color: 'text-danger', bg: 'bg-danger/10' },
+          { label: 'Volume de Peças', value: formatNum(qtdPedidos), icon: Box, color: 'text-brand-500', bg: 'bg-brand-50/80 dark:bg-brand-500/10' },
+          { label: 'Ticket Médio', value: formatBRL(ticketMedio), icon: Target, color: 'text-brand-600', bg: 'bg-brand-50/80 dark:bg-brand-500/10' },
+          { label: 'Taxa de Conversão', value: `${taxaConversao.toFixed(1)}%`, icon: TrendingUp, color: 'text-brand-500', bg: 'bg-brand-50/80 dark:bg-brand-500/10' },
+          { label: 'Clientes Ativos', value: `${clientesAtivos} / ${totalClientes}`, icon: Users, color: 'text-brand-600', bg: 'bg-brand-50/80 dark:bg-brand-500/10' },
+          { label: 'Vendedores Ativos', value: vd.data?.data?.length || 0, icon: Briefcase, color: 'text-brand-500', bg: 'bg-brand-50/80 dark:bg-brand-500/10' }
         ].map((kpi, idx) => (
-          <div key={idx} className="bg-bg-primary rounded-xl p-4 border border-border shadow-card flex items-center gap-4">
+          <div key={idx} className="bg-bg-primary rounded-xl p-4 border border-divider shadow-card flex items-center gap-4">
             <div className={clsx('p-3 rounded-lg', kpi.bg, kpi.color)}>
               <kpi.icon size={20} />
             </div>
@@ -215,51 +302,98 @@ export default function VisaoEstrategicaV4() {
         ))}
       </div>
 
-      {/* TIER 3: KPIS SECUNDÁRIOS */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-        {[
-          { label: 'Volume de Peças (Pedidos)', value: formatNum(qtdPedidos), icon: ShoppingBag, color: 'text-brand-500', bg: 'bg-brand-500/10' },
-          { label: 'Ticket Médio', value: formatBRL(ticketMedio), icon: DollarSign, color: 'text-warning', bg: 'bg-warning/10' },
-          { label: 'Taxa de Conversão', value: `${taxaConversao.toFixed(1)}%`, icon: TrendingUp, color: 'text-danger', bg: 'bg-danger/10' },
-          { label: 'Clientes Ativos', value: `${clientesAtivos} / ${totalClientes}`, icon: Users, color: 'text-blue-500', bg: 'bg-blue-500/10' },
-          { label: 'Vendedores Ativos', value: vd.data?.data?.length || 0, icon: Briefcase, color: 'text-purple-500', bg: 'bg-purple-500/10' }
-        ].map((kpi, idx) => (
-          <div key={idx} className="bg-bg-primary rounded-xl p-4 border border-border shadow-card flex items-center gap-4">
-            <div className={clsx('p-3 rounded-lg', kpi.bg, kpi.color)}>
-              <kpi.icon size={20} />
-            </div>
-            <div>
-              <div className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">{kpi.label}</div>
-              <div className="text-lg font-bold text-text-primary">{kpi.value}</div>
-            </div>
+      {/* PAINEL DE INSIGHTS E INTELIGÊNCIA */}
+      <div className="bg-bg-primary border border-divider rounded-xl p-5 shadow-card relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-1.5 h-full bg-brand-500"></div>
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-lg">💡</span>
+          <h3 className="font-heading text-xs font-bold text-text-primary uppercase tracking-wider">Insights & Recomendações de Inteligência</h3>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs leading-relaxed text-text-secondary">
+          <div className="p-3.5 bg-bg-secondary/40 rounded-lg border border-divider">
+            <span className="font-bold text-text-primary block mb-1">Tendência de Faturamento</span>
+            Com base nos dados analisados, o faturamento do período atual de <strong className="text-brand-500 font-mono">{formatBRL(faturamentoAtual)}</strong> apresenta {faturamentoCrescimento >= 0 ? 'um crescimento' : 'uma retração'} de <strong className="text-text-primary font-mono">{Math.abs(faturamentoCrescimento).toFixed(1)}%</strong> em relação ao período de referência anterior.
           </div>
-        ))}
+          <div className="p-3.5 bg-bg-secondary/40 rounded-lg border border-divider">
+            <span className="font-bold text-text-primary block mb-1">Ticket Médio & Conversão</span>
+            O ticket médio está consolidado em <strong className="text-brand-500 font-mono">{formatBRL(ticketMedio)}</strong> por cliente faturado, com uma taxa de conversão média estável de <strong className="text-text-primary font-mono">{taxaConversao.toFixed(1)}%</strong> no funil de faturamento.
+          </div>
+          <div className="p-3.5 bg-bg-secondary/40 rounded-lg border border-divider">
+            <span className="font-bold text-text-primary block mb-1">Distribuição de Mercado</span>
+            A maior concentração de vendas regional está localizada na cidade de <strong className="text-brand-500">{mockTopCities.length > 0 ? mockTopCities[0].name : 'Nenhuma'}</strong>. Recomendamos reforçar o estoque das marcas de maior circulação.
+          </div>
+        </div>
       </div>
 
       {/* TIER 4: GRÁFICO PRINCIPAL */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        <div className="lg:col-span-3 bg-bg-primary border border-border shadow-card rounded-xl p-5">
+        <div className="lg:col-span-3 bg-bg-primary border border-divider shadow-card rounded-xl p-5">
           <div className="flex justify-between items-center mb-6">
-            <h3 className="font-bold text-text-primary text-sm uppercase tracking-wider">Faturamento no Período</h3>
+            <h3 className="font-bold text-text-primary text-xs uppercase tracking-wider">Faturamento no Período</h3>
+            
+            {/* Chaveador de Visualização */}
+            <div className="flex items-center gap-1 bg-bg-secondary p-0.5 rounded-lg border border-divider">
+              <button
+                onClick={() => setViewMode(prev => ({ ...prev, faturamento: 'chart' }))}
+                className={clsx(
+                  "p-1.5 rounded-md transition-all cursor-pointer",
+                  viewMode.faturamento === 'chart'
+                    ? "bg-bg-primary text-brand-500 shadow-sm"
+                    : "text-text-secondary hover:text-text-primary"
+                )}
+                title="Ver Gráfico"
+              >
+                <BarChart3 size={14} />
+              </button>
+              <button
+                onClick={() => setViewMode(prev => ({ ...prev, faturamento: 'text' }))}
+                className={clsx(
+                  "p-1.5 rounded-md transition-all cursor-pointer",
+                  viewMode.faturamento === 'text'
+                    ? "bg-bg-primary text-brand-500 shadow-sm"
+                    : "text-text-secondary hover:text-text-primary"
+                )}
+                title="Ver Resumo Textual"
+              >
+                <FileText size={14} />
+              </button>
+            </div>
           </div>
+          
           <div className="h-[280px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={faturamentoPeriodoData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" opacity={0.5} />
-                <XAxis dataKey="data" axisLine={false} tickLine={false} tickFormatter={(v) => String(v).slice(0, 5)} tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }} />
-                <YAxis axisLine={false} tickLine={false} tickFormatter={(v) => formatBRLCompact(v)} tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }} />
-                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.4 }} />
-                <Bar dataKey="total" radius={[4, 4, 0, 0]} maxBarSize={40}>
-                  {faturamentoPeriodoData.map((entry: any, index: number) => (
-                    <Cell key={`cell-${index}`} fill={barColors[index % barColors.length]} />
+            {viewMode.faturamento === 'chart' ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={faturamentoPeriodoData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" opacity={0.5} />
+                  <XAxis dataKey="data" axisLine={false} tickLine={false} tickFormatter={(v) => String(v).slice(0, 5)} tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }} />
+                  <YAxis axisLine={false} tickLine={false} tickFormatter={(v) => formatBRLCompact(v)} tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }} />
+                  <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.4 }} />
+                  <Bar dataKey="total" radius={[4, 4, 0, 0]} maxBarSize={40}>
+                    {faturamentoPeriodoData.map((entry: any, index: number) => (
+                      <Cell key={`cell-${index}`} fill={barColors[index % barColors.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="space-y-4 h-full flex flex-col justify-between">
+                <p className="text-xs text-text-secondary italic leading-relaxed border-l-2 border-brand-500 pl-3">
+                  {getFaturamentoSummary()}
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 overflow-y-auto max-h-[180px] pr-1">
+                  {faturamentoPeriodoData.map((item: any, index: number) => (
+                    <div key={index} className="p-2.5 rounded-lg bg-bg-secondary/40 border border-divider">
+                      <div className="text-[10px] text-text-secondary font-semibold uppercase">{item.data}</div>
+                      <div className="text-xs font-bold text-text-primary font-mono mt-0.5">{formatBRL(item.total)}</div>
+                    </div>
                   ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+                </div>
+              </div>
+            )}
           </div>
         </div>
         
-        <div className="lg:col-span-1 bg-bg-primary border border-border shadow-card rounded-xl p-5 flex flex-col justify-center space-y-4">
+        <div className="lg:col-span-1 bg-bg-primary border border-divider shadow-card rounded-xl p-5 flex flex-col justify-center space-y-4">
           <div className="p-4 bg-bg-secondary rounded-xl border border-divider">
             <div className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-1">Maior Mês</div>
             <div className="text-brand-500 font-bold">Ago/25</div>
@@ -280,168 +414,418 @@ export default function VisaoEstrategicaV4() {
       </div>
 
 
-      {/* ROW 6: MARCAS */}
+      {/* ROW 5: VENDEDORES */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        <div className="lg:col-span-3 bg-bg-primary border border-border shadow-card rounded-xl p-5">
+        <div className="lg:col-span-3 bg-bg-primary border border-divider shadow-card rounded-xl p-5">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="font-bold text-text-primary text-sm uppercase tracking-wider">Marcas (Top 15)</h3>
+            <h3 className="font-bold text-text-primary text-xs uppercase tracking-wider">Vendedores (Top 10)</h3>
+            
+            {/* Chaveador de Visualização */}
+            <div className="flex items-center gap-1 bg-bg-secondary p-0.5 rounded-lg border border-divider">
+              <button
+                onClick={() => setViewMode(prev => ({ ...prev, vendedores: 'chart' }))}
+                className={clsx(
+                  "p-1.5 rounded-md transition-all cursor-pointer",
+                  viewMode.vendedores === 'chart'
+                    ? "bg-bg-primary text-brand-500 shadow-sm"
+                    : "text-text-secondary hover:text-text-primary"
+                )}
+                title="Ver Gráfico"
+              >
+                <BarChart3 size={14} />
+              </button>
+              <button
+                onClick={() => setViewMode(prev => ({ ...prev, vendedores: 'text' }))}
+                className={clsx(
+                  "p-1.5 rounded-md transition-all cursor-pointer",
+                  viewMode.vendedores === 'text'
+                    ? "bg-bg-primary text-brand-500 shadow-sm"
+                    : "text-text-secondary hover:text-text-primary"
+                )}
+                title="Ver Dados/Texto"
+              >
+                <FileText size={14} />
+              </button>
+            </div>
           </div>
+          
           <div className="h-[260px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={mockTopBrands} layout="vertical" margin={{ top: 0, right: 30, left: 10, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--color-border)" opacity={0.5} />
-                <XAxis type="number" hide />
-                <YAxis 
-                  dataKey="name" 
-                  type="category" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tickFormatter={(v) => String(v).length > 15 ? String(v).substring(0, 15) + '...' : v}
-                  tick={{ fontSize: 11, fill: 'var(--color-text-primary)', fontWeight: 600 }} 
-                  width={isMobile ? 80 : 120} 
-                />
-                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.4 }} />
-                <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={20}>
-                  {mockTopBrands.map((entry: any, index: number) => (
-                    <Cell key={`cell-${index}`} fill={barColors[(index + 3) % barColors.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+            {viewMode.vendedores === 'chart' ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={mockTopSellers} layout="vertical" margin={{ top: 0, right: 30, left: 10, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--color-border)" opacity={0.5} />
+                  <XAxis type="number" hide />
+                  <YAxis 
+                    dataKey="name" 
+                    type="category" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tickFormatter={(v) => String(v).length > 12 ? String(v).substring(0, 12) + '...' : v}
+                    tick={{ fontSize: 11, fill: 'var(--color-text-primary)', fontWeight: 600 }} 
+                    width={isMobile ? 80 : 120} 
+                  />
+                  <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.4 }} />
+                  <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={20}>
+                    {mockTopSellers.map((entry: any, index: number) => (
+                      <Cell key={`cell-${index}`} fill={barColors[index % barColors.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-xs text-text-secondary italic leading-relaxed border-l-2 border-brand-500 pl-3">
+                  {getVendedoresSummary()}
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-[180px] overflow-y-auto pr-1">
+                  {mockTopSellers.map((seller: any, index: number) => {
+                    const totalVal = mockTopSellers.reduce((acc: number, curr: any) => acc + curr.value, 0)
+                    const pct = totalVal > 0 ? (seller.value / totalVal) * 100 : 0
+                    return (
+                      <div key={index} className="flex items-center justify-between p-2 rounded-lg bg-bg-secondary/40 border border-divider hover:border-border hover:bg-bg-secondary transition-all">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold text-text-muted">#{index + 1}</span>
+                          <span className="text-xs font-semibold text-text-primary">{seller.name}</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-xs font-bold text-text-primary font-mono">{formatBRL(seller.value)}</span>
+                          <span className="text-[9px] text-text-muted block">{pct.toFixed(1)}%</span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </div>
-        <div className="lg:col-span-1 flex flex-col gap-4">
-          <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex-1 flex flex-col justify-center">
-            <div className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2">Maior Venda (Lucro)</div>
-            <div className="text-brand-500 font-extrabold text-sm mb-1 truncate">{mockTopBrands.length > 0 ? mockTopBrands[0].name : '-'}</div>
-            <div className="text-xl font-extrabold text-text-primary">{formatBRL(mockTopBrands.length > 0 ? mockTopBrands[0].value : 0)}</div>
-          </div>
-          <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex-1 flex flex-col justify-center">
-            <div className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2">Análise de Mercado</div>
-            <div className="text-sm font-medium text-text-primary leading-snug">
-              A marca {mockTopBrands.length > 0 ? mockTopBrands[0].name : '-'} teve o maior volume de vendas.
-            </div>
+        
+        <div className="lg:col-span-1 bg-bg-primary border border-divider shadow-card rounded-xl p-5 flex flex-col justify-center space-y-2">
+          <div className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-1">Vendedor Destaque</div>
+          <div className="text-brand-500 font-extrabold text-sm mb-1 truncate">{mockTopSellers.length > 0 ? mockTopSellers[0].name : '-'}</div>
+          <div className="text-xl font-extrabold text-text-primary">{formatBRL(mockTopSellers.length > 0 ? mockTopSellers[0].value : 0)}</div>
+          <div className="text-[10px] text-text-secondary mt-1">
+            Participação: {faturamentoAtual > 0 && mockTopSellers.length > 0 ? ((mockTopSellers[0].value / faturamentoAtual) * 100).toFixed(1) : 0}%
           </div>
         </div>
       </div>
 
-      {/* ROW 7: PRODUTOS */}
+      {/* ROW 6: MARCAS */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        <div className="lg:col-span-3 bg-bg-primary border border-border shadow-card rounded-xl p-5">
+        <div className="lg:col-span-3 bg-bg-primary border border-divider shadow-card rounded-xl p-5">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="font-bold text-text-primary text-sm uppercase tracking-wider">Produtos (Top 15)</h3>
+            <h3 className="font-bold text-text-primary text-xs uppercase tracking-wider">Marcas (Top 15)</h3>
+            
+            {/* Chaveador de Visualização */}
+            <div className="flex items-center gap-1 bg-bg-secondary p-0.5 rounded-lg border border-divider">
+              <button
+                onClick={() => setViewMode(prev => ({ ...prev, marcas: 'chart' }))}
+                className={clsx(
+                  "p-1.5 rounded-md transition-all cursor-pointer",
+                  viewMode.marcas === 'chart'
+                    ? "bg-bg-primary text-brand-500 shadow-sm"
+                    : "text-text-secondary hover:text-text-primary"
+                )}
+                title="Ver Gráfico"
+              >
+                <BarChart3 size={14} />
+              </button>
+              <button
+                onClick={() => setViewMode(prev => ({ ...prev, marcas: 'text' }))}
+                className={clsx(
+                  "p-1.5 rounded-md transition-all cursor-pointer",
+                  viewMode.marcas === 'text'
+                    ? "bg-bg-primary text-brand-500 shadow-sm"
+                    : "text-text-secondary hover:text-text-primary"
+                )}
+                title="Ver Dados/Texto"
+              >
+                <FileText size={14} />
+              </button>
+            </div>
           </div>
+          
           <div className="h-[260px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={mockTopProducts} layout="vertical" margin={{ top: 0, right: 30, left: 10, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--color-border)" opacity={0.5} />
-                <XAxis type="number" hide />
-                <YAxis 
-                  dataKey="name" 
-                  type="category" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tickFormatter={(v) => String(v).length > 18 ? String(v).substring(0, 18) + '...' : v}
-                  tick={{ fontSize: 11, fill: 'var(--color-text-primary)', fontWeight: 600 }} 
-                  width={isMobile ? 80 : 140} 
-                />
-                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.4 }} />
-                <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={20}>
-                  {mockTopProducts.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={barColors[(index + 5) % barColors.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+            {viewMode.marcas === 'chart' ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={mockTopBrands} layout="vertical" margin={{ top: 0, right: 30, left: 10, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--color-border)" opacity={0.5} />
+                  <XAxis type="number" hide />
+                  <YAxis 
+                    dataKey="name" 
+                    type="category" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tickFormatter={(v) => String(v).length > 15 ? String(v).substring(0, 15) + '...' : v}
+                    tick={{ fontSize: 11, fill: 'var(--color-text-primary)', fontWeight: 600 }} 
+                    width={isMobile ? 80 : 120} 
+                  />
+                  <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.4 }} />
+                  <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={20}>
+                    {mockTopBrands.map((entry: any, index: number) => (
+                      <Cell key={`cell-${index}`} fill={barColors[(index + 3) % barColors.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-xs text-text-secondary italic leading-relaxed border-l-2 border-brand-500 pl-3">
+                  {getMarcasSummary()}
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-[180px] overflow-y-auto pr-1">
+                  {mockTopBrands.map((brand: any, index: number) => {
+                    const totalVal = mockTopBrands.reduce((acc: number, curr: any) => acc + curr.value, 0)
+                    const pct = totalVal > 0 ? (brand.value / totalVal) * 100 : 0
+                    return (
+                      <div key={index} className="flex items-center justify-between p-2 rounded-lg bg-bg-secondary/40 border border-divider hover:border-border hover:bg-bg-secondary transition-all">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold text-text-muted">#{index + 1}</span>
+                          <span className="text-xs font-semibold text-text-primary">{brand.name}</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-xs font-bold text-text-primary font-mono">{formatBRL(brand.value)}</span>
+                          <span className="text-[9px] text-text-muted block">{pct.toFixed(1)}%</span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </div>
-        <div className="lg:col-span-1 flex flex-col gap-4">
-          <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex-1 flex flex-col justify-center">
-            <div className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2">Produto Destaque</div>
-            <div className="text-warning font-extrabold text-sm mb-1 truncate">{mockTopProducts.length > 0 ? mockTopProducts[0].name : '-'}</div>
-            <div className="text-xl font-extrabold text-text-primary">{formatBRL(mockTopProducts.length > 0 ? mockTopProducts[0].value : 0)}</div>
+        
+        <div className="lg:col-span-1 bg-bg-primary border border-divider shadow-card rounded-xl p-5 flex flex-col justify-center space-y-2">
+          <div className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-1">Maior Marca</div>
+          <div className="text-brand-500 font-extrabold text-sm mb-1 truncate">{mockTopBrands.length > 0 ? mockTopBrands[0].name : '-'}</div>
+          <div className="text-xl font-extrabold text-text-primary">{formatBRL(mockTopBrands.length > 0 ? mockTopBrands[0].value : 0)}</div>
+          <div className="text-[10px] text-text-secondary mt-1">
+            Participação: {faturamentoAtual > 0 && mockTopBrands.length > 0 ? ((mockTopBrands[0].value / faturamentoAtual) * 100).toFixed(1) : 0}%
           </div>
-          <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex-1 flex flex-col justify-center">
-            <div className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2">Performance de Venda</div>
-            <div className="text-sm font-medium text-text-primary leading-snug">
-              O item {mockTopProducts.length > 0 ? mockTopProducts[0].name : '-'} teve saída constante nestes últimos dias.
+        </div>
+      </div>
+
+      {/* ROW 7: GRUPOS */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        <div className="lg:col-span-3 bg-bg-primary border border-divider shadow-card rounded-xl p-5">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="font-bold text-text-primary text-xs uppercase tracking-wider">Grupos / Categorias (Top 15)</h3>
+            
+            {/* Chaveador de Visualização */}
+            <div className="flex items-center gap-1 bg-bg-secondary p-0.5 rounded-lg border border-divider">
+              <button
+                onClick={() => setViewMode(prev => ({ ...prev, grupos: 'chart' }))}
+                className={clsx(
+                  "p-1.5 rounded-md transition-all cursor-pointer",
+                  viewMode.grupos === 'chart'
+                    ? "bg-bg-primary text-brand-500 shadow-sm"
+                    : "text-text-secondary hover:text-text-primary"
+                )}
+                title="Ver Gráfico"
+              >
+                <BarChart3 size={14} />
+              </button>
+              <button
+                onClick={() => setViewMode(prev => ({ ...prev, grupos: 'text' }))}
+                className={clsx(
+                  "p-1.5 rounded-md transition-all cursor-pointer",
+                  viewMode.grupos === 'text'
+                    ? "bg-bg-primary text-brand-500 shadow-sm"
+                    : "text-text-secondary hover:text-text-primary"
+                )}
+                title="Ver Dados/Texto"
+              >
+                <FileText size={14} />
+              </button>
             </div>
+          </div>
+          
+          <div className="h-[260px]">
+            {viewMode.grupos === 'chart' ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={mockTopGroups} layout="vertical" margin={{ top: 0, right: 30, left: 10, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--color-border)" opacity={0.5} />
+                  <XAxis type="number" hide />
+                  <YAxis 
+                    dataKey="name" 
+                    type="category" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tickFormatter={(v) => String(v).length > 15 ? String(v).substring(0, 15) + '...' : v}
+                    tick={{ fontSize: 11, fill: 'var(--color-text-primary)', fontWeight: 600 }} 
+                    width={isMobile ? 80 : 120} 
+                  />
+                  <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.4 }} />
+                  <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={20}>
+                    {mockTopGroups.map((entry: any, index: number) => (
+                      <Cell key={`cell-${index}`} fill={barColors[(index + 5) % barColors.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-xs text-text-secondary italic leading-relaxed border-l-2 border-brand-500 pl-3">
+                  {getGruposSummary()}
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-[180px] overflow-y-auto pr-1">
+                  {mockTopGroups.map((grupo: any, index: number) => {
+                    const totalVal = mockTopGroups.reduce((acc: number, curr: any) => acc + curr.value, 0)
+                    const pct = totalVal > 0 ? (grupo.value / totalVal) * 100 : 0
+                    return (
+                      <div key={index} className="flex items-center justify-between p-2 rounded-lg bg-bg-secondary/40 border border-divider hover:border-border hover:bg-bg-secondary transition-all">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold text-text-muted">#{index + 1}</span>
+                          <span className="text-xs font-semibold text-text-primary">{grupo.name}</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-xs font-bold text-text-primary font-mono">{formatBRL(grupo.value)}</span>
+                          <span className="text-[9px] text-text-muted block">{pct.toFixed(1)}%</span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+        
+        <div className="lg:col-span-1 bg-bg-primary border border-divider shadow-card rounded-xl p-5 flex flex-col justify-center space-y-2">
+          <div className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-1">Grupo Destaque</div>
+          <div className="text-brand-500 font-extrabold text-sm mb-1 truncate">{mockTopGroups.length > 0 ? mockTopGroups[0].name : '-'}</div>
+          <div className="text-xl font-extrabold text-text-primary">{formatBRL(mockTopGroups.length > 0 ? mockTopGroups[0].value : 0)}</div>
+          <div className="text-[10px] text-text-secondary mt-1">
+            Participação: {faturamentoAtual > 0 && mockTopGroups.length > 0 ? ((mockTopGroups[0].value / faturamentoAtual) * 100).toFixed(1) : 0}%
           </div>
         </div>
       </div>
 
       {/* ROW 8: CIDADES */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        <div className="lg:col-span-3 bg-bg-primary border border-border shadow-card rounded-xl p-5">
+        <div className="lg:col-span-3 bg-bg-primary border border-divider shadow-card rounded-xl p-5">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="font-bold text-text-primary text-sm uppercase tracking-wider">Cidades (Top 15)</h3>
+            <h3 className="font-bold text-text-primary text-xs uppercase tracking-wider">Cidades (Top 15)</h3>
+            
+            {/* Chaveador de Visualização */}
+            <div className="flex items-center gap-1 bg-bg-secondary p-0.5 rounded-lg border border-divider">
+              <button
+                onClick={() => setViewMode(prev => ({ ...prev, cidades: 'chart' }))}
+                className={clsx(
+                  "p-1.5 rounded-md transition-all cursor-pointer",
+                  viewMode.cidades === 'chart'
+                    ? "bg-bg-primary text-brand-500 shadow-sm"
+                    : "text-text-secondary hover:text-text-primary"
+                )}
+                title="Ver Gráfico"
+              >
+                <BarChart3 size={14} />
+              </button>
+              <button
+                onClick={() => setViewMode(prev => ({ ...prev, cidades: 'text' }))}
+                className={clsx(
+                  "p-1.5 rounded-md transition-all cursor-pointer",
+                  viewMode.cidades === 'text'
+                    ? "bg-bg-primary text-brand-500 shadow-sm"
+                    : "text-text-secondary hover:text-text-primary"
+                )}
+                title="Ver Dados/Texto"
+              >
+                <FileText size={14} />
+              </button>
+            </div>
           </div>
+          
           <div className="h-[280px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={mockTopCities} layout="vertical" margin={{ top: 0, right: 30, left: 10, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--color-border)" opacity={0.5} />
-                <XAxis type="number" hide />
-                <YAxis 
-                  dataKey="name" 
-                  type="category" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tickFormatter={(v) => String(v).length > 15 ? String(v).substring(0, 15) + '...' : v}
-                  tick={{ fontSize: 11, fill: 'var(--color-text-primary)', fontWeight: 600 }} 
-                  width={isMobile ? 80 : 120} 
-                />
-                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.4 }} />
-                <Bar dataKey="value" fill={CHART_COLORS.primary} radius={[0, 4, 4, 0]} barSize={16}>
-                  {mockTopCities.map((entry: any, index: number) => (
-                    <Cell key={`cell-${index}`} fill={barColors[index % barColors.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+            {viewMode.cidades === 'chart' ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={mockTopCities} layout="vertical" margin={{ top: 0, right: 30, left: 10, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--color-border)" opacity={0.5} />
+                  <XAxis type="number" hide />
+                  <YAxis 
+                    dataKey="name" 
+                    type="category" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tickFormatter={(v) => String(v).length > 15 ? String(v).substring(0, 15) + '...' : v}
+                    tick={{ fontSize: 11, fill: 'var(--color-text-primary)', fontWeight: 600 }} 
+                    width={isMobile ? 80 : 120} 
+                  />
+                  <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.4 }} />
+                  <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={16}>
+                    {mockTopCities.map((entry: any, index: number) => (
+                      <Cell key={`cell-${index}`} fill={barColors[index % barColors.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-xs text-text-secondary italic leading-relaxed border-l-2 border-brand-500 pl-3">
+                  {getCidadesSummary()}
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-[180px] overflow-y-auto pr-1">
+                  {mockTopCities.map((city: any, index: number) => {
+                    const totalVal = mockTopCities.reduce((acc: number, curr: any) => acc + curr.value, 0)
+                    const pct = totalVal > 0 ? (city.value / totalVal) * 100 : 0
+                    return (
+                      <div key={index} className="flex items-center justify-between p-2 rounded-lg bg-bg-secondary/40 border border-divider hover:border-border hover:bg-bg-secondary transition-all">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold text-text-muted">#{index + 1}</span>
+                          <span className="text-xs font-semibold text-text-primary">{city.name}</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-xs font-bold text-text-primary font-mono">{formatBRL(city.value)}</span>
+                          <span className="text-[9px] text-text-muted block">{pct.toFixed(1)}%</span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </div>
-        <div className="lg:col-span-1 flex flex-col gap-4">
-          <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex-1 flex flex-col justify-center">
-            <div className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2">Cidade Destaque</div>
-            <div className="text-brand-500 font-extrabold text-sm mb-1 truncate">
-              {mockTopCities.length > 0 ? mockTopCities[0].name : '—'}
-            </div>
-            <div className="text-xl font-extrabold text-text-primary">
-              {mockTopCities.length > 0 ? formatBRL(mockTopCities[0].value) : formatBRL(0)}
-            </div>
-            <div className="text-xs text-text-muted mt-1">
-              Participação: {faturamentoAtual > 0 && mockTopCities.length > 0 ? ((mockTopCities[0].value / faturamentoAtual) * 100).toFixed(1) : '0.0'}%
-            </div>
+        
+        <div className="lg:col-span-1 bg-bg-primary border border-divider shadow-card rounded-xl p-5 flex flex-col justify-center space-y-2">
+          <div className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-1">Cidade Destaque</div>
+          <div className="text-brand-500 font-extrabold text-sm mb-1 truncate">
+            {mockTopCities.length > 0 ? mockTopCities[0].name : '—'}
+          </div>
+          <div className="text-xl font-extrabold text-text-primary">
+            {mockTopCities.length > 0 ? formatBRL(mockTopCities[0].value) : formatBRL(0)}
+          </div>
+          <div className="text-xs text-text-muted mt-1">
+            Participação: {faturamentoAtual > 0 && mockTopCities.length > 0 ? ((mockTopCities[0].value / faturamentoAtual) * 100).toFixed(1) : '0.0'}%
           </div>
         </div>
       </div>
 
       {/* ROW 9: CLIENTES */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        <div className="lg:col-span-3 bg-bg-primary border border-border shadow-card rounded-xl p-5 flex flex-col">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="font-bold text-text-primary text-sm uppercase tracking-wider">Top 15 Clientes</h3>
+        <div className="lg:col-span-3 bg-bg-primary border border-divider shadow-card rounded-xl p-5 flex flex-col">
+          <div className="flex justify-between items-center mb-4 border-b border-divider pb-2">
+            <h3 className="font-bold text-text-primary text-xs uppercase tracking-wider">Top 15 Clientes</h3>
           </div>
-          <div className="flex-1 overflow-y-auto pr-2">
+          <div className="flex-1 overflow-y-auto pr-2 max-h-[300px]">
             <div className="space-y-2">
-              {mockTopClients.map((client) => (
-                <div key={client.rank} className="flex items-center justify-between p-3 rounded-lg hover:bg-bg-secondary transition-colors border border-transparent hover:border-divider">
+              {mockTopClients.map((client: any) => (
+                <div key={client.rank} className="flex items-center justify-between p-2.5 rounded-lg bg-bg-secondary/20 hover:bg-bg-secondary transition-all border border-transparent hover:border-divider">
                   <div className="flex items-center gap-4">
                     <div className="w-6 text-text-muted font-bold text-xs">{String(client.rank).padStart(2, '0')}</div>
-                    <div className="font-bold text-text-primary text-sm">{client.name}</div>
+                    <div className="font-bold text-text-primary text-xs">{client.name}</div>
                   </div>
-                  <div className="font-bold text-text-primary font-mono text-sm">{formatBRL(client.value)}</div>
+                  <div className="font-bold text-text-primary font-mono text-xs">{formatBRL(client.value)}</div>
                 </div>
               ))}
             </div>
           </div>
         </div>
-        <div className="lg:col-span-1 flex flex-col gap-4">
-          <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex-1 flex flex-col justify-center">
-            <div className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2">Cliente Destaque</div>
-            <div className="text-danger font-extrabold text-sm mb-1 truncate">{mockTopClients.length > 0 ? mockTopClients[0].name : '-'}</div>
-            <div className="text-xl font-extrabold text-text-primary">{formatBRL(mockTopClients.length > 0 ? mockTopClients[0].value : 0)}</div>
-          </div>
+        <div className="lg:col-span-1 bg-bg-primary border border-divider shadow-card rounded-xl p-5 flex flex-col justify-center space-y-2">
+          <div className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-1">Cliente Destaque</div>
+          <div className="text-brand-500 font-extrabold text-sm mb-1 truncate">{mockTopClients.length > 0 ? mockTopClients[0].name : '-'}</div>
+          <div className="text-xl font-extrabold text-text-primary">{formatBRL(mockTopClients.length > 0 ? mockTopClients[0].value : 0)}</div>
         </div>
       </div>
 

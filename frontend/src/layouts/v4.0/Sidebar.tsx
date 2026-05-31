@@ -2,11 +2,11 @@ import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, ShoppingCart, Wallet,
   Trophy, BarChart3, Users, X, LogOut, Shield, DollarSign,
-  Truck
+  Truck, Settings
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useAuthStore } from '../../store/authStore'
-import { Package, Settings, ChevronDown, ChevronUp } from 'lucide-react'
+import { Package, ChevronDown, ChevronUp } from 'lucide-react'
 import { useState } from 'react'
 
 interface Props {
@@ -21,8 +21,8 @@ const MODULES = [
     icon: LayoutDashboard, 
     exact: true, 
     id: 'inicio',
-    iconColor: 'text-indigo-500 dark:text-indigo-400',
-    iconBg: 'bg-indigo-50 dark:bg-indigo-500/10'
+    iconColor: 'text-teal-600 dark:text-teal-400',
+    iconBg: 'bg-teal-50 dark:bg-teal-900/20'
   },
 ]
 
@@ -32,8 +32,8 @@ const BI_MODULES = [
     label: 'Hub do Vendedor', 
     icon: Trophy, 
     id: 'bi_seller_hub',
-    iconColor: 'text-amber-500 dark:text-amber-400',
-    iconBg: 'bg-amber-50/80 dark:bg-amber-500/10'
+    iconColor: 'text-teal-600 dark:text-teal-400',
+    iconBg: 'bg-teal-50 dark:bg-teal-900/20'
   },
   { 
     to: '/bi', 
@@ -41,64 +41,64 @@ const BI_MODULES = [
     icon: BarChart3, 
     exact: true, 
     id: 'bi_sales',
-    iconColor: 'text-sky-500 dark:text-sky-400',
-    iconBg: 'bg-sky-50 dark:bg-sky-500/10'
+    iconColor: 'text-teal-700 dark:text-teal-300',
+    iconBg: 'bg-teal-50 dark:bg-teal-900/20'
   },
   { 
     to: '/bi/hub', 
     label: 'Hub de Vendas', 
     icon: ShoppingCart, 
     id: 'bi_hub',
-    iconColor: 'text-emerald-500 dark:text-emerald-400',
-    iconBg: 'bg-emerald-50 dark:bg-emerald-500/10'
+    iconColor: 'text-teal-600 dark:text-teal-400',
+    iconBg: 'bg-teal-50 dark:bg-teal-900/20'
   },
   { 
     to: '/bi/supplier', 
     label: 'Hub do Fornecedor', 
     icon: Truck, 
     id: 'bi_supplier',
-    iconColor: 'text-purple-500 dark:text-purple-400',
-    iconBg: 'bg-purple-50 dark:bg-purple-500/10'
+    iconColor: 'text-slate-500 dark:text-slate-400',
+    iconBg: 'bg-slate-50 dark:bg-slate-800/40'
   },
   { 
     to: '/bi/abc', 
     label: 'Gestão de Inventário', 
     icon: Package, 
     id: 'bi_abc',
-    iconColor: 'text-rose-500 dark:text-rose-400',
-    iconBg: 'bg-rose-50 dark:bg-rose-500/10'
+    iconColor: 'text-slate-600 dark:text-slate-400',
+    iconBg: 'bg-slate-50 dark:bg-slate-800/40'
   },
   { 
     to: '/bi/finance', 
     label: 'Financeiro', 
     icon: Wallet, 
     id: 'bi_finance',
-    iconColor: 'text-teal-500 dark:text-teal-400',
-    iconBg: 'bg-teal-50 dark:bg-teal-500/10'
+    iconColor: 'text-teal-800 dark:text-teal-300',
+    iconBg: 'bg-teal-50 dark:bg-teal-900/20'
   },
   { 
     to: '/bi/customer', 
     label: 'Radar 360', 
     icon: Users, 
     id: 'bi_customer',
-    iconColor: 'text-cyan-500 dark:text-cyan-400',
-    iconBg: 'bg-cyan-50 dark:bg-cyan-500/10'
+    iconColor: 'text-slate-500 dark:text-slate-400',
+    iconBg: 'bg-slate-50 dark:bg-slate-800/40'
   },
   { 
     to: '/bi/comparative', 
     label: 'Lucratividade', 
     icon: DollarSign, 
     id: 'bi_comparative',
-    iconColor: 'text-lime-500 dark:text-lime-400',
-    iconBg: 'bg-lime-50 dark:bg-lime-500/10'
+    iconColor: 'text-slate-600 dark:text-slate-400',
+    iconBg: 'bg-slate-50 dark:bg-slate-800/40'
   },
   { 
     to: '/bi/customer-analytics', 
     label: 'Análise de Clientes', 
     icon: Users, 
     id: 'bi_customer_analytics',
-    iconColor: 'text-blue-500 dark:text-blue-400',
-    iconBg: 'bg-blue-50 dark:bg-blue-500/10'
+    iconColor: 'text-slate-500 dark:text-slate-400',
+    iconBg: 'bg-slate-50 dark:bg-slate-800/40'
   },
 ]
 
@@ -108,22 +108,51 @@ const CONFIG_MODULES = [
     label: 'Usuários', 
     icon: Shield, 
     id: 'usuarios',
-    iconColor: 'text-red-500 dark:text-red-400',
-    iconBg: 'bg-red-50 dark:bg-red-500/10'
+    iconColor: 'text-teal-600 dark:text-teal-400',
+    iconBg: 'bg-teal-50 dark:bg-teal-900/20'
   },
   { 
     to: '/grupos', 
     label: 'Grupos de Acesso', 
     icon: Shield, 
     id: 'usuarios',
-    iconColor: 'text-violet-500 dark:text-violet-400',
-    iconBg: 'bg-violet-50 dark:bg-violet-500/10'
+    iconColor: 'text-teal-700 dark:text-teal-300',
+    iconBg: 'bg-teal-50 dark:bg-teal-900/20'
   }
 ]
 
 export default function Sidebar({ open, onClose }: Props) {
   const user = useAuthStore((s) => s.user)
   const [configOpen, setConfigOpen] = useState(false)
+  const [isCustomizing, setIsCustomizing] = useState(false)
+
+  // Leitura do estado de visibilidade a partir do localStorage (por padrão, os 6 especificados vêm desativados)
+  const [visibility, setVisibility] = useState<Record<string, boolean>>(() => {
+    const key = `v4_menu_visibility_${user?.email || 'default'}`
+    const stored = localStorage.getItem(key)
+    if (stored) {
+      try {
+        return JSON.parse(stored)
+      } catch { /* ignore */ }
+    }
+    return {
+      bi_seller_hub: true,
+      bi_sales: true,
+      bi_hub: true,
+      bi_supplier: false,
+      bi_abc: false,
+      bi_finance: false,
+      bi_customer: false,
+      bi_comparative: false,
+      bi_customer_analytics: false,
+    }
+  })
+
+  const saveVisibility = (newVal: Record<string, boolean>) => {
+    const key = `v4_menu_visibility_${user?.email || 'default'}`
+    localStorage.setItem(key, JSON.stringify(newVal))
+    setVisibility(newVal)
+  }
 
   // Filtra as rotas se o usuário não for master e tiver permissions configurado
   const hasAccess = (moduleId: string) => {
@@ -133,8 +162,10 @@ export default function Sidebar({ open, onClose }: Props) {
   }
 
   const allowedModules = MODULES.filter((m) => hasAccess(m.id))
-  const allowedBiModules = BI_MODULES.filter((m) => hasAccess(m.id))
+  // Filtra de acordo com as permissões E a visibilidade configurada
+  const allowedBiModules = BI_MODULES.filter((m) => hasAccess(m.id) && visibility[m.id] !== false)
   const allowedConfigModules = CONFIG_MODULES.filter((m) => hasAccess(m.id))
+
 
   return (
     <>
@@ -200,8 +231,15 @@ export default function Sidebar({ open, onClose }: Props) {
 
           {allowedBiModules.length > 0 && (
             <div className="mt-6">
-              <div className="px-3 mb-2 text-xs font-semibold text-text-secondary uppercase tracking-wider">
-                Business Intelligence (Vet)
+              <div className="px-3 mb-2 text-xs font-semibold text-text-secondary uppercase tracking-wider flex items-center justify-between">
+                <span>Inteligência de Negócios</span>
+                <button
+                  onClick={() => setIsCustomizing(true)}
+                  className="p-1 hover:bg-bg-secondary rounded-md text-text-muted hover:text-text-primary transition-colors cursor-pointer"
+                  title="Personalizar Menus"
+                >
+                  <Settings size={14} />
+                </button>
               </div>
               {allowedBiModules.map(({ to, label, icon: Icon, exact, iconColor, iconBg }) => (
                 <NavLink
@@ -213,7 +251,7 @@ export default function Sidebar({ open, onClose }: Props) {
                     clsx(
                       'group flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 mb-1 border',
                       isActive
-                        ? 'bg-white dark:bg-slate-800/60 text-text-primary shadow-sm border-slate-200/60 dark:border-slate-700/60 font-semibold'
+                        ? 'bg-bg-secondary text-text-primary shadow-sm border-border font-semibold'
                         : 'text-text-secondary hover:bg-bg-secondary/60 hover:text-text-primary border-transparent',
                     )
                   }
@@ -231,7 +269,7 @@ export default function Sidebar({ open, onClose }: Props) {
             <div className="mt-auto pt-4 border-t border-divider">
               <button
                 onClick={() => setConfigOpen(!configOpen)}
-                className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium text-text-secondary hover:bg-bg-secondary hover:text-text-primary transition-colors mb-1"
+                className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium text-text-secondary hover:bg-bg-secondary hover:text-text-primary transition-colors mb-1 cursor-pointer"
               >
                 <div className="flex items-center gap-3">
                   <Settings size={18} className="flex-shrink-0" />
@@ -252,7 +290,7 @@ export default function Sidebar({ open, onClose }: Props) {
                         clsx(
                           'group flex items-center gap-3 px-3 py-1.5 rounded-xl text-sm font-medium transition-all duration-200 border',
                           isActive
-                            ? 'bg-white dark:bg-slate-800/60 text-text-primary shadow-sm border-slate-200/60 dark:border-slate-700/60 font-semibold'
+                            ? 'bg-bg-secondary text-text-primary shadow-sm border-border font-semibold'
                             : 'text-text-secondary hover:bg-bg-secondary/60 hover:text-text-primary border-transparent',
                         )
                       }
@@ -280,13 +318,75 @@ export default function Sidebar({ open, onClose }: Props) {
               useAuthStore.getState().logout()
               window.location.href = '/login'
             }}
-            className="p-2 text-text-secondary hover:text-danger hover:bg-danger/10 rounded-lg transition-colors"
+            className="p-2 text-text-secondary hover:text-danger hover:bg-danger/10 rounded-lg transition-colors cursor-pointer"
             title="Sair do sistema"
           >
             <LogOut size={16} />
           </button>
         </div>
       </aside>
+
+      {/* Modal de Personalização dos Menus de BI */}
+      {isCustomizing && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-bg-primary border border-divider rounded-xl w-full max-w-md shadow-card-hover p-6 flex flex-col gap-4 text-left relative overflow-hidden">
+            <div className="flex justify-between items-center border-b border-divider pb-3">
+              <h3 className="text-sm font-bold text-text-primary uppercase tracking-wider">Personalizar Menus (Vet)</h3>
+              <button
+                onClick={() => setIsCustomizing(false)}
+                className="p-1 hover:bg-bg-secondary rounded text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <p className="text-xs text-text-secondary leading-relaxed">
+              Marque os módulos de Inteligência de Negócios que deseja exibir na barra lateral de navegação:
+            </p>
+            <div className="space-y-2 my-2 max-h-[300px] overflow-y-auto pr-1">
+              {BI_MODULES.map((m) => {
+                const available = hasAccess(m.id)
+                return (
+                  <label
+                    key={m.id}
+                    className={clsx(
+                      "flex items-start gap-3 p-2.5 rounded-lg border transition-all cursor-pointer select-none",
+                      available
+                        ? "border-divider hover:bg-bg-secondary/50 hover:border-brand-500/50"
+                        : "opacity-40 cursor-not-allowed border-divider"
+                    )}
+                  >
+                    <input
+                      type="checkbox"
+                      disabled={!available}
+                      checked={!!visibility[m.id]}
+                      onChange={(e) => {
+                        if (!available) return
+                        const next = { ...visibility, [m.id]: e.target.checked }
+                        saveVisibility(next)
+                      }}
+                      className="mt-0.5 rounded border-border text-brand-500 focus:ring-brand-500 h-4 w-4 cursor-pointer"
+                    />
+                    <div>
+                      <div className="text-xs font-semibold text-text-primary">{m.label}</div>
+                      {!available && (
+                        <div className="text-[10px] text-danger font-medium">Sem permissão de acesso</div>
+                      )}
+                    </div>
+                  </label>
+                )
+              })}
+            </div>
+            <div className="flex justify-end gap-2 pt-3 border-t border-divider">
+              <button
+                onClick={() => setIsCustomizing(false)}
+                className="btn btn-primary text-xs py-1.5 px-4 h-9 cursor-pointer"
+              >
+                Salvar e Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }

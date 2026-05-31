@@ -81,6 +81,46 @@
     --border-radius-base: 16px;
   }
 
+  /* Estilos para Layout v4.0 (Siscom Vet - Clinical Sage & Teal) */
+  .layout-v4-0 {
+    --color-bg-primary: #FFFFFF;
+    --color-bg-secondary: #F3F5F8;
+    --color-bg-tertiary: #E2E8F0;
+    --color-text-primary: #0F172A;
+    --color-text-secondary: #475569;
+    --color-text-muted: #94A3B8;
+    --color-brand-50: #F0FDF4;
+    --color-brand-100: #DCFCE7;
+    --color-brand-500: #0D9488;
+    --color-brand-600: #0F766E;
+    --color-brand-700: #115E59;
+    --color-border: #E2E8F0;
+    --color-divider: rgba(226, 232, 240, 0.7);
+    --shadow-card: 0 4px 6px -1px rgba(13, 148, 136, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
+    --shadow-card-hover: 0 12px 20px -3px rgba(13, 148, 136, 0.12), 0 4px 6px -2px rgba(13, 148, 136, 0.08);
+    --border-radius-base: 8px;
+  }
+
+  .dark.layout-v4-0 {
+    --color-bg-primary: #111827;
+    --color-bg-secondary: #0B0F19;
+    --color-bg-tertiary: #1F2937;
+    --color-text-primary: #F9FAFB;
+    --color-text-secondary: #9CA3AF;
+    --color-text-muted: #6B7280;
+    --color-brand-50: #115E59;
+    --color-brand-100: #0F766E;
+    --color-brand-500: #14B8A6;
+    --color-brand-600: #2DD4BF;
+    --color-brand-700: #5EEAD4;
+    --color-border: #1F2937;
+    --color-divider: rgba(31, 41, 55, 0.5);
+    --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+    --shadow-card-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.6);
+    --border-radius-base: 8px;
+  }
+
+
   html, body, #root {
     height: 100%;
     overflow-x: hidden;
