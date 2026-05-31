@@ -99,6 +99,7 @@ const GaugeChart = ({ realizado, meta }: { realizado: number, meta: number }) =>
 export default function VisaoEstrategicaV4() {
   const [isMobile, setIsMobile] = useState(false);
   const [faturamentoPeriod, setFaturamentoPeriod] = useState<'7D' | '30D' | '90D' | 'Tudo'>('Tudo')
+  const [faturamentoGroupBy, setFaturamentoGroupBy] = useState<'dia' | 'mes'>('mes')
   const [viewMode, setViewMode] = useState<Record<string, 'chart' | 'text'>>({
     vendedores: 'chart',
     marcas: 'chart',
@@ -164,6 +165,77 @@ export default function VisaoEstrategicaV4() {
     return faturamentoPeriodoData;
   }, [faturamentoPeriodoData, faturamentoPeriod]);
 
+  const groupedFaturamentoData = useMemo(() => {
+    if (faturamentoGroupBy === 'dia') {
+      return filteredFaturamentoData.map((item: any) => {
+        let label = item.data;
+        if (label && label.includes('-')) {
+          const parts = label.split('-');
+          if (parts.length >= 3) {
+            label = `${parts[2]}/${parts[1]}`;
+          }
+        }
+        return {
+          ...item,
+          label
+        };
+      });
+    } else {
+      const groups: Record<string, { key: string; label: string; total: number }> = {};
+      
+      filteredFaturamentoData.forEach((item: any) => {
+        let monthKey = '';
+        let monthLabel = '';
+        
+        if (item.data && item.data.includes('-')) {
+          const parts = item.data.split('-');
+          if (parts.length >= 2) {
+            const year = parts[0];
+            const month = parts[1];
+            monthKey = `${year}-${month}`;
+            
+            const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+            const monthIdx = parseInt(month, 10) - 1;
+            const shortYear = year.slice(2);
+            if (monthIdx >= 0 && monthIdx < 12) {
+              monthLabel = `${monthNames[monthIdx]}/${shortYear}`;
+            } else {
+              monthLabel = `${month}/${year}`;
+            }
+          } else {
+            monthKey = item.data;
+            monthLabel = item.data;
+          }
+        } else {
+          monthKey = item.data;
+          monthLabel = item.data;
+        }
+        
+        if (!groups[monthKey]) {
+          groups[monthKey] = {
+            key: monthKey,
+            label: monthLabel,
+            total: 0
+          };
+        }
+        groups[monthKey].total += item.total || 0;
+      });
+      
+      return Object.values(groups)
+        .sort((a, b) => a.key.localeCompare(b.key))
+        .map(g => ({
+          data: g.key,
+          label: g.label,
+          total: g.total
+        }));
+    }
+  }, [filteredFaturamentoData, faturamentoGroupBy]);
+
+  const maxPeriodVal = useMemo(() => {
+    if (groupedFaturamentoData.length === 0) return 1;
+    return Math.max(...groupedFaturamentoData.map((item: any) => item.total), 1);
+  }, [groupedFaturamentoData]);
+
   const mockTopSellers = vd.data?.data?.map((s: any) => ({ name: s.nome || s.vendedor, value: s.total || s.total_vendas })) || [];
 
   const mockTopBrands = marcas.data?.data?.map((m: any) => ({ name: m.nome || m.marca, value: m.total })) || [];
@@ -183,11 +255,12 @@ export default function VisaoEstrategicaV4() {
   ];
 
   const getFaturamentoSummary = () => {
-    if (filteredFaturamentoData.length === 0) return "Nenhum dado de faturamento disponível no período."
-    const sorted = [...filteredFaturamentoData].sort((a: any, b: any) => b.total - a.total)
+    if (groupedFaturamentoData.length === 0) return "Nenhum dado de faturamento disponível no período."
+    const sorted = [...groupedFaturamentoData].sort((a: any, b: any) => b.total - a.total)
     const peak = sorted[0]
     const lowest = sorted[sorted.length - 1]
-    return `O faturamento mensal demonstra variação no período de consulta, registrando um pico de faturamento em ${peak.data} no valor de ${formatBRL(peak.total)}, e o menor faturamento em ${lowest.data} no valor de ${formatBRL(lowest.total)}.`
+    const formatName = faturamentoGroupBy === 'mes' ? 'mensal' : 'diário';
+    return `O faturamento ${formatName} demonstra variação no período de consulta, registrando um pico de faturamento em ${peak.label} no valor de ${formatBRL(peak.total)}, e o menor faturamento em ${lowest.label} no valor de ${formatBRL(lowest.total)}.`
   }
 
   const getVendedoresSummary = () => {
@@ -321,7 +394,33 @@ export default function VisaoEstrategicaV4() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
           <h3 className="font-bold text-text-primary text-xs uppercase tracking-wider">Faturamento no Período</h3>
           
-          <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+          <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+            {/* Agrupamento: Diário / Mensal */}
+            <div className="flex items-center gap-1 bg-bg-secondary p-0.5 rounded-lg border border-divider">
+              <button
+                onClick={() => setFaturamentoGroupBy('dia')}
+                className={clsx(
+                  "px-2.5 py-1 rounded-md text-[10px] font-bold transition-all cursor-pointer",
+                  faturamentoGroupBy === 'dia'
+                    ? "bg-bg-primary text-brand-500 shadow-sm"
+                    : "text-text-secondary hover:text-text-primary"
+                )}
+              >
+                Diário
+              </button>
+              <button
+                onClick={() => setFaturamentoGroupBy('mes')}
+                className={clsx(
+                  "px-2.5 py-1 rounded-md text-[10px] font-bold transition-all cursor-pointer",
+                  faturamentoGroupBy === 'mes'
+                    ? "bg-bg-primary text-brand-500 shadow-sm"
+                    : "text-text-secondary hover:text-text-primary"
+                )}
+              >
+                Mensal
+              </button>
+            </div>
+
             {/* Quick Period Selector */}
             <div className="flex items-center gap-1 bg-bg-secondary p-0.5 rounded-lg border border-divider">
               {(['7D', '30D', '90D', 'Tudo'] as const).map((range) => (
@@ -373,30 +472,63 @@ export default function VisaoEstrategicaV4() {
         <div className="h-[280px]">
           {viewMode.faturamento === 'chart' ? (
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={filteredFaturamentoData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <BarChart data={groupedFaturamentoData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" opacity={0.5} />
-                <XAxis dataKey="data" axisLine={false} tickLine={false} tickFormatter={(v) => String(v).slice(0, 5)} tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }} />
+                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }} />
                 <YAxis axisLine={false} tickLine={false} tickFormatter={(v) => formatBRLCompact(v)} tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }} />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.4 }} />
                 <Bar dataKey="total" radius={[4, 4, 0, 0]} maxBarSize={40}>
-                  {filteredFaturamentoData.map((entry: any, index: number) => (
+                  {groupedFaturamentoData.map((entry: any, index: number) => (
                     <Cell key={`cell-${index}`} fill={barColors[index % barColors.length]} />
                   ))}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="space-y-4 h-full flex flex-col justify-between">
+            <div className="space-y-3 h-full flex flex-col">
               <p className="text-xs text-text-secondary italic leading-relaxed border-l-2 border-brand-500 pl-3">
                 {getFaturamentoSummary()}
               </p>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 overflow-y-auto max-h-[180px] pr-1">
-                {filteredFaturamentoData.map((item: any, index: number) => (
-                  <div key={index} className="p-2.5 rounded-lg bg-bg-secondary/40 border border-divider">
-                    <div className="text-[10px] text-text-secondary font-semibold uppercase">{item.data}</div>
-                    <div className="text-xs font-bold text-text-primary font-mono mt-0.5">{formatBRL(item.total)}</div>
-                  </div>
-                ))}
+              <div className="flex-1 overflow-y-auto pr-1 space-y-2">
+                {groupedFaturamentoData.map((item: any, index: number) => {
+                  const isPeak = item.total === maxPeriodVal;
+                  const pct = maxPeriodVal > 0 ? (item.total / maxPeriodVal) * 100 : 0;
+                  return (
+                    <div
+                      key={index}
+                      className={clsx(
+                        "flex flex-col p-3 rounded-xl border transition-all hover:bg-bg-secondary/40",
+                        isPeak ? "border-brand-500/40 bg-brand-500/[0.02]" : "border-divider bg-bg-secondary/20"
+                      )}
+                    >
+                      <div className="flex justify-between items-center mb-1.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-text-primary uppercase tracking-wide">{item.label}</span>
+                          {isPeak && (
+                            <span className="text-[9px] font-extrabold text-brand-600 bg-brand-500/10 px-2 py-0.5 rounded-full leading-none flex items-center gap-1 shadow-sm">
+                              Pico 👑
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-xs font-bold text-text-primary font-mono">{formatBRL(item.total)}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 bg-bg-secondary h-1.5 rounded-full overflow-hidden">
+                          <div
+                            className={clsx(
+                              "h-full rounded-full transition-all duration-500",
+                              isPeak ? "bg-brand-500" : "bg-brand-400"
+                            )}
+                            style={{ width: `${pct}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-[9px] font-extrabold text-text-secondary leading-none shrink-0 font-mono">
+                          {pct.toFixed(0)}%
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
