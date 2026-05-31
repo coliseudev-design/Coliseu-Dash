@@ -316,134 +316,90 @@ export default function VisaoEstrategicaV4() {
         ))}
       </div>
 
-      {/* PAINEL DE INSIGHTS E INTELIGÊNCIA */}
-      <div className="bg-bg-primary border border-divider rounded-xl p-5 shadow-card relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-1.5 h-full bg-brand-500"></div>
-        <div className="flex items-center gap-2 mb-3">
-          <span className="text-lg">💡</span>
-          <h3 className="font-heading text-xs font-bold text-text-primary uppercase tracking-wider">Insights & Recomendações de Inteligência</h3>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs leading-relaxed text-text-secondary">
-          <div className="p-3.5 bg-bg-secondary/40 rounded-lg border border-divider">
-            <span className="font-bold text-text-primary block mb-1">Tendência de Faturamento</span>
-            Com base nos dados analisados, o faturamento do período atual de <strong className="text-brand-500 font-mono">{formatBRL(faturamentoAtual)}</strong> apresenta {faturamentoCrescimento >= 0 ? 'um crescimento' : 'uma retração'} de <strong className="text-text-primary font-mono">{Math.abs(faturamentoCrescimento).toFixed(1)}%</strong> em relação ao período de referência anterior.
-          </div>
-          <div className="p-3.5 bg-bg-secondary/40 rounded-lg border border-divider">
-            <span className="font-bold text-text-primary block mb-1">Ticket Médio & Conversão</span>
-            O ticket médio está consolidado em <strong className="text-brand-500 font-mono">{formatBRL(ticketMedio)}</strong> por cliente faturado, com uma taxa de conversão média estável de <strong className="text-text-primary font-mono">{taxaConversao.toFixed(1)}%</strong> no funil de faturamento.
-          </div>
-          <div className="p-3.5 bg-bg-secondary/40 rounded-lg border border-divider">
-            <span className="font-bold text-text-primary block mb-1">Distribuição de Mercado</span>
-            A maior concentração de vendas regional está localizada na cidade de <strong className="text-brand-500">{mockTopCities.length > 0 ? mockTopCities[0].name : 'Nenhuma'}</strong>. Recomendamos reforçar o estoque das marcas de maior circulação.
-          </div>
-        </div>
-      </div>
-
       {/* TIER 4: GRÁFICO PRINCIPAL */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        <div className="lg:col-span-3 bg-bg-primary border border-divider shadow-card rounded-xl p-5">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
-            <h3 className="font-bold text-text-primary text-xs uppercase tracking-wider">Faturamento no Período</h3>
-            
-            <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
-              {/* Quick Period Selector */}
-              <div className="flex items-center gap-1 bg-bg-secondary p-0.5 rounded-lg border border-divider">
-                {(['7D', '30D', '90D', 'Tudo'] as const).map((range) => (
-                  <button
-                    key={range}
-                    onClick={() => setFaturamentoPeriod(range)}
-                    className={clsx(
-                      "px-2.5 py-1 rounded-md text-[10px] font-bold transition-all cursor-pointer",
-                      faturamentoPeriod === range
-                        ? "bg-bg-primary text-brand-500 shadow-sm"
-                        : "text-text-secondary hover:text-text-primary"
-                    )}
-                  >
-                    {range}
-                  </button>
-                ))}
-              </div>
-
-              {/* Chaveador de Visualização */}
-              <div className="flex items-center gap-1 bg-bg-secondary p-0.5 rounded-lg border border-divider">
-                <button
-                  onClick={() => setViewMode(prev => ({ ...prev, faturamento: 'chart' }))}
-                  className={clsx(
-                    "p-1.5 rounded-md transition-all cursor-pointer",
-                    viewMode.faturamento === 'chart'
-                      ? "bg-bg-primary text-brand-500 shadow-sm"
-                      : "text-text-secondary hover:text-text-primary"
-                  )}
-                  title="Ver Gráfico"
-                >
-                  <BarChart3 size={14} />
-                </button>
-                <button
-                  onClick={() => setViewMode(prev => ({ ...prev, faturamento: 'text' }))}
-                  className={clsx(
-                    "p-1.5 rounded-md transition-all cursor-pointer",
-                    viewMode.faturamento === 'text'
-                      ? "bg-bg-primary text-brand-500 shadow-sm"
-                      : "text-text-secondary hover:text-text-primary"
-                  )}
-                  title="Ver Resumo Textual"
-                >
-                  <FileText size={14} />
-                </button>
-              </div>
-            </div>
-          </div>
+      <div className="w-full bg-bg-primary border border-divider shadow-card rounded-xl p-5">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
+          <h3 className="font-bold text-text-primary text-xs uppercase tracking-wider">Faturamento no Período</h3>
           
-          <div className="h-[280px]">
-            {viewMode.faturamento === 'chart' ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={filteredFaturamentoData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" opacity={0.5} />
-                  <XAxis dataKey="data" axisLine={false} tickLine={false} tickFormatter={(v) => String(v).slice(0, 5)} tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }} />
-                  <YAxis axisLine={false} tickLine={false} tickFormatter={(v) => formatBRLCompact(v)} tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }} />
-                  <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.4 }} />
-                  <Bar dataKey="total" radius={[4, 4, 0, 0]} maxBarSize={40}>
-                    {filteredFaturamentoData.map((entry: any, index: number) => (
-                      <Cell key={`cell-${index}`} fill={barColors[index % barColors.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="space-y-4 h-full flex flex-col justify-between">
-                <p className="text-xs text-text-secondary italic leading-relaxed border-l-2 border-brand-500 pl-3">
-                  {getFaturamentoSummary()}
-                </p>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 overflow-y-auto max-h-[180px] pr-1">
-                  {filteredFaturamentoData.map((item: any, index: number) => (
-                    <div key={index} className="p-2.5 rounded-lg bg-bg-secondary/40 border border-divider">
-                      <div className="text-[10px] text-text-secondary font-semibold uppercase">{item.data}</div>
-                      <div className="text-xs font-bold text-text-primary font-mono mt-0.5">{formatBRL(item.total)}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+          <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+            {/* Quick Period Selector */}
+            <div className="flex items-center gap-1 bg-bg-secondary p-0.5 rounded-lg border border-divider">
+              {(['7D', '30D', '90D', 'Tudo'] as const).map((range) => (
+                <button
+                  key={range}
+                  onClick={() => setFaturamentoPeriod(range)}
+                  className={clsx(
+                    "px-2.5 py-1 rounded-md text-[10px] font-bold transition-all cursor-pointer",
+                    faturamentoPeriod === range
+                      ? "bg-bg-primary text-brand-500 shadow-sm"
+                      : "text-text-secondary hover:text-text-primary"
+                  )}
+                >
+                  {range}
+                </button>
+              ))}
+            </div>
+
+            {/* Chaveador de Visualização */}
+            <div className="flex items-center gap-1 bg-bg-secondary p-0.5 rounded-lg border border-divider">
+              <button
+                onClick={() => setViewMode(prev => ({ ...prev, faturamento: 'chart' }))}
+                className={clsx(
+                  "p-1.5 rounded-md transition-all cursor-pointer",
+                  viewMode.faturamento === 'chart'
+                    ? "bg-bg-primary text-brand-500 shadow-sm"
+                    : "text-text-secondary hover:text-text-primary"
+                )}
+                title="Ver Gráfico"
+              >
+                <BarChart3 size={14} />
+              </button>
+              <button
+                onClick={() => setViewMode(prev => ({ ...prev, faturamento: 'text' }))}
+                className={clsx(
+                  "p-1.5 rounded-md transition-all cursor-pointer",
+                  viewMode.faturamento === 'text'
+                    ? "bg-bg-primary text-brand-500 shadow-sm"
+                    : "text-text-secondary hover:text-text-primary"
+                )}
+                title="Ver Resumo Textual"
+              >
+                <FileText size={14} />
+              </button>
+            </div>
           </div>
         </div>
         
-        <div className="lg:col-span-1 bg-bg-primary border border-divider shadow-card rounded-xl p-5 flex flex-col justify-center space-y-4">
-          <div className="p-4 bg-bg-secondary rounded-xl border border-divider">
-            <div className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-1">Maior Mês</div>
-            <div className="text-brand-500 font-bold">Ago/25</div>
-            <div className="text-xl font-extrabold text-text-primary">{formatBRL(faturamentoAtual)}</div>
-          </div>
-          
-          <div className="p-4 bg-bg-secondary rounded-xl border border-divider flex-1 flex flex-col">
-            <div className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-1">Faturamento Diário</div>
-            <div className="text-success font-bold text-xs mb-2">Média Hoje: {formatBRL(faturamentoAtual / 30)}</div>
-            <div className="flex-1 flex items-end justify-between gap-1 pt-2">
-               {/* Mini chart visual representation */}
-               {[40, 20, 60, 30, 80, 50, 90, 70, 100, 60, 40].map((h, i) => (
-                  <div key={i} className="w-full bg-brand-500/80 rounded-t-sm" style={{ height: `${h}%` }}></div>
-               ))}
+        <div className="h-[280px]">
+          {viewMode.faturamento === 'chart' ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={filteredFaturamentoData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" opacity={0.5} />
+                <XAxis dataKey="data" axisLine={false} tickLine={false} tickFormatter={(v) => String(v).slice(0, 5)} tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }} />
+                <YAxis axisLine={false} tickLine={false} tickFormatter={(v) => formatBRLCompact(v)} tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }} />
+                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.4 }} />
+                <Bar dataKey="total" radius={[4, 4, 0, 0]} maxBarSize={40}>
+                  {filteredFaturamentoData.map((entry: any, index: number) => (
+                    <Cell key={`cell-${index}`} fill={barColors[index % barColors.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="space-y-4 h-full flex flex-col justify-between">
+              <p className="text-xs text-text-secondary italic leading-relaxed border-l-2 border-brand-500 pl-3">
+                {getFaturamentoSummary()}
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 overflow-y-auto max-h-[180px] pr-1">
+                {filteredFaturamentoData.map((item: any, index: number) => (
+                  <div key={index} className="p-2.5 rounded-lg bg-bg-secondary/40 border border-divider">
+                    <div className="text-[10px] text-text-secondary font-semibold uppercase">{item.data}</div>
+                    <div className="text-xs font-bold text-text-primary font-mono mt-0.5">{formatBRL(item.total)}</div>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -513,13 +469,18 @@ export default function VisaoEstrategicaV4() {
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[220px] overflow-y-auto pr-1">
                   {mockTopSellers.map((seller: any, index: number) => {
-                    const totalVal = mockTopSellers.reduce((acc: number, curr: any) => acc + curr.value, 0)
-                    const pct = totalVal > 0 ? (seller.value / totalVal) * 100 : 0
+                    const pct = faturamentoAtual > 0 ? (seller.value / faturamentoAtual) * 100 : 0
+                    const rank = index + 1
                     return (
-                      <div key={index} className="flex items-center gap-3 p-3 rounded-lg bg-bg-secondary/30 border border-divider hover:bg-bg-secondary transition-all relative overflow-hidden">
-                        <div className="text-2xl font-black text-brand-500/20 font-sans tracking-tight leading-none">
-                          #{String(index + 1).padStart(2, '0')}
-                        </div>
+                      <div key={index} className="flex items-center gap-3 p-3 rounded-xl bg-bg-secondary/30 border border-divider hover:bg-bg-secondary transition-all relative overflow-hidden">
+                        {rank === 1 && <div className="w-8 h-8 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-lg shrink-0">🥇</div>}
+                        {rank === 2 && <div className="w-8 h-8 rounded-full bg-slate-400/10 border border-slate-400/30 flex items-center justify-center text-lg shrink-0">🥈</div>}
+                        {rank === 3 && <div className="w-8 h-8 rounded-full bg-amber-700/10 border border-amber-700/30 flex items-center justify-center text-lg shrink-0">🥉</div>}
+                        {rank > 3 && (
+                          <div className="w-8 h-8 rounded-full bg-bg-secondary border border-divider flex items-center justify-center text-[10px] font-extrabold text-text-muted shrink-0">
+                            #{String(rank).padStart(2, '0')}
+                          </div>
+                        )}
                         <div className="flex-1 min-w-0">
                           <div className="text-xs font-bold text-text-primary truncate">{seller.name}</div>
                           <div className="text-[10px] font-semibold text-brand-500 font-mono mt-0.5">{formatBRL(seller.value)}</div>
@@ -527,7 +488,7 @@ export default function VisaoEstrategicaV4() {
                             <div className="flex-1 bg-bg-secondary h-1 rounded-full overflow-hidden">
                               <div className="bg-brand-500 h-full rounded-full" style={{ width: `${pct}%` }}></div>
                             </div>
-                            <span className="text-[9px] font-bold text-text-secondary leading-none">{pct.toFixed(1)}%</span>
+                            <span className="text-[9px] font-extrabold text-brand-500 bg-brand-500/10 px-1.5 py-0.5 rounded-full shrink-0 leading-none">{pct.toFixed(1)}%</span>
                           </div>
                         </div>
                       </div>
@@ -614,13 +575,18 @@ export default function VisaoEstrategicaV4() {
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[220px] overflow-y-auto pr-1">
                   {mockTopBrands.map((brand: any, index: number) => {
-                    const totalVal = mockTopBrands.reduce((acc: number, curr: any) => acc + curr.value, 0)
-                    const pct = totalVal > 0 ? (brand.value / totalVal) * 100 : 0
+                    const pct = faturamentoAtual > 0 ? (brand.value / faturamentoAtual) * 100 : 0
+                    const rank = index + 1
                     return (
-                      <div key={index} className="flex items-center gap-3 p-3 rounded-lg bg-bg-secondary/30 border border-divider hover:bg-bg-secondary transition-all relative overflow-hidden">
-                        <div className="text-2xl font-black text-brand-500/20 font-sans tracking-tight leading-none">
-                          #{String(index + 1).padStart(2, '0')}
-                        </div>
+                      <div key={index} className="flex items-center gap-3 p-3 rounded-xl bg-bg-secondary/30 border border-divider hover:bg-bg-secondary transition-all relative overflow-hidden">
+                        {rank === 1 && <div className="w-8 h-8 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-lg shrink-0">🥇</div>}
+                        {rank === 2 && <div className="w-8 h-8 rounded-full bg-slate-400/10 border border-slate-400/30 flex items-center justify-center text-lg shrink-0">🥈</div>}
+                        {rank === 3 && <div className="w-8 h-8 rounded-full bg-amber-700/10 border border-amber-700/30 flex items-center justify-center text-lg shrink-0">🥉</div>}
+                        {rank > 3 && (
+                          <div className="w-8 h-8 rounded-full bg-bg-secondary border border-divider flex items-center justify-center text-[10px] font-extrabold text-text-muted shrink-0">
+                            #{String(rank).padStart(2, '0')}
+                          </div>
+                        )}
                         <div className="flex-1 min-w-0">
                           <div className="text-xs font-bold text-text-primary truncate">{brand.name}</div>
                           <div className="text-[10px] font-semibold text-brand-500 font-mono mt-0.5">{formatBRL(brand.value)}</div>
@@ -628,7 +594,7 @@ export default function VisaoEstrategicaV4() {
                             <div className="flex-1 bg-bg-secondary h-1 rounded-full overflow-hidden">
                               <div className="bg-brand-500 h-full rounded-full" style={{ width: `${pct}%` }}></div>
                             </div>
-                            <span className="text-[9px] font-bold text-text-secondary leading-none">{pct.toFixed(1)}%</span>
+                            <span className="text-[9px] font-extrabold text-brand-500 bg-brand-500/10 px-1.5 py-0.5 rounded-full shrink-0 leading-none">{pct.toFixed(1)}%</span>
                           </div>
                         </div>
                       </div>
@@ -715,13 +681,18 @@ export default function VisaoEstrategicaV4() {
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[220px] overflow-y-auto pr-1">
                   {mockTopGroups.map((grupo: any, index: number) => {
-                    const totalVal = mockTopGroups.reduce((acc: number, curr: any) => acc + curr.value, 0)
-                    const pct = totalVal > 0 ? (grupo.value / totalVal) * 100 : 0
+                    const pct = faturamentoAtual > 0 ? (grupo.value / faturamentoAtual) * 100 : 0
+                    const rank = index + 1
                     return (
-                      <div key={index} className="flex items-center gap-3 p-3 rounded-lg bg-bg-secondary/30 border border-divider hover:bg-bg-secondary transition-all relative overflow-hidden">
-                        <div className="text-2xl font-black text-brand-500/20 font-sans tracking-tight leading-none">
-                          #{String(index + 1).padStart(2, '0')}
-                        </div>
+                      <div key={index} className="flex items-center gap-3 p-3 rounded-xl bg-bg-secondary/30 border border-divider hover:bg-bg-secondary transition-all relative overflow-hidden">
+                        {rank === 1 && <div className="w-8 h-8 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-lg shrink-0">🥇</div>}
+                        {rank === 2 && <div className="w-8 h-8 rounded-full bg-slate-400/10 border border-slate-400/30 flex items-center justify-center text-lg shrink-0">🥈</div>}
+                        {rank === 3 && <div className="w-8 h-8 rounded-full bg-amber-700/10 border border-amber-700/30 flex items-center justify-center text-lg shrink-0">🥉</div>}
+                        {rank > 3 && (
+                          <div className="w-8 h-8 rounded-full bg-bg-secondary border border-divider flex items-center justify-center text-[10px] font-extrabold text-text-muted shrink-0">
+                            #{String(rank).padStart(2, '0')}
+                          </div>
+                        )}
                         <div className="flex-1 min-w-0">
                           <div className="text-xs font-bold text-text-primary truncate">{grupo.name}</div>
                           <div className="text-[10px] font-semibold text-brand-500 font-mono mt-0.5">{formatBRL(grupo.value)}</div>
@@ -729,7 +700,7 @@ export default function VisaoEstrategicaV4() {
                             <div className="flex-1 bg-bg-secondary h-1 rounded-full overflow-hidden">
                               <div className="bg-brand-500 h-full rounded-full" style={{ width: `${pct}%` }}></div>
                             </div>
-                            <span className="text-[9px] font-bold text-text-secondary leading-none">{pct.toFixed(1)}%</span>
+                            <span className="text-[9px] font-extrabold text-brand-500 bg-brand-500/10 px-1.5 py-0.5 rounded-full shrink-0 leading-none">{pct.toFixed(1)}%</span>
                           </div>
                         </div>
                       </div>
@@ -816,13 +787,18 @@ export default function VisaoEstrategicaV4() {
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[220px] overflow-y-auto pr-1">
                   {mockTopCities.map((city: any, index: number) => {
-                    const totalVal = mockTopCities.reduce((acc: number, curr: any) => acc + curr.value, 0)
-                    const pct = totalVal > 0 ? (city.value / totalVal) * 100 : 0
+                    const pct = faturamentoAtual > 0 ? (city.value / faturamentoAtual) * 100 : 0
+                    const rank = index + 1
                     return (
-                      <div key={index} className="flex items-center gap-3 p-3 rounded-lg bg-bg-secondary/30 border border-divider hover:bg-bg-secondary transition-all relative overflow-hidden">
-                        <div className="text-2xl font-black text-brand-500/20 font-sans tracking-tight leading-none">
-                          #{String(index + 1).padStart(2, '0')}
-                        </div>
+                      <div key={index} className="flex items-center gap-3 p-3 rounded-xl bg-bg-secondary/30 border border-divider hover:bg-bg-secondary transition-all relative overflow-hidden">
+                        {rank === 1 && <div className="w-8 h-8 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-lg shrink-0">🥇</div>}
+                        {rank === 2 && <div className="w-8 h-8 rounded-full bg-slate-400/10 border border-slate-400/30 flex items-center justify-center text-lg shrink-0">🥈</div>}
+                        {rank === 3 && <div className="w-8 h-8 rounded-full bg-amber-700/10 border border-amber-700/30 flex items-center justify-center text-lg shrink-0">🥉</div>}
+                        {rank > 3 && (
+                          <div className="w-8 h-8 rounded-full bg-bg-secondary border border-divider flex items-center justify-center text-[10px] font-extrabold text-text-muted shrink-0">
+                            #{String(rank).padStart(2, '0')}
+                          </div>
+                        )}
                         <div className="flex-1 min-w-0">
                           <div className="text-xs font-bold text-text-primary truncate">{city.name}</div>
                           <div className="text-[10px] font-semibold text-brand-500 font-mono mt-0.5">{formatBRL(city.value)}</div>
@@ -830,7 +806,7 @@ export default function VisaoEstrategicaV4() {
                             <div className="flex-1 bg-bg-secondary h-1 rounded-full overflow-hidden">
                               <div className="bg-brand-500 h-full rounded-full" style={{ width: `${pct}%` }}></div>
                             </div>
-                            <span className="text-[9px] font-bold text-text-secondary leading-none">{pct.toFixed(1)}%</span>
+                            <span className="text-[9px] font-extrabold text-brand-500 bg-brand-500/10 px-1.5 py-0.5 rounded-full shrink-0 leading-none">{pct.toFixed(1)}%</span>
                           </div>
                         </div>
                       </div>
