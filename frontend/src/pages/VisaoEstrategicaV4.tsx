@@ -595,38 +595,43 @@ export default function VisaoEstrategicaV4() {
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="space-y-4">
-                <p className="text-xs text-text-secondary italic leading-relaxed border-l-2 border-brand-500 pl-3">
-                  {getVendedoresSummary()}
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[220px] overflow-y-auto pr-1">
-                  {mockTopSellers.map((seller: any, index: number) => {
-                    const pct = faturamentoAtual > 0 ? (seller.value / faturamentoAtual) * 100 : 0
-                    const rank = index + 1
-                    return (
-                      <div key={index} className="flex items-center gap-3 p-3 rounded-xl bg-bg-secondary/30 border border-divider hover:bg-bg-secondary transition-all relative overflow-hidden">
-                        {rank === 1 && <div className="w-8 h-8 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-lg shrink-0">🥇</div>}
-                        {rank === 2 && <div className="w-8 h-8 rounded-full bg-slate-400/10 border border-slate-400/30 flex items-center justify-center text-lg shrink-0">🥈</div>}
-                        {rank === 3 && <div className="w-8 h-8 rounded-full bg-amber-700/10 border border-amber-700/30 flex items-center justify-center text-lg shrink-0">🥉</div>}
-                        {rank > 3 && (
-                          <div className="w-8 h-8 rounded-full bg-bg-secondary border border-divider flex items-center justify-center text-[10px] font-extrabold text-text-muted shrink-0">
-                            #{String(rank).padStart(2, '0')}
-                          </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs font-bold text-text-primary truncate">{seller.name}</div>
-                          <div className="text-[10px] font-semibold text-brand-500 font-mono mt-0.5">{formatBRL(seller.value)}</div>
-                          <div className="flex items-center gap-1.5 mt-1.5">
-                            <div className="flex-1 bg-bg-secondary h-1 rounded-full overflow-hidden">
-                              <div className="bg-brand-500 h-full rounded-full" style={{ width: `${pct}%` }}></div>
-                            </div>
-                            <span className="text-[9px] font-extrabold text-brand-500 bg-brand-500/10 px-1.5 py-0.5 rounded-full shrink-0 leading-none">{pct.toFixed(1)}%</span>
-                          </div>
+              <div className="h-[260px] overflow-y-auto pr-1 space-y-2">
+                {mockTopSellers.map((seller: any, index: number) => {
+                  const pct = faturamentoAtual > 0 ? (seller.value / faturamentoAtual) * 100 : 0
+                  const rank = index + 1
+                  return (
+                    <div
+                      key={index}
+                      className="flex flex-col p-3 rounded-xl border border-divider bg-bg-secondary/20 transition-all hover:bg-bg-secondary/40"
+                    >
+                      <div className="flex justify-between items-center mb-1.5">
+                        <div className="flex items-center gap-2">
+                          {rank === 1 && <span className="text-lg shrink-0">🥇</span>}
+                          {rank === 2 && <span className="text-lg shrink-0">🥈</span>}
+                          {rank === 3 && <span className="text-lg shrink-0">🥉</span>}
+                          {rank > 3 && (
+                            <span className="text-[10px] font-extrabold text-text-muted bg-bg-secondary border border-divider w-5 h-5 rounded-full flex items-center justify-center shrink-0">
+                              {rank}
+                            </span>
+                          )}
+                          <span className="text-xs font-bold text-text-primary truncate max-w-[150px] sm:max-w-none">{seller.name}</span>
                         </div>
+                        <span className="text-xs font-bold text-text-primary font-mono">{formatBRL(seller.value)}</span>
                       </div>
-                    )
-                  })}
-                </div>
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 bg-bg-secondary h-1.5 rounded-full overflow-hidden">
+                          <div
+                            className="bg-brand-500 h-full rounded-full transition-all duration-500"
+                            style={{ width: `${pct}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-[9px] font-extrabold text-brand-500 bg-brand-500/10 px-1.5 py-0.5 rounded-full shrink-0 leading-none">
+                          {pct.toFixed(1)}%
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>
@@ -701,38 +706,43 @@ export default function VisaoEstrategicaV4() {
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="space-y-4">
-                <p className="text-xs text-text-secondary italic leading-relaxed border-l-2 border-brand-500 pl-3">
-                  {getMarcasSummary()}
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[220px] overflow-y-auto pr-1">
-                  {mockTopBrands.map((brand: any, index: number) => {
-                    const pct = faturamentoAtual > 0 ? (brand.value / faturamentoAtual) * 100 : 0
-                    const rank = index + 1
-                    return (
-                      <div key={index} className="flex items-center gap-3 p-3 rounded-xl bg-bg-secondary/30 border border-divider hover:bg-bg-secondary transition-all relative overflow-hidden">
-                        {rank === 1 && <div className="w-8 h-8 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-lg shrink-0">🥇</div>}
-                        {rank === 2 && <div className="w-8 h-8 rounded-full bg-slate-400/10 border border-slate-400/30 flex items-center justify-center text-lg shrink-0">🥈</div>}
-                        {rank === 3 && <div className="w-8 h-8 rounded-full bg-amber-700/10 border border-amber-700/30 flex items-center justify-center text-lg shrink-0">🥉</div>}
-                        {rank > 3 && (
-                          <div className="w-8 h-8 rounded-full bg-bg-secondary border border-divider flex items-center justify-center text-[10px] font-extrabold text-text-muted shrink-0">
-                            #{String(rank).padStart(2, '0')}
-                          </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs font-bold text-text-primary truncate">{brand.name}</div>
-                          <div className="text-[10px] font-semibold text-brand-500 font-mono mt-0.5">{formatBRL(brand.value)}</div>
-                          <div className="flex items-center gap-1.5 mt-1.5">
-                            <div className="flex-1 bg-bg-secondary h-1 rounded-full overflow-hidden">
-                              <div className="bg-brand-500 h-full rounded-full" style={{ width: `${pct}%` }}></div>
-                            </div>
-                            <span className="text-[9px] font-extrabold text-brand-500 bg-brand-500/10 px-1.5 py-0.5 rounded-full shrink-0 leading-none">{pct.toFixed(1)}%</span>
-                          </div>
+              <div className="h-[260px] overflow-y-auto pr-1 space-y-2">
+                {mockTopBrands.map((brand: any, index: number) => {
+                  const pct = faturamentoAtual > 0 ? (brand.value / faturamentoAtual) * 100 : 0
+                  const rank = index + 1
+                  return (
+                    <div
+                      key={index}
+                      className="flex flex-col p-3 rounded-xl border border-divider bg-bg-secondary/20 transition-all hover:bg-bg-secondary/40"
+                    >
+                      <div className="flex justify-between items-center mb-1.5">
+                        <div className="flex items-center gap-2">
+                          {rank === 1 && <span className="text-lg shrink-0">🥇</span>}
+                          {rank === 2 && <span className="text-lg shrink-0">🥈</span>}
+                          {rank === 3 && <span className="text-lg shrink-0">🥉</span>}
+                          {rank > 3 && (
+                            <span className="text-[10px] font-extrabold text-text-muted bg-bg-secondary border border-divider w-5 h-5 rounded-full flex items-center justify-center shrink-0">
+                              {rank}
+                            </span>
+                          )}
+                          <span className="text-xs font-bold text-text-primary truncate max-w-[150px] sm:max-w-none">{brand.name}</span>
                         </div>
+                        <span className="text-xs font-bold text-text-primary font-mono">{formatBRL(brand.value)}</span>
                       </div>
-                    )
-                  })}
-                </div>
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 bg-bg-secondary h-1.5 rounded-full overflow-hidden">
+                          <div
+                            className="bg-brand-500 h-full rounded-full transition-all duration-500"
+                            style={{ width: `${pct}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-[9px] font-extrabold text-brand-500 bg-brand-500/10 px-1.5 py-0.5 rounded-full shrink-0 leading-none">
+                          {pct.toFixed(1)}%
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>
@@ -807,38 +817,43 @@ export default function VisaoEstrategicaV4() {
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="space-y-4">
-                <p className="text-xs text-text-secondary italic leading-relaxed border-l-2 border-brand-500 pl-3">
-                  {getGruposSummary()}
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[220px] overflow-y-auto pr-1">
-                  {mockTopGroups.map((grupo: any, index: number) => {
-                    const pct = faturamentoAtual > 0 ? (grupo.value / faturamentoAtual) * 100 : 0
-                    const rank = index + 1
-                    return (
-                      <div key={index} className="flex items-center gap-3 p-3 rounded-xl bg-bg-secondary/30 border border-divider hover:bg-bg-secondary transition-all relative overflow-hidden">
-                        {rank === 1 && <div className="w-8 h-8 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-lg shrink-0">🥇</div>}
-                        {rank === 2 && <div className="w-8 h-8 rounded-full bg-slate-400/10 border border-slate-400/30 flex items-center justify-center text-lg shrink-0">🥈</div>}
-                        {rank === 3 && <div className="w-8 h-8 rounded-full bg-amber-700/10 border border-amber-700/30 flex items-center justify-center text-lg shrink-0">🥉</div>}
-                        {rank > 3 && (
-                          <div className="w-8 h-8 rounded-full bg-bg-secondary border border-divider flex items-center justify-center text-[10px] font-extrabold text-text-muted shrink-0">
-                            #{String(rank).padStart(2, '0')}
-                          </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs font-bold text-text-primary truncate">{grupo.name}</div>
-                          <div className="text-[10px] font-semibold text-brand-500 font-mono mt-0.5">{formatBRL(grupo.value)}</div>
-                          <div className="flex items-center gap-1.5 mt-1.5">
-                            <div className="flex-1 bg-bg-secondary h-1 rounded-full overflow-hidden">
-                              <div className="bg-brand-500 h-full rounded-full" style={{ width: `${pct}%` }}></div>
-                            </div>
-                            <span className="text-[9px] font-extrabold text-brand-500 bg-brand-500/10 px-1.5 py-0.5 rounded-full shrink-0 leading-none">{pct.toFixed(1)}%</span>
-                          </div>
+              <div className="h-[260px] overflow-y-auto pr-1 space-y-2">
+                {mockTopGroups.map((grupo: any, index: number) => {
+                  const pct = faturamentoAtual > 0 ? (grupo.value / faturamentoAtual) * 100 : 0
+                  const rank = index + 1
+                  return (
+                    <div
+                      key={index}
+                      className="flex flex-col p-3 rounded-xl border border-divider bg-bg-secondary/20 transition-all hover:bg-bg-secondary/40"
+                    >
+                      <div className="flex justify-between items-center mb-1.5">
+                        <div className="flex items-center gap-2">
+                          {rank === 1 && <span className="text-lg shrink-0">🥇</span>}
+                          {rank === 2 && <span className="text-lg shrink-0">🥈</span>}
+                          {rank === 3 && <span className="text-lg shrink-0">🥉</span>}
+                          {rank > 3 && (
+                            <span className="text-[10px] font-extrabold text-text-muted bg-bg-secondary border border-divider w-5 h-5 rounded-full flex items-center justify-center shrink-0">
+                              {rank}
+                            </span>
+                          )}
+                          <span className="text-xs font-bold text-text-primary truncate max-w-[150px] sm:max-w-none">{grupo.name}</span>
                         </div>
+                        <span className="text-xs font-bold text-text-primary font-mono">{formatBRL(grupo.value)}</span>
                       </div>
-                    )
-                  })}
-                </div>
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 bg-bg-secondary h-1.5 rounded-full overflow-hidden">
+                          <div
+                            className="bg-brand-500 h-full rounded-full transition-all duration-500"
+                            style={{ width: `${pct}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-[9px] font-extrabold text-brand-500 bg-brand-500/10 px-1.5 py-0.5 rounded-full shrink-0 leading-none">
+                          {pct.toFixed(1)}%
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>
@@ -913,38 +928,43 @@ export default function VisaoEstrategicaV4() {
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="space-y-4">
-                <p className="text-xs text-text-secondary italic leading-relaxed border-l-2 border-brand-500 pl-3">
-                  {getCidadesSummary()}
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[220px] overflow-y-auto pr-1">
-                  {mockTopCities.map((city: any, index: number) => {
-                    const pct = faturamentoAtual > 0 ? (city.value / faturamentoAtual) * 100 : 0
-                    const rank = index + 1
-                    return (
-                      <div key={index} className="flex items-center gap-3 p-3 rounded-xl bg-bg-secondary/30 border border-divider hover:bg-bg-secondary transition-all relative overflow-hidden">
-                        {rank === 1 && <div className="w-8 h-8 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-lg shrink-0">🥇</div>}
-                        {rank === 2 && <div className="w-8 h-8 rounded-full bg-slate-400/10 border border-slate-400/30 flex items-center justify-center text-lg shrink-0">🥈</div>}
-                        {rank === 3 && <div className="w-8 h-8 rounded-full bg-amber-700/10 border border-amber-700/30 flex items-center justify-center text-lg shrink-0">🥉</div>}
-                        {rank > 3 && (
-                          <div className="w-8 h-8 rounded-full bg-bg-secondary border border-divider flex items-center justify-center text-[10px] font-extrabold text-text-muted shrink-0">
-                            #{String(rank).padStart(2, '0')}
-                          </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs font-bold text-text-primary truncate">{city.name}</div>
-                          <div className="text-[10px] font-semibold text-brand-500 font-mono mt-0.5">{formatBRL(city.value)}</div>
-                          <div className="flex items-center gap-1.5 mt-1.5">
-                            <div className="flex-1 bg-bg-secondary h-1 rounded-full overflow-hidden">
-                              <div className="bg-brand-500 h-full rounded-full" style={{ width: `${pct}%` }}></div>
-                            </div>
-                            <span className="text-[9px] font-extrabold text-brand-500 bg-brand-500/10 px-1.5 py-0.5 rounded-full shrink-0 leading-none">{pct.toFixed(1)}%</span>
-                          </div>
+              <div className="h-[280px] overflow-y-auto pr-1 space-y-2">
+                {mockTopCities.map((city: any, index: number) => {
+                  const pct = faturamentoAtual > 0 ? (city.value / faturamentoAtual) * 100 : 0
+                  const rank = index + 1
+                  return (
+                    <div
+                      key={index}
+                      className="flex flex-col p-3 rounded-xl border border-divider bg-bg-secondary/20 transition-all hover:bg-bg-secondary/40"
+                    >
+                      <div className="flex justify-between items-center mb-1.5">
+                        <div className="flex items-center gap-2">
+                          {rank === 1 && <span className="text-lg shrink-0">🥇</span>}
+                          {rank === 2 && <span className="text-lg shrink-0">🥈</span>}
+                          {rank === 3 && <span className="text-lg shrink-0">🥉</span>}
+                          {rank > 3 && (
+                            <span className="text-[10px] font-extrabold text-text-muted bg-bg-secondary border border-divider w-5 h-5 rounded-full flex items-center justify-center shrink-0">
+                              {rank}
+                            </span>
+                          )}
+                          <span className="text-xs font-bold text-text-primary truncate max-w-[150px] sm:max-w-none">{city.name}</span>
                         </div>
+                        <span className="text-xs font-bold text-text-primary font-mono">{formatBRL(city.value)}</span>
                       </div>
-                    )
-                  })}
-                </div>
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 bg-bg-secondary h-1.5 rounded-full overflow-hidden">
+                          <div
+                            className="bg-brand-500 h-full rounded-full transition-all duration-500"
+                            style={{ width: `${pct}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-[9px] font-extrabold text-brand-500 bg-brand-500/10 px-1.5 py-0.5 rounded-full shrink-0 leading-none">
+                          {pct.toFixed(1)}%
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>

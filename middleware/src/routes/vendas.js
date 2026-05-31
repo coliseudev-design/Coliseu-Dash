@@ -13,6 +13,7 @@ router.get('/faturadas', async (req, res, next) => {
         const period = req.query.period || '7d';
         const tenantId = req.tenant.id;
         const vendedorId = req.query.vendedor_id;
+        const { start_date, end_date } = req.query;
 
         // Âncora: usar MAX(data_venda) para bases sincronizadas do Firebird
         const { rows: anchorRows } = await db.query(
@@ -20,7 +21,7 @@ router.get('/faturadas', async (req, res, next) => {
             [tenantId]
         );
         const anchorDate = anchorRows[0].max_date ? new Date(anchorRows[0].max_date) : new Date();
-        const { start, end } = getPeriodRange(period, null, null, anchorDate);
+        const { start, end } = getPeriodRange(period, start_date, end_date, anchorDate);
 
         const salesFilter = cfopUtil.getSalesFilterClause('v');
         const vf = buildVendedorFilter(vendedorId, 4, 'v');
