@@ -176,7 +176,7 @@ export default function SalesIntelligenceDashboard() {
         if (b.valor !== a.valor) {
           return b.valor - a.valor;
         }
-        return b.dia.localeCompare(a.dia);
+        return (b.dia || '').localeCompare(a.dia || '');
       })
       .map((d, index) => {
         let formattedDate = d.dia;
