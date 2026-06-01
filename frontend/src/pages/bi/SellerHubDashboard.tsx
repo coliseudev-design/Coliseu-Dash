@@ -10,7 +10,7 @@ import {
   BarChart3, ArrowUpDown, Clock, Search, EyeOff, Tag
 } from 'lucide-react';
 import { 
-  ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, 
+  ResponsiveContainer, AreaChart, Area, BarChart, Bar, XAxis, YAxis, 
   CartesianGrid, Tooltip 
 } from 'recharts';
 import { formatBRL, formatNum, formatBRLCompact } from '../../utils/format';
@@ -54,8 +54,7 @@ export default function SellerHubDashboard() {
   const [invoiceStatusFilter, setInvoiceStatusFilter] = useState('TODOS');
   const [invoiceSortField, setInvoiceSortField] = useState<'numero' | 'data' | 'valor'>('data');
   const [invoiceSortOrder, setInvoiceSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 50;
+  const [visibleInvoicesCount, setVisibleInvoicesCount] = useState(50);
 
   // Set default seller when list loaded
   useEffect(() => {
@@ -78,9 +77,9 @@ export default function SellerHubDashboard() {
     activeFilter
   );
 
-  // Reset pagination when selected vendor, query, or filters change
+  // Reset pagination limit when selected vendor, query, or filters change
   useEffect(() => {
-    setCurrentPage(1);
+    setVisibleInvoicesCount(50);
   }, [selectedVendedor, globalFilter, clientQuery, invoiceStatusFilter]);
 
   // Safe metrics extraction
@@ -168,12 +167,10 @@ export default function SellerHubDashboard() {
     return Array.from(new Set(statuses)) as string[];
   }, [invoicesList]);
 
-  // Pagination compute
-  const totalPages = Math.ceil(sortedInvoices.length / itemsPerPage) || 1;
+  // Limit visible invoices to visibleInvoicesCount
   const currentInvoices = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
-    return sortedInvoices.slice(start, start + itemsPerPage);
-  }, [sortedInvoices, currentPage]);
+    return sortedInvoices.slice(0, visibleInvoicesCount);
+  }, [sortedInvoices, visibleInvoicesCount]);
 
   const handleInvoiceSort = (field: 'numero' | 'data' | 'valor') => {
     if (invoiceSortField === field) {
@@ -339,7 +336,7 @@ export default function SellerHubDashboard() {
             <Award size={15} className="text-brand-500" />
             <h4 className="text-[10px] font-bold text-text-primary uppercase tracking-wider">Top 15 Marcas</h4>
           </div>
-          <div className="flex-1 overflow-y-auto max-h-[220px] text-[11px] space-y-2 pr-1">
+          <div className="flex-1 overflow-y-auto max-h-[320px] text-[11px] space-y-2 pr-1">
             {topMarcas.map((m: any) => {
               const share = totalMarcasVal > 0 ? (m.value / totalMarcasVal) * 100 : 0;
               return (
@@ -370,7 +367,7 @@ export default function SellerHubDashboard() {
             <Users size={15} className="text-brand-500" />
             <h4 className="text-[10px] font-bold text-text-primary uppercase tracking-wider">Top 10 Clientes</h4>
           </div>
-          <div className="flex-1 overflow-y-auto max-h-[220px] text-[11px] space-y-2 pr-1">
+          <div className="flex-1 overflow-y-auto max-h-[320px] text-[11px] space-y-2 pr-1">
             {topClientes.map((c: any) => {
               const share = totalClientesVal > 0 ? (c.value / totalClientesVal) * 100 : 0;
               return (
@@ -401,7 +398,7 @@ export default function SellerHubDashboard() {
             <Box size={15} className="text-brand-500" />
             <h4 className="text-[10px] font-bold text-text-primary uppercase tracking-wider">Top 10 Grupos</h4>
           </div>
-          <div className="flex-1 overflow-y-auto max-h-[220px] text-[11px] space-y-2 pr-1">
+          <div className="flex-1 overflow-y-auto max-h-[320px] text-[11px] space-y-2 pr-1">
             {topGrupos.map((g: any) => {
               const share = totalGruposVal > 0 ? (g.value / totalGruposVal) * 100 : 0;
               return (
@@ -432,7 +429,7 @@ export default function SellerHubDashboard() {
             <Trophy size={15} className="text-brand-500" />
             <h4 className="text-[10px] font-bold text-text-primary uppercase tracking-wider">Top 10 Produtos</h4>
           </div>
-          <div className="flex-1 overflow-y-auto max-h-[220px] text-[11px] space-y-2 pr-1">
+          <div className="flex-1 overflow-y-auto max-h-[320px] text-[11px] space-y-2 pr-1">
             {topProdutos.map((p: any) => {
               const share = totalProdutosVal > 0 ? (p.value / totalProdutosVal) * 100 : 0;
               return (
@@ -540,7 +537,7 @@ export default function SellerHubDashboard() {
             </div>
           </div>
 
-          <div className="h-[240px] sm:h-[300px] w-full flex-1">
+          <div className="h-[220px] sm:h-[300px] lg:h-[360px] w-full flex-1">
             {isHistoricoEmpty ? (
               <div className="h-full flex flex-col items-center justify-center text-center p-6 border border-dashed border-border rounded-xl bg-bg-secondary/10">
                 <EyeOff size={32} className="text-text-muted mb-2 stroke-[1.5]" />
@@ -548,7 +545,13 @@ export default function SellerHubDashboard() {
               </div>
             ) : viewMode.historico === 'chart' ? (
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={historicoVendas} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
+                <AreaChart data={historicoVendas} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
+                  <defs>
+                    <linearGradient id="colorFaturamento" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#0D9488" stopOpacity={0.35}/>
+                      <stop offset="95%" stopColor="#0D9488" stopOpacity={0.01}/>
+                    </linearGradient>
+                  </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-divider)" opacity={0.3} />
                   <XAxis 
                     dataKey="dia" 
@@ -563,16 +566,18 @@ export default function SellerHubDashboard() {
                     tick={{ fontSize: 9, fill: 'var(--color-text-secondary)', fontWeight: 500 }}
                   />
                   <Tooltip content={<CustomTooltip />} />
-                  <Line 
+                  <Area 
                     type="monotone" 
                     dataKey="valor" 
                     name="Faturamento"
                     stroke="#0D9488" 
-                    strokeWidth={3}
-                    dot={{ r: 3, stroke: '#0D9488', strokeWidth: 1, fill: '#FFFFFF' }}
-                    activeDot={{ r: 5 }}
+                    strokeWidth={2.5}
+                    fillOpacity={1}
+                    fill="url(#colorFaturamento)"
+                    dot={{ r: 2.5, stroke: '#0D9488', strokeWidth: 1, fill: '#FFFFFF' }}
+                    activeDot={{ r: 4.5 }}
                   />
-                </LineChart>
+                </AreaChart>
               </ResponsiveContainer>
             ) : (
               <div className="space-y-4 h-full flex flex-col justify-between overflow-y-auto">
@@ -897,38 +902,21 @@ export default function SellerHubDashboard() {
           )}
         </div>
 
-        {/* PAGINATION PANEL */}
-        {totalPages > 1 && (
-          <div className="flex justify-between items-center mt-4 pt-4 border-t border-divider/20 text-xs">
-            <span className="text-[11px] text-text-secondary">
-              Mostrando {currentPage * itemsPerPage - itemsPerPage + 1}–{Math.min(currentPage * itemsPerPage, sortedInvoices.length)} de {sortedInvoices.length} pedidos
-            </span>
-            
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="p-1 rounded-md border border-divider hover:bg-bg-secondary disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
-                aria-label="Página anterior"
-              >
-                <ChevronLeft size={16} />
-              </button>
-              
-              <span className="font-semibold text-text-primary text-[11px]">
-                Pág {currentPage} de {totalPages}
-              </span>
-              
-              <button
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-                className="p-1 rounded-md border border-divider hover:bg-bg-secondary disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
-                aria-label="Próxima página"
-              >
-                <ChevronRight size={16} />
-              </button>
-            </div>
-          </div>
-        )}
+        {/* PAGINATION PANEL - CARREGAR MAIS */}
+        <div className="flex flex-col sm:flex-row justify-between items-center mt-4 pt-4 border-t border-divider/20 text-xs gap-3">
+          <span className="text-[11px] text-text-secondary">
+            Mostrando {Math.min(visibleInvoicesCount, sortedInvoices.length)} de {sortedInvoices.length} notas faturadas
+          </span>
+          
+          {visibleInvoicesCount < sortedInvoices.length && (
+            <button
+              onClick={() => setVisibleInvoicesCount(prev => prev + 50)}
+              className="px-6 py-2 bg-brand-500 hover:bg-brand-600 text-white rounded-lg text-xs font-bold transition-all duration-200 shadow-sm flex items-center gap-1.5 cursor-pointer scale-100 hover:scale-[1.02] active:scale-[0.98]"
+            >
+              Carregar Mais (+50)
+            </button>
+          )}
+        </div>
       </div>
 
       {isError && (

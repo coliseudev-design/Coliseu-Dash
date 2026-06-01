@@ -32,22 +32,22 @@ export default function PeriodFilter({ excludePeriods = [] }: Props) {
   }
 
   return (
-    <div className="w-full sm:w-auto sm:inline-block max-w-full min-w-0 sm:bg-bg-primary sm:rounded-xl sm:border sm:border-border sm:shadow-card sm:p-2 sm:px-3">
+    <div className="w-full sm:w-auto max-w-full min-w-0 bg-bg-primary rounded-xl border border-divider shadow-sm p-2 px-3">
       <div 
-        className="grid grid-cols-3 sm:flex items-center gap-1.5 sm:gap-2 sm:overflow-visible sm:flex-wrap pb-2 sm:pb-0 w-full" 
+        className="flex items-center gap-1.5 overflow-x-auto pb-0.5 sm:pb-0 w-full sm:flex-wrap scrollbar-none" 
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}
       >
         <style dangerouslySetInnerHTML={{__html: `::-webkit-scrollbar { display: none; }`}} />
-        <Calendar size={16} className="text-text-secondary ml-1 hidden sm:block flex-shrink-0" />
+        <Calendar size={15} className="text-text-secondary ml-1 hidden sm:block flex-shrink-0" />
         {PERIOD_OPTIONS.filter(opt => !excludePeriods.includes(opt.key)).map((opt) => (
           <button
             key={opt.key}
             onClick={() => handleClick(opt.key)}
             className={clsx(
-              'px-2 py-2 sm:py-1.5 rounded-lg text-[10.5px] sm:text-xs font-medium transition-all duration-300 whitespace-nowrap flex items-center justify-center flex-shrink-0',
+              'px-3 py-1.5 sm:py-1 rounded-lg text-xs font-semibold transition-all duration-200 whitespace-nowrap flex items-center justify-center flex-shrink-0 cursor-pointer',
               period === opt.key
-                ? 'bg-brand-500 text-white shadow-md scale-105'
-                : 'bg-bg-primary border border-border text-text-secondary hover:bg-bg-secondary active:bg-bg-tertiary shadow-sm',
+                ? 'bg-brand-500 text-white shadow-sm hover:bg-brand-600 scale-[1.02]'
+                : 'bg-bg-secondary text-text-secondary hover:text-text-primary border border-divider/60 hover:bg-bg-tertiary shadow-sm',
             )}
           >
             {opt.label}
@@ -55,21 +55,25 @@ export default function PeriodFilter({ excludePeriods = [] }: Props) {
         ))}
       </div>
       {showCustom && period === 'custom' && (
-        <div className="mt-3 flex items-center gap-2 flex-wrap">
-          <label className="text-xs text-text-secondary">De:</label>
-          <input
-            type="date"
-            className="input !py-1 !px-2 !text-xs !w-auto"
-            value={startDate || ''}
-            onChange={(e) => setCustomRange(e.target.value, endDate || e.target.value)}
-          />
-          <label className="text-xs text-text-secondary">Até:</label>
-          <input
-            type="date"
-            className="input !py-1 !px-2 !text-xs !w-auto"
-            value={endDate || ''}
-            onChange={(e) => setCustomRange(startDate || e.target.value, e.target.value)}
-          />
+        <div className="mt-3 pt-3 border-t border-divider/40 flex items-center gap-3 flex-wrap animate-in slide-in-from-top-1 duration-200">
+          <div className="flex items-center gap-1.5 flex-1 min-w-[120px]">
+            <span className="text-[10px] font-bold text-text-secondary uppercase">De:</span>
+            <input
+              type="date"
+              className="px-2.5 py-1.5 bg-bg-secondary border border-divider text-text-primary rounded-lg text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300 w-full cursor-pointer"
+              value={startDate || ''}
+              onChange={(e) => setCustomRange(e.target.value, endDate || e.target.value)}
+            />
+          </div>
+          <div className="flex items-center gap-1.5 flex-1 min-w-[120px]">
+            <span className="text-[10px] font-bold text-text-secondary uppercase">Até:</span>
+            <input
+              type="date"
+              className="px-2.5 py-1.5 bg-bg-secondary border border-divider text-text-primary rounded-lg text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300 w-full cursor-pointer"
+              value={endDate || ''}
+              onChange={(e) => setCustomRange(startDate || e.target.value, e.target.value)}
+            />
+          </div>
         </div>
       )}
     </div>
