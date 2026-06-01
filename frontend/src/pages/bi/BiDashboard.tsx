@@ -26,7 +26,7 @@ export default function BiDashboard() {
         
         <div className="flex items-center w-full sm:w-auto min-w-0">
           {!['/bi/abc', '/bi/customer-analytics', '/bi/goals', '/bi/heatmap', '/bi/comparative'].some(p => location.pathname.includes(p)) && (
-            <PeriodFilter />
+            <PeriodFilter excludePeriods={['yesterday']} />
           )}
         </div>
       </div>

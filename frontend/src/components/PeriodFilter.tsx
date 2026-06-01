@@ -32,7 +32,7 @@ export default function PeriodFilter({ excludePeriods = [] }: Props) {
   }
 
   return (
-    <div className="w-full sm:w-auto max-w-full min-w-0 bg-bg-secondary/40 border border-divider/50 rounded-2xl p-1.5 shadow-sm">
+    <div className="w-full sm:w-auto max-w-full min-w-0 bg-bg-secondary/40 border border-divider/50 rounded-2xl p-1.5 shadow-sm overflow-hidden">
       <div 
         className="flex items-center gap-1.5 overflow-x-auto w-full sm:flex-wrap scrollbar-none" 
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}
@@ -56,8 +56,9 @@ export default function PeriodFilter({ excludePeriods = [] }: Props) {
       {showCustom && period === 'custom' && (
         <div className="mt-3 pt-3 border-t border-divider/40 flex items-center gap-3 flex-wrap animate-in slide-in-from-top-1 duration-200">
           <div className="flex items-center gap-1.5 flex-1 min-w-[120px]">
-            <span className="text-[10px] font-bold text-text-secondary uppercase">De:</span>
+            <label htmlFor="start-date" className="text-[10px] font-bold text-text-secondary uppercase">De:</label>
             <input
+              id="start-date"
               type="date"
               className="px-2.5 py-1.5 bg-bg-secondary border border-divider text-text-primary rounded-lg text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300 w-full cursor-pointer"
               value={startDate || ''}
@@ -65,8 +66,9 @@ export default function PeriodFilter({ excludePeriods = [] }: Props) {
             />
           </div>
           <div className="flex items-center gap-1.5 flex-1 min-w-[120px]">
-            <span className="text-[10px] font-bold text-text-secondary uppercase">Até:</span>
+            <label htmlFor="end-date" className="text-[10px] font-bold text-text-secondary uppercase">Até:</label>
             <input
+              id="end-date"
               type="date"
               className="px-2.5 py-1.5 bg-bg-secondary border border-divider text-text-primary rounded-lg text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300 w-full cursor-pointer"
               value={endDate || ''}

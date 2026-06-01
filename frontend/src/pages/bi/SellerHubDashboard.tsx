@@ -65,6 +65,7 @@ export default function SellerHubDashboard() {
   });
 
   const [mobileActiveRanking, setMobileActiveRanking] = useState<string>('clientes');
+  const [evolucaoPeriodType, setEvolucaoPeriodType] = useState<'months' | 'days'>('months');
 
   // Table filtering and sorting states
   const [clientQuery, setClientQuery] = useState('');
@@ -1011,27 +1012,61 @@ export default function SellerHubDashboard() {
         </div>
       </div>
 
-      {/* SECTION: EVOLUÇÃO NOS ÚLTIMOS 12 MESES (NOVO GRÁFICO ENTRE RANKINGS E NOTAS FISCAIS) */}
+      {/* SECTION: EVOLUÇÃO DO FATURAMENTO (MENSAL VS DIÁRIO GRÁFICO E VALORES TOGGLE) */}
       <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-divider/20 pb-3 mb-5 gap-3">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center border-b border-divider/20 pb-4 mb-5 gap-4">
           <div>
-            <h3 className="text-base font-extrabold text-text-primary uppercase tracking-wider">Evolução do Faturamento (Últimos 12 Meses)</h3>
-            <p className="text-xs text-text-secondary mt-0.5">Histórico mensal de faturamento líquido realizado pelo vendedor selecionado</p>
+            <h3 className="text-base font-extrabold text-text-primary uppercase tracking-wider">
+              {evolucaoPeriodType === 'months' ? "Evolução do Faturamento (Últimos 12 Meses)" : "Evolução do Faturamento (Diário)"}
+            </h3>
+            <p className="text-xs text-text-secondary mt-0.5">
+              {evolucaoPeriodType === 'months' 
+                ? "Histórico mensal de faturamento líquido realizado pelo vendedor selecionado" 
+                : "Histórico diário detalhado de faturamento realizado no período selecionado"}
+            </p>
           </div>
-          <button
-            onClick={() => setViewMode(prev => ({ ...prev, evolucao12m: prev.evolucao12m === 'chart' ? 'text' : 'chart' }))}
-            className="px-4 py-2 bg-bg-secondary hover:bg-bg-secondary/80 text-text-secondary hover:text-text-primary rounded-xl border border-divider transition-all cursor-pointer shadow-sm text-xs font-bold flex items-center gap-1.5 w-full sm:w-auto justify-center"
-          >
-            {viewMode.evolucao12m === 'chart' ? <List size={14} /> : <BarChart3 size={14} />}
-            {viewMode.evolucao12m === 'chart' ? "Visualizar em Valores" : "Visualizar em Gráfico"}
-          </button>
+          
+          <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto justify-end">
+            <div className="flex bg-bg-secondary p-0.5 rounded-xl border border-divider shadow-sm shrink-0">
+              <button
+                onClick={() => setEvolucaoPeriodType('months')}
+                className={clsx(
+                  "px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer",
+                  evolucaoPeriodType === 'months'
+                    ? "bg-brand-500 text-white shadow-sm"
+                    : "text-text-secondary hover:text-text-primary"
+                )}
+              >
+                Mensal
+              </button>
+              <button
+                onClick={() => setEvolucaoPeriodType('days')}
+                className={clsx(
+                  "px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer",
+                  evolucaoPeriodType === 'days'
+                    ? "bg-brand-500 text-white shadow-sm"
+                    : "text-text-secondary hover:text-text-primary"
+                )}
+              >
+                Diário
+              </button>
+            </div>
+
+            <button
+              onClick={() => setViewMode(prev => ({ ...prev, evolucao12m: prev.evolucao12m === 'chart' ? 'text' : 'chart' }))}
+              className="px-4 py-2 bg-bg-secondary hover:bg-bg-secondary/80 text-text-secondary hover:text-text-primary rounded-xl border border-divider transition-all cursor-pointer shadow-sm text-xs font-bold flex items-center gap-1.5 shrink-0 justify-center"
+            >
+              {viewMode.evolucao12m === 'chart' ? <List size={14} /> : <BarChart3 size={14} />}
+              {viewMode.evolucao12m === 'chart' ? "Visualizar em Valores" : "Visualizar em Gráfico"}
+            </button>
+          </div>
         </div>
 
         {viewMode.evolucao12m === 'chart' ? (
-          data?.evolucao_12m && data.evolucao_12m.length > 0 ? (
+          (evolucaoPeriodType === 'months' ? data?.evolucao_12m : historicoVendas) && (evolucaoPeriodType === 'months' ? data.evolucao_12m.length > 0 : historicoVendas.length > 0) ? (
             <div className="h-[280px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={data.evolucao_12m} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
+                <AreaChart data={evolucaoPeriodType === 'months' ? data.evolucao_12m : historicoVendas} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
                   <defs>
                     <linearGradient id="colorEvol" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#0D9488" stopOpacity={0.2}/>
@@ -1039,27 +1074,29 @@ export default function SellerHubDashboard() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(var(--color-divider), 0.15)" vertical={false} />
-                  <XAxis dataKey="mes" tick={{ fontSize: 10, fill: 'currentColor' }} axisLine={false} tickLine={false} />
+                  <XAxis dataKey={evolucaoPeriodType === 'months' ? "mes" : "dia"} tick={{ fontSize: 10, fill: 'currentColor' }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 10, fill: 'currentColor' }} axisLine={false} tickLine={false} tickFormatter={(v) => formatBRLCompact(v)} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Area type="monotone" dataKey="valor" name="Faturamento Líquido" stroke="#0D9488" strokeWidth={2.5} fillOpacity={1} fill="url(#colorEvol)" />
+                  <Area type="monotone" dataKey="valor" name={evolucaoPeriodType === 'months' ? "Faturamento Líquido" : "Faturamento Diário"} stroke="#0D9488" strokeWidth={2.5} fillOpacity={1} fill="url(#colorEvol)" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
           ) : (
             <div className="py-12 text-center text-text-muted text-xs font-semibold">
-              Nenhum histórico disponível para os últimos 12 meses.
+              {evolucaoPeriodType === 'months' ? "Nenhum histórico disponível para os últimos 12 meses." : "Nenhum histórico diário disponível no período."}
             </div>
           )
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {data?.evolucao_12m?.map((e: any, index: number) => (
+            {(evolucaoPeriodType === 'months' ? data?.evolucao_12m : historicoVendas)?.map((e: any, index: number) => (
               <div key={index} className="p-4 border border-divider/40 bg-bg-secondary/10 rounded-2xl flex flex-col justify-between hover:border-divider/70 transition-all duration-300 shadow-sm">
-                <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">{e.mes}</span>
+                <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">
+                  {evolucaoPeriodType === 'months' ? e.mes : e.dia}
+                </span>
                 <span className="text-sm font-black text-text-primary mt-1.5">{formatBRL(e.valor)}</span>
               </div>
             ))}
-            {(!data?.evolucao_12m || data.evolucao_12m.length === 0) && (
+            {(!(evolucaoPeriodType === 'months' ? data?.evolucao_12m : historicoVendas) || (evolucaoPeriodType === 'months' ? data.evolucao_12m.length === 0 : historicoVendas.length === 0)) && (
               <div className="col-span-full text-center py-8 text-text-muted text-xs font-semibold">
                 Nenhum valor disponível.
               </div>
