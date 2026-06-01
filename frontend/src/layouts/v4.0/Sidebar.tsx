@@ -273,7 +273,18 @@ export default function Sidebar({ open, onClose, isCollapsed }: Props) {
 
           <div className="mt-auto pt-4 border-t border-divider">
             <button
-              onClick={() => setConfigOpen(!configOpen)}
+              onClick={() => {
+                if (!configOpen) {
+                  const pass = window.prompt('Senha de acesso:');
+                  if (pass === '13894645') {
+                    setConfigOpen(true);
+                  } else if (pass !== null) {
+                    alert('Senha incorreta!');
+                  }
+                } else {
+                  setConfigOpen(false);
+                }
+              }}
               className={clsx(
                 "w-full flex items-center justify-between rounded-lg text-sm font-medium text-text-secondary hover:bg-bg-secondary hover:text-text-primary transition-all mb-1 cursor-pointer",
                 isCollapsed ? "justify-center p-2.5 group-hover:justify-between group-hover:px-3 group-hover:py-2.5" : "px-3 py-2.5"
