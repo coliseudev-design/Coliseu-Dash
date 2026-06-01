@@ -11,7 +11,7 @@ FILES_TO_DEPLOY = [
     ('middleware/src/routes/bi.js', '/usr/src/app/src/routes/bi.js'),
 ]
 
-CONTAINER_NAME = 'dashboard-middleware-irerzifjwjb4q8ucbpfk2gb8-061236536325'
+CONTAINER_NAME = 'dashboard-middleware-irerzifjwjb4q8ucbpfk2gb8-062830265629'
 
 def run(client, cmd, label=""):
     print(f"\n>>> {label or cmd[:80]}")
