@@ -29,7 +29,10 @@ const getBiDateRange = async (req, tenantId) => {
     if (period && period !== 'custom') {
         const pr = getPeriodRange(period, null, null, anchorDate);
         // getPeriodRange retorna strings, precisamos converter para Date
-        return { start: new Date(pr.start), end: new Date(pr.end) };
+        return { 
+            start: new Date(pr.start.replace(' ', 'T')), 
+            end: new Date(pr.end.replace(' ', 'T')) 
+        };
     }
 
     let start = new Date(1970, 0, 1);

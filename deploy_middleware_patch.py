@@ -7,12 +7,11 @@ USER     = 'root'
 PASSWORD = '6EFBC!c0:wzr%Ij'
 
 FILES_TO_DEPLOY = [
-    ('middleware/src/utils/period.js', '/usr/src/app/src/utils/period.js'),
-    ('middleware/src/routes/ranking.js', '/usr/src/app/src/routes/ranking.js'),
-    ('middleware/src/routes/estatisticas.js', '/usr/src/app/src/routes/estatisticas.js'),
+    ('middleware/src/config/env.js', '/usr/src/app/src/config/env.js'),
+    ('middleware/src/routes/bi.js', '/usr/src/app/src/routes/bi.js'),
 ]
 
-CONTAINER_NAME = 'dashboard-middleware-irerzifjwjb4q8ucbpfk2gb8-190813305525'
+CONTAINER_NAME = 'dashboard-middleware-irerzifjwjb4q8ucbpfk2gb8-061236536325'
 
 def run(client, cmd, label=""):
     print(f"\n>>> {label or cmd[:80]}")

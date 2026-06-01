@@ -5,9 +5,10 @@ import { useState } from 'react'
 
 interface Props {
   excludePeriods?: PeriodKey[]
+  compact?: boolean
 }
 
-export default function PeriodFilter({ excludePeriods = [] }: Props) {
+export default function PeriodFilter({ excludePeriods = [], compact = false }: Props) {
   const period = usePeriodStore((s) => s.period)
   const startDate = usePeriodStore((s) => s.startDate)
   const endDate = usePeriodStore((s) => s.endDate)
@@ -32,14 +33,20 @@ export default function PeriodFilter({ excludePeriods = [] }: Props) {
   }
 
   return (
-    <div className="w-full sm:w-auto max-w-full min-w-0 bg-bg-secondary/40 border border-divider/50 rounded-2xl p-1.5 shadow-sm">
+    <div className={clsx(
+      "w-full sm:w-auto max-w-full min-w-0 bg-bg-secondary/40 border border-divider/50 shadow-sm",
+      compact ? "p-1 rounded-xl" : "p-1.5 rounded-2xl"
+    )}>
       <div className="flex flex-wrap items-center gap-1.5 w-full">
         {PERIOD_OPTIONS.filter(opt => !excludePeriods.includes(opt.key)).map((opt) => (
           <button
             key={opt.key}
             onClick={() => handleClick(opt.key)}
             className={clsx(
-              'px-4 py-2.5 sm:py-2 rounded-xl text-[11px] md:text-xs font-black tracking-wider uppercase transition-all duration-200 whitespace-nowrap flex items-center justify-center flex-shrink-0 cursor-pointer',
+              'font-black tracking-wider uppercase transition-all duration-200 whitespace-nowrap flex items-center justify-center flex-shrink-0 cursor-pointer',
+              compact 
+                ? 'px-2.5 py-1.5 text-[9px] rounded-lg' 
+                : 'px-4 py-2.5 sm:py-2 text-[11px] md:text-xs rounded-xl',
               period === opt.key
                 ? 'bg-brand-500 text-white shadow-lg shadow-brand-500/15 scale-[1.02]'
                 : 'bg-transparent text-text-secondary hover:text-text-primary hover:bg-bg-primary/40 border border-transparent active:scale-[0.98]',
