@@ -32,12 +32,8 @@ export default function PeriodFilter({ excludePeriods = [] }: Props) {
   }
 
   return (
-    <div className="w-full sm:w-auto max-w-full min-w-0 bg-bg-secondary/40 border border-divider/50 rounded-2xl p-1.5 shadow-sm overflow-hidden">
-      <div 
-        className="flex items-center gap-1.5 overflow-x-auto w-full sm:flex-wrap scrollbar-none" 
-        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}
-      >
-        <style dangerouslySetInnerHTML={{__html: `::-webkit-scrollbar { display: none; }`}} />
+    <div className="w-full sm:w-auto max-w-full min-w-0 bg-bg-secondary/40 border border-divider/50 rounded-2xl p-1.5 shadow-sm">
+      <div className="flex flex-wrap items-center gap-1.5 w-full">
         {PERIOD_OPTIONS.filter(opt => !excludePeriods.includes(opt.key)).map((opt) => (
           <button
             key={opt.key}
