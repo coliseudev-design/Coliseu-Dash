@@ -1813,6 +1813,47 @@ router.get('/seller/summary', async (req, res, next) => {
             valor: parseFloat(bestMonthRes.rows[0].total || 0)
         } : { mes: 'N/A', valor: 0 };
 
+        // 11. Evolução nos últimos 12 meses (Faturamento Líquido: Vendas - Devoluções)
+        const evol12mSales = await db.query(`
+            SELECT 
+                TO_CHAR(v.data_venda, 'MM/YYYY') AS mes_ano,
+                DATE_TRUNC('month', v.data_venda) AS mes_trunc,
+                COALESCE(SUM(v.valor_total), 0) AS total
+            FROM dash_vendas v
+            WHERE v.tenant_id = $1 
+              AND v.data_venda >= $2 AND v.data_venda <= $3
+              AND v.vendedor_id_firebird = $4
+              ${salesFilter}
+            GROUP BY 1, 2
+            ORDER BY mes_trunc ASC
+        `, [tenantId, toSafeSqlString(start12m), toSafeSqlString(end), vendedorId]);
+
+        const evol12mDev = await db.query(`
+            SELECT 
+                TO_CHAR(d.data_devolucao, 'MM/YYYY') AS mes_ano,
+                COALESCE(SUM(d.valor), 0) AS total
+            FROM dash_devolucoes d
+            LEFT JOIN dash_vendas v2 ON v2.id_firebird = d.venda_id_firebird AND v2.tenant_id = d.tenant_id
+            WHERE d.tenant_id = $1 
+              AND d.data_devolucao >= $2 AND d.data_devolucao <= $3
+              AND v2.vendedor_id_firebird = $4
+            GROUP BY 1
+        `, [tenantId, toSafeSqlString(start12m), toSafeSqlString(end), vendedorId]);
+
+        const evolucao_12m = evol12mSales.rows.map(s => {
+            const dev = evol12mDev.rows.find(d => d.mes_ano === s.mes_ano);
+            const devVal = dev ? parseFloat(dev.total || 0) : 0;
+            return {
+                mes: s.mes_ano,
+                valor: parseFloat(s.total || 0) - devVal
+            };
+        });
+
+        const padDate = (n) => String(n).padStart(2, '0');
+        const formatDateStr = (d) => `${padDate(d.getDate())}/${padDate(d.getMonth() + 1)}/${d.getFullYear()}`;
+        const start_date = formatDateStr(start);
+        const end_date = formatDateStr(end);
+
         res.json({
             faturamento,
             ticket_medio,
@@ -1834,7 +1875,10 @@ router.get('/seller/summary', async (req, res, next) => {
             vendas_por_dia_semana,
             heatmap_dados,
             notas_fiscais,
-            melhor_mes_12m
+            melhor_mes_12m,
+            evolucao_12m,
+            start_date,
+            end_date
         });
     } catch (err) { next(err); }
 });

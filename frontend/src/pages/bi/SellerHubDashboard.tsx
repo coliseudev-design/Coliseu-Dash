@@ -34,6 +34,12 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
+const formatPeriod = (s?: string, e?: string) => {
+  if (!s || !e) return '';
+  if (s === e) return s;
+  return `${s} a ${e}`;
+};
+
 const COLORS = ['#0D9488', '#0F766E', '#115E59', '#134E4A', '#14B8A6', '#2DD4BF', '#5EEAD4', '#99F6E4', '#CCFBF1', '#F0FDFA'];
 
 export default function SellerHubDashboard() {
@@ -48,10 +54,11 @@ export default function SellerHubDashboard() {
   // Toggles for charts & rankings
   const [viewMode, setViewMode] = useState<Record<string, 'chart' | 'text'>>({
     historico: 'chart',
-    diaSemana: 'chart'
+    diaSemana: 'chart',
+    evolucao12m: 'chart'
   });
 
-  const [rankingViews, setRankingViews] = useState<Record<string, 'list' | 'pie'>>({
+  const [rankingViews, setRankingViews] = useState<Record<string, 'list' | 'bar'>>({
     clientes: 'list',
     grupos: 'list',
     produtos: 'list'
@@ -231,6 +238,11 @@ export default function SellerHubDashboard() {
           <h2 className="text-xl font-extrabold text-text-primary flex items-center gap-2">
             <Activity className="text-brand-500" size={22} />
             Hub do Vendedor
+            {data?.start_date && (
+              <span className="text-xs font-semibold text-text-secondary">
+                ({formatPeriod(data.start_date, data.end_date)})
+              </span>
+            )}
           </h2>
           <p className="text-[11px] sm:text-xs text-text-secondary">Consulta consolidada de faturamento e desempenho comercial realizado</p>
         </div>
@@ -402,12 +414,12 @@ export default function SellerHubDashboard() {
       <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-5">
         <div className="border-b border-divider/20 pb-3 mb-4">
           <h3 className="text-sm font-bold text-text-primary uppercase tracking-wider">Desempenho por Marca</h3>
-          <p className="text-[11px] text-text-secondary mt-0.5">Distribuição e representação de faturamento realizado por marca (sem metas)</p>
+          <p className="text-[11px] text-text-secondary mt-0.5">Distribuição e representação de faturamento realizado por marca</p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           {topMarcas.slice(0, 8).map((m: any) => {
-            const relPct = maxBrandValue > 0 ? (m.value / maxBrandValue) * 100 : 0;
+            const brandPct = totalMarcasVal > 0 ? (m.value / totalMarcasVal) * 100 : 0;
 
             return (
               <div key={m.rank} className="border border-divider/20 rounded-lg p-3.5 bg-bg-secondary/20 flex flex-col justify-between hover:border-divider transition-all duration-300">
@@ -416,17 +428,16 @@ export default function SellerHubDashboard() {
                     {m.name}
                   </span>
                   <span className="text-[10px] font-bold text-brand-500">
-                    {relPct.toFixed(1)}%
+                    {brandPct.toFixed(1)}%
                   </span>
                 </div>
                 
                 <div className="w-full bg-bg-secondary h-1.5 rounded-full mt-2.5 overflow-hidden">
-                  <div className="bg-brand-500 h-full rounded-full" style={{ width: `${relPct}%` }}></div>
+                  <div className="bg-brand-500 h-full rounded-full" style={{ width: `${brandPct}%` }}></div>
                 </div>
 
                 <div className="flex justify-between items-center text-[10px] text-text-secondary font-medium mt-3 leading-none">
                   <span>Realizado: <span className="font-bold text-text-primary">{formatBRLCompact(m.value)}</span></span>
-                  <span className="text-text-muted/75 font-semibold">{relPct === 100 ? 'Líder' : 'do líder'}</span>
                 </div>
               </div>
             );
@@ -449,11 +460,11 @@ export default function SellerHubDashboard() {
               <h4 className="text-[10px] font-bold text-text-primary uppercase tracking-wider">Top 10 Clientes</h4>
             </div>
             <button
-              onClick={() => setRankingViews(prev => ({ ...prev, clientes: prev.clientes === 'list' ? 'pie' : 'list' }))}
+              onClick={() => setRankingViews(prev => ({ ...prev, clientes: prev.clientes === 'list' ? 'bar' : 'list' }))}
               className="p-1 bg-bg-secondary hover:bg-bg-secondary/80 text-text-secondary hover:text-text-primary rounded-lg border border-divider transition-all cursor-pointer shadow-sm shrink-0"
-              title={rankingViews.clientes === 'list' ? "Ver Gráfico de Pizza" : "Ver Lista"}
+              title={rankingViews.clientes === 'list' ? "Ver Gráfico de Barras" : "Ver Lista"}
             >
-              {rankingViews.clientes === 'list' ? <PieIcon size={13} /> : <List size={13} />}
+              {rankingViews.clientes === 'list' ? <BarChart3 size={13} /> : <List size={13} />}
             </button>
           </div>
           
@@ -484,25 +495,29 @@ export default function SellerHubDashboard() {
               </div>
             ) : (
               topClientes.length > 0 ? (
-                <div className="h-[260px] w-full flex items-center justify-center py-2">
+                <div className="h-[260px] w-full flex items-center justify-center py-2 pr-4">
                   <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={topClientes}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={50}
-                        outerRadius={75}
-                        paddingAngle={2}
-                        dataKey="value"
-                        nameKey="name"
-                      >
-                        {topClientes.map((entry: any, index: number) => (
+                    <BarChart
+                      data={topClientes.slice(0, 5)}
+                      layout="vertical"
+                      margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
+                    >
+                      <XAxis type="number" hide />
+                      <YAxis 
+                        dataKey="name" 
+                        type="category" 
+                        width={90} 
+                        tick={{ fontSize: 9, fill: 'currentColor' }} 
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Bar dataKey="value" fill="#0D9488" radius={[0, 4, 4, 0]}>
+                        {topClientes.slice(0, 5).map((entry: any, index: number) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
-                      </Pie>
-                      <Tooltip content={<CustomTooltip />} />
-                    </PieChart>
+                      </Bar>
+                    </BarChart>
                   </ResponsiveContainer>
                 </div>
               ) : (
@@ -523,11 +538,11 @@ export default function SellerHubDashboard() {
               <h4 className="text-[10px] font-bold text-text-primary uppercase tracking-wider">Top 10 Grupos</h4>
             </div>
             <button
-              onClick={() => setRankingViews(prev => ({ ...prev, grupos: prev.grupos === 'list' ? 'pie' : 'list' }))}
+              onClick={() => setRankingViews(prev => ({ ...prev, grupos: prev.grupos === 'list' ? 'bar' : 'list' }))}
               className="p-1 bg-bg-secondary hover:bg-bg-secondary/80 text-text-secondary hover:text-text-primary rounded-lg border border-divider transition-all cursor-pointer shadow-sm shrink-0"
-              title={rankingViews.grupos === 'list' ? "Ver Gráfico de Pizza" : "Ver Lista"}
+              title={rankingViews.grupos === 'list' ? "Ver Gráfico de Barras" : "Ver Lista"}
             >
-              {rankingViews.grupos === 'list' ? <PieIcon size={13} /> : <List size={13} />}
+              {rankingViews.grupos === 'list' ? <BarChart3 size={13} /> : <List size={13} />}
             </button>
           </div>
           
@@ -558,25 +573,29 @@ export default function SellerHubDashboard() {
               </div>
             ) : (
               topGrupos.length > 0 ? (
-                <div className="h-[260px] w-full flex items-center justify-center py-2">
+                <div className="h-[260px] w-full flex items-center justify-center py-2 pr-4">
                   <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={topGrupos}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={50}
-                        outerRadius={75}
-                        paddingAngle={2}
-                        dataKey="value"
-                        nameKey="name"
-                      >
-                        {topGrupos.map((entry: any, index: number) => (
+                    <BarChart
+                      data={topGrupos.slice(0, 5)}
+                      layout="vertical"
+                      margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
+                    >
+                      <XAxis type="number" hide />
+                      <YAxis 
+                        dataKey="name" 
+                        type="category" 
+                        width={90} 
+                        tick={{ fontSize: 9, fill: 'currentColor' }} 
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Bar dataKey="value" fill="#0D9488" radius={[0, 4, 4, 0]}>
+                        {topGrupos.slice(0, 5).map((entry: any, index: number) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
-                      </Pie>
-                      <Tooltip content={<CustomTooltip />} />
-                    </PieChart>
+                      </Bar>
+                    </BarChart>
                   </ResponsiveContainer>
                 </div>
               ) : (
@@ -597,11 +616,11 @@ export default function SellerHubDashboard() {
               <h4 className="text-[10px] font-bold text-text-primary uppercase tracking-wider">Top 10 Produtos</h4>
             </div>
             <button
-              onClick={() => setRankingViews(prev => ({ ...prev, produtos: prev.produtos === 'list' ? 'pie' : 'list' }))}
+              onClick={() => setRankingViews(prev => ({ ...prev, produtos: prev.produtos === 'list' ? 'bar' : 'list' }))}
               className="p-1 bg-bg-secondary hover:bg-bg-secondary/80 text-text-secondary hover:text-text-primary rounded-lg border border-divider transition-all cursor-pointer shadow-sm shrink-0"
-              title={rankingViews.produtos === 'list' ? "Ver Gráfico de Pizza" : "Ver Lista"}
+              title={rankingViews.produtos === 'list' ? "Ver Gráfico de Barras" : "Ver Lista"}
             >
-              {rankingViews.produtos === 'list' ? <PieIcon size={13} /> : <List size={13} />}
+              {rankingViews.produtos === 'list' ? <BarChart3 size={13} /> : <List size={13} />}
             </button>
           </div>
           
@@ -632,25 +651,29 @@ export default function SellerHubDashboard() {
               </div>
             ) : (
               topProdutos.length > 0 ? (
-                <div className="h-[260px] w-full flex items-center justify-center py-2">
+                <div className="h-[260px] w-full flex items-center justify-center py-2 pr-4">
                   <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={topProdutos}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={50}
-                        outerRadius={75}
-                        paddingAngle={2}
-                        dataKey="value"
-                        nameKey="name"
-                      >
-                        {topProdutos.map((entry: any, index: number) => (
+                    <BarChart
+                      data={topProdutos.slice(0, 5)}
+                      layout="vertical"
+                      margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
+                    >
+                      <XAxis type="number" hide />
+                      <YAxis 
+                        dataKey="name" 
+                        type="category" 
+                        width={90} 
+                        tick={{ fontSize: 9, fill: 'currentColor' }} 
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Bar dataKey="value" fill="#0D9488" radius={[0, 4, 4, 0]}>
+                        {topProdutos.slice(0, 5).map((entry: any, index: number) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
-                      </Pie>
-                      <Tooltip content={<CustomTooltip />} />
-                    </PieChart>
+                      </Bar>
+                    </BarChart>
                   </ResponsiveContainer>
                 </div>
               ) : (
@@ -662,6 +685,63 @@ export default function SellerHubDashboard() {
             )}
           </div>
         </div>
+      </div>
+
+      {/* SECTION: EVOLUÇÃO NOS ÚLTIMOS 12 MESES (NOVO GRÁFICO ENTRE RANKINGS E NOTAS FISCAIS) */}
+      <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-5">
+        <div className="flex justify-between items-center border-b border-divider/20 pb-3 mb-4">
+          <div>
+            <h3 className="text-sm font-bold text-text-primary uppercase tracking-wider">Evolução do Faturamento (Últimos 12 Meses)</h3>
+            <p className="text-[11px] text-text-secondary mt-0.5">Histórico mensal de faturamento líquido realizado pelo vendedor selecionado</p>
+          </div>
+          <button
+            onClick={() => setViewMode(prev => ({ ...prev, evolucao12m: prev.evolucao12m === 'chart' ? 'text' : 'chart' }))}
+            className="px-3 py-1.5 bg-bg-secondary hover:bg-bg-secondary/80 text-text-secondary hover:text-text-primary rounded-lg border border-divider transition-all cursor-pointer shadow-sm text-xs font-semibold flex items-center gap-1.5"
+          >
+            {viewMode.evolucao12m === 'chart' ? <List size={13} /> : <BarChart3 size={13} />}
+            {viewMode.evolucao12m === 'chart' ? "Visualizar em Valores" : "Visualizar em Gráfico"}
+          </button>
+        </div>
+
+        {viewMode.evolucao12m === 'chart' ? (
+          data?.evolucao_12m && data.evolucao_12m.length > 0 ? (
+            <div className="h-[260px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={data.evolucao_12m} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
+                  <defs>
+                    <linearGradient id="colorEvol" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#0D9488" stopOpacity={0.2}/>
+                      <stop offset="95%" stopColor="#0D9488" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(var(--color-divider), 0.15)" vertical={false} />
+                  <XAxis dataKey="mes" tick={{ fontSize: 10, fill: 'currentColor' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: 'currentColor' }} axisLine={false} tickLine={false} tickFormatter={(v) => formatBRLCompact(v)} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Area type="monotone" dataKey="valor" name="Faturamento Líquido" stroke="#0D9488" strokeWidth={2.5} fillOpacity={1} fill="url(#colorEvol)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="py-12 text-center text-text-muted text-xs">
+              Nenhum histórico disponível para os últimos 12 meses.
+            </div>
+          )
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            {data?.evolucao_12m?.map((e: any, index: number) => (
+              <div key={index} className="p-3 border border-divider/40 bg-bg-secondary/10 rounded-xl flex flex-col justify-between hover:border-divider/70 transition-all duration-300">
+                <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">{e.mes}</span>
+                <span className="text-sm font-black text-text-primary mt-1">{formatBRL(e.valor)}</span>
+              </div>
+            ))}
+            {(!data?.evolucao_12m || data.evolucao_12m.length === 0) && (
+              <div className="col-span-6 text-center py-6 text-text-muted text-xs">
+                Nenhum valor disponível.
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* SECTION: NOTAS FISCAIS DO VENDEDOR (PAGINATION 50-BY-50, SEARCH BY CLIENT & COLUMN SORTING) */}
