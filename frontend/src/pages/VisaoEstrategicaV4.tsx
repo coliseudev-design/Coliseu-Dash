@@ -12,7 +12,7 @@ import { useBranchPeriodQuery } from '../hooks/useApi'
 import PeriodFilter from '../components/PeriodFilter'
 import { usePeriodStore, PERIOD_OPTIONS } from '../store/periodStore'
 import { formatBRL, formatBRLCompact, formatNum } from '../utils/format'
-import { CHART_COLORS } from '../utils/chartColors'
+import { CHART_COLORS, CHART_PALETTE } from '../utils/chartColors'
 import clsx from 'clsx'
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -50,14 +50,15 @@ const ComparisonBadge = ({ pct }: { pct: number }) => {
 
 export default function VisaoEstrategicaV4() {
   const [isMobile, setIsMobile] = useState(false);
-  const [faturamentoPeriod, setFaturamentoPeriod] = useState<'7D' | '30D' | '90D' | 'Tudo'>('Tudo')
   const [faturamentoGroupBy, setFaturamentoGroupBy] = useState<'dia' | 'mes'>('mes')
   const [viewMode, setViewMode] = useState<Record<string, 'chart' | 'text'>>({
-    vendedores: 'chart',
-    marcas: 'chart',
-    grupos: 'chart',
-    cidades: 'chart',
     faturamento: 'chart',
+  })
+  const [rankingViews, setRankingViews] = useState<Record<string, 'list' | 'bar'>>({
+    marcas: 'list',
+    grupos: 'list',
+    cidades: 'list',
+    clientes: 'list'
   })
 
   // Filter States
@@ -179,7 +180,16 @@ export default function VisaoEstrategicaV4() {
 
   const totalVendedores = vd.data?.data?.length || 0;
   const mediaPorVendedor = totalVendedores > 0 ? faturamentoAtual / totalVendedores : 0;
-  const cidadeLider = mockTopCities[0]?.name || '—';
+  
+  const cidadeLiderObj = useMemo(() => {
+    if (mockTopCities.length === 0) return null;
+    return mockTopCities[0];
+  }, [mockTopCities]);
+
+  const bestBrand = useMemo(() => {
+    if (mockTopBrands.length === 0) return null;
+    return mockTopBrands[0];
+  }, [mockTopBrands]);
 
   // Faturamento chart processing
   const faturamentoPeriodoData = fatMes.data?.data && fatMes.data.data.length > 0 
@@ -195,22 +205,9 @@ export default function VisaoEstrategicaV4() {
         { data: 'Ago', total: 240116 },
       ];
 
-  const filteredFaturamentoData = useMemo(() => {
-    if (faturamentoPeriod === '7D') {
-      return faturamentoPeriodoData.slice(-7);
-    }
-    if (faturamentoPeriod === '30D') {
-      return faturamentoPeriodoData.slice(-30);
-    }
-    if (faturamentoPeriod === '90D') {
-      return faturamentoPeriodoData.slice(-90);
-    }
-    return faturamentoPeriodoData;
-  }, [faturamentoPeriodoData, faturamentoPeriod]);
-
   const groupedFaturamentoData = useMemo(() => {
     if (faturamentoGroupBy === 'dia') {
-      return filteredFaturamentoData.map((item: any) => {
+      return faturamentoPeriodoData.map((item: any) => {
         let label = item.data;
         if (label && label.includes('-')) {
           const parts = label.split('-');
@@ -226,7 +223,7 @@ export default function VisaoEstrategicaV4() {
     } else {
       const groups: Record<string, { key: string; label: string; total: number }> = {};
       
-      filteredFaturamentoData.forEach((item: any) => {
+      faturamentoPeriodoData.forEach((item: any) => {
         let monthKey = '';
         let monthLabel = '';
         
@@ -272,7 +269,7 @@ export default function VisaoEstrategicaV4() {
           total: g.total
         }));
     }
-  }, [filteredFaturamentoData, faturamentoGroupBy]);
+  }, [faturamentoPeriodoData, faturamentoGroupBy]);
 
   const maxPeriodVal = useMemo(() => {
     if (groupedFaturamentoData.length === 0) return 1;
@@ -323,19 +320,19 @@ export default function VisaoEstrategicaV4() {
           <p className="text-xs text-text-secondary mt-1">Análise estratégica de vendas, clientes, cidades, marcas e vendedores no período selecionado.</p>
         </div>
         <div className="hidden lg:flex items-center gap-3">
-          <PeriodFilter />
+          <PeriodFilter excludePeriods={['yesterday']} />
         </div>
       </div>
 
       {/* 2. BARRA DE FILTROS (PASSO 3) */}
       {/* Desktop Filter Bar */}
-      <div className="hidden lg:flex items-center gap-4 bg-bg-primary border border-divider shadow-sm rounded-xl p-4 flex-wrap">
-        <div className="flex flex-col gap-1 min-w-[200px] flex-1">
-          <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Vendedor</span>
+      <div className="hidden lg:flex items-center gap-4 bg-bg-primary border border-divider shadow-sm rounded-2xl p-5 flex-wrap">
+        <div className="flex flex-col gap-1.5 min-w-[220px] flex-1">
+          <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider pl-1">Vendedor</span>
           <select
             value={selectedVendedor}
             onChange={(e) => setSelectedVendedor(e.target.value)}
-            className="px-2.5 py-1.5 bg-bg-secondary border border-divider text-text-primary rounded-lg text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-brand-500 w-full cursor-pointer"
+            className="h-12 px-4 bg-bg-secondary border border-divider text-text-primary rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all duration-300 w-full cursor-pointer shadow-sm"
           >
             <option value="">Todos os Vendedores</option>
             {vdFull.data?.data?.map((v: any) => (
@@ -344,12 +341,12 @@ export default function VisaoEstrategicaV4() {
           </select>
         </div>
 
-        <div className="flex flex-col gap-1 min-w-[200px] flex-1">
-          <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Marca</span>
+        <div className="flex flex-col gap-1.5 min-w-[220px] flex-1">
+          <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider pl-1">Marca</span>
           <select
             value={selectedMarca}
             onChange={(e) => setSelectedMarca(e.target.value)}
-            className="px-2.5 py-1.5 bg-bg-secondary border border-divider text-text-primary rounded-lg text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-brand-500 w-full cursor-pointer"
+            className="h-12 px-4 bg-bg-secondary border border-divider text-text-primary rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all duration-300 w-full cursor-pointer shadow-sm"
           >
             <option value="">Todas as Marcas</option>
             {marcasFull.data?.data?.map((m: any, idx: number) => (
@@ -358,12 +355,12 @@ export default function VisaoEstrategicaV4() {
           </select>
         </div>
 
-        <div className="flex flex-col gap-1 min-w-[200px] flex-1">
-          <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Cidade</span>
+        <div className="flex flex-col gap-1.5 min-w-[220px] flex-1">
+          <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider pl-1">Cidade</span>
           <select
             value={selectedCidade}
             onChange={(e) => setSelectedCidade(e.target.value)}
-            className="px-2.5 py-1.5 bg-bg-secondary border border-divider text-text-primary rounded-lg text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-brand-500 w-full cursor-pointer"
+            className="h-12 px-4 bg-bg-secondary border border-divider text-text-primary rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all duration-300 w-full cursor-pointer shadow-sm"
           >
             <option value="">Todas as Cidades</option>
             {cidadesFull.data?.data?.map((c: any, idx: number) => (
@@ -379,7 +376,7 @@ export default function VisaoEstrategicaV4() {
               setSelectedMarca('')
               setSelectedCidade('')
             }}
-            className="mt-5 px-4 py-1.5 text-xs font-bold text-danger hover:text-danger-hover border border-danger/25 hover:border-danger/45 bg-danger/5 rounded-lg cursor-pointer transition-all shrink-0"
+            className="mt-5 h-12 px-6 text-xs font-black uppercase tracking-wider text-danger hover:text-white border border-danger hover:bg-danger bg-transparent rounded-2xl cursor-pointer transition-all duration-200 shrink-0 shadow-sm flex items-center justify-center"
           >
             Limpar Filtros
           </button>
@@ -420,7 +417,7 @@ export default function VisaoEstrategicaV4() {
               {/* Period Filter container */}
               <div className="space-y-2">
                 <span className="text-[10px] font-extrabold text-text-secondary uppercase tracking-wider block">Período</span>
-                <PeriodFilter />
+                <PeriodFilter excludePeriods={['yesterday']} />
               </div>
 
               {/* Vendedor filter */}
@@ -429,7 +426,7 @@ export default function VisaoEstrategicaV4() {
                 <select
                   value={selectedVendedor}
                   onChange={(e) => setSelectedVendedor(e.target.value)}
-                  className="px-3 py-2 bg-bg-secondary border border-divider text-text-primary rounded-xl text-xs font-bold focus:outline-none focus:ring-1 focus:ring-brand-500 w-full cursor-pointer"
+                  className="h-12 px-4 bg-bg-secondary border border-divider text-text-primary rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 w-full cursor-pointer shadow-sm"
                 >
                   <option value="">Todos os Vendedores</option>
                   {vdFull.data?.data?.map((v: any) => (
@@ -444,7 +441,7 @@ export default function VisaoEstrategicaV4() {
                 <select
                   value={selectedMarca}
                   onChange={(e) => setSelectedMarca(e.target.value)}
-                  className="px-3 py-2 bg-bg-secondary border border-divider text-text-primary rounded-xl text-xs font-bold focus:outline-none focus:ring-1 focus:ring-brand-500 w-full cursor-pointer"
+                  className="h-12 px-4 bg-bg-secondary border border-divider text-text-primary rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 w-full cursor-pointer shadow-sm"
                 >
                   <option value="">Todas as Marcas</option>
                   {marcasFull.data?.data?.map((m: any, idx: number) => (
@@ -459,7 +456,7 @@ export default function VisaoEstrategicaV4() {
                 <select
                   value={selectedCidade}
                   onChange={(e) => setSelectedCidade(e.target.value)}
-                  className="px-3 py-2 bg-bg-secondary border border-divider text-text-primary rounded-xl text-xs font-bold focus:outline-none focus:ring-1 focus:ring-brand-500 w-full cursor-pointer"
+                  className="h-12 px-4 bg-bg-secondary border border-divider text-text-primary rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 w-full cursor-pointer shadow-sm"
                 >
                   <option value="">Todas as Cidades</option>
                   {cidadesFull.data?.data?.map((c: any, idx: number) => (
@@ -477,13 +474,13 @@ export default function VisaoEstrategicaV4() {
                   setSelectedCidade('')
                   setShowMobileFilters(false)
                 }}
-                className="w-full py-2 border border-divider text-text-secondary rounded-xl text-xs font-bold bg-bg-primary hover:bg-bg-secondary cursor-pointer transition-all"
+                className="w-full h-12 border border-divider text-text-secondary rounded-2xl text-xs font-bold bg-bg-primary hover:bg-bg-secondary cursor-pointer transition-all flex items-center justify-center"
               >
                 Limpar Todos
               </button>
               <button
                 onClick={() => setShowMobileFilters(false)}
-                className="w-full py-2.5 bg-brand-500 hover:bg-brand-600 text-white rounded-xl text-xs font-bold shadow-sm cursor-pointer transition-all"
+                className="w-full h-12 bg-brand-500 hover:bg-brand-600 text-white rounded-2xl text-xs font-bold shadow-sm cursor-pointer transition-all flex items-center justify-center"
               >
                 Aplicar Filtros
               </button>
@@ -491,91 +488,56 @@ export default function VisaoEstrategicaV4() {
           </div>
         </div>
       )}
+        {/* 3. PRIMEIRA LINHA SOMENTE COM CARD DE FATURAMENTO DESTACADO (PASSO 4 REDESIGN) */}
+      <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-6 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6 hover:shadow-card-hover transition-all duration-300">
+        {/* Left brand border decoration */}
+        <div className="absolute top-0 bottom-0 left-0 w-[6px] bg-brand-500"></div>
 
-      {/* 3. PRIMEIRA LINHA SOMENTE COM CARD DE FATURAMENTO (PASSO 4) */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {/* Card 1: Faturamento do Período */}
-        <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-6 relative overflow-hidden flex flex-col justify-between min-h-[140px]">
-          <div className="absolute top-0 left-0 w-full h-[3px] bg-brand-500"></div>
-          <div className="flex justify-between items-start">
-            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Faturamento do Período</span>
-            <div className="p-1.5 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
-              <DollarSign size={16} />
-            </div>
+        {/* Current Faturamento Card Content */}
+        <div className="flex items-center gap-5 flex-1 w-full">
+          <div className="p-4 bg-brand-500/10 text-brand-500 rounded-2xl shrink-0 shadow-sm">
+            <DollarSign size={32} className="stroke-[2.5]" />
           </div>
-          <div className="my-2">
-            <div className="text-2xl font-black text-text-primary tracking-tight">
+          <div className="space-y-1">
+            <span className="text-xs font-bold text-text-secondary uppercase tracking-widest block">Faturamento do Período</span>
+            <div className="text-2xl sm:text-3xl md:text-4xl font-black text-text-primary tracking-tight leading-none">
               {formatBRL(faturamentoAtual)}
             </div>
-          </div>
-          <div className="space-y-1.5 mt-auto">
-            <div className="flex items-center gap-1.5">
-              <ComparisonBadge pct={faturamentoCrescimento} />
-              <span className="text-[10px] text-text-muted font-semibold">vs. período anterior</span>
-            </div>
-            {ov.data?.meta_total > 0 && faturamentoAtual < ov.data.meta_total && (
-              <span className="text-[9px] font-bold text-brand-600 block">
-                Faltam {(((ov.data.meta_total - faturamentoAtual) / ov.data.meta_total) * 100).toFixed(1)}% para atingir a meta
-              </span>
-            )}
+            <span className="text-xs text-text-muted font-medium block">Período selecionado</span>
           </div>
         </div>
 
-        {/* Card 2: Últimos 30 Dias */}
-        <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-6 relative overflow-hidden flex flex-col justify-between min-h-[140px]">
-          <div className="absolute top-0 left-0 w-full h-[3px] bg-brand-500"></div>
-          <div className="flex justify-between items-start">
-            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Últimos 30 Dias</span>
-            <div className="p-1.5 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
-              <Calendar size={16} />
-            </div>
-          </div>
-          <div className="my-2">
-            <div className="text-2xl font-black text-text-primary tracking-tight">
-              {formatBRL(faturamento30)}
-            </div>
-          </div>
-          <div className="space-y-1.5 mt-auto">
-            <div className="flex items-center gap-1.5">
-              <ComparisonBadge pct={faturamento30Crescimento} />
-              <span className="text-[10px] text-text-muted font-semibold">vs. 30d anteriores</span>
-            </div>
-            <span className="text-[9px] text-text-muted font-bold block">
-              Representa {faturamentoAtual > 0 ? ((faturamento30 / faturamentoAtual) * 100).toFixed(1) : '0.0'}% do total
-            </span>
-          </div>
+        {/* Center: Comparison Arrow & Percentage Inline */}
+        <div className="flex flex-col items-center justify-center shrink-0 py-3 px-5 rounded-2xl bg-bg-secondary border border-divider shadow-sm w-full md:w-auto">
+          <span className={clsx(
+            "text-sm font-black flex items-center gap-1.5",
+            faturamentoCrescimento >= 0 ? "text-blue-500" : "text-danger"
+          )}>
+            {faturamentoCrescimento >= 0 ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
+            {faturamentoCrescimento >= 0 ? "+" : ""}{faturamentoCrescimento.toFixed(1)}%
+          </span>
+          <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider mt-0.5">vs. mês anterior</span>
         </div>
 
-        {/* Card 3: Últimos 60 Dias */}
-        <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-6 relative overflow-hidden flex flex-col justify-between min-h-[140px]">
-          <div className="absolute top-0 left-0 w-full h-[3px] bg-brand-500"></div>
-          <div className="flex justify-between items-start">
-            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Últimos 60 Dias</span>
-            <div className="p-1.5 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
-              <Briefcase size={16} />
+        {/* Previous Month Faturamento Card Content */}
+        <div className="flex items-center gap-5 flex-1 md:justify-end text-left md:text-right w-full">
+          <div className="space-y-1 md:order-1 order-2 flex-1 md:flex-initial">
+            <span className="text-xs font-bold text-text-secondary uppercase tracking-widest block">Faturamento Anterior</span>
+            <div className="text-xl sm:text-2xl font-extrabold text-text-primary tracking-tight leading-none">
+              {formatBRL(mockFaturamentoAnterior)}
             </div>
+            <span className="text-xs text-text-muted font-medium block">Mês completo anterior</span>
           </div>
-          <div className="my-2">
-            <div className="text-2xl font-black text-text-primary tracking-tight">
-              {formatBRL(faturamento60)}
-            </div>
-          </div>
-          <div className="space-y-1.5 mt-auto">
-            <div className="flex items-center gap-1.5">
-              <ComparisonBadge pct={faturamento60Crescimento} />
-              <span className="text-[10px] text-text-muted font-semibold">vs. 60d anteriores</span>
-            </div>
-            <span className="text-[9px] text-text-muted font-bold block">
-              Tendência de crescimento no período
-            </span>
+          <div className="p-3.5 bg-text-muted/10 text-text-muted rounded-2xl shrink-0 md:order-2 order-1 shadow-sm">
+            <DollarSign size={24} />
           </div>
         </div>
       </div>
 
-      {/* 4. SEGUNDA ÁREA COM CARDS DE DESTAQUE GRID 3x2 (PASSO 5) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* 4. SEGUNDA ÁREA COM CARDS DE DESTAQUE GRID 4 EM CADA LINHA (PASSO 5 REDESIGN) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Melhor Vendedor */}
-        <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-5 min-h-[130px] flex flex-col justify-between">
+        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 min-h-[130px] flex flex-col justify-between relative overflow-hidden transition-all duration-300 hover:shadow-card-hover">
           <div className="flex justify-between items-start gap-1.5">
             <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Melhor Vendedor</span>
             <div className="p-1.5 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
@@ -584,8 +546,8 @@ export default function VisaoEstrategicaV4() {
           </div>
           {bestSeller && bestSeller.value > 0 ? (
             <div className="mt-2 space-y-1">
-              <div className="text-sm font-extrabold text-brand-500 truncate max-w-[220px]">{bestSeller.name}</div>
-              <div className="text-xl font-black text-text-primary">{formatBRL(bestSeller.value)}</div>
+              <div className="text-xs font-extrabold text-brand-500 truncate max-w-[180px]">{bestSeller.name}</div>
+              <div className="text-lg font-black text-text-primary leading-none mt-1">{formatBRL(bestSeller.value)}</div>
               <span className="text-[10px] text-text-muted font-bold block">{bestSeller.pct.toFixed(1)}% do faturamento total</span>
             </div>
           ) : (
@@ -594,7 +556,7 @@ export default function VisaoEstrategicaV4() {
         </div>
 
         {/* Card 2: Melhor Cliente */}
-        <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-5 min-h-[130px] flex flex-col justify-between">
+        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 min-h-[130px] flex flex-col justify-between relative overflow-hidden transition-all duration-300 hover:shadow-card-hover">
           <div className="flex justify-between items-start gap-1.5">
             <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Melhor Cliente</span>
             <div className="p-1.5 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
@@ -603,8 +565,8 @@ export default function VisaoEstrategicaV4() {
           </div>
           {bestClient && bestClient.value > 0 ? (
             <div className="mt-2 space-y-1">
-              <div className="text-sm font-extrabold text-brand-500 truncate max-w-[220px]">{bestClient.name}</div>
-              <div className="text-xl font-black text-text-primary">{formatBRL(bestClient.value)}</div>
+              <div className="text-xs font-extrabold text-brand-500 truncate max-w-[180px]">{bestClient.name}</div>
+              <div className="text-lg font-black text-text-primary leading-none mt-1">{formatBRL(bestClient.value)}</div>
               <span className="text-[10px] text-text-muted font-bold block">Cliente com maior faturamento</span>
             </div>
           ) : (
@@ -612,8 +574,46 @@ export default function VisaoEstrategicaV4() {
           )}
         </div>
 
-        {/* Card 3: Volume de Peças */}
-        <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-5 min-h-[130px] flex flex-col justify-between">
+        {/* Card 3: Marca Mais Vendida */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 min-h-[130px] flex flex-col justify-between relative overflow-hidden transition-all duration-300 hover:shadow-card-hover">
+          <div className="flex justify-between items-start gap-1.5">
+            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Marca Mais Vendida</span>
+            <div className="p-1.5 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
+              <Tag size={15} />
+            </div>
+          </div>
+          {bestBrand && bestBrand.value > 0 ? (
+            <div className="mt-2 space-y-1">
+              <div className="text-xs font-extrabold text-brand-500 truncate max-w-[180px]">{bestBrand.name}</div>
+              <div className="text-lg font-black text-text-primary leading-none mt-1">{formatBRL(bestBrand.value)}</div>
+              <span className="text-[10px] text-text-muted font-bold block">Marca líder em faturamento</span>
+            </div>
+          ) : (
+            <span className="text-xs text-text-muted italic py-2">Sem marcas no período</span>
+          )}
+        </div>
+
+        {/* Card 4: Cidade Destaque */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 min-h-[130px] flex flex-col justify-between relative overflow-hidden transition-all duration-300 hover:shadow-card-hover">
+          <div className="flex justify-between items-start gap-1.5">
+            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Cidade Destaque</span>
+            <div className="p-1.5 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
+              <MapPin size={15} />
+            </div>
+          </div>
+          {cidadeLiderObj && cidadeLiderObj.value > 0 ? (
+            <div className="mt-2 space-y-1">
+              <div className="text-xs font-extrabold text-brand-500 truncate max-w-[180px]">{cidadeLiderObj.name}</div>
+              <div className="text-lg font-black text-text-primary leading-none mt-1">{formatBRL(cidadeLiderObj.value)}</div>
+              <span className="text-[10px] text-text-muted font-bold block">Cidade líder em faturamento</span>
+            </div>
+          ) : (
+            <span className="text-xs text-text-muted italic py-2">Sem cidades no período</span>
+          )}
+        </div>
+
+        {/* Card 5: Volume de Peças */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 min-h-[130px] flex flex-col justify-between relative overflow-hidden transition-all duration-300 hover:shadow-card-hover">
           <div className="flex justify-between items-start gap-1.5">
             <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Volume de Peças</span>
             <div className="p-1.5 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
@@ -621,13 +621,13 @@ export default function VisaoEstrategicaV4() {
             </div>
           </div>
           <div className="mt-2 space-y-1">
-            <div className="text-xl font-black text-text-primary">{formatNum(qtdPedidos)}</div>
-            <span className="text-[10px] text-text-muted font-bold block">Total de peças faturadas</span>
+            <div className="text-lg font-black text-text-primary leading-none mt-1">{formatNum(qtdPedidos)}</div>
+            <span className="text-[10px] text-text-muted font-bold block mt-2">Total de peças faturadas</span>
           </div>
         </div>
 
-        {/* Card 4: Ticket Médio */}
-        <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-5 min-h-[130px] flex flex-col justify-between">
+        {/* Card 6: Ticket Médio */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 min-h-[130px] flex flex-col justify-between relative overflow-hidden transition-all duration-300 hover:shadow-card-hover">
           <div className="flex justify-between items-start gap-1.5">
             <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Ticket Médio</span>
             <div className="p-1.5 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
@@ -635,13 +635,13 @@ export default function VisaoEstrategicaV4() {
             </div>
           </div>
           <div className="mt-2 space-y-1">
-            <div className="text-xl font-black text-text-primary">{formatBRL(ticketMedio)}</div>
-            <span className="text-[10px] text-text-muted font-bold block">Média por venda/nota</span>
+            <div className="text-lg font-black text-text-primary leading-none mt-1">{formatBRL(ticketMedio)}</div>
+            <span className="text-[10px] text-text-muted font-bold block mt-2">Média por venda/nota</span>
           </div>
         </div>
 
-        {/* Card 5: Taxa de Conversão */}
-        <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-5 min-h-[130px] flex flex-col justify-between">
+        {/* Card 7: Taxa de Conversão */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 min-h-[130px] flex flex-col justify-between relative overflow-hidden transition-all duration-300 hover:shadow-card-hover">
           <div className="flex justify-between items-start gap-1.5">
             <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Taxa de Conversão</span>
             <div className="p-1.5 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
@@ -649,13 +649,13 @@ export default function VisaoEstrategicaV4() {
             </div>
           </div>
           <div className="mt-2 space-y-1">
-            <div className="text-xl font-black text-text-primary">{taxaConversao.toFixed(1)}%</div>
-            <span className="text-[10px] text-text-muted font-bold block">Conversão de vendas no período</span>
+            <div className="text-lg font-black text-text-primary leading-none mt-1">{taxaConversao.toFixed(1)}%</div>
+            <span className="text-[10px] text-text-muted font-bold block mt-2">Conversão de vendas no período</span>
           </div>
         </div>
 
-        {/* Card 6: Clientes com Compra */}
-        <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-5 min-h-[130px] flex flex-col justify-between">
+        {/* Card 8: Clientes com Compra */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 min-h-[130px] flex flex-col justify-between relative overflow-hidden transition-all duration-300 hover:shadow-card-hover">
           <div className="flex justify-between items-start gap-1.5">
             <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Clientes com Compra</span>
             <div className="p-1.5 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
@@ -663,29 +663,98 @@ export default function VisaoEstrategicaV4() {
             </div>
           </div>
           <div className="mt-2 space-y-1">
-            <div className="text-xl font-black text-text-primary">{formatNum(clientesAtivos)}</div>
-            <span className="text-[10px] text-text-muted font-bold block">Clientes ativos no período</span>
+            <div className="text-lg font-black text-text-primary leading-none mt-1">{formatNum(clientesAtivos)}</div>
+            <span className="text-[10px] text-text-muted font-bold block mt-2">Clientes ativos no período</span>
           </div>
         </div>
       </div>
 
-      {/* 5. SEÇÃO DE RANKINGS ANTES DOS GRÁFICOS (PASSO 7) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* 1. Ranking de Vendedores */}
-        <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-5 flex flex-col min-h-[360px]">
+      {/* 4.5. DESEMPENHO DOS VENDEDORES - GRÁFICO E RANKING COM MEDALHAS LADO A LADO */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+        {/* Gráfico de Vendedores em Barra */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 flex flex-col min-h-[380px]">
+          <div className="flex items-center gap-1.5 border-b border-divider/20 pb-3 mb-4">
+            <BarChart3 size={16} className="text-brand-500" />
+            <h4 className="text-xs font-bold text-text-primary uppercase tracking-wider">Desempenho dos Vendedores (Gráfico)</h4>
+          </div>
+          <div className="flex-1 w-full h-[280px]">
+            {mockTopSellers.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={mockTopSellers.slice(0, 10)}
+                  layout="vertical"
+                  margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
+                >
+                  <XAxis type="number" hide />
+                  <YAxis 
+                    dataKey="name" 
+                    type="category" 
+                    width={100} 
+                    tick={{ fontSize: 9, fill: 'var(--color-text-secondary)' }} 
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Bar dataKey="value" fill="#0D9488" radius={[0, 4, 4, 0]}>
+                    {mockTopSellers.slice(0, 10).map((entry: any, index: number) => (
+                      <Cell key={`cell-${index}`} fill={CHART_PALETTE[index % CHART_PALETTE.length] || '#0D9488'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex flex-col items-center justify-center text-center p-4">
+                <AlertCircle size={24} className="text-text-muted mb-1 stroke-[1.5]" />
+                <span className="text-xs text-text-muted font-medium">Sem dados para exibir o gráfico.</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Ranking de Vendedores com Medalhas */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 flex flex-col min-h-[380px]">
           <div className="flex items-center gap-1.5 border-b border-divider/20 pb-3 mb-4">
             <Award size={16} className="text-brand-500" />
-            <h4 className="text-xs font-bold text-text-primary uppercase tracking-wider">Top 10 Vendedores</h4>
+            <h4 className="text-xs font-bold text-text-primary uppercase tracking-wider">Top Vendedores (Ranking)</h4>
           </div>
-          <div className="flex-1 overflow-y-auto max-h-[280px] text-xs space-y-2 pr-1 scrollbar-none">
-            {mockTopSellers.slice(0, 10).map((s: any, idx: number) => {
+          <div className="flex-1 overflow-y-auto max-h-[290px] text-xs space-y-2 pr-1 scrollbar-none">
+            {mockTopSellers.slice(0, 15).map((s: any, idx: number) => {
               const rank = idx + 1;
               const share = totalSellersVal > 0 ? (s.value / totalSellersVal) * 100 : 0;
+              
+              // Define medal indicator
+              let medalNode = null;
+              if (rank === 1) {
+                medalNode = (
+                  <span className="w-5 h-5 rounded-full bg-yellow-400 text-yellow-950 flex items-center justify-center font-bold text-[10px] shadow-sm shrink-0">
+                    🥇
+                  </span>
+                );
+              } else if (rank === 2) {
+                medalNode = (
+                  <span className="w-5 h-5 rounded-full bg-slate-300 text-slate-900 flex items-center justify-center font-bold text-[10px] shadow-sm shrink-0">
+                    🥈
+                  </span>
+                );
+              } else if (rank === 3) {
+                medalNode = (
+                  <span className="w-5 h-5 rounded-full bg-orange-300 text-orange-950 flex items-center justify-center font-bold text-[10px] shadow-sm shrink-0">
+                    🥉
+                  </span>
+                );
+              } else {
+                medalNode = (
+                  <span className="w-5 h-5 rounded-full bg-bg-secondary text-text-secondary flex items-center justify-center font-bold text-[9px] border border-divider shrink-0 font-mono">
+                    #{rank}
+                  </span>
+                );
+              }
+
               return (
-                <div key={idx} className="flex justify-between items-center py-2 border-b border-divider/5 hover:bg-bg-secondary/40 px-2 rounded-lg transition-colors">
-                  <span className="text-text-secondary truncate max-w-[140px] font-medium" title={s.name}>
-                    <span className="font-bold text-brand-500 mr-2 font-mono">#{rank}</span>
-                    {s.name}
+                <div key={idx} className="flex justify-between items-center py-2 border-b border-divider/5 hover:bg-bg-secondary/40 px-2 rounded-lg transition-colors gap-3">
+                  <span className="text-text-secondary truncate font-medium flex items-center gap-2 flex-1 min-w-0" title={s.name}>
+                    {medalNode}
+                    <span className="truncate">{s.name}</span>
                   </span>
                   <div className="text-right shrink-0">
                     <span className="font-bold text-text-primary block font-mono">{formatBRLCompact(s.value)}</span>
@@ -702,147 +771,341 @@ export default function VisaoEstrategicaV4() {
             )}
           </div>
         </div>
+      </div>
 
-        {/* 2. Ranking de Marcas */}
-        <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-5 flex flex-col min-h-[360px]">
-          <div className="flex items-center gap-1.5 border-b border-divider/20 pb-3 mb-4">
-            <Tag size={16} className="text-brand-500" />
-            <h4 className="text-xs font-bold text-text-primary uppercase tracking-wider">Top 15 Marcas</h4>
+      {/* 5. SEÇÃO DE RANKINGS RESTANTES (TOP 15 COM GRÁFICOS INTERNOS) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+        {/* 1. Ranking de Marcas */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 flex flex-col min-h-[360px] relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-[3px] bg-brand-500"></div>
+          <div className="flex justify-between items-center border-b border-divider/20 pb-3 mb-4 gap-4">
+            <div className="flex items-center gap-1.5">
+              <Tag size={16} className="text-brand-500" />
+              <h4 className="text-xs font-bold text-text-primary uppercase tracking-wider">Top 15 Marcas</h4>
+            </div>
+            <button
+              onClick={() => setRankingViews(prev => ({ ...prev, marcas: prev.marcas === 'list' ? 'bar' : 'list' }))}
+              className="px-2.5 py-1.5 bg-bg-secondary hover:bg-bg-secondary/80 text-text-secondary hover:text-text-primary rounded-xl border border-divider transition-all cursor-pointer shadow-sm text-[10px] font-bold flex items-center gap-1 shrink-0"
+            >
+              {rankingViews.marcas === 'list' ? <BarChart3 size={12} /> : <FileText size={12} />}
+              {rankingViews.marcas === 'list' ? "Gráfico" : "Lista"}
+            </button>
           </div>
-          <div className="flex-1 overflow-y-auto max-h-[280px] text-xs space-y-2 pr-1 scrollbar-none">
-            {mockTopBrands.slice(0, 15).map((m: any, idx: number) => {
-              const rank = idx + 1;
-              const share = totalBrandsVal > 0 ? (m.value / totalBrandsVal) * 100 : 0;
-              return (
-                <div key={idx} className="flex justify-between items-center py-2 border-b border-divider/5 hover:bg-bg-secondary/40 px-2 rounded-lg transition-colors">
-                  <span className="text-text-secondary truncate max-w-[140px] font-medium" title={m.name}>
-                    <span className="font-bold text-brand-500 mr-2 font-mono">#{rank}</span>
-                    {m.name}
-                  </span>
-                  <div className="text-right shrink-0">
-                    <span className="font-bold text-text-primary block font-mono">{formatBRLCompact(m.value)}</span>
-                    <span className="text-[10px] text-text-muted block font-semibold">{share.toFixed(1)}% share</span>
+          <div className="flex-1 overflow-y-auto max-h-[290px] text-xs pr-1 scrollbar-none">
+            {rankingViews.marcas === 'list' ? (
+              <div className="space-y-2">
+                {mockTopBrands.slice(0, 15).map((m: any, idx: number) => {
+                  const rank = idx + 1;
+                  const share = totalBrandsVal > 0 ? (m.value / totalBrandsVal) * 100 : 0;
+                  return (
+                    <div key={idx} className="flex justify-between items-center py-2 border-b border-divider/5 hover:bg-bg-secondary/40 px-2 rounded-lg transition-colors">
+                      <span className="text-text-secondary truncate max-w-[200px] font-medium" title={m.name}>
+                        <span className="font-bold text-brand-500 mr-2 font-mono">#{rank}</span>
+                        {m.name}
+                      </span>
+                      <div className="text-right shrink-0">
+                        <span className="font-bold text-text-primary block font-mono">{formatBRLCompact(m.value)}</span>
+                        <span className="text-[10px] text-text-muted block font-semibold">{share.toFixed(1)}% share</span>
+                      </div>
+                    </div>
+                  );
+                })}
+                {mockTopBrands.length === 0 && (
+                  <div className="h-full flex flex-col items-center justify-center text-center p-4">
+                    <AlertCircle size={24} className="text-text-muted mb-1 stroke-[1.5]" />
+                    <span className="text-xs text-text-muted font-medium">Nenhuma marca registrada.</span>
                   </div>
-                </div>
-              );
-            })}
-            {mockTopBrands.length === 0 && (
-              <div className="h-full flex flex-col items-center justify-center text-center p-4">
-                <AlertCircle size={24} className="text-text-muted mb-1 stroke-[1.5]" />
-                <span className="text-xs text-text-muted font-medium">Nenhuma marca registrada.</span>
+                )}
               </div>
+            ) : (
+              mockTopBrands.length > 0 ? (
+                <div className="h-[250px] w-full flex items-center justify-center py-2 pr-4">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={mockTopBrands.slice(0, 7)}
+                      layout="vertical"
+                      margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
+                    >
+                      <XAxis type="number" hide />
+                      <YAxis 
+                        dataKey="name" 
+                        type="category" 
+                        width={90} 
+                        tick={{ fontSize: 9, fill: 'var(--color-text-secondary)' }} 
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Bar dataKey="value" fill="#0D9488" radius={[0, 4, 4, 0]}>
+                        {mockTopBrands.slice(0, 7).map((entry: any, index: number) => (
+                          <Cell key={`cell-${index}`} fill={CHART_PALETTE[index % CHART_PALETTE.length] || '#0D9488'} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center text-center p-4">
+                  <AlertCircle size={24} className="text-text-muted mb-1 stroke-[1.5]" />
+                  <span className="text-xs text-text-muted font-medium">Sem dados para exibir o gráfico.</span>
+                </div>
+              )
             )}
           </div>
         </div>
 
-        {/* 3. Ranking de Grupos */}
-        <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-5 flex flex-col min-h-[360px]">
-          <div className="flex items-center gap-1.5 border-b border-divider/20 pb-3 mb-4">
-            <Box size={16} className="text-brand-500" />
-            <h4 className="text-xs font-bold text-text-primary uppercase tracking-wider">Top 15 Grupos</h4>
+        {/* 2. Ranking de Grupos */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 flex flex-col min-h-[360px] relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-[3px] bg-brand-500"></div>
+          <div className="flex justify-between items-center border-b border-divider/20 pb-3 mb-4 gap-4">
+            <div className="flex items-center gap-1.5">
+              <Box size={16} className="text-brand-500" />
+              <h4 className="text-xs font-bold text-text-primary uppercase tracking-wider">Top 15 Grupos</h4>
+            </div>
+            <button
+              onClick={() => setRankingViews(prev => ({ ...prev, grupos: prev.grupos === 'list' ? 'bar' : 'list' }))}
+              className="px-2.5 py-1.5 bg-bg-secondary hover:bg-bg-secondary/80 text-text-secondary hover:text-text-primary rounded-xl border border-divider transition-all cursor-pointer shadow-sm text-[10px] font-bold flex items-center gap-1 shrink-0"
+            >
+              {rankingViews.grupos === 'list' ? <BarChart3 size={12} /> : <FileText size={12} />}
+              {rankingViews.grupos === 'list' ? "Gráfico" : "Lista"}
+            </button>
           </div>
-          <div className="flex-1 overflow-y-auto max-h-[280px] text-xs space-y-2 pr-1 scrollbar-none">
-            {mockTopGroups.slice(0, 15).map((g: any, idx: number) => {
-              const rank = idx + 1;
-              const share = totalGroupsVal > 0 ? (g.value / totalGroupsVal) * 100 : 0;
-              return (
-                <div key={idx} className="flex justify-between items-center py-2 border-b border-divider/5 hover:bg-bg-secondary/40 px-2 rounded-lg transition-colors">
-                  <span className="text-text-secondary truncate max-w-[140px] font-medium" title={g.name}>
-                    <span className="font-bold text-brand-500 mr-2 font-mono">#{rank}</span>
-                    {g.name}
-                  </span>
-                  <div className="text-right shrink-0">
-                    <span className="font-bold text-text-primary block font-mono">{formatBRLCompact(g.value)}</span>
-                    <span className="text-[10px] text-text-muted block font-semibold">{share.toFixed(1)}% share</span>
+          <div className="flex-1 overflow-y-auto max-h-[290px] text-xs pr-1 scrollbar-none">
+            {rankingViews.grupos === 'list' ? (
+              <div className="space-y-2">
+                {mockTopGroups.slice(0, 15).map((g: any, idx: number) => {
+                  const rank = idx + 1;
+                  const share = totalGroupsVal > 0 ? (g.value / totalGroupsVal) * 100 : 0;
+                  return (
+                    <div key={idx} className="flex justify-between items-center py-2 border-b border-divider/5 hover:bg-bg-secondary/40 px-2 rounded-lg transition-colors">
+                      <span className="text-text-secondary truncate max-w-[200px] font-medium" title={g.name}>
+                        <span className="font-bold text-brand-500 mr-2 font-mono">#{rank}</span>
+                        {g.name}
+                      </span>
+                      <div className="text-right shrink-0">
+                        <span className="font-bold text-text-primary block font-mono">{formatBRLCompact(g.value)}</span>
+                        <span className="text-[10px] text-text-muted block font-semibold">{share.toFixed(1)}% share</span>
+                      </div>
+                    </div>
+                  );
+                })}
+                {mockTopGroups.length === 0 && (
+                  <div className="h-full flex flex-col items-center justify-center text-center p-4">
+                    <AlertCircle size={24} className="text-text-muted mb-1 stroke-[1.5]" />
+                    <span className="text-xs text-text-muted font-medium">Nenhum grupo registrado.</span>
                   </div>
-                </div>
-              );
-            })}
-            {mockTopGroups.length === 0 && (
-              <div className="h-full flex flex-col items-center justify-center text-center p-4">
-                <AlertCircle size={24} className="text-text-muted mb-1 stroke-[1.5]" />
-                <span className="text-xs text-text-muted font-medium">Nenhum grupo registrado.</span>
+                )}
               </div>
+            ) : (
+              mockTopGroups.length > 0 ? (
+                <div className="h-[250px] w-full flex items-center justify-center py-2 pr-4">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={mockTopGroups.slice(0, 7)}
+                      layout="vertical"
+                      margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
+                    >
+                      <XAxis type="number" hide />
+                      <YAxis 
+                        dataKey="name" 
+                        type="category" 
+                        width={90} 
+                        tick={{ fontSize: 9, fill: 'var(--color-text-secondary)' }} 
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Bar dataKey="value" fill="#0D9488" radius={[0, 4, 4, 0]}>
+                        {mockTopGroups.slice(0, 7).map((entry: any, index: number) => (
+                          <Cell key={`cell-${index}`} fill={CHART_PALETTE[index % CHART_PALETTE.length] || '#0D9488'} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center text-center p-4">
+                  <AlertCircle size={24} className="text-text-muted mb-1 stroke-[1.5]" />
+                  <span className="text-xs text-text-muted font-medium">Sem dados para exibir o gráfico.</span>
+                </div>
+              )
             )}
           </div>
         </div>
 
-        {/* 4. Ranking de Cidades */}
-        <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-5 flex flex-col min-h-[360px]">
-          <div className="flex items-center gap-1.5 border-b border-divider/20 pb-3 mb-4">
-            <Map size={16} className="text-brand-500" />
-            <h4 className="text-xs font-bold text-text-primary uppercase tracking-wider">Top 15 Cidades</h4>
+        {/* 3. Ranking de Cidades */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 flex flex-col min-h-[360px] relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-[3px] bg-brand-500"></div>
+          <div className="flex justify-between items-center border-b border-divider/20 pb-3 mb-4 gap-4">
+            <div className="flex items-center gap-1.5">
+              <Map size={16} className="text-brand-500" />
+              <h4 className="text-xs font-bold text-text-primary uppercase tracking-wider">Top 15 Cidades</h4>
+            </div>
+            <button
+              onClick={() => setRankingViews(prev => ({ ...prev, cidades: prev.cidades === 'list' ? 'bar' : 'list' }))}
+              className="px-2.5 py-1.5 bg-bg-secondary hover:bg-bg-secondary/80 text-text-secondary hover:text-text-primary rounded-xl border border-divider transition-all cursor-pointer shadow-sm text-[10px] font-bold flex items-center gap-1 shrink-0"
+            >
+              {rankingViews.cidades === 'list' ? <BarChart3 size={12} /> : <FileText size={12} />}
+              {rankingViews.cidades === 'list' ? "Gráfico" : "Lista"}
+            </button>
           </div>
-          <div className="flex-1 overflow-y-auto max-h-[280px] text-xs space-y-2 pr-1 scrollbar-none">
-            {mockTopCities.slice(0, 15).map((c: any, idx: number) => {
-              const rank = idx + 1;
-              const share = totalCitiesVal > 0 ? (c.value / totalCitiesVal) * 100 : 0;
-              return (
-                <div key={idx} className="flex justify-between items-center py-2 border-b border-divider/5 hover:bg-bg-secondary/40 px-2 rounded-lg transition-colors">
-                  <span className="text-text-secondary truncate max-w-[140px] font-medium" title={c.name}>
-                    <span className="font-bold text-brand-500 mr-2 font-mono">#{rank}</span>
-                    {c.name}
-                  </span>
-                  <div className="text-right shrink-0">
-                    <span className="font-bold text-text-primary block font-mono">{formatBRLCompact(c.value)}</span>
-                    <span className="text-[10px] text-text-muted block font-semibold">{share.toFixed(1)}% share</span>
+          <div className="flex-1 overflow-y-auto max-h-[290px] text-xs pr-1 scrollbar-none">
+            {rankingViews.cidades === 'list' ? (
+              <div className="space-y-2">
+                {mockTopCities.slice(0, 15).map((c: any, idx: number) => {
+                  const rank = idx + 1;
+                  const share = totalCitiesVal > 0 ? (c.value / totalCitiesVal) * 100 : 0;
+                  return (
+                    <div key={idx} className="flex justify-between items-center py-2 border-b border-divider/5 hover:bg-bg-secondary/40 px-2 rounded-lg transition-colors">
+                      <span className="text-text-secondary truncate max-w-[200px] font-medium" title={c.name}>
+                        <span className="font-bold text-brand-500 mr-2 font-mono">#{rank}</span>
+                        {c.name}
+                      </span>
+                      <div className="text-right shrink-0">
+                        <span className="font-bold text-text-primary block font-mono">{formatBRLCompact(c.value)}</span>
+                        <span className="text-[10px] text-text-muted block font-semibold">{share.toFixed(1)}% share</span>
+                      </div>
+                    </div>
+                  );
+                })}
+                {mockTopCities.length === 0 && (
+                  <div className="h-full flex flex-col items-center justify-center text-center p-4">
+                    <AlertCircle size={24} className="text-text-muted mb-1 stroke-[1.5]" />
+                    <span className="text-xs text-text-muted font-medium">Nenhuma cidade registrada.</span>
                   </div>
-                </div>
-              );
-            })}
-            {mockTopCities.length === 0 && (
-              <div className="h-full flex flex-col items-center justify-center text-center p-4">
-                <AlertCircle size={24} className="text-text-muted mb-1 stroke-[1.5]" />
-                <span className="text-xs text-text-muted font-medium">Nenhuma cidade registrada.</span>
+                )}
               </div>
+            ) : (
+              mockTopCities.length > 0 ? (
+                <div className="h-[250px] w-full flex items-center justify-center py-2 pr-4">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={mockTopCities.slice(0, 7)}
+                      layout="vertical"
+                      margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
+                    >
+                      <XAxis type="number" hide />
+                      <YAxis 
+                        dataKey="name" 
+                        type="category" 
+                        width={90} 
+                        tick={{ fontSize: 9, fill: 'var(--color-text-secondary)' }} 
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Bar dataKey="value" fill="#0D9488" radius={[0, 4, 4, 0]}>
+                        {mockTopCities.slice(0, 7).map((entry: any, index: number) => (
+                          <Cell key={`cell-${index}`} fill={CHART_PALETTE[index % CHART_PALETTE.length] || '#0D9488'} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center text-center p-4">
+                  <AlertCircle size={24} className="text-text-muted mb-1 stroke-[1.5]" />
+                  <span className="text-xs text-text-muted font-medium">Sem dados para exibir o gráfico.</span>
+                </div>
+              )
             )}
           </div>
         </div>
 
-        {/* 5. Ranking de Clientes */}
-        <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-5 flex flex-col min-h-[360px] lg:col-span-2">
-          <div className="flex items-center gap-1.5 border-b border-divider/20 pb-3 mb-4">
-            <Users size={16} className="text-brand-500" />
-            <h4 className="text-xs font-bold text-text-primary uppercase tracking-wider">Top 15 Clientes</h4>
+        {/* 4. Ranking de Clientes */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 flex flex-col min-h-[360px] relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-[3px] bg-brand-500"></div>
+          <div className="flex justify-between items-center border-b border-divider/20 pb-3 mb-4 gap-4">
+            <div className="flex items-center gap-1.5">
+              <Users size={16} className="text-brand-500" />
+              <h4 className="text-xs font-bold text-text-primary uppercase tracking-wider">Top 15 Clientes</h4>
+            </div>
+            <button
+              onClick={() => setRankingViews(prev => ({ ...prev, clientes: prev.clientes === 'list' ? 'bar' : 'list' }))}
+              className="px-2.5 py-1.5 bg-bg-secondary hover:bg-bg-secondary/80 text-text-secondary hover:text-text-primary rounded-xl border border-divider transition-all cursor-pointer shadow-sm text-[10px] font-bold flex items-center gap-1 shrink-0"
+            >
+              {rankingViews.clientes === 'list' ? <BarChart3 size={12} /> : <FileText size={12} />}
+              {rankingViews.clientes === 'list' ? "Gráfico" : "Lista"}
+            </button>
           </div>
-          <div className="flex-1 overflow-y-auto max-h-[280px] text-xs space-y-2 pr-1 scrollbar-none">
-            {mockTopClients.slice(0, 15).map((c: any, idx: number) => {
-              const share = totalClientsVal > 0 ? (c.value / totalClientsVal) * 100 : 0;
-              return (
-                <div key={idx} className="flex justify-between items-center py-2 border-b border-divider/5 hover:bg-bg-secondary/40 px-2 rounded-lg transition-colors">
-                  <span className="text-text-secondary truncate max-w-[280px] font-medium" title={c.name}>
-                    <span className="font-bold text-brand-500 mr-2 font-mono">#{c.rank}</span>
-                    {c.name}
-                  </span>
-                  <div className="text-right shrink-0">
-                    <span className="font-bold text-text-primary block font-mono">{formatBRLCompact(c.value)}</span>
-                    <span className="text-[10px] text-text-muted block font-semibold">{share.toFixed(1)}% share</span>
+          <div className="flex-1 overflow-y-auto max-h-[290px] text-xs pr-1 scrollbar-none">
+            {rankingViews.clientes === 'list' ? (
+              <div className="space-y-2">
+                {mockTopClients.slice(0, 15).map((c: any, idx: number) => {
+                  const share = totalClientsVal > 0 ? (c.value / totalClientsVal) * 100 : 0;
+                  return (
+                    <div key={idx} className="flex justify-between items-center py-2 border-b border-divider/5 hover:bg-bg-secondary/40 px-2 rounded-lg transition-colors">
+                      <span className="text-text-secondary truncate max-w-[200px] font-medium" title={c.name}>
+                        <span className="font-bold text-brand-500 mr-2 font-mono">#{c.rank}</span>
+                        {c.name}
+                      </span>
+                      <div className="text-right shrink-0">
+                        <span className="font-bold text-text-primary block font-mono">{formatBRLCompact(c.value)}</span>
+                        <span className="text-[10px] text-text-muted block font-semibold">{share.toFixed(1)}% share</span>
+                      </div>
+                    </div>
+                  );
+                })}
+                {mockTopClients.length === 0 && (
+                  <div className="h-full flex flex-col items-center justify-center text-center p-4">
+                    <AlertCircle size={24} className="text-text-muted mb-1 stroke-[1.5]" />
+                    <span className="text-xs text-text-muted font-medium">Nenhum cliente registrado.</span>
                   </div>
-                </div>
-              );
-            })}
-            {mockTopClients.length === 0 && (
-              <div className="h-full flex flex-col items-center justify-center text-center p-4">
-                <AlertCircle size={24} className="text-text-muted mb-1 stroke-[1.5]" />
-                <span className="text-xs text-text-muted font-medium">Nenhum cliente registrado.</span>
+                )}
               </div>
+            ) : (
+              mockTopClients.length > 0 ? (
+                <div className="h-[250px] w-full flex items-center justify-center py-2 pr-4">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={mockTopClients.slice(0, 7)}
+                      layout="vertical"
+                      margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
+                    >
+                      <XAxis type="number" hide />
+                      <YAxis 
+                        dataKey="name" 
+                        type="category" 
+                        width={90} 
+                        tick={{ fontSize: 9, fill: 'var(--color-text-secondary)' }} 
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Bar dataKey="value" fill="#0D9488" radius={[0, 4, 4, 0]}>
+                        {mockTopClients.slice(0, 7).map((entry: any, index: number) => (
+                          <Cell key={`cell-${index}`} fill={CHART_PALETTE[index % CHART_PALETTE.length] || '#0D9488'} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center text-center p-4">
+                  <AlertCircle size={24} className="text-text-muted mb-1 stroke-[1.5]" />
+                  <span className="text-xs text-text-muted font-medium">Sem dados para exibir o gráfico.</span>
+                </div>
+              )
             )}
           </div>
         </div>
       </div>
 
-      {/* 6. SEÇÃO DE GRÁFICOS (PASSO 8) */}
-      <div className="w-full bg-bg-primary border border-divider shadow-card rounded-xl p-5 mt-6">
+      {/* 6. SEÇÃO DE GRÁFICOS (PASSO 8 REDESIGN) */}
+      <div className="w-full bg-bg-primary border border-divider shadow-card rounded-2xl p-6 mt-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
-          <h3 className="font-bold text-text-primary text-xs uppercase tracking-wider">Faturamento no Período</h3>
+          <div>
+            <h3 className="font-extrabold text-text-primary text-xs uppercase tracking-wider">Faturamento no Período</h3>
+            <p className="text-[10px] text-text-secondary mt-0.5">Histórico consolidado do faturamento líquido no período</p>
+          </div>
           
           <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
             {/* Agrupamento: Diário / Mensal */}
-            <div className="flex items-center gap-1 bg-bg-secondary p-0.5 rounded-lg border border-divider">
+            <div className="flex items-center gap-1 bg-bg-secondary p-0.5 rounded-xl border border-divider">
               <button
                 onClick={() => setFaturamentoGroupBy('dia')}
                 className={clsx(
-                  "px-2.5 py-1 rounded-md text-[10px] font-bold transition-all cursor-pointer",
+                  "px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer",
                   faturamentoGroupBy === 'dia'
                     ? "bg-bg-primary text-brand-500 shadow-sm"
                     : "text-text-secondary hover:text-text-primary"
@@ -853,7 +1116,7 @@ export default function VisaoEstrategicaV4() {
               <button
                 onClick={() => setFaturamentoGroupBy('mes')}
                 className={clsx(
-                  "px-2.5 py-1 rounded-md text-[10px] font-bold transition-all cursor-pointer",
+                  "px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer",
                   faturamentoGroupBy === 'mes'
                     ? "bg-bg-primary text-brand-500 shadow-sm"
                     : "text-text-secondary hover:text-text-primary"
@@ -863,30 +1126,12 @@ export default function VisaoEstrategicaV4() {
               </button>
             </div>
 
-            {/* Quick Period Selector */}
-            <div className="flex items-center gap-1 bg-bg-secondary p-0.5 rounded-lg border border-divider">
-              {(['7D', '30D', '90D', 'Tudo'] as const).map((range) => (
-                <button
-                  key={range}
-                  onClick={() => setFaturamentoPeriod(range)}
-                  className={clsx(
-                    "px-2.5 py-1 rounded-md text-[10px] font-bold transition-all cursor-pointer",
-                    faturamentoPeriod === range
-                      ? "bg-bg-primary text-brand-500 shadow-sm"
-                      : "text-text-secondary hover:text-text-primary"
-                  )}
-                >
-                  {range}
-                </button>
-              ))}
-            </div>
-
             {/* Chaveador de Visualização */}
-            <div className="flex items-center gap-1 bg-bg-secondary p-0.5 rounded-lg border border-divider">
+            <div className="flex items-center gap-1 bg-bg-secondary p-0.5 rounded-xl border border-divider">
               <button
                 onClick={() => setViewMode(prev => ({ ...prev, faturamento: 'chart' }))}
                 className={clsx(
-                  "p-1.5 rounded-md transition-all cursor-pointer",
+                  "p-2 rounded-lg transition-all cursor-pointer",
                   viewMode.faturamento === 'chart'
                     ? "bg-bg-primary text-brand-500 shadow-sm"
                     : "text-text-secondary hover:text-text-primary"
@@ -898,7 +1143,7 @@ export default function VisaoEstrategicaV4() {
               <button
                 onClick={() => setViewMode(prev => ({ ...prev, faturamento: 'text' }))}
                 className={clsx(
-                  "p-1.5 rounded-md transition-all cursor-pointer",
+                  "p-2 rounded-lg transition-all cursor-pointer",
                   viewMode.faturamento === 'text'
                     ? "bg-bg-primary text-brand-500 shadow-sm"
                     : "text-text-secondary hover:text-text-primary"
