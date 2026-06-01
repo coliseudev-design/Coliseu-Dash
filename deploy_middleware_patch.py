@@ -9,6 +9,7 @@ PASSWORD = '6EFBC!c0:wzr%Ij'
 FILES_TO_DEPLOY = [
     ('middleware/src/config/env.js', '/usr/src/app/src/config/env.js'),
     ('middleware/src/routes/bi.js', '/usr/src/app/src/routes/bi.js'),
+    ('middleware/src/routes/sync.js', '/usr/src/app/src/routes/sync.js'),
 ]
 
 CONTAINER_NAME = 'dashboard-middleware-irerzifjwjb4q8ucbpfk2gb8-063544289742'

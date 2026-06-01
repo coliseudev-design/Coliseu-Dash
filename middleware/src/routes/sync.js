@@ -20,7 +20,9 @@ const TABELAS_MAP = {
     'dash_caixas': ['id_firebird', 'descricao'],
     'dash_filiais': ['empresa_erp', 'depto_id', 'centro_custo', 'nome', 'documento', 'is_default'],
     'dash_marcas': ['id_firebird', 'nome'],
-    'dash_grupos': ['id_firebird', 'nome']
+    'dash_grupos': ['id_firebird', 'nome'],
+    'dash_metas_dashboard': ['id_firebird', 'tipo', 'referencia_id', 'data_referencia', 'valor_meta', 'periodo'],
+    'dash_metas_vendedor_marca': ['id_firebird', 'meta_vendedor_id', 'marca_id', 'valor_meta', 'mes', 'ano']
 };
 
 // Limites de tamanho para colunas VARCHAR — alinhado com migration 005
