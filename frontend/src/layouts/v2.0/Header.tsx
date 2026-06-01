@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Menu, LogOut, RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react'
+import { Menu, LogOut, RefreshCw, CheckCircle2, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
 import { useSyncStatus } from '../../hooks/useSync'
-import { formatDateTime } from '../../utils/format'
 import ThemeToggle from '../../components/ThemeToggle'
 import BranchSelector from '../../components/BranchSelector'
 import api from '../../services/api'
@@ -10,14 +9,17 @@ import api from '../../services/api'
 interface Props {
   onMenuClick: () => void
   title: string
+  isCollapsed: boolean
+  onToggleCollapse: () => void
 }
 
-export default function Header({ onMenuClick, title }: Props) {
+export default function Header({ onMenuClick, title, isCollapsed, onToggleCollapse }: Props) {
   const user = useAuthStore((s) => s.user)
   const logout = useAuthStore((s) => s.logout)
   const { status, lastSync, triggerSync, isSyncing, agentStatus } = useSyncStatus()
   const [menuOpen, setMenuOpen] = useState(false)
   const [empresaNome, setEmpresaNome] = useState<string>('')
+  const [friendlyTime, setFriendlyTime] = useState('Nunca')
 
   useEffect(() => {
     const fetchEmpresa = async () => {
@@ -33,68 +35,110 @@ export default function Header({ onMenuClick, title }: Props) {
     fetchEmpresa()
   }, [])
 
+  useEffect(() => {
+    const updateFriendlyTime = () => {
+      if (!lastSync) {
+        setFriendlyTime('nunca')
+        return
+      }
+      const d = new Date(lastSync)
+      const diffMin = Math.round((Date.now() - d.getTime()) / 60000)
+      if (isNaN(diffMin) || diffMin < 0) {
+        setFriendlyTime('agora')
+        return
+      }
+      if (diffMin === 0) {
+        setFriendlyTime('agora')
+        return
+      }
+      if (diffMin < 60) {
+        setFriendlyTime(`há ${diffMin} min`)
+        return
+      }
+      const diffHours = Math.floor(diffMin / 60)
+      if (diffHours < 24) {
+        setFriendlyTime(`há ${diffHours}h`)
+        return
+      }
+      setFriendlyTime(d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
+    }
+
+    updateFriendlyTime()
+    const interval = setInterval(updateFriendlyTime, 30000)
+    return () => clearInterval(interval)
+  }, [lastSync])
+
   return (
-    <header className="h-14 sm:h-16 bg-white/80 backdrop-blur-md border-b border-[#E0E0E0]/50 sticky top-0 z-20 flex items-center px-3 sm:px-4 lg:px-6 transition-all duration-300">
+    <header className="h-16 bg-bg-primary/80 backdrop-blur-md border-b border-divider sticky top-0 z-20 flex items-center px-4 lg:px-6 transition-all duration-300">
+      {/* Mobile Drawer Trigger */}
       <button
-        className="lg:hidden p-2 -ml-2 text-text-secondary hover:bg-bg-secondary rounded-lg active:bg-bg-tertiary"
+        className="lg:hidden p-2 -ml-2 text-text-secondary hover:bg-bg-secondary rounded-xl active:bg-bg-tertiary transition-colors"
         onClick={onMenuClick}
         aria-label="Abrir menu"
       >
         <Menu size={22} />
       </button>
 
-      <h1 className="font-heading text-base sm:text-lg font-semibold ml-1 sm:ml-2 lg:ml-0 truncate">{title}</h1>
+      {/* Collapse Sidebar Button for Desktop/Tablet */}
+      <button
+        onClick={onToggleCollapse}
+        className="hidden lg:flex p-2 text-text-secondary hover:bg-bg-secondary hover:text-text-primary rounded-xl mr-3 transition-colors cursor-pointer"
+        title={isCollapsed ? "Expandir Menu" : "Recolher Menu"}
+      >
+        {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+      </button>
 
-      <div className="ml-auto flex items-center gap-1 sm:gap-3">
-        {/* Badge Agente Desktop */}
-        <div className="hidden lg:flex items-center gap-1.5 px-2 py-1 rounded-md bg-bg-secondary text-xs font-semibold">
-           <div className={`w-2 h-2 rounded-full ${agentStatus === 'ONLINE' ? 'bg-success' : 'bg-danger animate-pulse'}`} />
-           <span className="text-text-secondary">{agentStatus === 'ONLINE' ? 'Agente OK' : 'Falha no Banco'}</span>
+      <h1 className="font-heading text-lg font-bold text-text-primary truncate max-w-[200px] sm:max-w-xs">{title}</h1>
+
+      <div className="ml-auto flex items-center gap-2 sm:gap-4">
+        {/* Status Indicators Group */}
+        <div className="hidden sm:flex items-center gap-3 bg-bg-secondary/40 border border-divider/60 rounded-2xl px-3.5 py-1.5 shadow-sm text-xs">
+          {/* Database Agent Connection */}
+          <div className="flex items-center gap-1.5">
+            <div className={`w-2 h-2 rounded-full ${agentStatus === 'ONLINE' ? 'bg-success' : 'bg-danger animate-pulse'}`} />
+            <span className="font-bold text-text-secondary whitespace-nowrap">
+              {agentStatus === 'ONLINE' ? 'Agente OK' : 'Banco Offline'}
+            </span>
+          </div>
+
+          <div className="w-px h-3.5 bg-divider"></div>
+
+          {/* Sincronização */}
+          <div className="flex items-center gap-1.5 text-text-secondary">
+            {status === 'ok' ? (
+              <CheckCircle2 size={14} className="text-success" />
+            ) : (
+              <AlertCircle size={14} className="text-warning" />
+            )}
+            <span className="font-bold text-text-muted">
+              Sincronizado: <span className="text-text-secondary font-mono font-medium">{friendlyTime}</span>
+            </span>
+          </div>
         </div>
 
-        {/* Status sync (desktop) */}
-        <div className="hidden md:flex items-center gap-2 text-xs text-text-secondary border-l border-[#E0E0E0] pl-3">
+        {/* Sync Status Mobile Indicator */}
+        <div className="sm:hidden flex items-center relative gap-1 p-1 bg-bg-secondary/60 border border-divider/50 rounded-xl">
+          <div className={`w-2 h-2 rounded-full ${agentStatus === 'ONLINE' ? 'bg-success' : 'bg-danger animate-pulse'}`} />
           {status === 'ok' ? (
-            <CheckCircle2 size={14} className="text-success" />
+            <CheckCircle2 size={15} className="text-success" />
           ) : (
-            <AlertCircle size={14} className="text-warning" />
-          )}
-          <span className="flex flex-col text-[10px] leading-tight">
-            <span>Última Sync:</span>
-            <span className="mono font-medium">{lastSync ? formatDateTime(lastSync) : 'nunca'}</span>
-          </span>
-        </div>
-
-        {/* Sync indicator mobile (só o ícone) */}
-        <div className="md:hidden flex items-center relative">
-          <div className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border-2 border-white ${agentStatus === 'ONLINE' ? 'bg-success' : 'bg-danger animate-pulse'}`} />
-          {status === 'ok' ? (
-            <CheckCircle2 size={18} className="text-text-primary" />
-          ) : (
-            <AlertCircle size={18} className="text-warning" />
+            <AlertCircle size={15} className="text-warning" />
           )}
         </div>
 
+        {/* Force Sync button */}
         <button
-          className="p-2 text-text-secondary hover:bg-bg-secondary rounded-lg active:bg-bg-tertiary"
+          className="p-2 text-text-secondary hover:text-brand-500 hover:bg-bg-secondary rounded-xl active:bg-bg-tertiary transition-all duration-200"
           onClick={triggerSync}
           disabled={isSyncing}
           title="Forçar sincronização"
         >
-          <RefreshCw size={16} className={isSyncing ? 'animate-spin' : ''} />
+          <RefreshCw size={16} className={isSyncing ? 'animate-spin text-brand-500' : ''} />
         </button>
 
-        {/* Separador */}
-        <div className="w-px h-6 bg-divider mx-1"></div>
-
-        {/* Layout Version */}
-        <div className="hidden sm:flex items-center px-1.5 h-5 rounded-md border border-divider bg-bg-tertiary/30 text-[10px] font-mono text-text-muted cursor-default" title="Versão do Layout Ativo">
-          {user?.layout_version || 'v1.0'}
-        </div>
-
         {empresaNome && (
-          <div className="hidden sm:flex items-center px-2 border-r border-[#E0E0E0] mr-1 pr-3">
-            <span className="text-sm font-bold text-slate-700 uppercase tracking-wide">
+          <div className="hidden md:flex items-center border-l border-divider pl-4">
+            <span className="text-xs font-black text-brand-600 bg-brand-500/10 border border-brand-500/10 px-2.5 py-1 rounded-full uppercase tracking-wider">
               {empresaNome}
             </span>
           </div>
@@ -104,34 +148,35 @@ export default function Header({ onMenuClick, title }: Props) {
 
         <ThemeToggle />
 
-        {/* Usuário */}
+        {/* User profile dropdown button */}
         <div className="relative">
           <button
-            className="flex items-center gap-2 px-1.5 py-1 sm:px-2 sm:py-1.5 hover:bg-bg-secondary rounded-lg active:bg-bg-tertiary"
+            className="flex items-center gap-2.5 p-1 sm:px-2.5 sm:py-1.5 hover:bg-bg-secondary rounded-2xl active:bg-bg-tertiary transition-all duration-200"
             onClick={() => setMenuOpen((o) => !o)}
           >
-            <div className="w-8 h-8 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center text-sm font-semibold">
+            <div className="w-8 h-8 rounded-full bg-brand-500/10 text-brand-600 border border-brand-500/10 flex items-center justify-center text-sm font-black shadow-sm">
               {user?.nome?.[0]?.toUpperCase() || 'U'}
             </div>
-            <div className="text-left hidden sm:block">
-              <div className="text-sm font-medium leading-tight">{user?.nome}</div>
-              <div className="text-[11px] text-text-secondary leading-tight capitalize">{user?.role}</div>
+            <div className="text-left hidden lg:block">
+              <div className="text-xs font-bold leading-none text-text-primary">{user?.nome}</div>
+              <div className="text-[10px] text-text-muted font-bold tracking-wide uppercase mt-0.5 leading-none">{user?.role}</div>
             </div>
           </button>
+          
           {menuOpen && (
             <>
               <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} />
-              <div className="absolute right-0 mt-1 w-52 bg-white border border-[#E0E0E0] rounded-lg shadow-card-hover z-40 py-1">
-                <div className="px-3 py-2 border-b border-[#E0E0E0]">
-                  <div className="text-sm font-medium truncate">{user?.nome}</div>
-                  <div className="text-xs text-text-secondary truncate">{user?.email}</div>
+              <div className="absolute right-0 mt-2 w-52 bg-bg-primary border border-divider rounded-xl shadow-card-hover z-40 py-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="px-4 py-2.5 border-b border-divider">
+                  <div className="text-xs font-bold text-text-primary truncate">{user?.nome}</div>
+                  <div className="text-[10px] text-text-muted truncate mt-0.5">{user?.email}</div>
                 </div>
                 <button
                   onClick={logout}
-                  className="w-full text-left px-3 py-2 text-sm text-text-secondary hover:bg-bg-secondary flex items-center gap-2"
+                  className="w-full text-left px-4 py-2.5 text-xs font-bold text-text-secondary hover:text-danger hover:bg-danger/10 flex items-center gap-2 transition-colors cursor-pointer"
                 >
                   <LogOut size={14} />
-                  Sair
+                  Sair da Conta
                 </button>
               </div>
             </>
