@@ -1818,6 +1818,7 @@ router.get('/seller/summary', async (req, res, next) => {
             ticket_medio,
             notas_emitidas: total_pedidos,
             clientes_novos,
+            clientes_ativos,
             novos_pct,
             antigos_pct,
             cidade_top,
