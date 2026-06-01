@@ -1,17 +1,16 @@
 import { useMemo, useState, useEffect } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  Cell, PieChart, Pie
+  Cell
 } from 'recharts'
 import {
   TrendingUp, TrendingDown, DollarSign, ShoppingBag, 
   Users, Award, Map, Target, Briefcase, Box, AlertCircle,
-  FileText, BarChart3
+  FileText, BarChart3, Calendar, Tag, MapPin, X
 } from 'lucide-react'
 import { useBranchPeriodQuery } from '../hooks/useApi'
-import { useAuthStore } from '../store/authStore'
 import PeriodFilter from '../components/PeriodFilter'
-import { usePeriodStore } from '../store/periodStore'
+import { usePeriodStore, PERIOD_OPTIONS } from '../store/periodStore'
 import { formatBRL, formatBRLCompact, formatNum } from '../utils/format'
 import { CHART_COLORS } from '../utils/chartColors'
 import clsx from 'clsx'
@@ -39,59 +38,12 @@ const ComparisonBadge = ({ pct }: { pct: number }) => {
   const isDown = pct < 0;
   return (
     <div className={clsx(
-      "flex items-center text-xs font-bold px-2 py-1 rounded-md",
-      isUp ? "bg-success/10 text-success" : isDown ? "bg-danger/10 text-danger" : "bg-text-muted/10 text-text-muted"
+      "flex items-center text-[10px] sm:text-xs font-extrabold px-2 py-0.5 rounded-md leading-none shadow-sm shrink-0",
+      isUp ? "bg-success/15 text-success" : isDown ? "bg-danger/15 text-danger" : "bg-text-muted/15 text-text-muted"
     )}>
-      {isUp && <TrendingUp size={14} className="mr-1" />}
-      {isDown && <TrendingDown size={14} className="mr-1" />}
+      {isUp && <TrendingUp size={12} className="mr-1" />}
+      {isDown && <TrendingDown size={12} className="mr-1" />}
       {Math.abs(pct).toFixed(1)}%
-    </div>
-  );
-}
-
-// Gauge Chart Component using PieChart
-const GaugeChart = ({ realizado, meta }: { realizado: number, meta: number }) => {
-  const atingimento = meta > 0 ? (realizado / meta) * 100 : 0;
-  const value = Math.min(atingimento, 100);
-  const data = [
-    { name: 'Atingido', value: value, color: CHART_COLORS.primary },
-    { name: 'Restante', value: 100 - value, color: 'var(--color-bg-tertiary)' }
-  ];
-  
-  return (
-    <div className="w-full flex flex-col items-center">
-      <div className="relative h-32 w-full mt-2">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
-              data={data}
-              cx="50%"
-              cy="100%"
-              startAngle={180}
-              endAngle={0}
-              innerRadius={60}
-              outerRadius={80}
-              paddingAngle={0}
-              dataKey="value"
-              stroke="none"
-              cornerRadius={4}
-            >
-              {data.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.color} />
-              ))}
-            </Pie>
-          </PieChart>
-        </ResponsiveContainer>
-        <div className="absolute inset-0 flex flex-col items-center justify-end pb-1">
-          <span className="text-3xl font-extrabold text-text-primary tracking-tight">{atingimento.toFixed(1)}%</span>
-        </div>
-      </div>
-      <div className="text-center mt-3">
-        <div className="text-[10px] text-text-secondary uppercase font-bold tracking-widest">Realizado vs Meta (Vet)</div>
-        <div className="text-xs font-semibold text-text-primary mt-0.5">
-          {formatBRLCompact(realizado)} / <span className="text-text-muted">{formatBRLCompact(meta)}</span>
-        </div>
-      </div>
     </div>
   );
 }
@@ -108,37 +60,128 @@ export default function VisaoEstrategicaV4() {
     faturamento: 'chart',
   })
 
+  // Filter States
+  const [selectedMarca, setSelectedMarca] = useState<string>('');
+  const [selectedVendedor, setSelectedVendedor] = useState<string>('');
+  const [selectedCidade, setSelectedCidade] = useState<string>('');
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
+
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 640);
+    const handleResize = () => setIsMobile(window.innerWidth < 1024);
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const ov = useBranchPeriodQuery<any>('/estatisticas/overview')
-  const kpisData = useBranchPeriodQuery<any>('/estatisticas/kpis')
-  const fatMes = useBranchPeriodQuery<any>('/vendas/faturadas')
-  const vd = useBranchPeriodQuery<any>('/ranking/vendedores')
-  const prod = useBranchPeriodQuery<any>('/ranking/produtos')
-  const cli = useBranchPeriodQuery<any>('/ranking/clientes')
-  const marcas = useBranchPeriodQuery<any>('/ranking/marcas')
-  const cidades = useBranchPeriodQuery<any>('/ranking/cidades', { limit: 15 })
-  const grupos = useBranchPeriodQuery<any>('/ranking/categorias')
+  // Fetch full filters lists
+  const vdFull = useBranchPeriodQuery<any>('/ranking/vendedores', { limit: 100 });
+  const marcasFull = useBranchPeriodQuery<any>('/ranking/marcas', { limit: 100 });
+  const cidadesFull = useBranchPeriodQuery<any>('/ranking/cidades', { limit: 100 });
 
-  const period = usePeriodStore((s) => s.period)
+  // Query parameter merging
+  const extraParams = useMemo(() => ({
+    vendedor_id: selectedVendedor || undefined
+  }), [selectedVendedor]);
+
+  // Main page data queries
+  const ov = useBranchPeriodQuery<any>('/estatisticas/overview', extraParams);
+  const ov30 = useBranchPeriodQuery<any>('/estatisticas/overview', { period: 'last30', ...extraParams });
+  const ov60 = useBranchPeriodQuery<any>('/estatisticas/overview', { period: 'last60', ...extraParams });
+
+  const kpisData = useBranchPeriodQuery<any>('/estatisticas/kpis', extraParams);
+  const fatMes = useBranchPeriodQuery<any>('/vendas/faturadas', extraParams);
+  const vd = useBranchPeriodQuery<any>('/ranking/vendedores', extraParams);
+  const prod = useBranchPeriodQuery<any>('/ranking/produtos', extraParams);
+  const cli = useBranchPeriodQuery<any>('/ranking/clientes', extraParams);
+  const marcas = useBranchPeriodQuery<any>('/ranking/marcas', extraParams);
+  const cidades = useBranchPeriodQuery<any>('/ranking/cidades', { limit: 15, ...extraParams });
+  const grupos = useBranchPeriodQuery<any>('/ranking/categorias', extraParams);
+
+  const period = usePeriodStore((s) => s.period);
   
-  // Real data mapping
+  // Faturamento values calculations
   const faturamentoAtual = ov.data?.mes?.total || 0;
+  const mockFaturamentoAnterior = ov.data?.anterior?.total || 0;
+  const faturamentoCrescimento = mockFaturamentoAnterior > 0 ? ((faturamentoAtual - mockFaturamentoAnterior) / mockFaturamentoAnterior) * 100 : 0;
+
+  const faturamento30 = ov30.data?.mes?.total || 0;
+  const faturamento30Anterior = ov30.data?.anterior?.total || 0;
+  const faturamento30Crescimento = faturamento30Anterior > 0 ? ((faturamento30 - faturamento30Anterior) / faturamento30Anterior) * 100 : 0;
+
+  const faturamento60 = ov60.data?.mes?.total || 0;
+  const faturamento60Anterior = ov60.data?.anterior?.total || 0;
+  const faturamento60Crescimento = faturamento60Anterior > 0 ? ((faturamento60 - faturamento60Anterior) / faturamento60Anterior) * 100 : 0;
+
+  // Operational metrics
   const qtdPedidos = kpisData.data?.vendas?.qtd_pedidos || ov.data?.mes?.qtd || 0;
   const ticketMedio = kpisData.data?.vendas?.ticket_medio || (qtdPedidos > 0 ? faturamentoAtual / qtdPedidos : 0);
   const clientesAtivos = kpisData.data?.kpis?.clientes_ativos || 0;
-  const totalClientes = kpisData.data?.kpis?.total_clientes || 0;
   const taxaConversao = kpisData.data?.kpis?.taxa_conversao_pct || 0;
   
-  const mockFaturamentoAnterior = ov.data?.anterior?.total || 0;
+  // Local lists filtering by Selected Marca & Selected Cidade
+  const mockTopSellers = useMemo(() => {
+    return vd.data?.data?.map((s: any) => ({ name: s.nome || s.vendedor, value: s.total || s.total_vendas })) || [];
+  }, [vd.data]);
 
-  const faturamentoCrescimento = mockFaturamentoAnterior > 0 ? ((faturamentoAtual - mockFaturamentoAnterior) / mockFaturamentoAnterior) * 100 : 0;
+  const mockTopBrands = useMemo(() => {
+    let list = marcas.data?.data?.map((m: any) => ({ name: m.nome || m.marca, value: m.total })) || [];
+    if (selectedMarca) {
+      list = list.filter((m: any) => m.name.toLowerCase() === selectedMarca.toLowerCase());
+    }
+    return list;
+  }, [marcas.data, selectedMarca]);
 
+  const mockTopGroups = useMemo(() => {
+    return grupos.data?.data?.map((g: any) => ({ name: g.nome || g.grupo || g.categoria, value: g.total })) || [];
+  }, [grupos.data]);
+
+  const mockTopCities = useMemo(() => {
+    let list = cidades.data?.data?.map((c: any) => ({ name: c.nome, value: c.total })) || [];
+    if (selectedCidade) {
+      list = list.filter((c: any) => c.name.toLowerCase() === selectedCidade.toLowerCase());
+    }
+    return list;
+  }, [cidades.data, selectedCidade]);
+
+  const mockTopClients = useMemo(() => {
+    return cli.data?.data?.map((c: any, i: number) => ({ rank: i + 1, name: c.nome, value: c.total })) || [];
+  }, [cli.data]);
+
+  // Totals for share calculations
+  const totalSellersVal = useMemo(() => mockTopSellers.reduce((acc: number, curr: any) => acc + curr.value, 0), [mockTopSellers]);
+  const totalBrandsVal = useMemo(() => mockTopBrands.reduce((acc: number, curr: any) => acc + curr.value, 0), [mockTopBrands]);
+  const totalGroupsVal = useMemo(() => mockTopGroups.reduce((acc: number, curr: any) => acc + curr.value, 0), [mockTopGroups]);
+  const totalCitiesVal = useMemo(() => mockTopCities.reduce((acc: number, curr: any) => acc + curr.value, 0), [mockTopCities]);
+  const totalClientsVal = useMemo(() => mockTopClients.reduce((acc: number, curr: any) => acc + curr.value, 0), [mockTopClients]);
+
+  // Strategic KPIs cards
+  const bestSeller = useMemo(() => {
+    if (mockTopSellers.length === 0) return null;
+    const first = mockTopSellers[0];
+    const pct = faturamentoAtual > 0 ? (first.value / faturamentoAtual) * 100 : 0;
+    return {
+      name: first.name,
+      value: first.value,
+      pct: pct
+    };
+  }, [mockTopSellers, faturamentoAtual]);
+
+  const bestClient = useMemo(() => {
+    if (mockTopClients.length === 0) return null;
+    const first = mockTopClients[0];
+    const pct = faturamentoAtual > 0 ? (first.value / faturamentoAtual) * 100 : 0;
+    return {
+      name: first.name,
+      value: first.value,
+      pct: pct
+    };
+  }, [mockTopClients, faturamentoAtual]);
+
+  const totalVendedores = vd.data?.data?.length || 0;
+  const mediaPorVendedor = totalVendedores > 0 ? faturamentoAtual / totalVendedores : 0;
+  const cidadeLider = mockTopCities[0]?.name || '—';
+
+  // Faturamento chart processing
   const faturamentoPeriodoData = fatMes.data?.data && fatMes.data.data.length > 0 
     ? fatMes.data.data 
     : [
@@ -236,37 +279,8 @@ export default function VisaoEstrategicaV4() {
     return Math.max(...groupedFaturamentoData.map((item: any) => item.total), 1);
   }, [groupedFaturamentoData]);
 
-  const mockTopSellers = vd.data?.data?.map((s: any) => ({ name: s.nome || s.vendedor, value: s.total || s.total_vendas })) || [];
-
-  const mockTopBrands = marcas.data?.data?.map((m: any) => ({ name: m.nome || m.marca, value: m.total })) || [];
-
-  const mockTopGroups = grupos.data?.data?.map((g: any) => ({ name: g.nome || g.grupo || g.categoria, value: g.total })) || [];
-
-  const mockTopProducts = prod.data?.data?.map((p: any) => ({ name: p.nome || p.produto, value: p.total })) || [];
-
-  // Real Top Cities from the ranking API
-  const mockTopCities = cidades.data?.data?.map((c: any) => ({ name: c.nome, value: c.total })) || [];
-
-  const mockTopClients = cli.data?.data?.map((c: any, i: number) => ({ rank: i + 1, name: c.nome, value: c.total })) || [];
-
-  const bestSeller = useMemo(() => {
-    if (mockTopSellers.length === 0) return null;
-    const first = mockTopSellers[0];
-    const pct = faturamentoAtual > 0 ? (first.value / faturamentoAtual) * 100 : 0;
-    return {
-      name: first.name,
-      value: first.value,
-      pct: pct
-    };
-  }, [mockTopSellers, faturamentoAtual]);
-
-  const totalVendedores = vd.data?.data?.length || 0;
-  const mediaPorVendedor = totalVendedores > 0 ? faturamentoAtual / totalVendedores : 0;
-  const cidadeLider = mockTopCities[0]?.name || '—';
-
-
   const barColors = [
-    '#3B82F6', '#10B981', '#8B5CF6', '#F59E0B', '#EF4444', 
+    '#0D9488', '#0F766E', '#14B8A6', '#2DD4BF', '#5EEAD4',
   ];
 
   const getFaturamentoSummary = () => {
@@ -278,138 +292,547 @@ export default function VisaoEstrategicaV4() {
     return `O faturamento ${formatName} demonstra variação no período de consulta, registrando um pico de faturamento em ${peak.label} no valor de ${formatBRL(peak.total)}, e o menor faturamento em ${lowest.label} no valor de ${formatBRL(lowest.total)}.`
   }
 
-  const getVendedoresSummary = () => {
-    if (mockTopSellers.length === 0) return "Nenhum dado de consultores disponível no período."
-    const leader = mockTopSellers[0]
-    const runnerUp = mockTopSellers[1]
-    const totalVal = mockTopSellers.reduce((acc: number, curr: any) => acc + curr.value, 0)
-    const leaderPct = totalVal > 0 ? (leader.value / totalVal) * 100 : 0
-    
-    let text = `O consultor destaque de vendas é ${leader.name} com faturamento acumulado de ${formatBRL(leader.value)}, representando ${leaderPct.toFixed(1)}% das vendas do grupo.`
-    if (runnerUp) {
-      text += ` Na sequência, destaca-se ${runnerUp.name} com vendas de ${formatBRL(runnerUp.value)}.`
-    }
-    return text
+  const isError = ov.isError || kpisData.isError || fatMes.isError;
+  const isLoading = ov.isLoading || kpisData.isLoading || fatMes.isLoading;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96 text-text-secondary">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-brand-500 mr-3"></div>
+        Carregando Visão Estratégica...
+      </div>
+    )
   }
 
-  const getMarcasSummary = () => {
-    if (mockTopBrands.length === 0) return "Nenhum dado de marcas disponível no período."
-    const leader = mockTopBrands[0]
-    const runnerUp = mockTopBrands[1]
-    const totalVal = mockTopBrands.reduce((acc: number, curr: any) => acc + curr.value, 0)
-    const leaderPct = totalVal > 0 ? (leader.value / totalVal) * 100 : 0
-    
-    let text = `A marca líder de vendas é ${leader.name} com receita de ${formatBRL(leader.value)}, correspondendo a ${leaderPct.toFixed(1)}% do faturamento de marcas.`
-    if (runnerUp) {
-      text += ` A marca ${runnerUp.name} ocupa a segunda posição registrando ${formatBRL(runnerUp.value)}.`
-    }
-    return text
-  }
-
-  const getGruposSummary = () => {
-    if (mockTopGroups.length === 0) return "Nenhum dado de categorias/grupos disponível."
-    const leader = mockTopGroups[0]
-    const runnerUp = mockTopGroups[1]
-    const totalVal = mockTopGroups.reduce((acc: number, curr: any) => acc + curr.value, 0)
-    const leaderPct = totalVal > 0 ? (leader.value / totalVal) * 100 : 0
-    
-    let text = `O grupo/categoria de produtos líder em volume financeiro é ${leader.name} com ${formatBRL(leader.value)}, concentrando ${leaderPct.toFixed(1)}% do giro total.`
-    if (runnerUp) {
-      text += ` O grupo ${runnerUp.name} fica em segundo com faturamento de ${formatBRL(runnerUp.value)}.`
-    }
-    return text
-  }
-
-  const getCidadesSummary = () => {
-    if (mockTopCities.length === 0) return "Nenhum dado de cidades disponível no período."
-    const leader = mockTopCities[0]
-    const runnerUp = mockTopCities[1]
-    const totalVal = mockTopCities.reduce((acc: number, curr: any) => acc + curr.value, 0)
-    const leaderPct = totalVal > 0 ? (leader.value / totalVal) * 100 : 0
-    
-    let text = `O faturamento regional é liderado pela cidade de ${leader.name} com vendas de ${formatBRL(leader.value)}, representando ${leaderPct.toFixed(1)}% da receita regional.`
-    if (runnerUp) {
-      text += ` A cidade de ${runnerUp.name} se posiciona logo em seguida com faturamento de ${formatBRL(runnerUp.value)}.`
-    }
-    return text
+  if (isError) {
+    return (
+      <div className="bg-danger/10 border border-danger/25 text-danger p-5 rounded-xl text-sm font-semibold max-w-xl mx-auto mt-10 shadow-sm flex flex-col items-center gap-3">
+        <AlertCircle size={32} />
+        <span>Não foi possível carregar os dados da Visão Estratégica. Verifique sua conexão.</span>
+      </div>
+    )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+    <div className="space-y-6 animate-in fade-in duration-300">
+      
+      {/* 1. CABEÇALHO DA PÁGINA (PASSO 2) */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-divider/40 pb-5">
         <div>
-          <h2 className="text-xl font-bold text-text-primary">Inteligência de Negócios</h2>
-          <p className="text-sm text-text-secondary mt-1">Visão Estratégica e análise de performance do sistema Siscom Vet</p>
+          <h2 className="text-2xl font-black text-text-primary tracking-tight">Visão Estratégica</h2>
+          <p className="text-xs text-text-secondary mt-1">Análise estratégica de vendas, clientes, cidades, marcas e vendedores no período selecionado.</p>
         </div>
-        <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-3">
+        <div className="hidden lg:flex items-center gap-3">
           <PeriodFilter />
         </div>
       </div>
 
-      {/* TIER 1: FATURAMENTO & CLIENTES ATIVOS */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="bg-bg-primary rounded-xl p-5 border border-divider shadow-card flex flex-col justify-center items-center text-center relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1 bg-brand-500"></div>
-          <span className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2">Faturamento Mês Atual (Vet)</span>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-xl">🔥</span>
-            <span className="text-3xl font-extrabold text-text-primary">{formatBRL(faturamentoAtual)}</span>
-          </div>
-          <ComparisonBadge pct={faturamentoCrescimento} />
+      {/* 2. BARRA DE FILTROS (PASSO 3) */}
+      {/* Desktop Filter Bar */}
+      <div className="hidden lg:flex items-center gap-4 bg-bg-primary border border-divider shadow-sm rounded-xl p-4 flex-wrap">
+        <div className="flex flex-col gap-1 min-w-[200px] flex-1">
+          <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Vendedor</span>
+          <select
+            value={selectedVendedor}
+            onChange={(e) => setSelectedVendedor(e.target.value)}
+            className="px-2.5 py-1.5 bg-bg-secondary border border-divider text-text-primary rounded-lg text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-brand-500 w-full cursor-pointer"
+          >
+            <option value="">Todos os Vendedores</option>
+            {vdFull.data?.data?.map((v: any) => (
+              <option key={v.id} value={v.id}>{v.nome || v.vendedor}</option>
+            ))}
+          </select>
         </div>
 
-        <div className="bg-bg-primary rounded-xl p-5 border border-divider shadow-card flex flex-col justify-center items-center text-center relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1 bg-brand-500"></div>
-          <span className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2">Melhor Vendedor do Período</span>
-          {bestSeller && bestSeller.value > 0 ? (
-            <div className="w-full flex flex-col items-center">
-              <span className="text-lg font-bold text-brand-500 truncate max-w-[220px] mb-1">{bestSeller.name}</span>
-              <span className="text-2xl font-extrabold text-text-primary mb-1">{formatBRL(bestSeller.value)}</span>
-              <div className="w-full max-w-[200px] bg-bg-secondary rounded-full h-1.5 mt-1 overflow-hidden">
-                <div className="bg-brand-500 h-1.5 rounded-full" style={{ width: `${bestSeller.pct}%` }}></div>
+        <div className="flex flex-col gap-1 min-w-[200px] flex-1">
+          <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Marca</span>
+          <select
+            value={selectedMarca}
+            onChange={(e) => setSelectedMarca(e.target.value)}
+            className="px-2.5 py-1.5 bg-bg-secondary border border-divider text-text-primary rounded-lg text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-brand-500 w-full cursor-pointer"
+          >
+            <option value="">Todas as Marcas</option>
+            {marcasFull.data?.data?.map((m: any, idx: number) => (
+              <option key={idx} value={m.nome || m.marca}>{m.nome || m.marca}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex flex-col gap-1 min-w-[200px] flex-1">
+          <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Cidade</span>
+          <select
+            value={selectedCidade}
+            onChange={(e) => setSelectedCidade(e.target.value)}
+            className="px-2.5 py-1.5 bg-bg-secondary border border-divider text-text-primary rounded-lg text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-brand-500 w-full cursor-pointer"
+          >
+            <option value="">Todas as Cidades</option>
+            {cidadesFull.data?.data?.map((c: any, idx: number) => (
+              <option key={idx} value={c.nome}>{c.nome}</option>
+            ))}
+          </select>
+        </div>
+
+        {(selectedVendedor || selectedMarca || selectedCidade) && (
+          <button
+            onClick={() => {
+              setSelectedVendedor('')
+              setSelectedMarca('')
+              setSelectedCidade('')
+            }}
+            className="mt-5 px-4 py-1.5 text-xs font-bold text-danger hover:text-danger-hover border border-danger/25 hover:border-danger/45 bg-danger/5 rounded-lg cursor-pointer transition-all shrink-0"
+          >
+            Limpar Filtros
+          </button>
+        )}
+      </div>
+
+      {/* Mobile Sticky Bar trigger */}
+      <div className="lg:hidden flex items-center justify-between gap-3 bg-bg-primary border border-divider shadow-sm rounded-xl p-3">
+        <div className="flex-1 min-w-0">
+          <span className="text-[9px] font-bold text-text-muted uppercase block">Período Selecionado</span>
+          <span className="text-xs font-bold text-text-primary truncate block">
+            {period === 'custom' ? 'Personalizado' : PERIOD_OPTIONS.find(o => o.key === period)?.label || 'Mês atual'}
+          </span>
+        </div>
+        <button
+          onClick={() => setShowMobileFilters(true)}
+          className="px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white rounded-lg text-xs font-bold transition-all shadow-sm cursor-pointer"
+        >
+          Filtros
+        </button>
+      </div>
+
+      {/* Mobile Drawer Filter Modal */}
+      {showMobileFilters && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex justify-end animate-in fade-in duration-200">
+          <div className="w-full max-w-[320px] bg-bg-primary h-full shadow-2xl flex flex-col justify-between animate-in slide-in-from-right duration-300">
+            <div className="p-5 flex-1 overflow-y-auto space-y-5">
+              <div className="flex justify-between items-center border-b border-divider pb-3">
+                <h4 className="font-extrabold text-sm text-text-primary uppercase tracking-wider">Filtros da Guia</h4>
+                <button
+                  onClick={() => setShowMobileFilters(false)}
+                  className="text-text-muted hover:text-text-primary"
+                >
+                  <X size={18} />
+                </button>
               </div>
-              <span className="text-[10px] font-bold text-text-secondary mt-1">
-                {bestSeller.pct.toFixed(1)}% do faturamento total
+
+              {/* Period Filter container */}
+              <div className="space-y-2">
+                <span className="text-[10px] font-extrabold text-text-secondary uppercase tracking-wider block">Período</span>
+                <PeriodFilter />
+              </div>
+
+              {/* Vendedor filter */}
+              <div className="space-y-1">
+                <span className="text-[10px] font-extrabold text-text-secondary uppercase tracking-wider block">Vendedor</span>
+                <select
+                  value={selectedVendedor}
+                  onChange={(e) => setSelectedVendedor(e.target.value)}
+                  className="px-3 py-2 bg-bg-secondary border border-divider text-text-primary rounded-xl text-xs font-bold focus:outline-none focus:ring-1 focus:ring-brand-500 w-full cursor-pointer"
+                >
+                  <option value="">Todos os Vendedores</option>
+                  {vdFull.data?.data?.map((v: any) => (
+                    <option key={v.id} value={v.id}>{v.nome || v.vendedor}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Marca filter */}
+              <div className="space-y-1">
+                <span className="text-[10px] font-extrabold text-text-secondary uppercase tracking-wider block">Marca</span>
+                <select
+                  value={selectedMarca}
+                  onChange={(e) => setSelectedMarca(e.target.value)}
+                  className="px-3 py-2 bg-bg-secondary border border-divider text-text-primary rounded-xl text-xs font-bold focus:outline-none focus:ring-1 focus:ring-brand-500 w-full cursor-pointer"
+                >
+                  <option value="">Todas as Marcas</option>
+                  {marcasFull.data?.data?.map((m: any, idx: number) => (
+                    <option key={idx} value={m.nome || m.marca}>{m.nome || m.marca}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Cidade filter */}
+              <div className="space-y-1">
+                <span className="text-[10px] font-extrabold text-text-secondary uppercase tracking-wider block">Cidade</span>
+                <select
+                  value={selectedCidade}
+                  onChange={(e) => setSelectedCidade(e.target.value)}
+                  className="px-3 py-2 bg-bg-secondary border border-divider text-text-primary rounded-xl text-xs font-bold focus:outline-none focus:ring-1 focus:ring-brand-500 w-full cursor-pointer"
+                >
+                  <option value="">Todas as Cidades</option>
+                  {cidadesFull.data?.data?.map((c: any, idx: number) => (
+                    <option key={idx} value={c.nome}>{c.nome}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-divider bg-bg-secondary/40 flex flex-col gap-2">
+              <button
+                onClick={() => {
+                  setSelectedVendedor('')
+                  setSelectedMarca('')
+                  setSelectedCidade('')
+                  setShowMobileFilters(false)
+                }}
+                className="w-full py-2 border border-divider text-text-secondary rounded-xl text-xs font-bold bg-bg-primary hover:bg-bg-secondary cursor-pointer transition-all"
+              >
+                Limpar Todos
+              </button>
+              <button
+                onClick={() => setShowMobileFilters(false)}
+                className="w-full py-2.5 bg-brand-500 hover:bg-brand-600 text-white rounded-xl text-xs font-bold shadow-sm cursor-pointer transition-all"
+              >
+                Aplicar Filtros
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. PRIMEIRA LINHA SOMENTE COM CARD DE FATURAMENTO (PASSO 4) */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* Card 1: Faturamento do Período */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-6 relative overflow-hidden flex flex-col justify-between min-h-[140px]">
+          <div className="absolute top-0 left-0 w-full h-[3px] bg-brand-500"></div>
+          <div className="flex justify-between items-start">
+            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Faturamento do Período</span>
+            <div className="p-1.5 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
+              <DollarSign size={16} />
+            </div>
+          </div>
+          <div className="my-2">
+            <div className="text-2xl font-black text-text-primary tracking-tight">
+              {formatBRL(faturamentoAtual)}
+            </div>
+          </div>
+          <div className="space-y-1.5 mt-auto">
+            <div className="flex items-center gap-1.5">
+              <ComparisonBadge pct={faturamentoCrescimento} />
+              <span className="text-[10px] text-text-muted font-semibold">vs. período anterior</span>
+            </div>
+            {ov.data?.meta_total > 0 && faturamentoAtual < ov.data.meta_total && (
+              <span className="text-[9px] font-bold text-brand-600 block">
+                Faltam {(((ov.data.meta_total - faturamentoAtual) / ov.data.meta_total) * 100).toFixed(1)}% para atingir a meta
               </span>
+            )}
+          </div>
+        </div>
+
+        {/* Card 2: Últimos 30 Dias */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-6 relative overflow-hidden flex flex-col justify-between min-h-[140px]">
+          <div className="absolute top-0 left-0 w-full h-[3px] bg-brand-500"></div>
+          <div className="flex justify-between items-start">
+            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Últimos 30 Dias</span>
+            <div className="p-1.5 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
+              <Calendar size={16} />
+            </div>
+          </div>
+          <div className="my-2">
+            <div className="text-2xl font-black text-text-primary tracking-tight">
+              {formatBRL(faturamento30)}
+            </div>
+          </div>
+          <div className="space-y-1.5 mt-auto">
+            <div className="flex items-center gap-1.5">
+              <ComparisonBadge pct={faturamento30Crescimento} />
+              <span className="text-[10px] text-text-muted font-semibold">vs. 30d anteriores</span>
+            </div>
+            <span className="text-[9px] text-text-muted font-bold block">
+              Representa {faturamentoAtual > 0 ? ((faturamento30 / faturamentoAtual) * 100).toFixed(1) : '0.0'}% do total
+            </span>
+          </div>
+        </div>
+
+        {/* Card 3: Últimos 60 Dias */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-6 relative overflow-hidden flex flex-col justify-between min-h-[140px]">
+          <div className="absolute top-0 left-0 w-full h-[3px] bg-brand-500"></div>
+          <div className="flex justify-between items-start">
+            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Últimos 60 Dias</span>
+            <div className="p-1.5 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
+              <Briefcase size={16} />
+            </div>
+          </div>
+          <div className="my-2">
+            <div className="text-2xl font-black text-text-primary tracking-tight">
+              {formatBRL(faturamento60)}
+            </div>
+          </div>
+          <div className="space-y-1.5 mt-auto">
+            <div className="flex items-center gap-1.5">
+              <ComparisonBadge pct={faturamento60Crescimento} />
+              <span className="text-[10px] text-text-muted font-semibold">vs. 60d anteriores</span>
+            </div>
+            <span className="text-[9px] text-text-muted font-bold block">
+              Tendência de crescimento no período
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* 4. SEGUNDA ÁREA COM CARDS DE DESTAQUE GRID 3x2 (PASSO 5) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Card 1: Melhor Vendedor */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-5 min-h-[130px] flex flex-col justify-between">
+          <div className="flex justify-between items-start gap-1.5">
+            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Melhor Vendedor</span>
+            <div className="p-1.5 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
+              <Award size={15} />
+            </div>
+          </div>
+          {bestSeller && bestSeller.value > 0 ? (
+            <div className="mt-2 space-y-1">
+              <div className="text-sm font-extrabold text-brand-500 truncate max-w-[220px]">{bestSeller.name}</div>
+              <div className="text-xl font-black text-text-primary">{formatBRL(bestSeller.value)}</div>
+              <span className="text-[10px] text-text-muted font-bold block">{bestSeller.pct.toFixed(1)}% do faturamento total</span>
             </div>
           ) : (
-            <div className="text-text-muted text-xs italic py-4">Sem vendas no período</div>
+            <span className="text-xs text-text-muted italic py-2">Sem vendas no período</span>
           )}
         </div>
 
-        <div className="bg-bg-primary rounded-xl p-5 border border-divider shadow-card flex flex-col justify-center items-center text-center relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1 bg-text-muted/30"></div>
-          <span className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2">Faturamento Mês Anterior (Vet)</span>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-3xl font-extrabold text-text-primary">{formatBRL(mockFaturamentoAnterior)}</span>
+        {/* Card 2: Melhor Cliente */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-5 min-h-[130px] flex flex-col justify-between">
+          <div className="flex justify-between items-start gap-1.5">
+            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Melhor Cliente</span>
+            <div className="p-1.5 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
+              <Award size={15} />
+            </div>
           </div>
-          <div className="text-xs font-medium text-text-secondary px-2 py-1 bg-bg-secondary rounded-md">Referência</div>
+          {bestClient && bestClient.value > 0 ? (
+            <div className="mt-2 space-y-1">
+              <div className="text-sm font-extrabold text-brand-500 truncate max-w-[220px]">{bestClient.name}</div>
+              <div className="text-xl font-black text-text-primary">{formatBRL(bestClient.value)}</div>
+              <span className="text-[10px] text-text-muted font-bold block">Cliente com maior faturamento</span>
+            </div>
+          ) : (
+            <span className="text-xs text-text-muted italic py-2">Sem clientes no período</span>
+          )}
+        </div>
+
+        {/* Card 3: Volume de Peças */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-5 min-h-[130px] flex flex-col justify-between">
+          <div className="flex justify-between items-start gap-1.5">
+            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Volume de Peças</span>
+            <div className="p-1.5 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
+              <Box size={15} />
+            </div>
+          </div>
+          <div className="mt-2 space-y-1">
+            <div className="text-xl font-black text-text-primary">{formatNum(qtdPedidos)}</div>
+            <span className="text-[10px] text-text-muted font-bold block">Total de peças faturadas</span>
+          </div>
+        </div>
+
+        {/* Card 4: Ticket Médio */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-5 min-h-[130px] flex flex-col justify-between">
+          <div className="flex justify-between items-start gap-1.5">
+            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Ticket Médio</span>
+            <div className="p-1.5 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
+              <Target size={15} />
+            </div>
+          </div>
+          <div className="mt-2 space-y-1">
+            <div className="text-xl font-black text-text-primary">{formatBRL(ticketMedio)}</div>
+            <span className="text-[10px] text-text-muted font-bold block">Média por venda/nota</span>
+          </div>
+        </div>
+
+        {/* Card 5: Taxa de Conversão */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-5 min-h-[130px] flex flex-col justify-between">
+          <div className="flex justify-between items-start gap-1.5">
+            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Taxa de Conversão</span>
+            <div className="p-1.5 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
+              <TrendingUp size={15} />
+            </div>
+          </div>
+          <div className="mt-2 space-y-1">
+            <div className="text-xl font-black text-text-primary">{taxaConversao.toFixed(1)}%</div>
+            <span className="text-[10px] text-text-muted font-bold block">Conversão de vendas no período</span>
+          </div>
+        </div>
+
+        {/* Card 6: Clientes com Compra */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-5 min-h-[130px] flex flex-col justify-between">
+          <div className="flex justify-between items-start gap-1.5">
+            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Clientes com Compra</span>
+            <div className="p-1.5 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
+              <Users size={15} />
+            </div>
+          </div>
+          <div className="mt-2 space-y-1">
+            <div className="text-xl font-black text-text-primary">{formatNum(clientesAtivos)}</div>
+            <span className="text-[10px] text-text-muted font-bold block">Clientes ativos no período</span>
+          </div>
         </div>
       </div>
 
-      {/* OPERATIONAL KPIS */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-        {[
-          { label: 'Volume de Peças', value: formatNum(qtdPedidos), icon: Box, color: 'text-brand-500', bg: 'bg-brand-50/80 dark:bg-brand-500/10' },
-          { label: 'Ticket Médio', value: formatBRL(ticketMedio), icon: Target, color: 'text-brand-600', bg: 'bg-brand-50/80 dark:bg-brand-500/10' },
-          { label: 'Taxa de Conversão', value: `${taxaConversao.toFixed(1)}%`, icon: TrendingUp, color: 'text-brand-500', bg: 'bg-brand-50/80 dark:bg-brand-500/10' },
-          { label: 'Clientes com Compra', value: formatNum(clientesAtivos), icon: Users, color: 'text-brand-600', bg: 'bg-brand-50/80 dark:bg-brand-500/10' },
-          { label: 'Cidade Líder', value: cidadeLider, icon: Map, color: 'text-brand-500', bg: 'bg-brand-50/80 dark:bg-brand-500/10' }
-        ].map((kpi, idx) => (
-          <div key={idx} className="bg-bg-primary rounded-xl p-4 border border-divider shadow-card flex items-center gap-4">
-            <div className={clsx('p-3 rounded-lg', kpi.bg, kpi.color)}>
-              <kpi.icon size={20} />
-            </div>
-            <div>
-              <div className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">{kpi.label}</div>
-              <div className="text-lg font-bold text-text-primary truncate max-w-[120px] sm:max-w-none">{kpi.value}</div>
-            </div>
+      {/* 5. SEÇÃO DE RANKINGS ANTES DOS GRÁFICOS (PASSO 7) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* 1. Ranking de Vendedores */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-5 flex flex-col min-h-[360px]">
+          <div className="flex items-center gap-1.5 border-b border-divider/20 pb-3 mb-4">
+            <Award size={16} className="text-brand-500" />
+            <h4 className="text-xs font-bold text-text-primary uppercase tracking-wider">Top 10 Vendedores</h4>
           </div>
-        ))}
+          <div className="flex-1 overflow-y-auto max-h-[280px] text-xs space-y-2 pr-1 scrollbar-none">
+            {mockTopSellers.slice(0, 10).map((s: any, idx: number) => {
+              const rank = idx + 1;
+              const share = totalSellersVal > 0 ? (s.value / totalSellersVal) * 100 : 0;
+              return (
+                <div key={idx} className="flex justify-between items-center py-2 border-b border-divider/5 hover:bg-bg-secondary/40 px-2 rounded-lg transition-colors">
+                  <span className="text-text-secondary truncate max-w-[140px] font-medium" title={s.name}>
+                    <span className="font-bold text-brand-500 mr-2 font-mono">#{rank}</span>
+                    {s.name}
+                  </span>
+                  <div className="text-right shrink-0">
+                    <span className="font-bold text-text-primary block font-mono">{formatBRLCompact(s.value)}</span>
+                    <span className="text-[10px] text-text-muted block font-semibold">{share.toFixed(1)}% share</span>
+                  </div>
+                </div>
+              );
+            })}
+            {mockTopSellers.length === 0 && (
+              <div className="h-full flex flex-col items-center justify-center text-center p-4">
+                <AlertCircle size={24} className="text-text-muted mb-1 stroke-[1.5]" />
+                <span className="text-xs text-text-muted font-medium">Nenhum vendedor registrado.</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 2. Ranking de Marcas */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-5 flex flex-col min-h-[360px]">
+          <div className="flex items-center gap-1.5 border-b border-divider/20 pb-3 mb-4">
+            <Tag size={16} className="text-brand-500" />
+            <h4 className="text-xs font-bold text-text-primary uppercase tracking-wider">Top 15 Marcas</h4>
+          </div>
+          <div className="flex-1 overflow-y-auto max-h-[280px] text-xs space-y-2 pr-1 scrollbar-none">
+            {mockTopBrands.slice(0, 15).map((m: any, idx: number) => {
+              const rank = idx + 1;
+              const share = totalBrandsVal > 0 ? (m.value / totalBrandsVal) * 100 : 0;
+              return (
+                <div key={idx} className="flex justify-between items-center py-2 border-b border-divider/5 hover:bg-bg-secondary/40 px-2 rounded-lg transition-colors">
+                  <span className="text-text-secondary truncate max-w-[140px] font-medium" title={m.name}>
+                    <span className="font-bold text-brand-500 mr-2 font-mono">#{rank}</span>
+                    {m.name}
+                  </span>
+                  <div className="text-right shrink-0">
+                    <span className="font-bold text-text-primary block font-mono">{formatBRLCompact(m.value)}</span>
+                    <span className="text-[10px] text-text-muted block font-semibold">{share.toFixed(1)}% share</span>
+                  </div>
+                </div>
+              );
+            })}
+            {mockTopBrands.length === 0 && (
+              <div className="h-full flex flex-col items-center justify-center text-center p-4">
+                <AlertCircle size={24} className="text-text-muted mb-1 stroke-[1.5]" />
+                <span className="text-xs text-text-muted font-medium">Nenhuma marca registrada.</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 3. Ranking de Grupos */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-5 flex flex-col min-h-[360px]">
+          <div className="flex items-center gap-1.5 border-b border-divider/20 pb-3 mb-4">
+            <Box size={16} className="text-brand-500" />
+            <h4 className="text-xs font-bold text-text-primary uppercase tracking-wider">Top 15 Grupos</h4>
+          </div>
+          <div className="flex-1 overflow-y-auto max-h-[280px] text-xs space-y-2 pr-1 scrollbar-none">
+            {mockTopGroups.slice(0, 15).map((g: any, idx: number) => {
+              const rank = idx + 1;
+              const share = totalGroupsVal > 0 ? (g.value / totalGroupsVal) * 100 : 0;
+              return (
+                <div key={idx} className="flex justify-between items-center py-2 border-b border-divider/5 hover:bg-bg-secondary/40 px-2 rounded-lg transition-colors">
+                  <span className="text-text-secondary truncate max-w-[140px] font-medium" title={g.name}>
+                    <span className="font-bold text-brand-500 mr-2 font-mono">#{rank}</span>
+                    {g.name}
+                  </span>
+                  <div className="text-right shrink-0">
+                    <span className="font-bold text-text-primary block font-mono">{formatBRLCompact(g.value)}</span>
+                    <span className="text-[10px] text-text-muted block font-semibold">{share.toFixed(1)}% share</span>
+                  </div>
+                </div>
+              );
+            })}
+            {mockTopGroups.length === 0 && (
+              <div className="h-full flex flex-col items-center justify-center text-center p-4">
+                <AlertCircle size={24} className="text-text-muted mb-1 stroke-[1.5]" />
+                <span className="text-xs text-text-muted font-medium">Nenhum grupo registrado.</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 4. Ranking de Cidades */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-5 flex flex-col min-h-[360px]">
+          <div className="flex items-center gap-1.5 border-b border-divider/20 pb-3 mb-4">
+            <Map size={16} className="text-brand-500" />
+            <h4 className="text-xs font-bold text-text-primary uppercase tracking-wider">Top 15 Cidades</h4>
+          </div>
+          <div className="flex-1 overflow-y-auto max-h-[280px] text-xs space-y-2 pr-1 scrollbar-none">
+            {mockTopCities.slice(0, 15).map((c: any, idx: number) => {
+              const rank = idx + 1;
+              const share = totalCitiesVal > 0 ? (c.value / totalCitiesVal) * 100 : 0;
+              return (
+                <div key={idx} className="flex justify-between items-center py-2 border-b border-divider/5 hover:bg-bg-secondary/40 px-2 rounded-lg transition-colors">
+                  <span className="text-text-secondary truncate max-w-[140px] font-medium" title={c.name}>
+                    <span className="font-bold text-brand-500 mr-2 font-mono">#{rank}</span>
+                    {c.name}
+                  </span>
+                  <div className="text-right shrink-0">
+                    <span className="font-bold text-text-primary block font-mono">{formatBRLCompact(c.value)}</span>
+                    <span className="text-[10px] text-text-muted block font-semibold">{share.toFixed(1)}% share</span>
+                  </div>
+                </div>
+              );
+            })}
+            {mockTopCities.length === 0 && (
+              <div className="h-full flex flex-col items-center justify-center text-center p-4">
+                <AlertCircle size={24} className="text-text-muted mb-1 stroke-[1.5]" />
+                <span className="text-xs text-text-muted font-medium">Nenhuma cidade registrada.</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 5. Ranking de Clientes */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-5 flex flex-col min-h-[360px] lg:col-span-2">
+          <div className="flex items-center gap-1.5 border-b border-divider/20 pb-3 mb-4">
+            <Users size={16} className="text-brand-500" />
+            <h4 className="text-xs font-bold text-text-primary uppercase tracking-wider">Top 15 Clientes</h4>
+          </div>
+          <div className="flex-1 overflow-y-auto max-h-[280px] text-xs space-y-2 pr-1 scrollbar-none">
+            {mockTopClients.slice(0, 15).map((c: any, idx: number) => {
+              const share = totalClientsVal > 0 ? (c.value / totalClientsVal) * 100 : 0;
+              return (
+                <div key={idx} className="flex justify-between items-center py-2 border-b border-divider/5 hover:bg-bg-secondary/40 px-2 rounded-lg transition-colors">
+                  <span className="text-text-secondary truncate max-w-[280px] font-medium" title={c.name}>
+                    <span className="font-bold text-brand-500 mr-2 font-mono">#{c.rank}</span>
+                    {c.name}
+                  </span>
+                  <div className="text-right shrink-0">
+                    <span className="font-bold text-text-primary block font-mono">{formatBRLCompact(c.value)}</span>
+                    <span className="text-[10px] text-text-muted block font-semibold">{share.toFixed(1)}% share</span>
+                  </div>
+                </div>
+              );
+            })}
+            {mockTopClients.length === 0 && (
+              <div className="h-full flex flex-col items-center justify-center text-center p-4">
+                <AlertCircle size={24} className="text-text-muted mb-1 stroke-[1.5]" />
+                <span className="text-xs text-text-muted font-medium">Nenhum cliente registrado.</span>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* TIER 4: GRÁFICO PRINCIPAL */}
-      <div className="w-full bg-bg-primary border border-divider shadow-card rounded-xl p-5">
+      {/* 6. SEÇÃO DE GRÁFICOS (PASSO 8) */}
+      <div className="w-full bg-bg-primary border border-divider shadow-card rounded-xl p-5 mt-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
           <h3 className="font-bold text-text-primary text-xs uppercase tracking-wider">Faturamento no Período</h3>
           
@@ -488,7 +911,7 @@ export default function VisaoEstrategicaV4() {
           </div>
         </div>
         
-        <div className="h-[280px]">
+        <div className="h-[240px] sm:h-[300px] lg:h-[380px] w-full">
           {viewMode.faturamento === 'chart' ? (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={groupedFaturamentoData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -551,482 +974,6 @@ export default function VisaoEstrategicaV4() {
               </div>
             </div>
           )}
-        </div>
-      </div>
-
-
-      {/* ROW 5: VENDEDORES */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        <div className="lg:col-span-3 bg-bg-primary border border-divider shadow-card rounded-xl p-5">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="font-bold text-text-primary text-xs uppercase tracking-wider">Vendedores (Top 10)</h3>
-            
-            {/* Chaveador de Visualização */}
-            <div className="flex items-center gap-1 bg-bg-secondary p-0.5 rounded-lg border border-divider">
-              <button
-                onClick={() => setViewMode(prev => ({ ...prev, vendedores: 'chart' }))}
-                className={clsx(
-                  "p-1.5 rounded-md transition-all cursor-pointer",
-                  viewMode.vendedores === 'chart'
-                    ? "bg-bg-primary text-brand-500 shadow-sm"
-                    : "text-text-secondary hover:text-text-primary"
-                )}
-                title="Ver Gráfico"
-              >
-                <BarChart3 size={14} />
-              </button>
-              <button
-                onClick={() => setViewMode(prev => ({ ...prev, vendedores: 'text' }))}
-                className={clsx(
-                  "p-1.5 rounded-md transition-all cursor-pointer",
-                  viewMode.vendedores === 'text'
-                    ? "bg-bg-primary text-brand-500 shadow-sm"
-                    : "text-text-secondary hover:text-text-primary"
-                )}
-                title="Ver Dados/Texto"
-              >
-                <FileText size={14} />
-              </button>
-            </div>
-          </div>
-          
-          <div className="h-[260px]">
-            {viewMode.vendedores === 'chart' ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={mockTopSellers.slice(1)} layout="vertical" margin={{ top: 0, right: 30, left: 10, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--color-border)" opacity={0.5} />
-                  <XAxis type="number" hide />
-                  <YAxis 
-                    dataKey="name" 
-                    type="category" 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tickFormatter={(v) => String(v).length > 12 ? String(v).substring(0, 12) + '...' : v}
-                    tick={{ fontSize: 11, fill: 'var(--color-text-primary)', fontWeight: 600 }} 
-                    width={isMobile ? 80 : 120} 
-                  />
-                  <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.4 }} />
-                  <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={20}>
-                    {mockTopSellers.slice(1).map((entry: any, index: number) => (
-                      <Cell key={`cell-${index}`} fill={barColors[index % barColors.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-[260px] overflow-y-auto pr-1 space-y-2">
-                {mockTopSellers.slice(1).map((seller: any, index: number) => {
-                  const pct = faturamentoAtual > 0 ? (seller.value / faturamentoAtual) * 100 : 0
-                  const rank = index + 2
-                  return (
-                    <div
-                      key={index}
-                      className="flex flex-col p-3 rounded-xl border border-divider bg-bg-secondary/20 transition-all hover:bg-bg-secondary/40"
-                    >
-                      <div className="flex justify-between items-center mb-1.5">
-                        <div className="flex items-center gap-2">
-                          {rank === 1 && <span className="text-lg shrink-0">🥇</span>}
-                          {rank === 2 && <span className="text-lg shrink-0">🥈</span>}
-                          {rank === 3 && <span className="text-lg shrink-0">🥉</span>}
-                          {rank > 3 && (
-                            <span className="text-[10px] font-extrabold text-text-muted bg-bg-secondary border border-divider w-5 h-5 rounded-full flex items-center justify-center shrink-0">
-                              {rank}
-                            </span>
-                          )}
-                          <span className="text-xs font-bold text-text-primary truncate max-w-[150px] sm:max-w-none">{seller.name}</span>
-                        </div>
-                        <span className="text-xs font-bold text-text-primary font-mono">{formatBRL(seller.value)}</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="flex-1 bg-bg-secondary h-1.5 rounded-full overflow-hidden">
-                          <div
-                            className="bg-brand-500 h-full rounded-full transition-all duration-500"
-                            style={{ width: `${pct}%` }}
-                          ></div>
-                        </div>
-                        <span className="text-[9px] font-extrabold text-brand-500 bg-brand-500/10 px-1.5 py-0.5 rounded-full shrink-0 leading-none">
-                          {pct.toFixed(1)}%
-                        </span>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-        
-        <div className="lg:col-span-1 bg-bg-primary border border-divider shadow-card rounded-xl p-5 flex flex-col justify-center space-y-2">
-          <div className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-1">Desempenho da Equipe</div>
-          <div className="text-brand-500 font-extrabold text-sm mb-1 truncate">Vendedores Ativos: {totalVendedores}</div>
-          <div className="text-xl font-extrabold text-text-primary">{formatBRL(mediaPorVendedor)}</div>
-          <div className="text-[10px] text-text-secondary mt-1">
-            Média por vendedor no período
-          </div>
-        </div>
-      </div>
-
-      {/* ROW 6: MARCAS */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        <div className="lg:col-span-3 bg-bg-primary border border-divider shadow-card rounded-xl p-5">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="font-bold text-text-primary text-xs uppercase tracking-wider">Marcas (Top 15)</h3>
-            
-            {/* Chaveador de Visualização */}
-            <div className="flex items-center gap-1 bg-bg-secondary p-0.5 rounded-lg border border-divider">
-              <button
-                onClick={() => setViewMode(prev => ({ ...prev, marcas: 'chart' }))}
-                className={clsx(
-                  "p-1.5 rounded-md transition-all cursor-pointer",
-                  viewMode.marcas === 'chart'
-                    ? "bg-bg-primary text-brand-500 shadow-sm"
-                    : "text-text-secondary hover:text-text-primary"
-                )}
-                title="Ver Gráfico"
-              >
-                <BarChart3 size={14} />
-              </button>
-              <button
-                onClick={() => setViewMode(prev => ({ ...prev, marcas: 'text' }))}
-                className={clsx(
-                  "p-1.5 rounded-md transition-all cursor-pointer",
-                  viewMode.marcas === 'text'
-                    ? "bg-bg-primary text-brand-500 shadow-sm"
-                    : "text-text-secondary hover:text-text-primary"
-                )}
-                title="Ver Dados/Texto"
-              >
-                <FileText size={14} />
-              </button>
-            </div>
-          </div>
-          
-          <div className="h-[260px]">
-            {viewMode.marcas === 'chart' ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={mockTopBrands} layout="vertical" margin={{ top: 0, right: 30, left: 10, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--color-border)" opacity={0.5} />
-                  <XAxis type="number" hide />
-                  <YAxis 
-                    dataKey="name" 
-                    type="category" 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tickFormatter={(v) => String(v).length > 15 ? String(v).substring(0, 15) + '...' : v}
-                    tick={{ fontSize: 11, fill: 'var(--color-text-primary)', fontWeight: 600 }} 
-                    width={isMobile ? 80 : 120} 
-                  />
-                  <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.4 }} />
-                  <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={20}>
-                    {mockTopBrands.map((entry: any, index: number) => (
-                      <Cell key={`cell-${index}`} fill={barColors[(index + 3) % barColors.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-[260px] overflow-y-auto pr-1 space-y-2">
-                {mockTopBrands.map((brand: any, index: number) => {
-                  const pct = faturamentoAtual > 0 ? (brand.value / faturamentoAtual) * 100 : 0
-                  const rank = index + 1
-                  return (
-                    <div
-                      key={index}
-                      className="flex flex-col p-3 rounded-xl border border-divider bg-bg-secondary/20 transition-all hover:bg-bg-secondary/40"
-                    >
-                      <div className="flex justify-between items-center mb-1.5">
-                        <div className="flex items-center gap-2">
-                          {rank === 1 && <span className="text-lg shrink-0">🥇</span>}
-                          {rank === 2 && <span className="text-lg shrink-0">🥈</span>}
-                          {rank === 3 && <span className="text-lg shrink-0">🥉</span>}
-                          {rank > 3 && (
-                            <span className="text-[10px] font-extrabold text-text-muted bg-bg-secondary border border-divider w-5 h-5 rounded-full flex items-center justify-center shrink-0">
-                              {rank}
-                            </span>
-                          )}
-                          <span className="text-xs font-bold text-text-primary truncate max-w-[150px] sm:max-w-none">{brand.name}</span>
-                        </div>
-                        <span className="text-xs font-bold text-text-primary font-mono">{formatBRL(brand.value)}</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="flex-1 bg-bg-secondary h-1.5 rounded-full overflow-hidden">
-                          <div
-                            className="bg-brand-500 h-full rounded-full transition-all duration-500"
-                            style={{ width: `${pct}%` }}
-                          ></div>
-                        </div>
-                        <span className="text-[9px] font-extrabold text-brand-500 bg-brand-500/10 px-1.5 py-0.5 rounded-full shrink-0 leading-none">
-                          {pct.toFixed(1)}%
-                        </span>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-        
-        <div className="lg:col-span-1 bg-bg-primary border border-divider shadow-card rounded-xl p-5 flex flex-col justify-center space-y-2">
-          <div className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-1">Maior Marca</div>
-          <div className="text-brand-500 font-extrabold text-sm mb-1 truncate">{mockTopBrands.length > 0 ? mockTopBrands[0].name : '-'}</div>
-          <div className="text-xl font-extrabold text-text-primary">{formatBRL(mockTopBrands.length > 0 ? mockTopBrands[0].value : 0)}</div>
-          <div className="text-[10px] text-text-secondary mt-1">
-            Participação: {faturamentoAtual > 0 && mockTopBrands.length > 0 ? ((mockTopBrands[0].value / faturamentoAtual) * 100).toFixed(1) : 0}%
-          </div>
-        </div>
-      </div>
-
-      {/* ROW 7: GRUPOS */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        <div className="lg:col-span-3 bg-bg-primary border border-divider shadow-card rounded-xl p-5">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="font-bold text-text-primary text-xs uppercase tracking-wider">Grupos / Categorias (Top 15)</h3>
-            
-            {/* Chaveador de Visualização */}
-            <div className="flex items-center gap-1 bg-bg-secondary p-0.5 rounded-lg border border-divider">
-              <button
-                onClick={() => setViewMode(prev => ({ ...prev, grupos: 'chart' }))}
-                className={clsx(
-                  "p-1.5 rounded-md transition-all cursor-pointer",
-                  viewMode.grupos === 'chart'
-                    ? "bg-bg-primary text-brand-500 shadow-sm"
-                    : "text-text-secondary hover:text-text-primary"
-                )}
-                title="Ver Gráfico"
-              >
-                <BarChart3 size={14} />
-              </button>
-              <button
-                onClick={() => setViewMode(prev => ({ ...prev, grupos: 'text' }))}
-                className={clsx(
-                  "p-1.5 rounded-md transition-all cursor-pointer",
-                  viewMode.grupos === 'text'
-                    ? "bg-bg-primary text-brand-500 shadow-sm"
-                    : "text-text-secondary hover:text-text-primary"
-                )}
-                title="Ver Dados/Texto"
-              >
-                <FileText size={14} />
-              </button>
-            </div>
-          </div>
-          
-          <div className="h-[260px]">
-            {viewMode.grupos === 'chart' ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={mockTopGroups} layout="vertical" margin={{ top: 0, right: 30, left: 10, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--color-border)" opacity={0.5} />
-                  <XAxis type="number" hide />
-                  <YAxis 
-                    dataKey="name" 
-                    type="category" 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tickFormatter={(v) => String(v).length > 15 ? String(v).substring(0, 15) + '...' : v}
-                    tick={{ fontSize: 11, fill: 'var(--color-text-primary)', fontWeight: 600 }} 
-                    width={isMobile ? 80 : 120} 
-                  />
-                  <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.4 }} />
-                  <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={20}>
-                    {mockTopGroups.map((entry: any, index: number) => (
-                      <Cell key={`cell-${index}`} fill={barColors[(index + 5) % barColors.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-[260px] overflow-y-auto pr-1 space-y-2">
-                {mockTopGroups.map((grupo: any, index: number) => {
-                  const pct = faturamentoAtual > 0 ? (grupo.value / faturamentoAtual) * 100 : 0
-                  const rank = index + 1
-                  return (
-                    <div
-                      key={index}
-                      className="flex flex-col p-3 rounded-xl border border-divider bg-bg-secondary/20 transition-all hover:bg-bg-secondary/40"
-                    >
-                      <div className="flex justify-between items-center mb-1.5">
-                        <div className="flex items-center gap-2">
-                          {rank === 1 && <span className="text-lg shrink-0">🥇</span>}
-                          {rank === 2 && <span className="text-lg shrink-0">🥈</span>}
-                          {rank === 3 && <span className="text-lg shrink-0">🥉</span>}
-                          {rank > 3 && (
-                            <span className="text-[10px] font-extrabold text-text-muted bg-bg-secondary border border-divider w-5 h-5 rounded-full flex items-center justify-center shrink-0">
-                              {rank}
-                            </span>
-                          )}
-                          <span className="text-xs font-bold text-text-primary truncate max-w-[150px] sm:max-w-none">{grupo.name}</span>
-                        </div>
-                        <span className="text-xs font-bold text-text-primary font-mono">{formatBRL(grupo.value)}</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="flex-1 bg-bg-secondary h-1.5 rounded-full overflow-hidden">
-                          <div
-                            className="bg-brand-500 h-full rounded-full transition-all duration-500"
-                            style={{ width: `${pct}%` }}
-                          ></div>
-                        </div>
-                        <span className="text-[9px] font-extrabold text-brand-500 bg-brand-500/10 px-1.5 py-0.5 rounded-full shrink-0 leading-none">
-                          {pct.toFixed(1)}%
-                        </span>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-        
-        <div className="lg:col-span-1 bg-bg-primary border border-divider shadow-card rounded-xl p-5 flex flex-col justify-center space-y-2">
-          <div className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-1">Grupo Destaque</div>
-          <div className="text-brand-500 font-extrabold text-sm mb-1 truncate">{mockTopGroups.length > 0 ? mockTopGroups[0].name : '-'}</div>
-          <div className="text-xl font-extrabold text-text-primary">{formatBRL(mockTopGroups.length > 0 ? mockTopGroups[0].value : 0)}</div>
-          <div className="text-[10px] text-text-secondary mt-1">
-            Participação: {faturamentoAtual > 0 && mockTopGroups.length > 0 ? ((mockTopGroups[0].value / faturamentoAtual) * 100).toFixed(1) : 0}%
-          </div>
-        </div>
-      </div>
-
-      {/* ROW 8: CIDADES */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        <div className="lg:col-span-3 bg-bg-primary border border-divider shadow-card rounded-xl p-5">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="font-bold text-text-primary text-xs uppercase tracking-wider">Cidades (Top 15)</h3>
-            
-            {/* Chaveador de Visualização */}
-            <div className="flex items-center gap-1 bg-bg-secondary p-0.5 rounded-lg border border-divider">
-              <button
-                onClick={() => setViewMode(prev => ({ ...prev, cidades: 'chart' }))}
-                className={clsx(
-                  "p-1.5 rounded-md transition-all cursor-pointer",
-                  viewMode.cidades === 'chart'
-                    ? "bg-bg-primary text-brand-500 shadow-sm"
-                    : "text-text-secondary hover:text-text-primary"
-                )}
-                title="Ver Gráfico"
-              >
-                <BarChart3 size={14} />
-              </button>
-              <button
-                onClick={() => setViewMode(prev => ({ ...prev, cidades: 'text' }))}
-                className={clsx(
-                  "p-1.5 rounded-md transition-all cursor-pointer",
-                  viewMode.cidades === 'text'
-                    ? "bg-bg-primary text-brand-500 shadow-sm"
-                    : "text-text-secondary hover:text-text-primary"
-                )}
-                title="Ver Dados/Texto"
-              >
-                <FileText size={14} />
-              </button>
-            </div>
-          </div>
-          
-          <div className="h-[280px]">
-            {viewMode.cidades === 'chart' ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={mockTopCities} layout="vertical" margin={{ top: 0, right: 30, left: 10, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--color-border)" opacity={0.5} />
-                  <XAxis type="number" hide />
-                  <YAxis 
-                    dataKey="name" 
-                    type="category" 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tickFormatter={(v) => String(v).length > 15 ? String(v).substring(0, 15) + '...' : v}
-                    tick={{ fontSize: 11, fill: 'var(--color-text-primary)', fontWeight: 600 }} 
-                    width={isMobile ? 80 : 120} 
-                  />
-                  <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.4 }} />
-                  <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={16}>
-                    {mockTopCities.map((entry: any, index: number) => (
-                      <Cell key={`cell-${index}`} fill={barColors[index % barColors.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-[280px] overflow-y-auto pr-1 space-y-2">
-                {mockTopCities.map((city: any, index: number) => {
-                  const pct = faturamentoAtual > 0 ? (city.value / faturamentoAtual) * 100 : 0
-                  const rank = index + 1
-                  return (
-                    <div
-                      key={index}
-                      className="flex flex-col p-3 rounded-xl border border-divider bg-bg-secondary/20 transition-all hover:bg-bg-secondary/40"
-                    >
-                      <div className="flex justify-between items-center mb-1.5">
-                        <div className="flex items-center gap-2">
-                          {rank === 1 && <span className="text-lg shrink-0">🥇</span>}
-                          {rank === 2 && <span className="text-lg shrink-0">🥈</span>}
-                          {rank === 3 && <span className="text-lg shrink-0">🥉</span>}
-                          {rank > 3 && (
-                            <span className="text-[10px] font-extrabold text-text-muted bg-bg-secondary border border-divider w-5 h-5 rounded-full flex items-center justify-center shrink-0">
-                              {rank}
-                            </span>
-                          )}
-                          <span className="text-xs font-bold text-text-primary truncate max-w-[150px] sm:max-w-none">{city.name}</span>
-                        </div>
-                        <span className="text-xs font-bold text-text-primary font-mono">{formatBRL(city.value)}</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="flex-1 bg-bg-secondary h-1.5 rounded-full overflow-hidden">
-                          <div
-                            className="bg-brand-500 h-full rounded-full transition-all duration-500"
-                            style={{ width: `${pct}%` }}
-                          ></div>
-                        </div>
-                        <span className="text-[9px] font-extrabold text-brand-500 bg-brand-500/10 px-1.5 py-0.5 rounded-full shrink-0 leading-none">
-                          {pct.toFixed(1)}%
-                        </span>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-        
-        <div className="lg:col-span-1 bg-bg-primary border border-divider shadow-card rounded-xl p-5 flex flex-col justify-center space-y-2">
-          <div className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-1">Cidade Destaque</div>
-          <div className="text-brand-500 font-extrabold text-sm mb-1 truncate">
-            {mockTopCities.length > 0 ? mockTopCities[0].name : '—'}
-          </div>
-          <div className="text-xl font-extrabold text-text-primary">
-            {mockTopCities.length > 0 ? formatBRL(mockTopCities[0].value) : formatBRL(0)}
-          </div>
-          <div className="text-xs text-text-muted mt-1">
-            Participação: {faturamentoAtual > 0 && mockTopCities.length > 0 ? ((mockTopCities[0].value / faturamentoAtual) * 100).toFixed(1) : '0.0'}%
-          </div>
-        </div>
-      </div>
-
-      {/* ROW 9: CLIENTES */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        <div className="lg:col-span-3 bg-bg-primary border border-divider shadow-card rounded-xl p-5 flex flex-col">
-          <div className="flex justify-between items-center mb-4 border-b border-divider pb-2">
-            <h3 className="font-bold text-text-primary text-xs uppercase tracking-wider">Top 15 Clientes</h3>
-          </div>
-          <div className="flex-1 overflow-y-auto pr-2 max-h-[300px]">
-            <div className="space-y-2">
-              {mockTopClients.map((client: any) => (
-                <div key={client.rank} className="flex items-center justify-between p-2.5 rounded-lg bg-bg-secondary/20 hover:bg-bg-secondary transition-all border border-transparent hover:border-divider">
-                  <div className="flex items-center gap-4">
-                    <div className="w-6 text-text-muted font-bold text-xs">{String(client.rank).padStart(2, '0')}</div>
-                    <div className="font-bold text-text-primary text-xs">{client.name}</div>
-                  </div>
-                  <div className="font-bold text-text-primary font-mono text-xs">{formatBRL(client.value)}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-        <div className="lg:col-span-1 bg-bg-primary border border-divider shadow-card rounded-xl p-5 flex flex-col justify-center space-y-2">
-          <div className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-1">Cliente Destaque</div>
-          <div className="text-brand-500 font-extrabold text-sm mb-1 truncate">{mockTopClients.length > 0 ? mockTopClients[0].name : '-'}</div>
-          <div className="text-xl font-extrabold text-text-primary">{formatBRL(mockTopClients.length > 0 ? mockTopClients[0].value : 0)}</div>
         </div>
       </div>
 
