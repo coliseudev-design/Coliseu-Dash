@@ -247,11 +247,11 @@ export default function SellerHubDashboard() {
       {/* FILTER BAR ROW */}
       <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl md:text-2xl font-black text-text-primary flex items-center gap-2">
+          <h2 className="text-xl md:text-2xl font-black text-text-primary flex flex-wrap items-center gap-x-2 gap-y-1">
             <Activity className="text-brand-500" size={24} />
-            Hub do Vendedor
+            <span>Hub do Vendedor</span>
             {data?.start_date && (
-              <span className="text-xs md:text-sm font-bold text-text-secondary">
+              <span className="text-xs md:text-sm font-bold text-text-secondary whitespace-nowrap">
                 ({dateRangeLabel})
               </span>
             )}
@@ -511,7 +511,7 @@ export default function SellerHubDashboard() {
                       </span>
                       <div className="text-right shrink-0 flex items-center gap-1.5">
                         <span className="font-extrabold text-text-primary font-mono text-xs">{formatBRLCompact(c.value)}</span>
-                        <span className="text-[10px] text-text-muted font-bold">({share.toFixed(1)}%)</span>
+                        <span className="text-[10px] text-danger font-bold">({share.toFixed(1)}%)</span>
                       </div>
                     </div>
                   );
@@ -589,7 +589,7 @@ export default function SellerHubDashboard() {
                       </span>
                       <div className="text-right shrink-0 flex items-center gap-1.5">
                         <span className="font-extrabold text-text-primary font-mono text-xs">{formatBRLCompact(g.value)}</span>
-                        <span className="text-[10px] text-text-muted font-bold">({share.toFixed(1)}%)</span>
+                        <span className="text-[10px] text-danger font-bold">({share.toFixed(1)}%)</span>
                       </div>
                     </div>
                   );
@@ -667,7 +667,7 @@ export default function SellerHubDashboard() {
                       </span>
                       <div className="text-right shrink-0 flex items-center gap-1.5">
                         <span className="font-extrabold text-text-primary font-mono text-xs">{formatBRLCompact(p.value)}</span>
-                        <span className="text-[10px] text-text-muted font-bold">({share.toFixed(1)}%)</span>
+                        <span className="text-[10px] text-danger font-bold">({share.toFixed(1)}%)</span>
                       </div>
                     </div>
                   );
@@ -766,7 +766,7 @@ export default function SellerHubDashboard() {
                         </span>
                         <div className="text-right shrink-0 flex items-center gap-1.5">
                           <span className="font-extrabold text-text-primary font-mono text-xs">{formatBRLCompact(c.value)}</span>
-                          <span className="text-[10px] text-text-muted font-bold">({share.toFixed(1)}%)</span>
+                          <span className="text-[10px] text-danger font-bold">({share.toFixed(1)}%)</span>
                         </div>
                       </div>
                     );
@@ -863,7 +863,7 @@ export default function SellerHubDashboard() {
                         </span>
                         <div className="text-right shrink-0 flex items-center gap-1.5">
                           <span className="font-extrabold text-text-primary font-mono text-xs">{formatBRLCompact(g.value)}</span>
-                          <span className="text-[10px] text-text-muted font-bold">({share.toFixed(1)}%)</span>
+                          <span className="text-[10px] text-danger font-bold">({share.toFixed(1)}%)</span>
                         </div>
                       </div>
                     );
@@ -960,7 +960,7 @@ export default function SellerHubDashboard() {
                         </span>
                         <div className="text-right shrink-0 flex items-center gap-1.5">
                           <span className="font-extrabold text-text-primary font-mono text-xs">{formatBRLCompact(p.value)}</span>
-                          <span className="text-[10px] text-text-muted font-bold">({share.toFixed(1)}%)</span>
+                          <span className="text-[10px] text-danger font-bold">({share.toFixed(1)}%)</span>
                         </div>
                       </div>
                     );

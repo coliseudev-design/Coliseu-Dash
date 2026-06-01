@@ -24,7 +24,7 @@ export default function BiDashboard() {
       <div className="bg-bg-primary border border-border-primary rounded-lg p-4 flex items-center justify-between shadow-sm flex-wrap gap-4">
         <h2 className="text-xl font-bold text-text-primary">Business Intelligence</h2>
         
-        <div className="flex items-center">
+        <div className="flex items-center w-full sm:w-auto min-w-0">
           {!['/bi/abc', '/bi/customer-analytics', '/bi/goals', '/bi/heatmap', '/bi/comparative'].some(p => location.pathname.includes(p)) && (
             <PeriodFilter />
           )}
