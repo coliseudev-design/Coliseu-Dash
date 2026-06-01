@@ -64,6 +64,8 @@ export default function SellerHubDashboard() {
     produtos: 'list'
   });
 
+  const [mobileActiveRanking, setMobileActiveRanking] = useState<string>('clientes');
+
   // Table filtering and sorting states
   const [clientQuery, setClientQuery] = useState('');
   const [invoiceStatusFilter, setInvoiceStatusFilter] = useState('TODOS');
@@ -121,6 +123,15 @@ export default function SellerHubDashboard() {
   const historicoVendas = data?.historico_vendas || [];
   const vendasPorDiaSemana = data?.vendas_por_dia_semana || [];
   const invoicesList = data?.notas_fiscais || [];
+
+  const dateRangeLabel = useMemo(() => {
+    if (!data?.start_date) return '';
+    const isTodayFilter = globalFilter.period === 'today' || globalFilter.period === 'hoje';
+    if (isTodayFilter) {
+      return `Último dia com informações: ${data.start_date}`;
+    }
+    return formatPeriod(data.start_date, data.end_date);
+  }, [data?.start_date, data?.end_date, globalFilter.period]);
 
   const maxBrandValue = useMemo(() => {
     if (topMarcas.length === 0) return 0;
@@ -229,31 +240,32 @@ export default function SellerHubDashboard() {
 
   const isHistoricoEmpty = historicoVendas.length === 0 || historicoVendas.every((v: any) => v.valor === 0);
 
+
   return (
-    <div className="space-y-4 animate-in fade-in duration-300">
+    <div className="space-y-6 animate-in fade-in duration-300">
       
       {/* FILTER BAR ROW */}
-      <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-4 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+      <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-extrabold text-text-primary flex items-center gap-2">
-            <Activity className="text-brand-500" size={22} />
+          <h2 className="text-xl md:text-2xl font-black text-text-primary flex items-center gap-2">
+            <Activity className="text-brand-500" size={24} />
             Hub do Vendedor
             {data?.start_date && (
-              <span className="text-xs font-semibold text-text-secondary">
-                ({formatPeriod(data.start_date, data.end_date)})
+              <span className="text-xs md:text-sm font-bold text-text-secondary">
+                ({dateRangeLabel})
               </span>
             )}
           </h2>
-          <p className="text-[11px] sm:text-xs text-text-secondary">Consulta consolidada de faturamento e desempenho comercial realizado</p>
+          <p className="text-xs text-text-secondary mt-0.5">Consulta consolidada de faturamento e desempenho comercial realizado</p>
         </div>
         
         <div className="flex flex-wrap items-end gap-3 w-full lg:w-auto">
           <div className="flex flex-col gap-1 min-w-[240px] flex-1 sm:flex-initial">
-            <span className="text-[9px] font-bold text-text-muted uppercase tracking-wider">Vendedor</span>
+            <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Vendedor</span>
             <select
               value={selectedVendedor}
               onChange={(e) => setSelectedVendedor(e.target.value)}
-              className="px-2.5 py-1.5 bg-bg-secondary border border-divider text-text-primary rounded-lg text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300 w-full cursor-pointer"
+              className="h-12 px-4 bg-bg-secondary border border-divider text-text-primary rounded-2xl text-sm md:text-base font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all duration-300 w-full cursor-pointer shadow-sm"
             >
               <option value="">Selecione um vendedor...</option>
               {vdFull.data?.data?.map((v: any) => (
@@ -265,145 +277,146 @@ export default function SellerHubDashboard() {
       </div>
 
       {/* HIGHLIGHTED FATURAMENTO ROW (SINGLE LINE, UNIQUE PREMIUM LOOK, COMPARING CURRENT & PREVIOUS) */}
-      <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-5 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6">
-        {/* Top/Left green stripe decoration */}
-        <div className="absolute top-0 bottom-0 left-0 w-[4px] bg-brand-500"></div>
+      <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-6 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6 hover:shadow-card-hover transition-all duration-300">
+        {/* Left teal border decoration */}
+        <div className="absolute top-0 bottom-0 left-0 w-[6px] bg-brand-500"></div>
 
         {/* Current Faturamento Card Content */}
-        <div className="flex items-center gap-4 flex-1">
-          <div className="p-3 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
-            <DollarSign size={26} />
+        <div className="flex items-center gap-5 flex-1 w-full">
+          <div className="p-4 bg-brand-500/10 text-brand-500 rounded-2xl shrink-0 shadow-sm">
+            <DollarSign size={32} className="stroke-[2.5]" />
           </div>
-          <div className="space-y-0.5">
-            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Faturamento Atual</span>
-            <div className="text-2xl font-black text-text-primary tracking-tight">
+          <div className="space-y-1">
+            <span className="text-xs font-bold text-text-secondary uppercase tracking-widest block">Faturamento Atual</span>
+            <div className="text-2xl sm:text-3xl md:text-4xl font-black text-text-primary tracking-tight leading-none">
               {formatBRL(faturamento)}
             </div>
-            <span className="text-[10px] text-text-muted font-medium block">Período selecionado</span>
+            <span className="text-xs text-text-muted font-medium block">Período selecionado</span>
           </div>
         </div>
 
         {/* Center: Comparison Arrow & Percentage Inline */}
-        <div className="flex items-center gap-1.5 shrink-0 py-2 px-3.5 rounded-full bg-bg-secondary border border-divider shadow-sm">
+        <div className="flex flex-col items-center justify-center shrink-0 py-3 px-5 rounded-2xl bg-bg-secondary border border-divider shadow-sm w-full md:w-auto">
           <span className={clsx(
-            "text-xs font-black flex items-center gap-1.5",
+            "text-sm font-black flex items-center gap-1.5",
             crescimentoPct >= 0 ? "text-success" : "text-danger"
           )}>
-            {crescimentoPct >= 0 ? <TrendingUp size={15} /> : <TrendingDown size={15} />}
-            {crescimentoPct >= 0 ? "+" : ""}{crescimentoPct.toFixed(1)}% vs. anterior
+            {crescimentoPct >= 0 ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
+            {crescimentoPct >= 0 ? "+" : ""}{crescimentoPct.toFixed(1)}%
           </span>
+          <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider mt-0.5">vs. mês anterior</span>
         </div>
 
         {/* Previous Month Faturamento Card Content */}
-        <div className="flex items-center gap-4 flex-1 md:justify-end text-left md:text-right">
-          <div className="space-y-0.5 md:order-1 order-2">
-            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Faturamento Mês Anterior</span>
-            <div className="text-xl font-bold text-text-primary tracking-tight">
+        <div className="flex items-center gap-5 flex-1 md:justify-end text-left md:text-right w-full">
+          <div className="space-y-1 md:order-1 order-2 flex-1 md:flex-initial">
+            <span className="text-xs font-bold text-text-secondary uppercase tracking-widest block">Faturamento Anterior</span>
+            <div className="text-xl sm:text-2xl font-extrabold text-text-primary tracking-tight leading-none">
               {formatBRL(faturamentoAnterior)}
             </div>
-            <span className="text-[10px] text-text-muted font-medium block">Mês completo anterior</span>
+            <span className="text-xs text-text-muted font-medium block">Mês completo anterior</span>
           </div>
-          <div className="p-3 bg-text-muted/10 text-text-muted rounded-lg shrink-0 md:order-2 order-1">
-            <DollarSign size={22} />
+          <div className="p-3.5 bg-text-muted/10 text-text-muted rounded-2xl shrink-0 md:order-2 order-1 shadow-sm">
+            <DollarSign size={24} />
           </div>
         </div>
       </div>
 
-      {/* 6 OPERATIONAL KPI CARDS - GRID IN SMALLER SIZES (3 CARDS PER ROW ON DESKTOP) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* 6 OPERATIONAL KPI CARDS - GRID IN SMALLER SIZES (3 CARDS PER ROW ON DESKTOP, 2 ON TABLET, 1 ON MOBILE) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Card 1: Ticket Médio */}
-        <div className="bg-bg-primary border border-divider shadow-card hover:shadow-card-hover rounded-xl p-4 flex items-center gap-3 transition-all duration-300 relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-[2px] bg-brand-500"></div>
-          <div className="p-2.5 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
-            <Trophy size={22} />
+        <div className="bg-bg-primary border border-divider/60 shadow-card hover:shadow-card-hover rounded-2xl p-6 flex items-center gap-4 transition-all duration-300 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-[3px] bg-brand-500"></div>
+          <div className="p-3.5 bg-brand-500/10 text-brand-500 rounded-2xl shrink-0">
+            <Trophy size={26} />
           </div>
           <div className="min-w-0 flex-1">
-            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block leading-none">Ticket Médio</span>
-            <div className="text-lg font-black text-text-primary tracking-tight truncate mt-1">
+            <span className="text-xs font-bold text-text-secondary uppercase tracking-wider block">Ticket Médio</span>
+            <div className="text-xl font-black text-text-primary tracking-tight truncate mt-1">
               {formatBRL(ticketMedio)}
             </div>
-            <span className="text-[9px] text-text-muted font-bold block mt-0.5 leading-none">Média por venda</span>
+            <span className="text-xs text-text-muted font-semibold block mt-0.5">Média por venda</span>
           </div>
         </div>
 
         {/* Card 2: Notas Emitidas */}
-        <div className="bg-bg-primary border border-divider shadow-card hover:shadow-card-hover rounded-xl p-4 flex items-center gap-3 transition-all duration-300 relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-[2px] bg-brand-500"></div>
-          <div className="p-2.5 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
-            <FileText size={22} />
+        <div className="bg-bg-primary border border-divider/60 shadow-card hover:shadow-card-hover rounded-2xl p-6 flex items-center gap-4 transition-all duration-300 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-[3px] bg-brand-500"></div>
+          <div className="p-3.5 bg-brand-500/10 text-brand-500 rounded-2xl shrink-0">
+            <FileText size={26} />
           </div>
           <div className="min-w-0 flex-1">
-            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block leading-none">Notas Emitidas</span>
-            <div className="text-lg font-black text-text-primary tracking-tight truncate mt-1">
+            <span className="text-xs font-bold text-text-secondary uppercase tracking-wider block">Notas Emitidas</span>
+            <div className="text-xl font-black text-text-primary tracking-tight truncate mt-1">
               {formatNum(notasEmitidas)}
             </div>
-            <span className="text-[9px] text-text-muted font-bold block mt-0.5 leading-none">Total documentos</span>
+            <span className="text-xs text-text-muted font-semibold block mt-0.5">Total documentos</span>
           </div>
         </div>
 
         {/* Card 3: Clientes Atendidos */}
-        <div className="bg-bg-primary border border-divider shadow-card hover:shadow-card-hover rounded-xl p-4 flex items-center gap-3 transition-all duration-300 relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-[2px] bg-brand-500"></div>
-          <div className="p-2.5 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
-            <Users size={22} />
+        <div className="bg-bg-primary border border-divider/60 shadow-card hover:shadow-card-hover rounded-2xl p-6 flex items-center gap-4 transition-all duration-300 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-[3px] bg-brand-500"></div>
+          <div className="p-3.5 bg-brand-500/10 text-brand-500 rounded-2xl shrink-0">
+            <Users size={26} />
           </div>
           <div className="min-w-0 flex-1">
-            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block leading-none">Clientes Atendidos</span>
-            <div className="text-lg font-black text-text-primary tracking-tight truncate mt-1">
+            <span className="text-xs font-bold text-text-secondary uppercase tracking-wider block">Clientes Atendidos</span>
+            <div className="text-xl font-black text-text-primary tracking-tight truncate mt-1">
               {clientesAtivos}
             </div>
-            <span className="text-[10px] text-text-muted font-bold block mt-1 leading-none">
-              {notasEmitidas} pedidos de {clientesAtivos} clientes
+            <span className="text-xs text-text-muted font-semibold block mt-0.5">
+              {notasEmitidas} {notasEmitidas === 1 ? 'pedido' : 'pedidos'} de {clientesAtivos} {clientesAtivos === 1 ? 'cliente' : 'clientes'}
             </span>
           </div>
         </div>
 
         {/* Card 4: Cidade Top */}
-        <div className="bg-bg-primary border border-divider shadow-card hover:shadow-card-hover rounded-xl p-4 flex items-center gap-3 transition-all duration-300 relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-[2px] bg-brand-500"></div>
-          <div className="p-2.5 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
-            <MapPin size={22} />
+        <div className="bg-bg-primary border border-divider/60 shadow-card hover:shadow-card-hover rounded-2xl p-6 flex items-center gap-4 transition-all duration-300 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-[3px] bg-brand-500"></div>
+          <div className="p-3.5 bg-brand-500/10 text-brand-500 rounded-2xl shrink-0">
+            <MapPin size={26} />
           </div>
           <div className="min-w-0 flex-1">
-            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block leading-none">Cidade Top</span>
-            <div className="text-lg font-black text-text-primary tracking-tight truncate mt-1" title={cidadeTop}>
+            <span className="text-xs font-bold text-text-secondary uppercase tracking-wider block">Cidade Top</span>
+            <div className="text-xl font-black text-text-primary tracking-tight truncate mt-1" title={cidadeTop}>
               {cidadeTop}
             </div>
-            <span className="text-[9.5px] font-extrabold text-brand-500 block mt-0.5 leading-none">
+            <span className="text-xs font-bold text-brand-500 block mt-0.5">
               {formatBRLCompact(cidadeTopValor)} faturados
             </span>
           </div>
         </div>
 
         {/* Card 5: Principal Cliente */}
-        <div className="bg-bg-primary border border-divider shadow-card hover:shadow-card-hover rounded-xl p-4 flex items-center gap-3 transition-all duration-300 relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-[2px] bg-brand-500"></div>
-          <div className="p-2.5 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
-            <Award size={22} />
+        <div className="bg-bg-primary border border-divider/60 shadow-card hover:shadow-card-hover rounded-2xl p-6 flex items-center gap-4 transition-all duration-300 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-[3px] bg-brand-500"></div>
+          <div className="p-3.5 bg-brand-500/10 text-brand-500 rounded-2xl shrink-0">
+            <Award size={26} />
           </div>
           <div className="min-w-0 flex-1">
-            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block leading-none">Principal Cliente</span>
-            <div className="text-lg font-black text-text-primary tracking-tight truncate mt-1" title={principalCliente ? principalCliente.name : 'N/A'}>
+            <span className="text-xs font-bold text-text-secondary uppercase tracking-wider block">Principal Cliente</span>
+            <div className="text-xl font-black text-text-primary tracking-tight truncate mt-1" title={principalCliente ? principalCliente.name : 'N/A'}>
               {principalCliente ? principalCliente.name : 'N/A'}
             </div>
-            <span className="text-[9.5px] font-extrabold text-brand-500 block mt-0.5 leading-none">
+            <span className="text-xs font-bold text-brand-500 block mt-0.5">
               {principalCliente ? formatBRLCompact(principalCliente.value) : 'Sem vendas'} faturados
             </span>
           </div>
         </div>
 
-        {/* Card 6: Melhor Mês (Valor e mês em destaque) */}
-        <div className="bg-bg-primary border border-divider shadow-card hover:shadow-card-hover rounded-xl p-4 flex items-center gap-3 transition-all duration-300 relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-[2px] bg-brand-500"></div>
-          <div className="p-2.5 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
-            <Calendar size={22} />
+        {/* Card 6: Melhor Mês */}
+        <div className="bg-bg-primary border border-divider/60 shadow-card hover:shadow-card-hover rounded-2xl p-6 flex items-center gap-4 transition-all duration-300 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-[3px] bg-brand-500"></div>
+          <div className="p-3.5 bg-brand-500/10 text-brand-500 rounded-2xl shrink-0">
+            <Calendar size={26} />
           </div>
           <div className="min-w-0 flex-1">
-            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block leading-none">Melhor Mês (12m)</span>
-            <div className="text-lg font-black text-brand-500 tracking-tight truncate mt-1">
+            <span className="text-xs font-bold text-text-secondary uppercase tracking-wider block">Melhor Mês (12m)</span>
+            <div className="text-xl font-black text-brand-500 tracking-tight truncate mt-1">
               {melhorMes && melhorMes.valor > 0 ? formatBRLCompact(melhorMes.valor) : 'Sem vendas'}
             </div>
-            <span className="text-[10px] font-black text-text-primary block mt-0.5 leading-none">
+            <span className="text-xs font-bold text-text-primary block mt-0.5">
               {melhorMes && melhorMes.mes !== 'N/A' ? melhorMes.mes : 'N/A'}
             </span>
           </div>
@@ -411,39 +424,54 @@ export default function SellerHubDashboard() {
       </div>
 
       {/* SECTION: DESEMPENHO POR MARCA (SUBIDO PARA ANTES DOS TOP RANKINGS) */}
-      <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-5">
-        <div className="border-b border-divider/20 pb-3 mb-4">
-          <h3 className="text-sm font-bold text-text-primary uppercase tracking-wider">Desempenho por Marca</h3>
-          <p className="text-[11px] text-text-secondary mt-0.5">Distribuição e representação de faturamento realizado por marca</p>
+      <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-6">
+        <div className="border-b border-divider/20 pb-3 mb-5">
+          <h3 className="text-base font-extrabold text-text-primary uppercase tracking-wider">Desempenho por Marca</h3>
+          <p className="text-xs text-text-secondary mt-0.5">Distribuição e representação de faturamento realizado por marca</p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-          {topMarcas.slice(0, 8).map((m: any) => {
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
+          {topMarcas.slice(0, 8).map((m: any, index: number) => {
             const brandPct = totalMarcasVal > 0 ? (m.value / totalMarcasVal) * 100 : 0;
+            const isLeader = index === 0;
 
             return (
-              <div key={m.rank} className="border border-divider/20 rounded-lg p-3.5 bg-bg-secondary/20 flex flex-col justify-between hover:border-divider transition-all duration-300">
+              <div 
+                key={m.rank} 
+                className={clsx(
+                  "border rounded-2xl p-5 flex flex-col justify-between hover:shadow-card-hover transition-all duration-300 relative overflow-hidden",
+                  isLeader 
+                    ? "border-brand-500/80 bg-brand-500/[0.02] shadow-sm"
+                    : "border-divider/50 bg-bg-secondary/10"
+                )}
+              >
+                {isLeader && (
+                  <div className="absolute top-0 right-0 bg-brand-500 text-white text-[9px] font-black uppercase px-2.5 py-0.5 rounded-bl-xl tracking-wider">
+                    Líder
+                  </div>
+                )}
+                
                 <div className="flex justify-between items-start gap-1">
-                  <span className="text-[10px] font-extrabold text-text-primary uppercase truncate max-w-[80%]" title={m.name}>
+                  <span className="text-xs font-bold text-text-primary uppercase truncate max-w-[80%]" title={m.name}>
                     {m.name}
                   </span>
-                  <span className="text-[10px] font-bold text-brand-500">
+                  <span className="text-xs font-black text-brand-500">
                     {brandPct.toFixed(1)}%
                   </span>
                 </div>
                 
-                <div className="w-full bg-bg-secondary h-1.5 rounded-full mt-2.5 overflow-hidden">
-                  <div className="bg-brand-500 h-full rounded-full" style={{ width: `${brandPct}%` }}></div>
+                <div className="w-full bg-bg-secondary h-3.5 rounded-full mt-3 overflow-hidden">
+                  <div className="bg-brand-500 h-full rounded-full transition-all duration-500" style={{ width: `${brandPct}%` }}></div>
                 </div>
 
-                <div className="flex justify-between items-center text-[10px] text-text-secondary font-medium mt-3 leading-none">
-                  <span>Realizado: <span className="font-bold text-text-primary">{formatBRLCompact(m.value)}</span></span>
+                <div className="flex justify-between items-center text-xs text-text-secondary font-medium mt-4 leading-none">
+                  <span>Realizado: <span className="font-extrabold text-text-primary">{formatBRLCompact(m.value)}</span></span>
                 </div>
               </div>
             );
           })}
           {topMarcas.length === 0 && (
-            <div className="col-span-4 text-center py-6 text-text-muted text-xs">
+            <div className="col-span-full text-center py-8 text-text-muted text-xs font-semibold">
               Nenhuma marca registrada para este vendedor no período.
             </div>
           )}
@@ -451,20 +479,22 @@ export default function SellerHubDashboard() {
       </div>
 
       {/* 3 TOP LISTS / RANKINGS (REMOVIDO MARCAS) - COMPACTED AND CLEAN WITH STATE EMPTY FALLBACKS & PIE CHART VIEWS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      
+      {/* Desktop/Tablet Grid View for Rankings */}
+      <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Top Clientes */}
-        <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-4 flex flex-col min-h-[350px]">
-          <div className="flex justify-between items-center border-b border-divider/20 pb-1.5 mb-2">
+        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 flex flex-col min-h-[380px]">
+          <div className="flex justify-between items-center border-b border-divider/20 pb-3 mb-3">
             <div className="flex items-center gap-1.5">
-              <Users size={15} className="text-brand-500" />
-              <h4 className="text-[10px] font-bold text-text-primary uppercase tracking-wider">Top 10 Clientes</h4>
+              <Users size={16} className="text-brand-500" />
+              <h4 className="text-xs font-extrabold text-text-primary uppercase tracking-wider">Top 10 Clientes</h4>
             </div>
             <button
               onClick={() => setRankingViews(prev => ({ ...prev, clientes: prev.clientes === 'list' ? 'bar' : 'list' }))}
-              className="p-1 bg-bg-secondary hover:bg-bg-secondary/80 text-text-secondary hover:text-text-primary rounded-lg border border-divider transition-all cursor-pointer shadow-sm shrink-0"
+              className="p-1.5 bg-bg-secondary hover:bg-bg-secondary/80 text-text-secondary hover:text-text-primary rounded-lg border border-divider transition-all cursor-pointer shadow-sm shrink-0"
               title={rankingViews.clientes === 'list' ? "Ver Gráfico de Barras" : "Ver Lista"}
             >
-              {rankingViews.clientes === 'list' ? <BarChart3 size={13} /> : <List size={13} />}
+              {rankingViews.clientes === 'list' ? <BarChart3 size={14} /> : <List size={14} />}
             </button>
           </div>
           
@@ -474,28 +504,28 @@ export default function SellerHubDashboard() {
                 {topClientes.map((c: any) => {
                   const share = totalClientesVal > 0 ? (c.value / totalClientesVal) * 100 : 0;
                   return (
-                    <div key={c.rank} className="flex justify-between items-center py-1 border-b border-divider/5 hover:bg-bg-secondary/50 px-1.5 rounded transition-colors">
+                    <div key={c.rank} className="flex justify-between items-center py-1.5 border-b border-divider/5 hover:bg-bg-secondary/50 px-2 rounded-lg transition-colors">
                       <span className="text-text-secondary truncate font-medium text-xs flex-1 min-w-0 mr-2" title={c.name}>
-                        <span className="font-bold text-brand-500 mr-1.5 font-mono">#{c.rank}</span>
+                        <span className="font-extrabold text-brand-500 mr-2 font-mono">#{c.rank}</span>
                         {c.name}
                       </span>
-                      <div className="text-right shrink-0 flex items-center gap-1">
-                        <span className="font-bold text-text-primary font-mono text-xs">{formatBRLCompact(c.value)}</span>
+                      <div className="text-right shrink-0 flex items-center gap-1.5">
+                        <span className="font-extrabold text-text-primary font-mono text-xs">{formatBRLCompact(c.value)}</span>
                         <span className="text-[10px] text-text-muted font-bold">({share.toFixed(1)}%)</span>
                       </div>
                     </div>
                   );
                 })}
                 {topClientes.length === 0 && (
-                  <div className="h-full flex flex-col items-center justify-center text-center p-4">
+                  <div className="h-full flex flex-col items-center justify-center text-center p-6">
                     <EyeOff size={24} className="text-text-muted mb-1 stroke-[1.5]" />
-                    <span className="text-xs text-text-muted font-medium">Nenhum cliente faturado.</span>
+                    <span className="text-xs text-text-muted font-bold">Nenhum cliente faturado.</span>
                   </div>
                 )}
               </div>
             ) : (
               topClientes.length > 0 ? (
-                <div className="h-[260px] w-full flex items-center justify-center py-2 pr-4">
+                <div className="h-[280px] w-full flex items-center justify-center py-2 pr-4">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                       data={topClientes.slice(0, 5)}
@@ -521,9 +551,9 @@ export default function SellerHubDashboard() {
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <div className="h-full flex flex-col items-center justify-center text-center p-4">
+                <div className="h-full flex flex-col items-center justify-center text-center p-6">
                   <EyeOff size={24} className="text-text-muted mb-1 stroke-[1.5]" />
-                  <span className="text-xs text-text-muted font-medium">Sem dados no período.</span>
+                  <span className="text-xs text-text-muted font-bold">Sem dados no período.</span>
                 </div>
               )
             )}
@@ -531,18 +561,18 @@ export default function SellerHubDashboard() {
         </div>
 
         {/* Top Grupos */}
-        <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-4 flex flex-col min-h-[350px]">
-          <div className="flex justify-between items-center border-b border-divider/20 pb-1.5 mb-2">
+        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 flex flex-col min-h-[380px]">
+          <div className="flex justify-between items-center border-b border-divider/20 pb-3 mb-3">
             <div className="flex items-center gap-1.5">
-              <Box size={15} className="text-brand-500" />
-              <h4 className="text-[10px] font-bold text-text-primary uppercase tracking-wider">Top 10 Grupos</h4>
+              <Box size={16} className="text-brand-500" />
+              <h4 className="text-xs font-extrabold text-text-primary uppercase tracking-wider">Top 10 Grupos</h4>
             </div>
             <button
               onClick={() => setRankingViews(prev => ({ ...prev, grupos: prev.grupos === 'list' ? 'bar' : 'list' }))}
-              className="p-1 bg-bg-secondary hover:bg-bg-secondary/80 text-text-secondary hover:text-text-primary rounded-lg border border-divider transition-all cursor-pointer shadow-sm shrink-0"
+              className="p-1.5 bg-bg-secondary hover:bg-bg-secondary/80 text-text-secondary hover:text-text-primary rounded-lg border border-divider transition-all cursor-pointer shadow-sm shrink-0"
               title={rankingViews.grupos === 'list' ? "Ver Gráfico de Barras" : "Ver Lista"}
             >
-              {rankingViews.grupos === 'list' ? <BarChart3 size={13} /> : <List size={13} />}
+              {rankingViews.grupos === 'list' ? <BarChart3 size={14} /> : <List size={14} />}
             </button>
           </div>
           
@@ -552,28 +582,28 @@ export default function SellerHubDashboard() {
                 {topGrupos.map((g: any) => {
                   const share = totalGruposVal > 0 ? (g.value / totalGruposVal) * 100 : 0;
                   return (
-                    <div key={g.rank} className="flex justify-between items-center py-1 border-b border-divider/5 hover:bg-bg-secondary/50 px-1.5 rounded transition-colors">
+                    <div key={g.rank} className="flex justify-between items-center py-1.5 border-b border-divider/5 hover:bg-bg-secondary/50 px-2 rounded-lg transition-colors">
                       <span className="text-text-secondary truncate font-medium text-xs flex-1 min-w-0 mr-2" title={g.name}>
-                        <span className="font-bold text-brand-500 mr-1.5 font-mono">#{g.rank}</span>
+                        <span className="font-extrabold text-brand-500 mr-2 font-mono">#{g.rank}</span>
                         {g.name}
                       </span>
-                      <div className="text-right shrink-0 flex items-center gap-1">
-                        <span className="font-bold text-text-primary font-mono text-xs">{formatBRLCompact(g.value)}</span>
+                      <div className="text-right shrink-0 flex items-center gap-1.5">
+                        <span className="font-extrabold text-text-primary font-mono text-xs">{formatBRLCompact(g.value)}</span>
                         <span className="text-[10px] text-text-muted font-bold">({share.toFixed(1)}%)</span>
                       </div>
                     </div>
                   );
                 })}
                 {topGrupos.length === 0 && (
-                  <div className="h-full flex flex-col items-center justify-center text-center p-4">
+                  <div className="h-full flex flex-col items-center justify-center text-center p-6">
                     <EyeOff size={24} className="text-text-muted mb-1 stroke-[1.5]" />
-                    <span className="text-xs text-text-muted font-medium">Nenhum grupo faturado.</span>
+                    <span className="text-xs text-text-muted font-bold">Nenhum grupo faturado.</span>
                   </div>
                 )}
               </div>
             ) : (
               topGrupos.length > 0 ? (
-                <div className="h-[260px] w-full flex items-center justify-center py-2 pr-4">
+                <div className="h-[280px] w-full flex items-center justify-center py-2 pr-4">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                       data={topGrupos.slice(0, 5)}
@@ -599,28 +629,28 @@ export default function SellerHubDashboard() {
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <div className="h-full flex flex-col items-center justify-center text-center p-4">
+                <div className="h-full flex flex-col items-center justify-center text-center p-6">
                   <EyeOff size={24} className="text-text-muted mb-1 stroke-[1.5]" />
-                  <span className="text-xs text-text-muted font-medium">Sem dados no período.</span>
+                  <span className="text-xs text-text-muted font-bold">Sem dados no período.</span>
                 </div>
               )
             )}
           </div>
         </div>
 
-        {/* Top Produtos */}
-        <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-4 flex flex-col min-h-[350px]">
-          <div className="flex justify-between items-center border-b border-divider/20 pb-1.5 mb-2">
+        {/* Top/Trophy Produtos */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 flex flex-col min-h-[380px]">
+          <div className="flex justify-between items-center border-b border-divider/20 pb-3 mb-3">
             <div className="flex items-center gap-1.5">
-              <Trophy size={15} className="text-brand-500" />
-              <h4 className="text-[10px] font-bold text-text-primary uppercase tracking-wider">Top 10 Produtos</h4>
+              <Trophy size={16} className="text-brand-500" />
+              <h4 className="text-xs font-extrabold text-text-primary uppercase tracking-wider">Top 10 Produtos</h4>
             </div>
             <button
               onClick={() => setRankingViews(prev => ({ ...prev, produtos: prev.produtos === 'list' ? 'bar' : 'list' }))}
-              className="p-1 bg-bg-secondary hover:bg-bg-secondary/80 text-text-secondary hover:text-text-primary rounded-lg border border-divider transition-all cursor-pointer shadow-sm shrink-0"
+              className="p-1.5 bg-bg-secondary hover:bg-bg-secondary/80 text-text-secondary hover:text-text-primary rounded-lg border border-divider transition-all cursor-pointer shadow-sm shrink-0"
               title={rankingViews.produtos === 'list' ? "Ver Gráfico de Barras" : "Ver Lista"}
             >
-              {rankingViews.produtos === 'list' ? <BarChart3 size={13} /> : <List size={13} />}
+              {rankingViews.produtos === 'list' ? <BarChart3 size={14} /> : <List size={14} />}
             </button>
           </div>
           
@@ -630,28 +660,28 @@ export default function SellerHubDashboard() {
                 {topProdutos.map((p: any) => {
                   const share = totalProdutosVal > 0 ? (p.value / totalProdutosVal) * 100 : 0;
                   return (
-                    <div key={p.rank} className="flex justify-between items-center py-1 border-b border-divider/5 hover:bg-bg-secondary/50 px-1.5 rounded transition-colors">
+                    <div key={p.rank} className="flex justify-between items-center py-1.5 border-b border-divider/5 hover:bg-bg-secondary/50 px-2 rounded-lg transition-colors">
                       <span className="text-text-secondary truncate font-medium text-xs flex-1 min-w-0 mr-2" title={p.name}>
-                        <span className="font-bold text-brand-500 mr-1.5 font-mono">#{p.rank}</span>
+                        <span className="font-extrabold text-brand-500 mr-2 font-mono">#{p.rank}</span>
                         {p.name}
                       </span>
-                      <div className="text-right shrink-0 flex items-center gap-1">
-                        <span className="font-bold text-text-primary font-mono text-xs">{formatBRLCompact(p.value)}</span>
+                      <div className="text-right shrink-0 flex items-center gap-1.5">
+                        <span className="font-extrabold text-text-primary font-mono text-xs">{formatBRLCompact(p.value)}</span>
                         <span className="text-[10px] text-text-muted font-bold">({share.toFixed(1)}%)</span>
                       </div>
                     </div>
                   );
                 })}
                 {topProdutos.length === 0 && (
-                  <div className="h-full flex flex-col items-center justify-center text-center p-4">
+                  <div className="h-full flex flex-col items-center justify-center text-center p-6">
                     <EyeOff size={24} className="text-text-muted mb-1 stroke-[1.5]" />
-                    <span className="text-xs text-text-muted font-medium">Nenhum produto faturado.</span>
+                    <span className="text-xs text-text-muted font-bold">Nenhum produto faturado.</span>
                   </div>
                 )}
               </div>
             ) : (
               topProdutos.length > 0 ? (
-                <div className="h-[260px] w-full flex items-center justify-center py-2 pr-4">
+                <div className="h-[280px] w-full flex items-center justify-center py-2 pr-4">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                       data={topProdutos.slice(0, 5)}
@@ -677,9 +707,9 @@ export default function SellerHubDashboard() {
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <div className="h-full flex flex-col items-center justify-center text-center p-4">
+                <div className="h-full flex flex-col items-center justify-center text-center p-6">
                   <EyeOff size={24} className="text-text-muted mb-1 stroke-[1.5]" />
-                  <span className="text-xs text-text-muted font-medium">Sem dados no período.</span>
+                  <span className="text-xs text-text-muted font-bold">Sem dados no período.</span>
                 </div>
               )
             )}
@@ -687,25 +717,319 @@ export default function SellerHubDashboard() {
         </div>
       </div>
 
+      {/* Mobile Accordion View for Rankings (< md breakpoint, 'espaclhem ao toque') */}
+      <div className="block md:hidden space-y-3">
+        {/* Card Clientes */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl overflow-hidden">
+          <button
+            onClick={() => setMobileActiveRanking(prev => prev === 'clientes' ? '' : 'clientes')}
+            className="w-full px-5 py-4 flex items-center justify-between text-left focus:outline-none"
+          >
+            <div className="flex items-center gap-2.5">
+              <Users size={18} className="text-brand-500" />
+              <span className="text-xs font-bold text-text-primary uppercase tracking-wider">Top 10 Clientes</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setRankingViews(prev => ({ ...prev, clientes: prev.clientes === 'list' ? 'bar' : 'list' }));
+                }}
+                className="p-1.5 bg-bg-secondary hover:bg-bg-secondary/80 text-text-secondary hover:text-text-primary rounded-lg border border-divider transition-all"
+              >
+                {rankingViews.clientes === 'list' ? <BarChart3 size={13} /> : <List size={13} />}
+              </button>
+              <ChevronRight 
+                size={18} 
+                className={clsx(
+                  "text-text-secondary transition-transform duration-300",
+                  mobileActiveRanking === 'clientes' && "rotate-90"
+                )} 
+              />
+            </div>
+          </button>
+          
+          <div className={clsx(
+            "transition-all duration-300 overflow-hidden",
+            mobileActiveRanking === 'clientes' ? "max-h-[380px] border-t border-divider/20 p-4" : "max-h-0"
+          )}>
+            <div className="overflow-y-auto max-h-[320px] text-xs pr-1">
+              {rankingViews.clientes === 'list' ? (
+                <div className="space-y-1">
+                  {topClientes.map((c: any) => {
+                    const share = totalClientesVal > 0 ? (c.value / totalClientesVal) * 100 : 0;
+                    return (
+                      <div key={c.rank} className="flex justify-between items-center py-2 border-b border-divider/5 hover:bg-bg-secondary/50 px-2 rounded-lg transition-colors">
+                        <span className="text-text-secondary truncate font-bold text-xs flex-1 min-w-0 mr-2" title={c.name}>
+                          <span className="font-extrabold text-brand-500 mr-2 font-mono">#{c.rank}</span>
+                          {c.name}
+                        </span>
+                        <div className="text-right shrink-0 flex items-center gap-1.5">
+                          <span className="font-extrabold text-text-primary font-mono text-xs">{formatBRLCompact(c.value)}</span>
+                          <span className="text-[10px] text-text-muted font-bold">({share.toFixed(1)}%)</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {topClientes.length === 0 && (
+                    <div className="flex flex-col items-center justify-center text-center p-6">
+                      <EyeOff size={28} className="text-text-muted mb-1.5 stroke-[1.5]" />
+                      <span className="text-xs text-text-muted font-bold">Nenhum cliente faturado.</span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                topClientes.length > 0 ? (
+                  <div className="h-[260px] w-full flex items-center justify-center py-2 pr-4">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={topClientes.slice(0, 5)}
+                        layout="vertical"
+                        margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
+                      >
+                        <XAxis type="number" hide />
+                        <YAxis 
+                          dataKey="name" 
+                          type="category" 
+                          width={90} 
+                          tick={{ fontSize: 9, fill: 'currentColor' }} 
+                          axisLine={false}
+                          tickLine={false}
+                        />
+                        <Tooltip content={<CustomTooltip />} />
+                        <Bar dataKey="value" fill="#0D9488" radius={[0, 4, 4, 0]}>
+                          {topClientes.slice(0, 5).map((entry: any, index: number) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center text-center p-6">
+                    <EyeOff size={28} className="text-text-muted mb-1.5 stroke-[1.5]" />
+                    <span className="text-xs text-text-muted font-bold">Sem dados no período.</span>
+                  </div>
+                )
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Card Grupos */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl overflow-hidden">
+          <button
+            onClick={() => setMobileActiveRanking(prev => prev === 'grupos' ? '' : 'grupos')}
+            className="w-full px-5 py-4 flex items-center justify-between text-left focus:outline-none"
+          >
+            <div className="flex items-center gap-2.5">
+              <Box size={18} className="text-brand-500" />
+              <span className="text-xs font-bold text-text-primary uppercase tracking-wider">Top 10 Grupos</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setRankingViews(prev => ({ ...prev, grupos: prev.grupos === 'list' ? 'bar' : 'list' }));
+                }}
+                className="p-1.5 bg-bg-secondary hover:bg-bg-secondary/80 text-text-secondary hover:text-text-primary rounded-lg border border-divider transition-all"
+              >
+                {rankingViews.grupos === 'list' ? <BarChart3 size={13} /> : <List size={13} />}
+              </button>
+              <ChevronRight 
+                size={18} 
+                className={clsx(
+                  "text-text-secondary transition-transform duration-300",
+                  mobileActiveRanking === 'grupos' && "rotate-90"
+                )} 
+              />
+            </div>
+          </button>
+          
+          <div className={clsx(
+            "transition-all duration-300 overflow-hidden",
+            mobileActiveRanking === 'grupos' ? "max-h-[380px] border-t border-divider/20 p-4" : "max-h-0"
+          )}>
+            <div className="overflow-y-auto max-h-[320px] text-xs pr-1">
+              {rankingViews.grupos === 'list' ? (
+                <div className="space-y-1">
+                  {topGrupos.map((g: any) => {
+                    const share = totalGruposVal > 0 ? (g.value / totalGruposVal) * 100 : 0;
+                    return (
+                      <div key={g.rank} className="flex justify-between items-center py-2 border-b border-divider/5 hover:bg-bg-secondary/50 px-2 rounded-lg transition-colors">
+                        <span className="text-text-secondary truncate font-bold text-xs flex-1 min-w-0 mr-2" title={g.name}>
+                          <span className="font-extrabold text-brand-500 mr-2 font-mono">#{g.rank}</span>
+                          {g.name}
+                        </span>
+                        <div className="text-right shrink-0 flex items-center gap-1.5">
+                          <span className="font-extrabold text-text-primary font-mono text-xs">{formatBRLCompact(g.value)}</span>
+                          <span className="text-[10px] text-text-muted font-bold">({share.toFixed(1)}%)</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {topGrupos.length === 0 && (
+                    <div className="flex flex-col items-center justify-center text-center p-6">
+                      <EyeOff size={28} className="text-text-muted mb-1.5 stroke-[1.5]" />
+                      <span className="text-xs text-text-muted font-bold">Nenhum grupo faturado.</span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                topGrupos.length > 0 ? (
+                  <div className="h-[260px] w-full flex items-center justify-center py-2 pr-4">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={topGrupos.slice(0, 5)}
+                        layout="vertical"
+                        margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
+                      >
+                        <XAxis type="number" hide />
+                        <YAxis 
+                          dataKey="name" 
+                          type="category" 
+                          width={90} 
+                          tick={{ fontSize: 9, fill: 'currentColor' }} 
+                          axisLine={false}
+                          tickLine={false}
+                        />
+                        <Tooltip content={<CustomTooltip />} />
+                        <Bar dataKey="value" fill="#0D9488" radius={[0, 4, 4, 0]}>
+                          {topGrupos.slice(0, 5).map((entry: any, index: number) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center text-center p-6">
+                    <EyeOff size={28} className="text-text-muted mb-1.5 stroke-[1.5]" />
+                    <span className="text-xs text-text-muted font-bold">Sem dados no período.</span>
+                  </div>
+                )
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Card Produtos */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl overflow-hidden">
+          <button
+            onClick={() => setMobileActiveRanking(prev => prev === 'produtos' ? '' : 'produtos')}
+            className="w-full px-5 py-4 flex items-center justify-between text-left focus:outline-none"
+          >
+            <div className="flex items-center gap-2.5">
+              <Trophy size={18} className="text-brand-500" />
+              <span className="text-xs font-bold text-text-primary uppercase tracking-wider">Top 10 Produtos</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setRankingViews(prev => ({ ...prev, produtos: prev.produtos === 'list' ? 'bar' : 'list' }));
+                }}
+                className="p-1.5 bg-bg-secondary hover:bg-bg-secondary/80 text-text-secondary hover:text-text-primary rounded-lg border border-divider transition-all"
+              >
+                {rankingViews.produtos === 'list' ? <BarChart3 size={13} /> : <List size={13} />}
+              </button>
+              <ChevronRight 
+                size={18} 
+                className={clsx(
+                  "text-text-secondary transition-transform duration-300",
+                  mobileActiveRanking === 'produtos' && "rotate-90"
+                )} 
+              />
+            </div>
+          </button>
+          
+          <div className={clsx(
+            "transition-all duration-300 overflow-hidden",
+            mobileActiveRanking === 'produtos' ? "max-h-[380px] border-t border-divider/20 p-4" : "max-h-0"
+          )}>
+            <div className="overflow-y-auto max-h-[320px] text-xs pr-1">
+              {rankingViews.produtos === 'list' ? (
+                <div className="space-y-1">
+                  {topProdutos.map((p: any) => {
+                    const share = totalProdutosVal > 0 ? (p.value / totalProdutosVal) * 100 : 0;
+                    return (
+                      <div key={p.rank} className="flex justify-between items-center py-2 border-b border-divider/5 hover:bg-bg-secondary/50 px-2 rounded-lg transition-colors">
+                        <span className="text-text-secondary truncate font-bold text-xs flex-1 min-w-0 mr-2" title={p.name}>
+                          <span className="font-extrabold text-brand-500 mr-2 font-mono">#{p.rank}</span>
+                          {p.name}
+                        </span>
+                        <div className="text-right shrink-0 flex items-center gap-1.5">
+                          <span className="font-extrabold text-text-primary font-mono text-xs">{formatBRLCompact(p.value)}</span>
+                          <span className="text-[10px] text-text-muted font-bold">({share.toFixed(1)}%)</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {topProdutos.length === 0 && (
+                    <div className="flex flex-col items-center justify-center text-center p-6">
+                      <EyeOff size={28} className="text-text-muted mb-1.5 stroke-[1.5]" />
+                      <span className="text-xs text-text-muted font-bold">Nenhum produto faturado.</span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                topProdutos.length > 0 ? (
+                  <div className="h-[260px] w-full flex items-center justify-center py-2 pr-4">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={topProdutos.slice(0, 5)}
+                        layout="vertical"
+                        margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
+                      >
+                        <XAxis type="number" hide />
+                        <YAxis 
+                          dataKey="name" 
+                          type="category" 
+                          width={90} 
+                          tick={{ fontSize: 9, fill: 'currentColor' }} 
+                          axisLine={false}
+                          tickLine={false}
+                        />
+                        <Tooltip content={<CustomTooltip />} />
+                        <Bar dataKey="value" fill="#0D9488" radius={[0, 4, 4, 0]}>
+                          {topProdutos.slice(0, 5).map((entry: any, index: number) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center text-center p-6">
+                    <EyeOff size={28} className="text-text-muted mb-1.5 stroke-[1.5]" />
+                    <span className="text-xs text-text-muted font-bold">Sem dados no período.</span>
+                  </div>
+                )
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* SECTION: EVOLUÇÃO NOS ÚLTIMOS 12 MESES (NOVO GRÁFICO ENTRE RANKINGS E NOTAS FISCAIS) */}
-      <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-5">
-        <div className="flex justify-between items-center border-b border-divider/20 pb-3 mb-4">
+      <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-divider/20 pb-3 mb-5 gap-3">
           <div>
-            <h3 className="text-sm font-bold text-text-primary uppercase tracking-wider">Evolução do Faturamento (Últimos 12 Meses)</h3>
-            <p className="text-[11px] text-text-secondary mt-0.5">Histórico mensal de faturamento líquido realizado pelo vendedor selecionado</p>
+            <h3 className="text-base font-extrabold text-text-primary uppercase tracking-wider">Evolução do Faturamento (Últimos 12 Meses)</h3>
+            <p className="text-xs text-text-secondary mt-0.5">Histórico mensal de faturamento líquido realizado pelo vendedor selecionado</p>
           </div>
           <button
             onClick={() => setViewMode(prev => ({ ...prev, evolucao12m: prev.evolucao12m === 'chart' ? 'text' : 'chart' }))}
-            className="px-3 py-1.5 bg-bg-secondary hover:bg-bg-secondary/80 text-text-secondary hover:text-text-primary rounded-lg border border-divider transition-all cursor-pointer shadow-sm text-xs font-semibold flex items-center gap-1.5"
+            className="px-4 py-2 bg-bg-secondary hover:bg-bg-secondary/80 text-text-secondary hover:text-text-primary rounded-xl border border-divider transition-all cursor-pointer shadow-sm text-xs font-bold flex items-center gap-1.5 w-full sm:w-auto justify-center"
           >
-            {viewMode.evolucao12m === 'chart' ? <List size={13} /> : <BarChart3 size={13} />}
+            {viewMode.evolucao12m === 'chart' ? <List size={14} /> : <BarChart3 size={14} />}
             {viewMode.evolucao12m === 'chart' ? "Visualizar em Valores" : "Visualizar em Gráfico"}
           </button>
         </div>
 
         {viewMode.evolucao12m === 'chart' ? (
           data?.evolucao_12m && data.evolucao_12m.length > 0 ? (
-            <div className="h-[260px] w-full">
+            <div className="h-[280px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={data.evolucao_12m} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
                   <defs>
@@ -723,20 +1047,20 @@ export default function SellerHubDashboard() {
               </ResponsiveContainer>
             </div>
           ) : (
-            <div className="py-12 text-center text-text-muted text-xs">
+            <div className="py-12 text-center text-text-muted text-xs font-semibold">
               Nenhum histórico disponível para os últimos 12 meses.
             </div>
           )
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
             {data?.evolucao_12m?.map((e: any, index: number) => (
-              <div key={index} className="p-3 border border-divider/40 bg-bg-secondary/10 rounded-xl flex flex-col justify-between hover:border-divider/70 transition-all duration-300">
+              <div key={index} className="p-4 border border-divider/40 bg-bg-secondary/10 rounded-2xl flex flex-col justify-between hover:border-divider/70 transition-all duration-300 shadow-sm">
                 <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">{e.mes}</span>
-                <span className="text-sm font-black text-text-primary mt-1">{formatBRL(e.valor)}</span>
+                <span className="text-sm font-black text-text-primary mt-1.5">{formatBRL(e.valor)}</span>
               </div>
             ))}
             {(!data?.evolucao_12m || data.evolucao_12m.length === 0) && (
-              <div className="col-span-6 text-center py-6 text-text-muted text-xs">
+              <div className="col-span-full text-center py-8 text-text-muted text-xs font-semibold">
                 Nenhum valor disponível.
               </div>
             )}
@@ -745,37 +1069,37 @@ export default function SellerHubDashboard() {
       </div>
 
       {/* SECTION: NOTAS FISCAIS DO VENDEDOR (PAGINATION 50-BY-50, SEARCH BY CLIENT & COLUMN SORTING) */}
-      <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-5 flex flex-col">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-divider pb-4 mb-4 gap-4">
+      <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-6 flex flex-col">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-divider pb-4 mb-5 gap-4">
           <div>
-            <h3 className="text-sm font-bold text-text-primary uppercase tracking-wider">Notas Fiscais do Vendedor</h3>
-            <p className="text-[11px] text-text-secondary mt-0.5">Fila de notas faturadas no período consultado</p>
+            <h3 className="text-base font-extrabold text-text-primary uppercase tracking-wider">Notas Fiscais do Vendedor</h3>
+            <p className="text-xs text-text-secondary mt-0.5">Fila de notas faturadas no período consultado</p>
           </div>
-          <span className="text-[10px] font-bold text-text-muted uppercase bg-bg-secondary px-2.5 py-1 rounded-full border border-divider/10 shrink-0">
+          <span className="text-[10px] font-extrabold text-text-muted uppercase bg-bg-secondary px-3.5 py-1.5 rounded-full border border-divider/10 shrink-0 shadow-sm">
             {filteredInvoices.length} encontrados / {invoicesList.length} total
           </span>
         </div>
 
         {/* Filter Inputs (Client Search + Status Filter Pills) */}
-        <div className="flex flex-col md:flex-row gap-4 mb-4 items-stretch md:items-center">
+        <div className="flex flex-col md:flex-row gap-4 mb-5 items-stretch md:items-center">
           {/* Client & Nota Search */}
           <div className="relative flex-1 max-w-md">
             <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-text-muted">
-              <Search size={14} />
+              <Search size={15} />
             </span>
             <input
               type="text"
               placeholder="Buscar por cliente ou nº nota..."
               value={clientQuery}
               onChange={(e) => setClientQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 bg-bg-secondary border border-divider text-text-primary text-xs rounded-lg shadow-sm focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300"
+              className="w-full pl-10 pr-4 h-11 bg-bg-secondary border border-divider text-text-primary text-xs rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all duration-300"
             />
           </div>
 
           {/* Status filter pills */}
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-[10px] text-text-secondary font-bold uppercase tracking-wider mr-1.5 flex items-center gap-1">
-              <Tag size={12} className="text-brand-500" />
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[10px] text-text-secondary font-black uppercase tracking-wider mr-1 flex items-center gap-1">
+              <Tag size={13} className="text-brand-500" />
               Filtrar Status:
             </span>
             {['TODOS', ...availableInvoiceStatuses].map((status) => (
@@ -783,7 +1107,7 @@ export default function SellerHubDashboard() {
                 key={status}
                 onClick={() => setInvoiceStatusFilter(status)}
                 className={clsx(
-                  "px-2.5 py-1 text-[10px] font-extrabold rounded-full border transition-all uppercase tracking-wider cursor-pointer",
+                  "px-3.5 py-1.5 text-[10px] font-black rounded-full border transition-all uppercase tracking-wider cursor-pointer shadow-sm",
                   invoiceStatusFilter === status
                     ? "bg-brand-500 text-white border-brand-500"
                     : "bg-bg-secondary text-text-secondary border-divider hover:text-text-primary"
@@ -795,58 +1119,58 @@ export default function SellerHubDashboard() {
           </div>
         </div>
 
-        {/* Desktop Table View */}
-        <div className="hidden sm:block overflow-x-auto w-full border border-divider/50 rounded-xl">
+        {/* Desktop Table View (>= 900px) */}
+        <div className="hidden min-[900px]:block overflow-x-auto w-full border border-divider/50 rounded-2xl shadow-sm">
           <table className="w-full text-left text-xs whitespace-nowrap">
             <thead>
-              <tr className="border-b border-divider text-[10px] text-text-secondary uppercase font-extrabold tracking-wider bg-bg-secondary/60">
-                <th className="py-3 px-4 font-mono text-[9px]">COD</th>
+              <tr className="border-b border-divider text-[10px] text-text-secondary uppercase font-black tracking-wider bg-bg-secondary/60">
+                <th className="py-3.5 px-5 font-mono text-[9px]">COD</th>
                 <th 
                   onClick={() => handleInvoiceSort('numero')}
-                  className="py-3 px-4 cursor-pointer hover:bg-bg-secondary/80 select-none transition-colors"
+                  className="py-3.5 px-5 cursor-pointer hover:bg-bg-secondary/80 select-none transition-colors"
                 >
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5">
                     Nº NOTA
-                    <ArrowUpDown size={11} className={clsx(invoiceSortField === 'numero' ? "text-brand-500" : "text-text-muted/65")} />
+                    <ArrowUpDown size={12} className={clsx(invoiceSortField === 'numero' ? "text-brand-500" : "text-text-muted/65")} />
                   </div>
                 </th>
-                <th className="py-3 px-4">CLIENTE</th>
+                <th className="py-3.5 px-5">CLIENTE</th>
                 <th 
                   onClick={() => handleInvoiceSort('data')}
-                  className="py-3 px-4 cursor-pointer hover:bg-bg-secondary/80 select-none transition-colors"
+                  className="py-3.5 px-5 cursor-pointer hover:bg-bg-secondary/80 select-none transition-colors"
                 >
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5">
                     DATA
-                    <ArrowUpDown size={11} className={clsx(invoiceSortField === 'data' ? "text-brand-500" : "text-text-muted/65")} />
+                    <ArrowUpDown size={12} className={clsx(invoiceSortField === 'data' ? "text-brand-500" : "text-text-muted/65")} />
                   </div>
                 </th>
                 <th 
                   onClick={() => handleInvoiceSort('valor')}
-                  className="py-3 px-4 text-right cursor-pointer hover:bg-bg-secondary/80 select-none transition-colors"
+                  className="py-3.5 px-5 text-right cursor-pointer hover:bg-bg-secondary/80 select-none transition-colors"
                 >
-                  <div className="flex items-center gap-1 justify-end">
+                  <div className="flex items-center gap-1.5 justify-end">
                     VALOR TOTAL
-                    <ArrowUpDown size={11} className={clsx(invoiceSortField === 'valor' ? "text-brand-500" : "text-text-muted/65")} />
+                    <ArrowUpDown size={12} className={clsx(invoiceSortField === 'valor' ? "text-brand-500" : "text-text-muted/65")} />
                   </div>
                 </th>
-                <th className="py-3 px-4 text-center">STATUS</th>
+                <th className="py-3.5 px-5 text-center">STATUS</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-divider/20">
               {currentInvoices.map((inv: any, i: number) => (
                 <tr key={inv.cod || i} className="hover:bg-bg-secondary/40 transition-colors">
-                  <td className="py-3.5 px-4 font-mono text-text-muted">{inv.cod}</td>
-                  <td className="py-3.5 px-4 text-brand-500 font-bold">{inv.numero_nota}</td>
-                  <td className="py-3.5 px-4 text-text-primary font-bold truncate max-w-[280px]" title={inv.cliente}>
+                  <td className="py-3.5 px-5 font-mono text-text-muted">{inv.cod}</td>
+                  <td className="py-3.5 px-5 text-brand-500 font-extrabold">{inv.numero_nota}</td>
+                  <td className="py-3.5 px-5 text-text-primary font-bold truncate max-w-[280px]" title={inv.cliente}>
                     {inv.cliente}
                   </td>
-                  <td className="py-3.5 px-4 text-text-secondary font-medium">{inv.data}</td>
-                  <td className="py-3.5 px-4 text-right font-mono font-extrabold text-success">
+                  <td className="py-3.5 px-5 text-text-secondary font-medium">{inv.data}</td>
+                  <td className="py-3.5 px-5 text-right font-mono font-extrabold text-success">
                     {formatBRL(inv.valor)}
                   </td>
-                  <td className="py-3.5 px-4 text-center">
+                  <td className="py-3.5 px-5 text-center">
                     <span className={clsx(
-                      "text-[9px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider border",
+                      "text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider border",
                       inv.status && ['FATURADO', 'FINALIZADO'].includes(inv.status.trim()) 
                         ? 'bg-success/15 text-success border-success/10' 
                         : 'bg-text-muted/10 text-text-muted border-divider/10'
@@ -858,7 +1182,7 @@ export default function SellerHubDashboard() {
               ))}
               {currentInvoices.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-text-muted font-medium">
+                  <td colSpan={6} className="py-8 text-center text-text-muted font-bold">
                     Nenhuma nota fiscal emitida para os filtros selecionados.
                   </td>
                 </tr>
@@ -867,14 +1191,14 @@ export default function SellerHubDashboard() {
           </table>
         </div>
 
-        {/* Mobile Card View Fallback */}
-        <div className="sm:hidden space-y-3">
+        {/* Mobile/Tablet Card View Fallback (< 900px) */}
+        <div className="min-[900px]:hidden space-y-3.5">
           {currentInvoices.map((inv: any, i: number) => (
-            <div key={inv.cod || i} className="p-4 border border-divider rounded-xl bg-bg-secondary/10 flex flex-col gap-2">
+            <div key={inv.cod || i} className="p-5 border border-divider/60 rounded-2xl bg-bg-secondary/15 flex flex-col gap-3 hover:border-divider transition-all duration-300 shadow-sm">
               <div className="flex justify-between items-center">
-                <span className="font-mono text-[10px] text-text-muted">COD: {inv.cod}</span>
+                <span className="font-mono text-[10px] text-text-muted font-bold">COD: {inv.cod}</span>
                 <span className={clsx(
-                  "text-[9px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider border",
+                  "text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider border",
                   inv.status && ['FATURADO', 'FINALIZADO'].includes(inv.status.trim()) 
                     ? 'bg-success/15 text-success border-success/10' 
                     : 'bg-text-muted/10 text-text-muted border-divider/10'
@@ -883,37 +1207,37 @@ export default function SellerHubDashboard() {
                 </span>
               </div>
               <div>
-                <h4 className="text-xs font-bold text-text-primary leading-tight">{inv.cliente}</h4>
-                <p className="text-[10px] text-text-secondary mt-0.5">Nota: {inv.numero_nota}</p>
+                <h4 className="text-sm font-bold text-text-primary leading-snug">{inv.cliente}</h4>
+                <p className="text-xs text-text-secondary mt-1">Nota: <span className="font-bold text-brand-500">{inv.numero_nota}</span></p>
               </div>
-              <div className="flex justify-between items-center pt-2 border-t border-divider mt-1">
-                <div className="flex items-center gap-1 text-[10px] text-text-muted">
-                  <Calendar size={12} />
+              <div className="flex justify-between items-center pt-3 border-t border-divider/20 mt-1">
+                <div className="flex items-center gap-1.5 text-xs text-text-secondary font-medium">
+                  <Calendar size={14} className="text-text-muted" />
                   {inv.data}
                 </div>
-                <div className="text-xs font-mono font-bold text-success">
+                <div className="text-sm font-mono font-extrabold text-success">
                   {formatBRL(inv.valor)}
                 </div>
               </div>
             </div>
           ))}
           {currentInvoices.length === 0 && (
-            <div className="py-8 text-center text-text-muted text-xs">
+            <div className="py-8 text-center text-text-muted text-xs font-semibold">
               Nenhuma nota fiscal encontrada.
             </div>
           )}
         </div>
 
         {/* PAGINATION PANEL - CARREGAR MAIS */}
-        <div className="flex flex-col sm:flex-row justify-between items-center mt-4 pt-4 border-t border-divider/20 text-xs gap-3">
-          <span className="text-[11px] text-text-secondary">
+        <div className="flex flex-col sm:flex-row justify-between items-center mt-5 pt-4 border-t border-divider/20 text-xs gap-3">
+          <span className="text-[11px] text-text-secondary font-medium">
             Mostrando {Math.min(visibleInvoicesCount, sortedInvoices.length)} de {sortedInvoices.length} notas faturadas
           </span>
           
           {visibleInvoicesCount < sortedInvoices.length && (
             <button
               onClick={() => setVisibleInvoicesCount(prev => prev + 50)}
-              className="px-6 py-2 bg-brand-500 hover:bg-brand-600 text-white rounded-lg text-xs font-bold transition-all duration-200 shadow-sm flex items-center gap-1.5 cursor-pointer scale-100 hover:scale-[1.02] active:scale-[0.98]"
+              className="px-6 py-2.5 bg-brand-500 hover:bg-brand-600 text-white rounded-xl text-xs font-bold transition-all duration-200 shadow-sm flex items-center gap-1.5 cursor-pointer scale-100 hover:scale-[1.02] active:scale-[0.98]"
             >
               Carregar Mais (+50)
             </button>
@@ -922,11 +1246,11 @@ export default function SellerHubDashboard() {
       </div>
 
       {isError && (
-        <div className="bg-danger/10 border border-danger/25 text-danger p-3 rounded-lg text-xs font-semibold">
+        <div className="bg-danger/10 border border-danger/25 text-danger p-4 rounded-2xl text-xs font-bold shadow-sm">
           Erro de comunicação: Não foi possível sincronizar os dados do vendedor. Verifique a conexão com a API do banco de dados Vet.
         </div>
       )}
-
     </div>
   );
 }
+

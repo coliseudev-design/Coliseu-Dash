@@ -12,6 +12,7 @@ import { useState } from 'react'
 interface Props {
   open: boolean
   onClose: () => void
+  isCollapsed: boolean
 }
 
 const MODULES = [
@@ -113,12 +114,11 @@ const CONFIG_MODULES = [
   }
 ]
 
-export default function Sidebar({ open, onClose }: Props) {
+export default function Sidebar({ open, onClose, isCollapsed }: Props) {
   const user = useAuthStore((s) => s.user)
   const [configOpen, setConfigOpen] = useState(false)
   const [isCustomizing, setIsCustomizing] = useState(false)
 
-  // Leitura do estado de visibilidade a partir do localStorage (por padrão, os 6 especificados vêm desativados)
   const [visibility, setVisibility] = useState<Record<string, boolean>>(() => {
     const key = `v4_menu_visibility_${user?.email || 'default'}`
     const stored = localStorage.getItem(key)
@@ -146,7 +146,6 @@ export default function Sidebar({ open, onClose }: Props) {
     setVisibility(newVal)
   }
 
-  // Filtra as rotas se o usuário não for master e tiver permissions configurado
   const hasAccess = (moduleId: string) => {
     if (!user) return false
     if (user.role === 'master' || !user.permissions) return true
@@ -154,10 +153,8 @@ export default function Sidebar({ open, onClose }: Props) {
   }
 
   const allowedModules = MODULES.filter((m) => hasAccess(m.id))
-  // Filtra de acordo com as permissões E a visibilidade configurada
   const allowedBiModules = BI_MODULES.filter((m) => hasAccess(m.id) && visibility[m.id] !== false)
   const allowedConfigModules = CONFIG_MODULES.filter((m) => hasAccess(m.id))
-
 
   return (
     <>
@@ -170,21 +167,31 @@ export default function Sidebar({ open, onClose }: Props) {
       )}
       <aside
         className={clsx(
-          'fixed lg:sticky top-0 left-0 h-screen w-64 bg-bg-primary/95 backdrop-blur-xl border-r border-divider z-40',
-          'transform transition-transform duration-200 ease-out lg:translate-x-0',
+          'fixed lg:sticky top-0 left-0 h-screen bg-bg-primary/95 backdrop-blur-xl border-r border-divider z-40',
+          'transform transition-all duration-300 ease-in-out lg:translate-x-0',
           'flex flex-col shadow-card lg:shadow-none',
+          isCollapsed ? 'w-20 hover:w-64 group' : 'w-64',
           open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
         )}
       >
         {/* Logo */}
-        <div className="h-20 px-4 flex items-center justify-between border-b border-divider bg-transparent">
+        <div className={clsx(
+          "h-20 px-4 flex items-center border-b border-divider bg-transparent transition-all duration-300",
+          isCollapsed ? "justify-center group-hover:justify-between" : "justify-between"
+        )}>
           <img
-            src="/logo-coliseu.png" // We can use the same logo image
+            src="/logo-coliseu.png"
             alt="Siscom Vet"
-            className="h-14 w-auto object-contain"
+            className={clsx(
+              "h-14 w-auto object-contain transition-all duration-300",
+              isCollapsed ? "scale-90 group-hover:scale-100" : ""
+            )}
           />
           <button
-            className="lg:hidden p-1.5 text-text-secondary hover:bg-bg-secondary rounded"
+            className={clsx(
+              "lg:hidden p-1.5 text-text-secondary hover:bg-bg-secondary rounded",
+              isCollapsed ? "hidden group-hover:block" : "block"
+            )}
             onClick={onClose}
             aria-label="Fechar menu"
           >
@@ -195,7 +202,10 @@ export default function Sidebar({ open, onClose }: Props) {
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto py-3 px-2 flex flex-col">
           <div>
-            <div className="px-3 mb-2 text-xs font-semibold text-text-secondary uppercase tracking-wider">
+            <div className={clsx(
+              "px-3 mb-2 text-xs font-semibold text-text-secondary uppercase tracking-wider transition-all duration-300",
+              isCollapsed ? "md:hidden group-hover:block" : "block"
+            )}>
               Menu Principal
             </div>
             {allowedModules.map(({ to, label, icon: Icon, exact, iconColor, iconBg }) => (
@@ -206,7 +216,8 @@ export default function Sidebar({ open, onClose }: Props) {
                 onClick={onClose}
                 className={({ isActive }) =>
                   clsx(
-                    'group flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 mb-1 border',
+                    'group flex items-center rounded-xl text-sm font-medium transition-all duration-200 mb-1 border',
+                    isCollapsed ? 'justify-center p-2 group-hover:justify-start group-hover:px-3 group-hover:py-2 group-hover:gap-3' : 'px-3 py-2 gap-3',
                     isActive
                       ? 'bg-white dark:bg-slate-800/60 text-text-primary shadow-sm border-slate-200/60 dark:border-slate-700/60 font-semibold'
                       : 'text-text-secondary hover:bg-bg-secondary/60 hover:text-text-primary border-transparent',
@@ -216,14 +227,20 @@ export default function Sidebar({ open, onClose }: Props) {
                 <div className={clsx("p-1.5 rounded-lg flex-shrink-0 transition-colors", iconBg)}>
                   <Icon size={16} className={clsx("transition-transform duration-200 group-hover:scale-110", iconColor)} />
                 </div>
-                <span className="truncate">{label}</span>
+                <span className={clsx(
+                  "truncate transition-all duration-300",
+                  isCollapsed ? "md:hidden group-hover:block" : "block"
+                )}>{label}</span>
               </NavLink>
             ))}
           </div>
 
           {allowedBiModules.length > 0 && (
             <div className="mt-6">
-              <div className="px-3 mb-2 text-xs font-semibold text-text-secondary uppercase tracking-wider">
+              <div className={clsx(
+                "px-3 mb-2 text-xs font-semibold text-text-secondary uppercase tracking-wider transition-all duration-300",
+                isCollapsed ? "md:hidden group-hover:block" : "block"
+              )}>
                 Inteligência de Negócios
               </div>
               {allowedBiModules.map(({ to, label, icon: Icon, exact, iconColor, iconBg }) => (
@@ -234,7 +251,8 @@ export default function Sidebar({ open, onClose }: Props) {
                   onClick={onClose}
                   className={({ isActive }) =>
                     clsx(
-                      'group flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 mb-1 border',
+                      'group flex items-center rounded-xl text-sm font-medium transition-all duration-200 mb-1 border',
+                      isCollapsed ? 'justify-center p-2 group-hover:justify-start group-hover:px-3 group-hover:py-2 group-hover:gap-3' : 'px-3 py-2 gap-3',
                       isActive
                         ? 'bg-bg-secondary text-text-primary shadow-sm border-border font-semibold'
                         : 'text-text-secondary hover:bg-bg-secondary/60 hover:text-text-primary border-transparent',
@@ -244,7 +262,10 @@ export default function Sidebar({ open, onClose }: Props) {
                   <div className={clsx("p-1.5 rounded-lg flex-shrink-0 transition-colors", iconBg)}>
                     <Icon size={16} className={clsx("transition-transform duration-200 group-hover:scale-110", iconColor)} />
                   </div>
-                  <span className="truncate">{label}</span>
+                  <span className={clsx(
+                    "truncate transition-all duration-300",
+                    isCollapsed ? "md:hidden group-hover:block" : "block"
+                  )}>{label}</span>
                 </NavLink>
               ))}
             </div>
@@ -253,17 +274,31 @@ export default function Sidebar({ open, onClose }: Props) {
           <div className="mt-auto pt-4 border-t border-divider">
             <button
               onClick={() => setConfigOpen(!configOpen)}
-              className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium text-text-secondary hover:bg-bg-secondary hover:text-text-primary transition-colors mb-1 cursor-pointer"
+              className={clsx(
+                "w-full flex items-center justify-between rounded-lg text-sm font-medium text-text-secondary hover:bg-bg-secondary hover:text-text-primary transition-all mb-1 cursor-pointer",
+                isCollapsed ? "justify-center p-2.5 group-hover:justify-between group-hover:px-3 group-hover:py-2.5" : "px-3 py-2.5"
+              )}
             >
               <div className="flex items-center gap-3">
                 <Settings size={18} className="flex-shrink-0" />
-                <span className="truncate">Configurações</span>
+                <span className={clsx(
+                  "truncate transition-all duration-300",
+                  isCollapsed ? "md:hidden group-hover:block" : "block"
+                )}>Configurações</span>
               </div>
-              {configOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              <div className={clsx(
+                "transition-all duration-300",
+                isCollapsed ? "md:hidden group-hover:block" : "block"
+              )}>
+                {configOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              </div>
             </button>
             
             {configOpen && (
-              <div className="pl-4 mt-1 space-y-1 border-l-2 border-divider ml-3">
+              <div className={clsx(
+                "pl-4 mt-1 space-y-1 border-l-2 border-divider ml-3 transition-all duration-300",
+                isCollapsed ? "md:hidden group-hover:block" : "block"
+              )}>
                 {/* Botão de Personalização de Menus */}
                 <button
                   onClick={() => {
@@ -306,8 +341,14 @@ export default function Sidebar({ open, onClose }: Props) {
         </nav>
 
         {/* Footer com Sair */}
-        <div className="px-4 py-3 border-t border-divider text-[11px] text-text-secondary flex items-center justify-between">
-          <div>
+        <div className={clsx(
+          "px-4 py-3 border-t border-divider text-[11px] text-text-secondary flex items-center justify-between transition-all duration-300",
+          isCollapsed ? "justify-center group-hover:justify-between" : "justify-between"
+        )}>
+          <div className={clsx(
+            "transition-all duration-300",
+            isCollapsed ? "md:hidden group-hover:block" : "block"
+          )}>
             <div className="font-semibold text-text-primary">Siscom Vet Dash v4.0</div>
             <div>© 2026 Siscom Sistemas</div>
           </div>
