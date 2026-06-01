@@ -306,14 +306,14 @@ router.get('/sales/executive-summary', async (req, res, next) => {
         // --- 8. Trajetória da Receita (Evolução Diária) ---
         const { rows: trajectory } = await db.query(`
             SELECT 
-                TO_CHAR(v.data_venda, 'DD/MM') AS dia,
+                TO_CHAR(v.data_venda, 'YYYY-MM-DD') AS dia,
                 SUM(v.valor_total) AS valor
             FROM dash_vendas v
             WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
               ${salesFilter}
               ${df.clause}
               ${vf.clause}
-            GROUP BY DATE_TRUNC('day', v.data_venda), TO_CHAR(v.data_venda, 'DD/MM')
+            GROUP BY DATE_TRUNC('day', v.data_venda), TO_CHAR(v.data_venda, 'YYYY-MM-DD')
             ORDER BY DATE_TRUNC('day', v.data_venda) ASC
         `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params, ...vf.params]);
 
