@@ -38,7 +38,7 @@ const BI_MODULES = [
   },
   { 
     to: '/bi', 
-    label: 'Inteligência Comercial', 
+    label: 'Hub de vendas', 
     icon: BarChart3, 
     exact: true, 
     id: 'bi_sales',
