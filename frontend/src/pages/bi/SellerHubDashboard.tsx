@@ -84,6 +84,7 @@ export default function SellerHubDashboard() {
 
   // Safe metrics extraction
   const faturamento = data?.faturamento || 0;
+  const faturamentoAnterior = data?.faturamento_anterior || 0;
   const ticketMedio = data?.ticket_medio || 0;
   const notasEmitidas = data?.notas_emitidas || 0;
   const clientesNovos = data?.clientes_novos || 0;
@@ -92,11 +93,14 @@ export default function SellerHubDashboard() {
   const cidadeTop = data?.cidade_top || 'N/A';
   const cidadeTopValor = data?.cidade_top_valor || 0;
   const crescimentoPct = data?.crescimento_pct || 0;
+  const melhorMes = data?.melhor_mes_12m || { mes: 'N/A', valor: 0 };
 
   const topMarcas = data?.top_marcas || [];
   const topClientes = data?.top_clientes || [];
   const topGrupos = data?.top_grupos || [];
   const topProdutos = data?.top_produtos || [];
+  
+  const principalCliente = topClientes.length > 0 ? topClientes[0] : null;
   
   const historicoVendas = data?.historico_vendas || [];
   const vendasPorDiaSemana = data?.vendas_por_dia_semana || [];
@@ -210,7 +214,7 @@ export default function SellerHubDashboard() {
   const isHistoricoEmpty = historicoVendas.length === 0 || historicoVendas.every((v: any) => v.valor === 0);
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
+    <div className="space-y-4 animate-in fade-in duration-300">
       
       {/* FILTER BAR ROW */}
       <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-4 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
@@ -239,90 +243,154 @@ export default function SellerHubDashboard() {
         </div>
       </div>
 
-      {/* 5 KPI CARDS - FULL WIDTH ON TOP (PREMIUM p-6 LAYOUT, SAGE GREEN IDENTITY) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        {/* Card 1: Faturamento (Highlighted with bold border accent) */}
-        <div className="bg-bg-primary border border-divider shadow-card hover:shadow-card-hover rounded-xl p-6 flex items-center gap-4 transition-all duration-300 relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-[3px] bg-brand-500"></div>
+      {/* HIGHLIGHTED FATURAMENTO ROW (SINGLE LINE, UNIQUE PREMIUM LOOK, COMPARING CURRENT & PREVIOUS) */}
+      <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-5 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6">
+        {/* Top/Left green stripe decoration */}
+        <div className="absolute top-0 bottom-0 left-0 w-[4px] bg-brand-500"></div>
+
+        {/* Current Faturamento Card Content */}
+        <div className="flex items-center gap-4 flex-1">
           <div className="p-3 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
-            <DollarSign size={24} />
+            <DollarSign size={26} />
           </div>
-          <div className="space-y-0.5 min-w-0">
-            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Faturamento</span>
-            <div className="text-xl font-black text-text-primary tracking-tight truncate">
+          <div className="space-y-0.5">
+            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Faturamento Atual</span>
+            <div className="text-2xl font-black text-text-primary tracking-tight">
               {formatBRL(faturamento)}
             </div>
-            <span className={clsx(
-              "text-[9px] font-semibold flex items-center gap-0.5 mt-1",
-              crescimentoPct >= 0 ? "text-success" : "text-danger"
-            )}>
-              {crescimentoPct >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-              {Math.abs(crescimentoPct).toFixed(1)}% vs. anterior
+            <span className="text-[10px] text-text-muted font-medium block">Período selecionado</span>
+          </div>
+        </div>
+
+        {/* Center: Comparison Arrow */}
+        <div className="flex flex-col items-center justify-center shrink-0 py-2 md:py-0 px-4 border-y md:border-y-0 md:border-x border-divider/40">
+          <div className={clsx(
+            "w-11 h-11 rounded-full flex items-center justify-center shadow-sm border transition-all duration-300",
+            crescimentoPct >= 0 
+              ? "bg-success/15 border-success/20 text-success" 
+              : "bg-danger/15 border-danger/20 text-danger"
+          )}>
+            {crescimentoPct >= 0 ? <TrendingUp size={22} /> : <TrendingDown size={22} />}
+          </div>
+          <span className={clsx(
+            "text-xs font-black mt-1.5 tracking-tight",
+            crescimentoPct >= 0 ? "text-success" : "text-danger"
+          )}>
+            {crescimentoPct >= 0 ? "+" : ""}{crescimentoPct.toFixed(1)}% vs. anterior
+          </span>
+        </div>
+
+        {/* Previous Month Faturamento Card Content */}
+        <div className="flex items-center gap-4 flex-1 md:justify-end text-left md:text-right">
+          <div className="space-y-0.5 md:order-1 order-2">
+            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Faturamento Mês Anterior</span>
+            <div className="text-xl font-bold text-text-primary tracking-tight">
+              {formatBRL(faturamentoAnterior)}
+            </div>
+            <span className="text-[10px] text-text-muted font-medium block">Mês completo anterior</span>
+          </div>
+          <div className="p-3 bg-text-muted/10 text-text-muted rounded-lg shrink-0 md:order-2 order-1">
+            <DollarSign size={22} />
+          </div>
+        </div>
+      </div>
+
+      {/* 6 OPERATIONAL KPI CARDS - GRID IN SMALLER SIZES */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        {/* Card 1: Ticket Médio */}
+        <div className="bg-bg-primary border border-divider shadow-card hover:shadow-card-hover rounded-xl p-3.5 flex items-center gap-3 transition-all duration-300 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-[2px] bg-brand-500"></div>
+          <div className="p-2 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
+            <Trophy size={18} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <span className="text-[9px] font-bold text-text-secondary uppercase tracking-wider block leading-none">Ticket Médio</span>
+            <div className="text-xs font-black text-text-primary tracking-tight truncate mt-1">
+              {formatBRL(ticketMedio)}
+            </div>
+            <span className="text-[8px] text-text-muted font-medium block mt-0.5 leading-none">Média por venda</span>
+          </div>
+        </div>
+
+        {/* Card 2: Notas Emitidas */}
+        <div className="bg-bg-primary border border-divider shadow-card hover:shadow-card-hover rounded-xl p-3.5 flex items-center gap-3 transition-all duration-300 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-[2px] bg-brand-500"></div>
+          <div className="p-2 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
+            <FileText size={18} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <span className="text-[9px] font-bold text-text-secondary uppercase tracking-wider block leading-none">Notas Emitidas</span>
+            <div className="text-xs font-black text-text-primary tracking-tight truncate mt-1">
+              {formatNum(notasEmitidas)}
+            </div>
+            <span className="text-[8px] text-text-muted font-medium block mt-0.5 leading-none">Total documentos</span>
+          </div>
+        </div>
+
+        {/* Card 3: Clientes Atendidos */}
+        <div className="bg-bg-primary border border-divider shadow-card hover:shadow-card-hover rounded-xl p-3.5 flex items-center gap-3 transition-all duration-300 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-[2px] bg-brand-500"></div>
+          <div className="p-2 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
+            <Users size={18} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <span className="text-[9px] font-bold text-text-secondary uppercase tracking-wider block leading-none">Clientes Atendidos</span>
+            <div className="text-xs font-black text-text-primary tracking-tight truncate mt-1">
+              {clientesNovos}
+            </div>
+            <div className="flex justify-between items-center text-[7.5px] text-text-muted font-bold mt-0.5 leading-none">
+              <span className="text-success">Novos: {novosPct.toFixed(0)}%</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Card 4: Cidade Top */}
+        <div className="bg-bg-primary border border-divider shadow-card hover:shadow-card-hover rounded-xl p-3.5 flex items-center gap-3 transition-all duration-300 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-[2px] bg-brand-500"></div>
+          <div className="p-2 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
+            <MapPin size={18} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <span className="text-[9px] font-bold text-text-secondary uppercase tracking-wider block leading-none">Cidade Top</span>
+            <div className="text-xs font-black text-text-primary tracking-tight truncate mt-1" title={cidadeTop}>
+              {cidadeTop}
+            </div>
+            <span className="text-[8px] font-extrabold text-brand-500 block mt-0.5 leading-none">
+              {formatBRLCompact(cidadeTopValor)}
             </span>
           </div>
         </div>
 
-        {/* Card 2: Ticket Médio */}
-        <div className="bg-bg-primary border border-divider shadow-card hover:shadow-card-hover rounded-xl p-6 flex items-center gap-4 transition-all duration-300 relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-[3px] bg-brand-500"></div>
-          <div className="p-3 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
-            <Trophy size={24} />
+        {/* Card 5: Principal Cliente */}
+        <div className="bg-bg-primary border border-divider shadow-card hover:shadow-card-hover rounded-xl p-3.5 flex items-center gap-3 transition-all duration-300 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-[2px] bg-brand-500"></div>
+          <div className="p-2 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
+            <Award size={18} />
           </div>
-          <div className="space-y-0.5 min-w-0">
-            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Ticket Médio</span>
-            <div className="text-xl font-black text-text-primary tracking-tight truncate">
-              {formatBRL(ticketMedio)}
+          <div className="min-w-0 flex-1">
+            <span className="text-[9px] font-bold text-text-secondary uppercase tracking-wider block leading-none">Principal Cliente</span>
+            <div className="text-xs font-black text-text-primary tracking-tight truncate mt-1" title={principalCliente ? principalCliente.name : 'N/A'}>
+              {principalCliente ? principalCliente.name : 'N/A'}
             </div>
-            <span className="text-[9px] text-text-muted font-medium block mt-1">Média por venda</span>
+            <span className="text-[8px] font-extrabold text-brand-500 block mt-0.5 leading-none">
+              {principalCliente ? formatBRLCompact(principalCliente.value) : 'Sem vendas'}
+            </span>
           </div>
         </div>
 
-        {/* Card 3: Notas Emitidas */}
-        <div className="bg-bg-primary border border-divider shadow-card hover:shadow-card-hover rounded-xl p-6 flex items-center gap-4 transition-all duration-300 relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-[3px] bg-brand-500"></div>
-          <div className="p-3 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
-            <FileText size={24} />
+        {/* Card 6: Melhor Mês */}
+        <div className="bg-bg-primary border border-divider shadow-card hover:shadow-card-hover rounded-xl p-3.5 flex items-center gap-3 transition-all duration-300 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-[2px] bg-brand-500"></div>
+          <div className="p-2 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
+            <Calendar size={18} />
           </div>
-          <div className="space-y-0.5 min-w-0">
-            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Notas Emitidas</span>
-            <div className="text-xl font-black text-text-primary tracking-tight truncate">
-              {notasEmitidas}
+          <div className="min-w-0 flex-1">
+            <span className="text-[9px] font-bold text-text-secondary uppercase tracking-wider block leading-none">Melhor Mês (12m)</span>
+            <div className="text-xs font-black text-text-primary tracking-tight truncate mt-1">
+              {melhorMes && melhorMes.mes !== 'N/A' ? melhorMes.mes : 'N/A'}
             </div>
-            <span className="text-[9px] text-text-muted font-medium block mt-1">Total documentos</span>
-          </div>
-        </div>
-
-        {/* Card 4: Clientes Atendidos */}
-        <div className="bg-bg-primary border border-divider shadow-card hover:shadow-card-hover rounded-xl p-6 flex items-center gap-4 transition-all duration-300 relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-[3px] bg-brand-500"></div>
-          <div className="p-3 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
-            <Users size={24} />
-          </div>
-          <div className="space-y-0.5 min-w-0 flex-1">
-            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Clientes Atendidos</span>
-            <div className="text-xl font-black text-text-primary tracking-tight truncate">
-              {clientesNovos}
-            </div>
-            <div className="flex justify-between items-center text-[8px] text-text-muted font-bold mt-1">
-              <span className="text-success">Novos: {novosPct.toFixed(0)}%</span>
-              <span>Antigos: {antigosPct.toFixed(0)}%</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Card 5: Cidade Top */}
-        <div className="bg-bg-primary border border-divider shadow-card hover:shadow-card-hover rounded-xl p-6 flex items-center gap-4 transition-all duration-300 relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-[3px] bg-brand-500"></div>
-          <div className="p-3 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
-            <MapPin size={24} />
-          </div>
-          <div className="space-y-0.5 min-w-0">
-            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block">Cidade Top</span>
-            <div className="text-xl font-black text-text-primary tracking-tight truncate" title={cidadeTop}>
-              {cidadeTop}
-            </div>
-            <span className="text-[10px] font-extrabold text-brand-500 block mt-0.5">
-              {formatBRLCompact(cidadeTopValor)}
+            <span className="text-[8px] font-extrabold text-brand-500 block mt-0.5 leading-none">
+              {melhorMes && melhorMes.valor > 0 ? formatBRLCompact(melhorMes.valor) : 'Sem vendas'}
             </span>
           </div>
         </div>
@@ -332,22 +400,22 @@ export default function SellerHubDashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Top Marcas */}
         <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-4 flex flex-col min-h-[300px]">
-          <div className="flex items-center gap-1.5 border-b border-divider/20 pb-2 mb-3">
+          <div className="flex items-center gap-1.5 border-b border-divider/20 pb-1.5 mb-2">
             <Award size={15} className="text-brand-500" />
             <h4 className="text-[10px] font-bold text-text-primary uppercase tracking-wider">Top 15 Marcas</h4>
           </div>
-          <div className="flex-1 overflow-y-auto max-h-[320px] text-[11px] space-y-2 pr-1">
+          <div className="flex-1 overflow-y-auto max-h-[320px] text-xs space-y-0.5 pr-1">
             {topMarcas.map((m: any) => {
               const share = totalMarcasVal > 0 ? (m.value / totalMarcasVal) * 100 : 0;
               return (
-                <div key={m.rank} className="flex justify-between items-center py-1.5 border-b border-divider/5 hover:bg-bg-secondary/50 px-1.5 rounded transition-colors">
-                  <span className="text-text-secondary truncate max-w-[110px]" title={m.name}>
-                    <span className="font-bold text-brand-500/80 mr-1.5 font-mono">#{m.rank}</span>
+                <div key={m.rank} className="flex justify-between items-center py-0.5 border-b border-divider/5 hover:bg-bg-secondary/50 px-1.5 rounded transition-colors">
+                  <span className="text-text-secondary truncate font-medium text-xs max-w-[120px]" title={m.name}>
+                    <span className="font-bold text-brand-500 mr-1.5 font-mono">#{m.rank}</span>
                     {m.name}
                   </span>
                   <div className="text-right shrink-0">
-                    <span className="font-bold text-text-primary block font-mono">{formatBRLCompact(m.value)}</span>
-                    <span className="text-[9px] text-text-muted block font-semibold">{share.toFixed(1)}% share</span>
+                    <span className="font-bold text-text-primary font-mono text-xs block">{formatBRLCompact(m.value)}</span>
+                    <span className="text-[9.5px] text-text-muted font-bold block leading-none">{share.toFixed(1)}% share</span>
                   </div>
                 </div>
               );
@@ -363,22 +431,22 @@ export default function SellerHubDashboard() {
 
         {/* Top Clientes */}
         <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-4 flex flex-col min-h-[300px]">
-          <div className="flex items-center gap-1.5 border-b border-divider/20 pb-2 mb-3">
+          <div className="flex items-center gap-1.5 border-b border-divider/20 pb-1.5 mb-2">
             <Users size={15} className="text-brand-500" />
             <h4 className="text-[10px] font-bold text-text-primary uppercase tracking-wider">Top 10 Clientes</h4>
           </div>
-          <div className="flex-1 overflow-y-auto max-h-[320px] text-[11px] space-y-2 pr-1">
+          <div className="flex-1 overflow-y-auto max-h-[320px] text-xs space-y-0.5 pr-1">
             {topClientes.map((c: any) => {
               const share = totalClientesVal > 0 ? (c.value / totalClientesVal) * 100 : 0;
               return (
-                <div key={c.rank} className="flex justify-between items-center py-1.5 border-b border-divider/5 hover:bg-bg-secondary/50 px-1.5 rounded transition-colors">
-                  <span className="text-text-secondary truncate max-w-[110px]" title={c.name}>
-                    <span className="font-bold text-brand-500/80 mr-1.5 font-mono">#{c.rank}</span>
+                <div key={c.rank} className="flex justify-between items-center py-0.5 border-b border-divider/5 hover:bg-bg-secondary/50 px-1.5 rounded transition-colors">
+                  <span className="text-text-secondary truncate font-medium text-xs max-w-[120px]" title={c.name}>
+                    <span className="font-bold text-brand-500 mr-1.5 font-mono">#{c.rank}</span>
                     {c.name}
                   </span>
                   <div className="text-right shrink-0">
-                    <span className="font-bold text-text-primary block font-mono">{formatBRLCompact(c.value)}</span>
-                    <span className="text-[9px] text-text-muted block font-semibold">{share.toFixed(1)}% share</span>
+                    <span className="font-bold text-text-primary font-mono text-xs block">{formatBRLCompact(c.value)}</span>
+                    <span className="text-[9.5px] text-text-muted font-bold block leading-none">{share.toFixed(1)}% share</span>
                   </div>
                 </div>
               );
@@ -394,22 +462,22 @@ export default function SellerHubDashboard() {
 
         {/* Top Grupos */}
         <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-4 flex flex-col min-h-[300px]">
-          <div className="flex items-center gap-1.5 border-b border-divider/20 pb-2 mb-3">
+          <div className="flex items-center gap-1.5 border-b border-divider/20 pb-1.5 mb-2">
             <Box size={15} className="text-brand-500" />
             <h4 className="text-[10px] font-bold text-text-primary uppercase tracking-wider">Top 10 Grupos</h4>
           </div>
-          <div className="flex-1 overflow-y-auto max-h-[320px] text-[11px] space-y-2 pr-1">
+          <div className="flex-1 overflow-y-auto max-h-[320px] text-xs space-y-0.5 pr-1">
             {topGrupos.map((g: any) => {
               const share = totalGruposVal > 0 ? (g.value / totalGruposVal) * 100 : 0;
               return (
-                <div key={g.rank} className="flex justify-between items-center py-1.5 border-b border-divider/5 hover:bg-bg-secondary/50 px-1.5 rounded transition-colors">
-                  <span className="text-text-secondary truncate max-w-[110px]" title={g.name}>
-                    <span className="font-bold text-brand-500/80 mr-1.5 font-mono">#{g.rank}</span>
+                <div key={g.rank} className="flex justify-between items-center py-0.5 border-b border-divider/5 hover:bg-bg-secondary/50 px-1.5 rounded transition-colors">
+                  <span className="text-text-secondary truncate font-medium text-xs max-w-[120px]" title={g.name}>
+                    <span className="font-bold text-brand-500 mr-1.5 font-mono">#{g.rank}</span>
                     {g.name}
                   </span>
                   <div className="text-right shrink-0">
-                    <span className="font-bold text-text-primary block font-mono">{formatBRLCompact(g.value)}</span>
-                    <span className="text-[9px] text-text-muted block font-semibold">{share.toFixed(1)}% share</span>
+                    <span className="font-bold text-text-primary font-mono text-xs block">{formatBRLCompact(g.value)}</span>
+                    <span className="text-[9.5px] text-text-muted font-bold block leading-none">{share.toFixed(1)}% share</span>
                   </div>
                 </div>
               );
@@ -425,22 +493,22 @@ export default function SellerHubDashboard() {
 
         {/* Top Produtos */}
         <div className="bg-bg-primary border border-divider shadow-card rounded-xl p-4 flex flex-col min-h-[300px]">
-          <div className="flex items-center gap-1.5 border-b border-divider/20 pb-2 mb-3">
+          <div className="flex items-center gap-1.5 border-b border-divider/20 pb-1.5 mb-2">
             <Trophy size={15} className="text-brand-500" />
             <h4 className="text-[10px] font-bold text-text-primary uppercase tracking-wider">Top 10 Produtos</h4>
           </div>
-          <div className="flex-1 overflow-y-auto max-h-[320px] text-[11px] space-y-2 pr-1">
+          <div className="flex-1 overflow-y-auto max-h-[320px] text-xs space-y-0.5 pr-1">
             {topProdutos.map((p: any) => {
               const share = totalProdutosVal > 0 ? (p.value / totalProdutosVal) * 100 : 0;
               return (
-                <div key={p.rank} className="flex justify-between items-center py-1.5 border-b border-divider/5 hover:bg-bg-secondary/50 px-1.5 rounded transition-colors">
-                  <span className="text-text-secondary truncate max-w-[110px]" title={p.name}>
-                    <span className="font-bold text-brand-500/80 mr-1.5 font-mono">#{p.rank}</span>
+                <div key={p.rank} className="flex justify-between items-center py-0.5 border-b border-divider/5 hover:bg-bg-secondary/50 px-1.5 rounded transition-colors">
+                  <span className="text-text-secondary truncate font-medium text-xs max-w-[120px]" title={p.name}>
+                    <span className="font-bold text-brand-500 mr-1.5 font-mono">#{p.rank}</span>
                     {p.name}
                   </span>
                   <div className="text-right shrink-0">
-                    <span className="font-bold text-text-primary block font-mono">{formatBRLCompact(p.value)}</span>
-                    <span className="text-[9px] text-text-muted block font-semibold">{share.toFixed(1)}% share</span>
+                    <span className="font-bold text-text-primary font-mono text-xs block">{formatBRLCompact(p.value)}</span>
+                    <span className="text-[9.5px] text-text-muted font-bold block leading-none">{share.toFixed(1)}% share</span>
                   </div>
                 </div>
               );

@@ -1538,7 +1538,8 @@ router.get('/seller/summary', async (req, res, next) => {
                 historico_vendas: [],
                 vendas_por_dia_semana: [],
                 heatmap_dados: [],
-                notas_fiscais: []
+                notas_fiscais: [],
+                melhor_mes_12m: { mes: 'N/A', valor: 0 }
             });
         }
 
@@ -1789,6 +1790,29 @@ router.get('/seller/summary', async (req, res, next) => {
             status: r.status
         }));
 
+        // 10. Melhor Mês dos últimos 12 meses
+        const start12m = new Date(end);
+        start12m.setFullYear(start12m.getFullYear() - 1);
+        
+        const bestMonthRes = await db.query(`
+            SELECT 
+                TO_CHAR(v.data_venda, 'MM/YYYY') AS mes_ano,
+                SUM(v.valor_total) AS total
+            FROM dash_vendas v
+            WHERE v.tenant_id = $1 
+              AND v.data_venda >= $2 AND v.data_venda <= $3
+              AND v.vendedor_id_firebird = $4
+              ${salesFilter}
+            GROUP BY 1
+            ORDER BY total DESC
+            LIMIT 1
+        `, [tenantId, toSafeSqlString(start12m), toSafeSqlString(end), vendedorId]);
+        
+        const melhor_mes_12m = bestMonthRes.rowCount > 0 ? {
+            mes: bestMonthRes.rows[0].mes_ano,
+            valor: parseFloat(bestMonthRes.rows[0].total || 0)
+        } : { mes: 'N/A', valor: 0 };
+
         res.json({
             faturamento,
             ticket_medio,
@@ -1808,7 +1832,8 @@ router.get('/seller/summary', async (req, res, next) => {
             historico_vendas,
             vendas_por_dia_semana,
             heatmap_dados,
-            notas_fiscais
+            notas_fiscais,
+            melhor_mes_12m
         });
     } catch (err) { next(err); }
 });
