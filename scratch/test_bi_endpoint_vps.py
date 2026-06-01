@@ -5,7 +5,7 @@ client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 client.connect('177.39.17.7', username='root', password='6EFBC!c0:wzr%Ij')
 
 DB_CONTAINER = "coliseu-db-thyqkc5gkvp7i1nld555wakz-172547374937"
-MIDDLEWARE_CONTAINER = "dashboard-middleware-irerzifjwjb4q8ucbpfk2gb8-061236536325"
+MIDDLEWARE_CONTAINER = "dashboard-middleware-irerzifjwjb4q8ucbpfk2gb8-062830265629"
 
 # Node script content
 node_script = """
@@ -22,7 +22,7 @@ const token = jwt.sign({
     layoutVersion: 'v4.0'
 }, secret, { expiresIn: '1h' });
 
-fetch('http://localhost:3200/api/bi/sales/executive-summary?period=lastMonth', {
+fetch('http://localhost:3200/api/ranking/vendedores?period=thisMonth&depto_id=1&limit=100', {
     headers: { 'Authorization': 'Bearer ' + token }
 })
 .then(res => res.json().then(data => ({ status: res.status, data })))

@@ -111,8 +111,8 @@ export default function SalesIntelligenceDashboard() {
   // Safe data transformations
   const revenueTrajectory = useMemo(() => {
     return (salesIntData?.revenue_trajectory || []).map(r => ({
-      dia: r.date,
-      valor: r.value
+      dia: r.dia || r.date || '',
+      valor: Number(r.valor !== undefined ? r.valor : r.value || 0)
     }));
   }, [salesIntData?.revenue_trajectory]);
 
