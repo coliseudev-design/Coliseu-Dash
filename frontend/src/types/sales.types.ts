@@ -48,7 +48,7 @@ export interface SalesIntelligenceResponse {
   top_brands: Array<{ rank: number; name: string; vendas: number; margin?: number }>;
   top_regions: Array<{ rank: number; name: string; vendas: number; margin?: number }>;
   top_categories: Array<{ rank: number; name: string; vendas: number; margin?: number }>;
-  revenue_trajectory: Array<{ date: string; value: number }>;
+  revenue_trajectory: Array<{ date?: string; value?: number; dia?: string; valor?: number }>;
 }
 
 export interface OrderItem {

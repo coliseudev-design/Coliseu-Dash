@@ -169,16 +169,29 @@ export default function SalesIntelligenceDashboard() {
     }
   }, [revenueTrajectory, evolutionGroupBy]);
 
-  // Top Days Ranking (descending by total value, breaking ties with most recent date first)
-  const topDaysRanking = useMemo(() => {
-    return [...revenueTrajectory]
-      .sort((a, b) => {
-        if (b.valor !== a.valor) {
-          return b.valor - a.valor;
-        }
-        return (b.dia || '').localeCompare(a.dia || '');
-      })
-      .map((d, index) => {
+  const isPeriodOver30Days = useMemo(() => {
+    if (filter.period === 'last12m') return true;
+    if (filter.startDate && filter.endDate) {
+      const s = new Date(filter.startDate + 'T00:00:00');
+      const e = new Date(filter.endDate + 'T23:59:59');
+      const diff = Math.ceil((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24));
+      return diff > 30;
+    }
+    return false;
+  }, [filter]);
+
+  useEffect(() => {
+    if (isPeriodOver30Days) {
+      setEvolutionGroupBy('mes');
+    } else {
+      setEvolutionGroupBy('dia');
+    }
+  }, [isPeriodOver30Days]);
+
+  // Chronological Details per Day or Month
+  const chronologicalDetails = useMemo(() => {
+    if (evolutionGroupBy === 'dia') {
+      return revenueTrajectory.map((d) => {
         let formattedDate = d.dia;
         if (formattedDate && formattedDate.includes('-')) {
           const parts = formattedDate.split('-');
@@ -187,12 +200,49 @@ export default function SalesIntelligenceDashboard() {
           }
         }
         return {
-          rank: index + 1,
-          date: formattedDate,
-          value: d.valor
+          label: formattedDate,
+          value: d.valor,
+          key: d.dia
         };
+      }).sort((a, b) => a.key.localeCompare(b.key));
+    } else {
+      // Group by month
+      const groups: Record<string, { key: string; label: string; value: number }> = {};
+      revenueTrajectory.forEach((item: any) => {
+        let monthKey = '';
+        let monthLabel = '';
+        if (item.dia && item.dia.includes('-')) {
+          const parts = item.dia.split('-');
+          if (parts.length >= 2) {
+            const year = parts[0];
+            const month = parts[1];
+            monthKey = `${year}-${month}`;
+            const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+            const monthIdx = parseInt(month, 10) - 1;
+            const shortYear = year.slice(2);
+            if (monthIdx >= 0 && monthIdx < 12) {
+              monthLabel = `${monthNames[monthIdx]}/${shortYear}`;
+            } else {
+              monthLabel = `${month}/${year}`;
+            }
+          }
+        }
+        if (monthKey) {
+          if (!groups[monthKey]) {
+            groups[monthKey] = { key: monthKey, label: monthLabel, value: 0 };
+          }
+          groups[monthKey].value += item.valor || 0;
+        }
       });
-  }, [revenueTrajectory]);
+      return Object.values(groups)
+        .sort((a, b) => a.key.localeCompare(b.key))
+        .map(g => ({
+          label: g.label,
+          value: g.value,
+          key: g.key
+        }));
+    }
+  }, [revenueTrajectory, evolutionGroupBy]);
 
   // Order sorting & filtering logic
   const { filteredOrders, currentOrders, totalPages } = useMemo(() => {
@@ -477,29 +527,23 @@ export default function SalesIntelligenceDashboard() {
             )}
           </div>
 
-          {/* Right Top Days Ranking column (col-span-1) */}
+          {/* Right Column: Chronological Details per Day or Month */}
           <div className="lg:col-span-1 flex flex-col justify-between h-[260px]">
             <div className="flex items-center gap-1.5 border-b border-divider/40 pb-2 mb-2">
-              <Trophy size={14} className="text-brand-500" />
-              <span className="text-[10px] font-bold text-text-primary uppercase tracking-wider">Top Dias (Ranking)</span>
+              <Calendar size={14} className="text-brand-500" />
+              <span className="text-[10px] font-bold text-text-primary uppercase tracking-wider">
+                {evolutionGroupBy === 'dia' ? 'Faturamento por Dia' : 'Faturamento por Mês'}
+              </span>
             </div>
             <div className="flex-1 overflow-y-auto max-h-[220px] pr-1 text-[11px] scrollbar-none divide-y divide-divider/30">
-              {topDaysRanking.slice(0, 10).map((day: any) => {
-                let rankMedal = null;
-                if (day.rank === 1) rankMedal = "🥇";
-                else if (day.rank === 2) rankMedal = "🥈";
-                else if (day.rank === 3) rankMedal = "🥉";
-                else rankMedal = `#${day.rank}`;
-
-                return (
-                  <div key={day.rank} className="flex justify-between items-center py-2 px-1 hover:bg-bg-secondary/40 rounded transition-colors">
-                    <span className="font-bold text-text-secondary w-8 text-center shrink-0">{rankMedal}</span>
-                    <span className="text-text-primary flex-1 font-semibold pl-2">{day.date}</span>
-                    <span className="font-bold text-text-primary font-mono text-right shrink-0">{formatBRLCompact(day.value)}</span>
-                  </div>
-                );
-              })}
-              {topDaysRanking.length === 0 && (
+              {chronologicalDetails.map((item: any, index: number) => (
+                <div key={item.key} className="flex justify-between items-center py-2 px-1 hover:bg-bg-secondary/40 rounded transition-colors">
+                  <span className="text-text-secondary font-mono w-6 shrink-0">{index + 1}</span>
+                  <span className="text-text-primary flex-1 font-semibold pl-2">{item.label}</span>
+                  <span className="font-bold text-text-primary font-mono text-right shrink-0">{formatBRL(item.value)}</span>
+                </div>
+              ))}
+              {chronologicalDetails.length === 0 && (
                 <div className="text-center py-10 text-text-muted text-xs">Sem vendas registradas no período.</div>
               )}
             </div>
