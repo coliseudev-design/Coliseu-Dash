@@ -262,20 +262,13 @@ export default function SellerHubDashboard() {
           </div>
         </div>
 
-        {/* Center: Comparison Arrow */}
-        <div className="flex flex-col items-center justify-center shrink-0 py-2 md:py-0 px-4 border-y md:border-y-0 md:border-x border-divider/40">
-          <div className={clsx(
-            "w-11 h-11 rounded-full flex items-center justify-center shadow-sm border transition-all duration-300",
-            crescimentoPct >= 0 
-              ? "bg-success/15 border-success/20 text-success" 
-              : "bg-danger/15 border-danger/20 text-danger"
-          )}>
-            {crescimentoPct >= 0 ? <TrendingUp size={22} /> : <TrendingDown size={22} />}
-          </div>
+        {/* Center: Comparison Arrow & Percentage Inline */}
+        <div className="flex items-center gap-1.5 shrink-0 py-2 px-3.5 rounded-full bg-bg-secondary border border-divider shadow-sm">
           <span className={clsx(
-            "text-xs font-black mt-1.5 tracking-tight",
+            "text-xs font-black flex items-center gap-1.5",
             crescimentoPct >= 0 ? "text-success" : "text-danger"
           )}>
+            {crescimentoPct >= 0 ? <TrendingUp size={15} /> : <TrendingDown size={15} />}
             {crescimentoPct >= 0 ? "+" : ""}{crescimentoPct.toFixed(1)}% vs. anterior
           </span>
         </div>
@@ -295,20 +288,20 @@ export default function SellerHubDashboard() {
         </div>
       </div>
 
-      {/* 6 OPERATIONAL KPI CARDS - GRID IN SMALLER SIZES */}
+      {/* 6 OPERATIONAL KPI CARDS - GRID IN SMALLER SIZES (LARGER FONTS TO BETTER FILL SPACE) */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {/* Card 1: Ticket Médio */}
         <div className="bg-bg-primary border border-divider shadow-card hover:shadow-card-hover rounded-xl p-3.5 flex items-center gap-3 transition-all duration-300 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-[2px] bg-brand-500"></div>
           <div className="p-2 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
-            <Trophy size={18} />
+            <Trophy size={20} />
           </div>
           <div className="min-w-0 flex-1">
-            <span className="text-[9px] font-bold text-text-secondary uppercase tracking-wider block leading-none">Ticket Médio</span>
-            <div className="text-xs font-black text-text-primary tracking-tight truncate mt-1">
+            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block leading-none">Ticket Médio</span>
+            <div className="text-[15px] sm:text-base font-black text-text-primary tracking-tight truncate mt-1">
               {formatBRL(ticketMedio)}
             </div>
-            <span className="text-[8px] text-text-muted font-medium block mt-0.5 leading-none">Média por venda</span>
+            <span className="text-[9px] text-text-muted font-bold block mt-0.5 leading-none">Média por venda</span>
           </div>
         </div>
 
@@ -316,14 +309,14 @@ export default function SellerHubDashboard() {
         <div className="bg-bg-primary border border-divider shadow-card hover:shadow-card-hover rounded-xl p-3.5 flex items-center gap-3 transition-all duration-300 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-[2px] bg-brand-500"></div>
           <div className="p-2 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
-            <FileText size={18} />
+            <FileText size={20} />
           </div>
           <div className="min-w-0 flex-1">
-            <span className="text-[9px] font-bold text-text-secondary uppercase tracking-wider block leading-none">Notas Emitidas</span>
-            <div className="text-xs font-black text-text-primary tracking-tight truncate mt-1">
+            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block leading-none">Notas Emitidas</span>
+            <div className="text-[15px] sm:text-base font-black text-text-primary tracking-tight truncate mt-1">
               {formatNum(notasEmitidas)}
             </div>
-            <span className="text-[8px] text-text-muted font-medium block mt-0.5 leading-none">Total documentos</span>
+            <span className="text-[9px] text-text-muted font-bold block mt-0.5 leading-none">Total documentos</span>
           </div>
         </div>
 
@@ -331,14 +324,14 @@ export default function SellerHubDashboard() {
         <div className="bg-bg-primary border border-divider shadow-card hover:shadow-card-hover rounded-xl p-3.5 flex items-center gap-3 transition-all duration-300 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-[2px] bg-brand-500"></div>
           <div className="p-2 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
-            <Users size={18} />
+            <Users size={20} />
           </div>
           <div className="min-w-0 flex-1">
-            <span className="text-[9px] font-bold text-text-secondary uppercase tracking-wider block leading-none">Clientes Atendidos</span>
-            <div className="text-xs font-black text-text-primary tracking-tight truncate mt-1">
+            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block leading-none">Clientes Atendidos</span>
+            <div className="text-[15px] sm:text-base font-black text-text-primary tracking-tight truncate mt-1">
               {clientesNovos}
             </div>
-            <div className="flex justify-between items-center text-[7.5px] text-text-muted font-bold mt-0.5 leading-none">
+            <div className="flex justify-between items-center text-[9px] text-text-muted font-bold mt-0.5 leading-none">
               <span className="text-success">Novos: {novosPct.toFixed(0)}%</span>
             </div>
           </div>
@@ -348,14 +341,14 @@ export default function SellerHubDashboard() {
         <div className="bg-bg-primary border border-divider shadow-card hover:shadow-card-hover rounded-xl p-3.5 flex items-center gap-3 transition-all duration-300 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-[2px] bg-brand-500"></div>
           <div className="p-2 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
-            <MapPin size={18} />
+            <MapPin size={20} />
           </div>
           <div className="min-w-0 flex-1">
-            <span className="text-[9px] font-bold text-text-secondary uppercase tracking-wider block leading-none">Cidade Top</span>
-            <div className="text-xs font-black text-text-primary tracking-tight truncate mt-1" title={cidadeTop}>
+            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block leading-none">Cidade Top</span>
+            <div className="text-[15px] sm:text-base font-black text-text-primary tracking-tight truncate mt-1" title={cidadeTop}>
               {cidadeTop}
             </div>
-            <span className="text-[8px] font-extrabold text-brand-500 block mt-0.5 leading-none">
+            <span className="text-[9px] font-extrabold text-brand-500 block mt-0.5 leading-none">
               {formatBRLCompact(cidadeTopValor)}
             </span>
           </div>
@@ -365,32 +358,32 @@ export default function SellerHubDashboard() {
         <div className="bg-bg-primary border border-divider shadow-card hover:shadow-card-hover rounded-xl p-3.5 flex items-center gap-3 transition-all duration-300 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-[2px] bg-brand-500"></div>
           <div className="p-2 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
-            <Award size={18} />
+            <Award size={20} />
           </div>
           <div className="min-w-0 flex-1">
-            <span className="text-[9px] font-bold text-text-secondary uppercase tracking-wider block leading-none">Principal Cliente</span>
-            <div className="text-xs font-black text-text-primary tracking-tight truncate mt-1" title={principalCliente ? principalCliente.name : 'N/A'}>
+            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block leading-none">Principal Cliente</span>
+            <div className="text-[15px] sm:text-base font-black text-text-primary tracking-tight truncate mt-1" title={principalCliente ? principalCliente.name : 'N/A'}>
               {principalCliente ? principalCliente.name : 'N/A'}
             </div>
-            <span className="text-[8px] font-extrabold text-brand-500 block mt-0.5 leading-none">
+            <span className="text-[9px] font-extrabold text-brand-500 block mt-0.5 leading-none">
               {principalCliente ? formatBRLCompact(principalCliente.value) : 'Sem vendas'}
             </span>
           </div>
         </div>
 
-        {/* Card 6: Melhor Mês */}
+        {/* Card 6: Melhor Mês (Valor e mês em destaque) */}
         <div className="bg-bg-primary border border-divider shadow-card hover:shadow-card-hover rounded-xl p-3.5 flex items-center gap-3 transition-all duration-300 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-[2px] bg-brand-500"></div>
           <div className="p-2 bg-brand-500/10 text-brand-500 rounded-lg shrink-0">
-            <Calendar size={18} />
+            <Calendar size={20} />
           </div>
           <div className="min-w-0 flex-1">
-            <span className="text-[9px] font-bold text-text-secondary uppercase tracking-wider block leading-none">Melhor Mês (12m)</span>
-            <div className="text-xs font-black text-text-primary tracking-tight truncate mt-1">
-              {melhorMes && melhorMes.mes !== 'N/A' ? melhorMes.mes : 'N/A'}
-            </div>
-            <span className="text-[8px] font-extrabold text-brand-500 block mt-0.5 leading-none">
+            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block leading-none">Melhor Mês (12m)</span>
+            <div className="text-[15px] sm:text-base font-black text-brand-500 tracking-tight truncate mt-1">
               {melhorMes && melhorMes.valor > 0 ? formatBRLCompact(melhorMes.valor) : 'Sem vendas'}
+            </div>
+            <span className="text-[10px] font-black text-text-primary block mt-0.5 leading-none">
+              {melhorMes && melhorMes.mes !== 'N/A' ? melhorMes.mes : 'N/A'}
             </span>
           </div>
         </div>
@@ -408,14 +401,14 @@ export default function SellerHubDashboard() {
             {topMarcas.map((m: any) => {
               const share = totalMarcasVal > 0 ? (m.value / totalMarcasVal) * 100 : 0;
               return (
-                <div key={m.rank} className="flex justify-between items-center py-0.5 border-b border-divider/5 hover:bg-bg-secondary/50 px-1.5 rounded transition-colors">
-                  <span className="text-text-secondary truncate font-medium text-xs max-w-[120px]" title={m.name}>
+                <div key={m.rank} className="flex justify-between items-center py-1 border-b border-divider/5 hover:bg-bg-secondary/50 px-1.5 rounded transition-colors">
+                  <span className="text-text-secondary truncate font-medium text-xs flex-1 min-w-0 mr-2" title={m.name}>
                     <span className="font-bold text-brand-500 mr-1.5 font-mono">#{m.rank}</span>
                     {m.name}
                   </span>
-                  <div className="text-right shrink-0">
-                    <span className="font-bold text-text-primary font-mono text-xs block">{formatBRLCompact(m.value)}</span>
-                    <span className="text-[9.5px] text-text-muted font-bold block leading-none">{share.toFixed(1)}% share</span>
+                  <div className="text-right shrink-0 flex items-center gap-1">
+                    <span className="font-bold text-text-primary font-mono text-xs">{formatBRLCompact(m.value)}</span>
+                    <span className="text-[10px] text-text-muted font-bold">({share.toFixed(1)}%)</span>
                   </div>
                 </div>
               );
@@ -439,14 +432,14 @@ export default function SellerHubDashboard() {
             {topClientes.map((c: any) => {
               const share = totalClientesVal > 0 ? (c.value / totalClientesVal) * 100 : 0;
               return (
-                <div key={c.rank} className="flex justify-between items-center py-0.5 border-b border-divider/5 hover:bg-bg-secondary/50 px-1.5 rounded transition-colors">
-                  <span className="text-text-secondary truncate font-medium text-xs max-w-[120px]" title={c.name}>
+                <div key={c.rank} className="flex justify-between items-center py-1 border-b border-divider/5 hover:bg-bg-secondary/50 px-1.5 rounded transition-colors">
+                  <span className="text-text-secondary truncate font-medium text-xs flex-1 min-w-0 mr-2" title={c.name}>
                     <span className="font-bold text-brand-500 mr-1.5 font-mono">#{c.rank}</span>
                     {c.name}
                   </span>
-                  <div className="text-right shrink-0">
-                    <span className="font-bold text-text-primary font-mono text-xs block">{formatBRLCompact(c.value)}</span>
-                    <span className="text-[9.5px] text-text-muted font-bold block leading-none">{share.toFixed(1)}% share</span>
+                  <div className="text-right shrink-0 flex items-center gap-1">
+                    <span className="font-bold text-text-primary font-mono text-xs">{formatBRLCompact(c.value)}</span>
+                    <span className="text-[10px] text-text-muted font-bold">({share.toFixed(1)}%)</span>
                   </div>
                 </div>
               );
@@ -470,14 +463,14 @@ export default function SellerHubDashboard() {
             {topGrupos.map((g: any) => {
               const share = totalGruposVal > 0 ? (g.value / totalGruposVal) * 100 : 0;
               return (
-                <div key={g.rank} className="flex justify-between items-center py-0.5 border-b border-divider/5 hover:bg-bg-secondary/50 px-1.5 rounded transition-colors">
-                  <span className="text-text-secondary truncate font-medium text-xs max-w-[120px]" title={g.name}>
+                <div key={g.rank} className="flex justify-between items-center py-1 border-b border-divider/5 hover:bg-bg-secondary/50 px-1.5 rounded transition-colors">
+                  <span className="text-text-secondary truncate font-medium text-xs flex-1 min-w-0 mr-2" title={g.name}>
                     <span className="font-bold text-brand-500 mr-1.5 font-mono">#{g.rank}</span>
                     {g.name}
                   </span>
-                  <div className="text-right shrink-0">
-                    <span className="font-bold text-text-primary font-mono text-xs block">{formatBRLCompact(g.value)}</span>
-                    <span className="text-[9.5px] text-text-muted font-bold block leading-none">{share.toFixed(1)}% share</span>
+                  <div className="text-right shrink-0 flex items-center gap-1">
+                    <span className="font-bold text-text-primary font-mono text-xs">{formatBRLCompact(g.value)}</span>
+                    <span className="text-[10px] text-text-muted font-bold">({share.toFixed(1)}%)</span>
                   </div>
                 </div>
               );
@@ -501,14 +494,14 @@ export default function SellerHubDashboard() {
             {topProdutos.map((p: any) => {
               const share = totalProdutosVal > 0 ? (p.value / totalProdutosVal) * 100 : 0;
               return (
-                <div key={p.rank} className="flex justify-between items-center py-0.5 border-b border-divider/5 hover:bg-bg-secondary/50 px-1.5 rounded transition-colors">
-                  <span className="text-text-secondary truncate font-medium text-xs max-w-[120px]" title={p.name}>
+                <div key={p.rank} className="flex justify-between items-center py-1 border-b border-divider/5 hover:bg-bg-secondary/50 px-1.5 rounded transition-colors">
+                  <span className="text-text-secondary truncate font-medium text-xs flex-1 min-w-0 mr-2" title={p.name}>
                     <span className="font-bold text-brand-500 mr-1.5 font-mono">#{p.rank}</span>
                     {p.name}
                   </span>
-                  <div className="text-right shrink-0">
-                    <span className="font-bold text-text-primary font-mono text-xs block">{formatBRLCompact(p.value)}</span>
-                    <span className="text-[9.5px] text-text-muted font-bold block leading-none">{share.toFixed(1)}% share</span>
+                  <div className="text-right shrink-0 flex items-center gap-1">
+                    <span className="font-bold text-text-primary font-mono text-xs">{formatBRLCompact(p.value)}</span>
+                    <span className="text-[10px] text-text-muted font-bold">({share.toFixed(1)}%)</span>
                   </div>
                 </div>
               );
