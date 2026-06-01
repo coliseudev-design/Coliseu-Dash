@@ -240,6 +240,13 @@ export default function SalesIntelligenceDashboard() {
     return `A evolução comercial indica variações de faturamento, com pico no dia ${peak.dia} (${formatBRL(peak.valor)}) e menor faturamento no dia ${lowest.dia} (${formatBRL(lowest.valor)}).`;
   };
 
+  const isTrajectoryEmpty = revenueTrajectory.length === 0 || revenueTrajectory.every(r => r.valor === 0);
+
+  const totalNotesCount = filteredOrders.length;
+  const totalNotesSum = useMemo(() => {
+    return filteredOrders.reduce((sum: number, o: any) => sum + (o.valor_total || o.valor || 0), 0);
+  }, [filteredOrders]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-80 text-text-secondary">
@@ -248,13 +255,6 @@ export default function SalesIntelligenceDashboard() {
       </div>
     );
   }
-
-  const isTrajectoryEmpty = revenueTrajectory.length === 0 || revenueTrajectory.every(r => r.valor === 0);
-
-  const totalNotesCount = filteredOrders.length;
-  const totalNotesSum = useMemo(() => {
-    return filteredOrders.reduce((sum: number, o: any) => sum + (o.valor_total || o.valor || 0), 0);
-  }, [filteredOrders]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
