@@ -147,7 +147,6 @@ router.get('/kpis', async (req, res, next) => {
         const { start_date, end_date } = req.query;
 
         let anchorDate = new Date();
-        const cfopUtil = require('../utils/cfop');
         if (cfopUtil.isVetContext()) {
             const { rows: anchorRows } = await db.query(
                 'SELECT MAX(data_venda) AS max_date FROM dash_vendas WHERE tenant_id = $1',

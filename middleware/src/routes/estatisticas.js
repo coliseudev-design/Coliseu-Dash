@@ -6,6 +6,7 @@ const db = require('../db/postgres');
 const { getPeriodRange } = require('../utils/period');
 const { getCache, setCache } = require('../config/cache');
 const { buildDeptoFilter, buildVendedorFilter } = require('./filiais');
+const cfopUtil = require('../utils/cfop');
 
 // GET /api/estatisticas/overview
 router.get('/overview', async (req, res, next) => {
@@ -20,7 +21,6 @@ router.get('/overview', async (req, res, next) => {
         const cached = getCache(cacheKey);
         if (cached) return res.json(cached);
 
-        const cfopUtil = require('../utils/cfop');
         let anchorDate = new Date();
         if (cfopUtil.isVetContext()) {
             const { rows: anchorRows } = await db.query(
@@ -176,7 +176,6 @@ router.get('/kpis', async (req, res, next) => {
         const vendedorId = req.query.vendedor_id;
 
         const maxDate = new Date();
-        const cfopUtil = require('../utils/cfop');
         let anchorKpi = maxDate;
         if (cfopUtil.isVetContext()) {
             const { rows: anchorRowsKpi } = await db.query(
@@ -194,7 +193,6 @@ router.get('/kpis', async (req, res, next) => {
         const vf = buildVendedorFilter(vendedorId, 4 + df.params.length, 'v');
         const vfVi = buildVendedorFilter(vendedorId, 4 + dfVi.params.length, 'v');
 
-        const cfopUtil = require('../utils/cfop');
         const salesFilter = cfopUtil.getSalesFilterClause('v');
 
         const getDevQuery = (startStr, endStr) => {

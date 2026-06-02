@@ -11,7 +11,6 @@ const cfopUtil = require('../utils/cfop');
  * Garante que dados antigos do Firebird sempre apareçam.
  */
 async function getFinanceiroAnchor(tenantId, period, start_date, end_date) {
-    const cfopUtil = require('../utils/cfop');
     let fakeNow = new Date();
     if (cfopUtil.isVetContext()) {
         const { rows } = await db.query(
