@@ -15,12 +15,14 @@ router.get('/faturadas', async (req, res, next) => {
         const vendedorId = req.query.vendedor_id;
         const { start_date, end_date } = req.query;
 
-        // Âncora: usar MAX(data_venda) para bases sincronizadas do Firebird
-        const { rows: anchorRows } = await db.query(
-            'SELECT MAX(data_venda) AS max_date FROM dash_vendas WHERE tenant_id = $1',
-            [tenantId]
-        );
-        const anchorDate = anchorRows[0].max_date ? new Date(anchorRows[0].max_date) : new Date();
+        let anchorDate = new Date();
+        if (cfopUtil.isVetContext()) {
+            const { rows: anchorRows } = await db.query(
+                'SELECT MAX(data_venda) AS max_date FROM dash_vendas WHERE tenant_id = $1',
+                [tenantId]
+            );
+            if (anchorRows[0].max_date) anchorDate = new Date(anchorRows[0].max_date);
+        }
         const { start, end } = getPeriodRange(period, start_date, end_date, anchorDate);
 
         const salesFilter = cfopUtil.getSalesFilterClause('v');
@@ -144,12 +146,15 @@ router.get('/kpis', async (req, res, next) => {
         const tenantId = req.tenant.id;
         const { start_date, end_date } = req.query;
 
-        // Âncora: usar MAX(data_venda) para bases sincronizadas do Firebird
-        const { rows: anchorRows } = await db.query(
-            'SELECT MAX(data_venda) AS max_date FROM dash_vendas WHERE tenant_id = $1',
-            [tenantId]
-        );
-        const anchorDate = anchorRows[0].max_date ? new Date(anchorRows[0].max_date) : new Date();
+        let anchorDate = new Date();
+        const cfopUtil = require('../utils/cfop');
+        if (cfopUtil.isVetContext()) {
+            const { rows: anchorRows } = await db.query(
+                'SELECT MAX(data_venda) AS max_date FROM dash_vendas WHERE tenant_id = $1',
+                [tenantId]
+            );
+            if (anchorRows[0].max_date) anchorDate = new Date(anchorRows[0].max_date);
+        }
         const { start, end } = getPeriodRange(period, start_date, end_date, anchorDate);
 
         const salesFilter = cfopUtil.getSalesFilterClause('v');

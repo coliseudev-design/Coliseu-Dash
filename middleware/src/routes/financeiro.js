@@ -11,14 +11,17 @@ const cfopUtil = require('../utils/cfop');
  * Garante que dados antigos do Firebird sempre apareçam.
  */
 async function getFinanceiroAnchor(tenantId, period, start_date, end_date) {
-    const { rows } = await db.query(
-        `SELECT COALESCE(MAX(data_emissao), MAX(data_vencimento), NOW()) as anchor FROM dash_financeiro WHERE tenant_id = $1`,
-        [tenantId]
-    );
-    const anchor = new Date(rows[0].anchor);
+    const cfopUtil = require('../utils/cfop');
+    let fakeNow = new Date();
+    if (cfopUtil.isVetContext()) {
+        const { rows } = await db.query(
+            `SELECT COALESCE(MAX(data_emissao), MAX(data_vencimento), NOW()) as anchor FROM dash_financeiro WHERE tenant_id = $1`,
+            [tenantId]
+        );
+        fakeNow = new Date(rows[0].anchor);
+    }
     const { getPeriodRange } = require('../utils/period');
-    // Calcula usando a âncora como se fosse 'agora'
-    const fakeNow = anchor;
+    // Calcula usando a âncora (ou hoje real) como se fosse 'agora'
     let start = new Date(fakeNow);
     let end = new Date(fakeNow);
     end.setHours(23, 59, 59, 999);

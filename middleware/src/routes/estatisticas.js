@@ -20,13 +20,15 @@ router.get('/overview', async (req, res, next) => {
         const cached = getCache(cacheKey);
         if (cached) return res.json(cached);
 
-        // REGRA DE ANCORAGEM: usar MAX(data_venda) como referência de "hoje"
-        // em bases sincronizadas do Firebird, os dados podem ser de meses passados
-        const { rows: anchorRows } = await db.query(
-            'SELECT MAX(data_venda) AS max_date FROM dash_vendas WHERE tenant_id = $1',
-            [tenantId]
-        );
-        const anchorDate = anchorRows[0].max_date ? new Date(anchorRows[0].max_date) : new Date();
+        const cfopUtil = require('../utils/cfop');
+        let anchorDate = new Date();
+        if (cfopUtil.isVetContext()) {
+            const { rows: anchorRows } = await db.query(
+                'SELECT MAX(data_venda) AS max_date FROM dash_vendas WHERE tenant_id = $1',
+                [tenantId]
+            );
+            if (anchorRows[0].max_date) anchorDate = new Date(anchorRows[0].max_date);
+        }
         const anchorDateFin = new Date(anchorDate);
 
         const { start, end } = getPeriodRange(period, start_date, end_date, anchorDate);
@@ -47,7 +49,7 @@ router.get('/overview', async (req, res, next) => {
         // Filtro de vendedor
         const vf = buildVendedorFilter(vendedorId, 4 + df.params.length, 'v');
 
-        const cfopUtil = require('../utils/cfop');
+
         const salesFilter = cfopUtil.getSalesFilterClause('v');
         const cfopFilter = cfopUtil.getCfopFilterClause('v');
 
@@ -174,12 +176,15 @@ router.get('/kpis', async (req, res, next) => {
         const vendedorId = req.query.vendedor_id;
 
         const maxDate = new Date();
-        // Âncora: usar MAX(data_venda) para bases sincronizadas do Firebird
-        const { rows: anchorRowsKpi } = await db.query(
-            'SELECT MAX(data_venda) AS max_date FROM dash_vendas WHERE tenant_id = $1',
-            [tenantId]
-        );
-        const anchorKpi = anchorRowsKpi[0].max_date ? new Date(anchorRowsKpi[0].max_date) : maxDate;
+        const cfopUtil = require('../utils/cfop');
+        let anchorKpi = maxDate;
+        if (cfopUtil.isVetContext()) {
+            const { rows: anchorRowsKpi } = await db.query(
+                'SELECT MAX(data_venda) AS max_date FROM dash_vendas WHERE tenant_id = $1',
+                [tenantId]
+            );
+            if (anchorRowsKpi[0].max_date) anchorKpi = new Date(anchorRowsKpi[0].max_date);
+        }
         const { start, end } = getPeriodRange(period, start_date, end_date, anchorKpi);
 
         const df = buildDeptoFilter(deptoId, 4, 'v');
