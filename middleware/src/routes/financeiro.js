@@ -4,6 +4,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db/postgres');
 const { getPeriodRange } = require('../utils/period');
+const cfopUtil = require('../utils/cfop');
 
 /**
  * Usa MAX(data_emissao) do financeiro como âncora para filtros de período.
@@ -260,7 +261,7 @@ router.get('/caixa', async (req, res, next) => {
                 FROM dash_vendas
                 WHERE tenant_id = $1
                   AND data_venda >= $2 AND data_venda <= $3
-                  AND TRIM(UPPER(status)) IN ('FATURADO', 'FINALIZADO')
+                  ${cfopUtil.getSalesFilterClause('')}
                   AND especie IS NOT NULL AND TRIM(especie) != ''
                 GROUP BY TRIM(UPPER(especie))
                 ORDER BY total_especie DESC
@@ -330,7 +331,7 @@ router.get('/especies-vendidas', async (req, res, next) => {
             INNER JOIN dash_produtos p ON p.id_firebird = i.produto_id_firebird AND p.tenant_id = i.tenant_id
             WHERE i.tenant_id = $1
               AND v.data_venda >= $2 AND v.data_venda <= $3
-              AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
+              ${cfopUtil.getSalesFilterClause('v')}
             GROUP BY p.id_firebird, p.codigo, p.nome, p.categoria
             ORDER BY total_vendido DESC
             LIMIT $4
@@ -346,7 +347,7 @@ router.get('/especies-vendidas', async (req, res, next) => {
             INNER JOIN dash_produtos p ON p.id_firebird = i.produto_id_firebird AND p.tenant_id = i.tenant_id
             WHERE i.tenant_id = $1
               AND v.data_venda >= $2 AND v.data_venda <= $3
-              AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
+              ${cfopUtil.getSalesFilterClause('v')}
             GROUP BY COALESCE(NULLIF(p.categoria, ''), 'Sem categoria')
             ORDER BY total DESC
         `, [tenantId, start, end]);
@@ -357,7 +358,7 @@ router.get('/especies-vendidas', async (req, res, next) => {
             INNER JOIN dash_vendas v ON v.id_firebird = i.venda_id_firebird AND v.tenant_id = i.tenant_id
             WHERE i.tenant_id = $1
               AND v.data_venda >= $2 AND v.data_venda <= $3
-              AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')
+              ${cfopUtil.getSalesFilterClause('v')}
         `, [tenantId, start, end]);
 
         res.json({

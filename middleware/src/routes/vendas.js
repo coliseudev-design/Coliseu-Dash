@@ -71,7 +71,7 @@ router.get('/por-horario', async (req, res, next) => {
                 FROM dash_vendas
                 WHERE tenant_id = $1
                   AND TO_CHAR(data_venda, 'YYYY-MM-DD') = $2
-                  AND TRIM(status) IN ('FATURADO', 'FINALIZADO')
+                  ${cfopUtil.getSalesFilterClause('')}
                 GROUP BY EXTRACT(HOUR FROM data_venda)
                 ORDER BY hora
             `;
@@ -86,7 +86,7 @@ router.get('/por-horario', async (req, res, next) => {
                 FROM dash_vendas
                 WHERE tenant_id = $1
                   AND data_venda >= NOW() - INTERVAL '30 days'
-                  AND TRIM(status) IN ('FATURADO', 'FINALIZADO')
+                  ${cfopUtil.getSalesFilterClause('')}
                 GROUP BY EXTRACT(HOUR FROM data_venda)
                 ORDER BY hora
             `;

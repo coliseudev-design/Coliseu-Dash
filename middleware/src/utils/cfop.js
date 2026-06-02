@@ -32,8 +32,9 @@ function isVetContext() {
  * Aplicado em contexto Vet; em outros contextos não há filtro de CFOP.
  */
 function getCfopFilterClause(tableAlias = 'v') {
+    const prefix = tableAlias ? `${tableAlias}.` : '';
     if (isVetContext()) {
-        return `AND ${tableAlias}.cfop IN (${SALES_CFOPS.join(',')})`;
+        return `AND ${prefix}cfop IN (${SALES_CFOPS.join(',')})`;
     }
     return '';
 }
@@ -42,10 +43,11 @@ function getCfopFilterClause(tableAlias = 'v') {
  * STATUS_FILTER: Exclui status internos, cancelamentos e orçamentos.
  */
 function getStatusFilterClause(tableAlias = 'v') {
+    const prefix = tableAlias ? `${tableAlias}.` : '';
     if (isVetContext()) {
-        return `AND UPPER(TRIM(${tableAlias}.status)) NOT IN (${SALES_STATUS_EXCLUDE.map(s => `'${s}'`).join(',')})`;
+        return `AND UPPER(TRIM(${prefix}status)) NOT IN (${SALES_STATUS_EXCLUDE.map(s => `'${s}'`).join(',')})`;
     }
-    return `AND TRIM(${tableAlias}.status) IN ('FATURADO', 'FINALIZADO')`;
+    return `AND UPPER(TRIM(${prefix}status)) != 'CANCELADO'`;
 }
 
 /**

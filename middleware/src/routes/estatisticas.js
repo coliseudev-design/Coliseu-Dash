@@ -51,9 +51,7 @@ router.get('/overview', async (req, res, next) => {
         const salesFilter = cfopUtil.getSalesFilterClause('v');
         const cfopFilter = cfopUtil.getCfopFilterClause('v');
 
-        const procStatusFilter = cfopUtil.isVetContext()
-            ? cfopUtil.getStatusFilterClause('v')
-            : "AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO')";
+        const procStatusFilter = cfopUtil.getStatusFilterClause('v');
 
         // Queries de devoluções parametrizadas por período
         const getDevQuery = (startStr, endStr) => {
