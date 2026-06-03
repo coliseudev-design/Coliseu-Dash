@@ -3,7 +3,7 @@ import paramiko
 HOST = '177.39.17.7'
 USER = 'root'
 PASS = '6EFBC!c0:wzr%Ij'
-MW_CONTAINER = 'dashboard-middleware-irerzifjwjb4q8ucbpfk2gb8-134707159354'
+MW_CONTAINER = 'dashboard-middleware-irerzifjwjb4q8ucbpfk2gb8-145439028228'
 
 node_test_script = """
 const db = require('./src/db/postgres');
@@ -13,16 +13,12 @@ const { buildDeptoFilter } = require('./src/routes/filiais');
 
 const tenantId = 'a822a7e7-fdd4-4483-bbb5-26587a72739f';
 const period = 'last12m';
-const deptoId = 'todas';
+const deptoId = '4';
 
 db.dbContext.run({ dbType: 'main' }, async () => {
     try {
         console.log('isVetContext():', cfopUtil.isVetContext());
-        const { rows: anchorRows } = await db.query(
-            'SELECT MAX(data_venda) AS max_date FROM dash_vendas WHERE tenant_id = $1',
-            [tenantId]
-        );
-        const anchorDate = anchorRows[0].max_date ? new Date(anchorRows[0].max_date) : new Date();
+        const anchorDate = new Date();
         console.log('Anchor Date:', anchorDate.toISOString());
 
         const { start, end } = getPeriodRange(period, null, null, anchorDate);

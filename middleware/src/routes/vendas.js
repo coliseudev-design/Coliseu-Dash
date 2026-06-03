@@ -16,13 +16,11 @@ router.get('/faturadas', async (req, res, next) => {
         const { start_date, end_date } = req.query;
 
         let anchorDate = new Date();
-        if (cfopUtil.isVetContext()) {
-            const { rows: anchorRows } = await db.query(
-                'SELECT MAX(data_venda) AS max_date FROM dash_vendas WHERE tenant_id = $1',
-                [tenantId]
-            );
-            if (anchorRows[0].max_date) anchorDate = new Date(anchorRows[0].max_date);
-        }
+        const { rows: anchorRows } = await db.query(
+            'SELECT MAX(data_venda) AS max_date FROM dash_vendas WHERE tenant_id = $1',
+            [tenantId]
+        );
+        if (anchorRows[0].max_date) anchorDate = new Date(anchorRows[0].max_date);
         const { start, end } = getPeriodRange(period, start_date, end_date, anchorDate);
 
         const salesFilter = cfopUtil.getSalesFilterClause('v');
@@ -147,13 +145,11 @@ router.get('/kpis', async (req, res, next) => {
         const { start_date, end_date } = req.query;
 
         let anchorDate = new Date();
-        if (cfopUtil.isVetContext()) {
-            const { rows: anchorRows } = await db.query(
-                'SELECT MAX(data_venda) AS max_date FROM dash_vendas WHERE tenant_id = $1',
-                [tenantId]
-            );
-            if (anchorRows[0].max_date) anchorDate = new Date(anchorRows[0].max_date);
-        }
+        const { rows: anchorRows } = await db.query(
+            'SELECT MAX(data_venda) AS max_date FROM dash_vendas WHERE tenant_id = $1',
+            [tenantId]
+        );
+        if (anchorRows[0].max_date) anchorDate = new Date(anchorRows[0].max_date);
         const { start, end } = getPeriodRange(period, start_date, end_date, anchorDate);
 
         const salesFilter = cfopUtil.getSalesFilterClause('v');

@@ -12,11 +12,11 @@ const cfopUtil = require('../utils/cfop');
  */
 async function getFinanceiroAnchor(tenantId, period, start_date, end_date) {
     let fakeNow = new Date();
-    if (cfopUtil.isVetContext()) {
-        const { rows } = await db.query(
-            `SELECT COALESCE(MAX(data_emissao), MAX(data_vencimento), NOW()) as anchor FROM dash_financeiro WHERE tenant_id = $1`,
-            [tenantId]
-        );
+    const { rows } = await db.query(
+        `SELECT COALESCE(MAX(data_emissao), MAX(data_vencimento), NOW()) as anchor FROM dash_financeiro WHERE tenant_id = $1`,
+        [tenantId]
+    );
+    if (rows.length > 0 && rows[0].anchor) {
         fakeNow = new Date(rows[0].anchor);
     }
     const { getPeriodRange } = require('../utils/period');

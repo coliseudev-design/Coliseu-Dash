@@ -7,7 +7,7 @@ client.connect('177.39.17.7', username='root', password='6EFBC!c0:wzr%Ij')
 DB_CONTAINER = 'coliseu-db-thyqkc5gkvp7i1nld555wakz-172547374937'
 
 def run_query(sql, label):
-    cmd = f'docker exec {DB_CONTAINER} psql -U coliseu_admin -d coliseu_dashboard -c "{sql}"'
+    cmd = f'docker exec {DB_CONTAINER} psql -U coliseu_admin -d coliseu_dashboard_vet -c "{sql}"'
     stdin, stdout, stderr = client.exec_command(cmd)
     print(f"\n=== {label} ===")
     print(stdout.read().decode('utf-8'))
@@ -15,7 +15,7 @@ def run_query(sql, label):
     if err:
         print("ERR:", err)
 
-# Query faturamento in the last 12 months
-run_query("SELECT COUNT(*), SUM(valor_total) FROM dash_vendas WHERE tenant_id = 'a822a7e7-fdd4-4483-bbb5-26587a72739f' AND data_venda >= '2025-06-03 00:00:00' AND data_venda <= '2026-06-03 23:59:59' AND TRIM(status) IN ('FATURADO', 'FINALIZADO');", "FATURADO LAST 12 MONTHS")
+# Inspect user TESTE PET or all users
+run_query("SELECT id, tenant_id, email, nome, role, layout_version, use_vet_db FROM dash_usuarios;", "USER PROFILES")
 
 client.close()
