@@ -3,7 +3,7 @@ import paramiko
 HOST = '177.39.17.7'
 USER = 'root'
 PASS = '6EFBC!c0:wzr%Ij'
-MW_CONTAINER = 'dashboard-middleware-irerzifjwjb4q8ucbpfk2gb8-144356492056'
+MW_CONTAINER = 'dashboard-middleware-irerzifjwjb4q8ucbpfk2gb8-134707159354'
 
 node_test_script = """
 const db = require('./src/db/postgres');
@@ -12,10 +12,10 @@ const cfopUtil = require('./src/utils/cfop');
 const { buildDeptoFilter } = require('./src/routes/filiais');
 
 const tenantId = 'a822a7e7-fdd4-4483-bbb5-26587a72739f';
-const period = 'thisMonth';
-const deptoId = '4'; // FRACASSO 4
+const period = 'last12m';
+const deptoId = 'todas';
 
-db.dbContext.run({ dbType: 'vet' }, async () => {
+db.dbContext.run({ dbType: 'main' }, async () => {
     try {
         console.log('isVetContext():', cfopUtil.isVetContext());
         const { rows: anchorRows } = await db.query(

@@ -3,7 +3,7 @@ import paramiko
 HOST = '177.39.17.7'
 USER = 'root'
 PASS = '6EFBC!c0:wzr%Ij'
-MW_CONTAINER = 'dashboard-middleware-irerzifjwjb4q8ucbpfk2gb8-144356492056'
+MW_CONTAINER = 'dashboard-middleware-irerzifjwjb4q8ucbpfk2gb8-134707159354'
 
 def run_middleware_node_code(label, node_code):
     node_code_escaped = node_code.replace('"', '\\"').replace('`', '\\`').replace('$', '\\$')

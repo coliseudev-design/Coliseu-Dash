@@ -22,8 +22,7 @@ const SALES_STATUS_EXCLUDE = [
 ];
 
 function isVetContext() {
-    const store = db.dbContext.getStore();
-    return store && (store.isVet === true || store.dbType === 'vet');
+    return false;
 }
 
 /**
@@ -32,10 +31,6 @@ function isVetContext() {
  * Aplicado em contexto Vet; em outros contextos não há filtro de CFOP.
  */
 function getCfopFilterClause(tableAlias = 'v') {
-    const prefix = tableAlias ? `${tableAlias}.` : '';
-    if (isVetContext()) {
-        return `AND ${prefix}cfop IN (${SALES_CFOPS.join(',')})`;
-    }
     return '';
 }
 
@@ -44,10 +39,7 @@ function getCfopFilterClause(tableAlias = 'v') {
  */
 function getStatusFilterClause(tableAlias = 'v') {
     const prefix = tableAlias ? `${tableAlias}.` : '';
-    if (isVetContext()) {
-        return `AND UPPER(TRIM(${prefix}status)) NOT IN (${SALES_STATUS_EXCLUDE.map(s => `'${s}'`).join(',')})`;
-    }
-    return `AND UPPER(TRIM(${prefix}status)) != 'CANCELADO'`;
+    return `AND TRIM(${prefix}status) IN ('FATURADO', 'FINALIZADO')`;
 }
 
 /**

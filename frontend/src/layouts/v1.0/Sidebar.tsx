@@ -101,18 +101,7 @@ export default function Sidebar({ open, onClose }: Props) {
           {allowedConfigModules.length > 0 && (
             <div className="mt-auto pt-4 border-t border-divider">
               <button
-                onClick={() => {
-                  if (!configOpen) {
-                    const pass = window.prompt('Senha de acesso:');
-                    if (pass === '13894645') {
-                      setConfigOpen(true);
-                    } else if (pass !== null) {
-                      alert('Senha incorreta!');
-                    }
-                  } else {
-                    setConfigOpen(false);
-                  }
-                }}
+                onClick={() => setConfigOpen(!configOpen)}
                 className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium text-text-secondary hover:bg-bg-secondary hover:text-text-primary transition-colors mb-1"
               >
                 <div className="flex items-center gap-3">
