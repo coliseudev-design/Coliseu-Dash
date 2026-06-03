@@ -23,10 +23,19 @@ router.get('/overview', async (req, res, next) => {
 
         let anchorDate = new Date();
         const { rows: anchorRows } = await db.query(
-            'SELECT MAX(data_venda) AS max_date FROM dash_vendas WHERE tenant_id = $1',
+            `SELECT MAX(data_venda) AS max_date FROM dash_vendas WHERE tenant_id = $1 AND TRIM(status) IN ('FATURADO', 'FINALIZADO')`,
             [tenantId]
         );
-        if (anchorRows[0].max_date) anchorDate = new Date(anchorRows[0].max_date);
+        // Fallback: se nao ha vendas faturadas, usa o MAX geral
+        if (anchorRows[0].max_date) {
+            anchorDate = new Date(anchorRows[0].max_date);
+        } else {
+            const { rows: fallbackRows } = await db.query(
+                'SELECT MAX(data_venda) AS max_date FROM dash_vendas WHERE tenant_id = $1',
+                [tenantId]
+            );
+            if (fallbackRows[0].max_date) anchorDate = new Date(fallbackRows[0].max_date);
+        }
         const anchorDateFin = new Date(anchorDate);
 
         const { start, end } = getPeriodRange(period, start_date, end_date, anchorDate);
@@ -176,10 +185,19 @@ router.get('/kpis', async (req, res, next) => {
         const maxDate = new Date();
         let anchorKpi = maxDate;
         const { rows: anchorRowsKpi } = await db.query(
-            'SELECT MAX(data_venda) AS max_date FROM dash_vendas WHERE tenant_id = $1',
+            `SELECT MAX(data_venda) AS max_date FROM dash_vendas WHERE tenant_id = $1 AND TRIM(status) IN ('FATURADO', 'FINALIZADO')`,
             [tenantId]
         );
-        if (anchorRowsKpi[0].max_date) anchorKpi = new Date(anchorRowsKpi[0].max_date);
+        // Fallback: se nao ha vendas faturadas, usa o MAX geral
+        if (anchorRowsKpi[0].max_date) {
+            anchorKpi = new Date(anchorRowsKpi[0].max_date);
+        } else {
+            const { rows: fallbackRowsKpi } = await db.query(
+                'SELECT MAX(data_venda) AS max_date FROM dash_vendas WHERE tenant_id = $1',
+                [tenantId]
+            );
+            if (fallbackRowsKpi[0].max_date) anchorKpi = new Date(fallbackRowsKpi[0].max_date);
+        }
         const { start, end } = getPeriodRange(period, start_date, end_date, anchorKpi);
 
         const df = buildDeptoFilter(deptoId, 4, 'v');
