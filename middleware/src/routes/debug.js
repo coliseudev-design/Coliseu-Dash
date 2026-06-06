@@ -74,7 +74,6 @@ router.get('/status-report', async (req, res) => {
             ORDER BY count DESC
         `, [tenantId]);
 
-        // Vendas do mês atual com cada status
         const { rows: mesRows } = await db.query(`
             SELECT 
                 COALESCE(TRIM(status), '(NULL)') AS status_val,
@@ -87,10 +86,89 @@ router.get('/status-report', async (req, res) => {
             ORDER BY count DESC
         `, [tenantId]);
 
+        res.json({ tenant_id: tenantId, todos_status: statusRows, status_mes_atual: mesRows });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// GET /api/debug/vendas-dia?date=2026-06-01
+// Mostra TODAS as vendas de um dia específico agrupadas por status,
+// e o total com e sem o filtro FATURADO/FINALIZADO — para diagnosticar discrepância com ERP
+router.get('/vendas-dia', async (req, res) => {
+    try {
+        const tenantId = req.tenant.id;
+        const date = req.query.date || new Date().toISOString().slice(0, 10);
+
+        // 1. Totais por status para o dia
+        const { rows: byStatus } = await db.query(`
+            SELECT 
+                COALESCE(TRIM(status), '(NULL)') AS status_val,
+                COUNT(*) AS count,
+                SUM(valor_total) AS total_valor
+            FROM dash_vendas
+            WHERE tenant_id = $1
+              AND DATE(data_venda) = $2::date
+            GROUP BY COALESCE(TRIM(status), '(NULL)')
+            ORDER BY total_valor DESC
+        `, [tenantId, date]);
+
+        // 2. Total geral do dia (sem filtro de status)
+        const { rows: totalGeral } = await db.query(`
+            SELECT COUNT(*) AS count, SUM(valor_total) AS total
+            FROM dash_vendas
+            WHERE tenant_id = $1 AND DATE(data_venda) = $2::date
+        `, [tenantId, date]);
+
+        // 3. Total do dia APENAS com FATURADO/FINALIZADO (filtro atual do Dash)
+        const { rows: totalFiltrado } = await db.query(`
+            SELECT COUNT(*) AS count, SUM(valor_total) AS total
+            FROM dash_vendas
+            WHERE tenant_id = $1
+              AND DATE(data_venda) = $2::date
+              AND UPPER(TRIM(status)) IN ('FATURADO', 'FINALIZADO')
+        `, [tenantId, date]);
+
+        // 4. Vendas do dia onde data_venda != data prevista (emissao em outro mês)
+        const { rows: dataMismatch } = await db.query(`
+            SELECT 
+                id_firebird, numero_pedido, 
+                data_venda, data_vencimento,
+                valor_total, TRIM(status) AS status,
+                TRIM(especie) AS especie
+            FROM dash_vendas
+            WHERE tenant_id = $1
+              AND DATE(data_venda) = $2::date
+            ORDER BY valor_total DESC
+            LIMIT 30
+        `, [tenantId, date]);
+
         res.json({
-            tenant_id: tenantId,
-            todos_status: statusRows,
-            status_mes_atual: mesRows
+            date,
+            total_geral: {
+                count: parseInt(totalGeral[0].count),
+                valor: parseFloat(totalGeral[0].total || 0)
+            },
+            total_dash_filtrado: {
+                count: parseInt(totalFiltrado[0].count),
+                valor: parseFloat(totalFiltrado[0].total || 0),
+                filtro: "UPPER(TRIM(status)) IN ('FATURADO', 'FINALIZADO')"
+            },
+            diferenca: parseFloat(totalGeral[0].total || 0) - parseFloat(totalFiltrado[0].total || 0),
+            por_status: byStatus.map(r => ({
+                status: r.status_val,
+                count: parseInt(r.count),
+                total: parseFloat(r.total_valor || 0)
+            })),
+            amostra_vendas: dataMismatch.map(r => ({
+                id: r.id_firebird,
+                pedido: r.numero_pedido,
+                data_venda: r.data_venda,
+                data_vencimento: r.data_vencimento,
+                status: r.status,
+                especie: r.especie,
+                valor: parseFloat(r.valor_total || 0)
+            }))
         });
     } catch (e) {
         res.status(500).json({ error: e.message });
