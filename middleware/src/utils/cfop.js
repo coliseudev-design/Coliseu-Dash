@@ -35,12 +35,16 @@ function getCfopFilterClause(tableAlias = 'v') {
 }
 
 /**
- * STATUS_FILTER: Exclui status internos, cancelamentos e orçamentos.
+ * STATUS_FILTER para Sistema Coliseu (Layouts 1, 2 e 3):
+ * Usa DENYLIST — exclui apenas status inválidos (cancelamentos, orçamentos, testes).
+ * NÃO usa allowlist ('FATURADO','FINALIZADO') pois o ERP Coliseu registra vendas faturadas
+ * com status como 'A VISTA/DINHEIRO', '1 X', '3 X' (forma de pagamento), que são vendas VÁLIDAS.
  */
 function getStatusFilterClause(tableAlias = 'v') {
     const prefix = tableAlias ? `${tableAlias}.` : '';
-    return `AND TRIM(${prefix}status) IN ('FATURADO', 'FINALIZADO')`;
+    return `AND UPPER(TRIM(${prefix}status)) NOT IN ('CANCELADO', 'ORCAMENTO', 'ORÇAMENTO', 'NULO', 'TESTE', 'ABERTO', 'PENDENTE')`;
 }
+
 
 /**
  * STRICT_SALES_FILTER completo = CFOP IN lista + STATUS NOT IN excluídos.
