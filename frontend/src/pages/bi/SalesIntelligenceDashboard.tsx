@@ -171,9 +171,9 @@ export default function SalesIntelligenceDashboard() {
 
   const isPeriodOver30Days = useMemo(() => {
     if (filter.period === 'last12m') return true;
-    if (filter.startDate && filter.endDate) {
-      const s = new Date(filter.startDate + 'T00:00:00');
-      const e = new Date(filter.endDate + 'T23:59:59');
+    if (filter.start_date && filter.end_date) {
+      const s = new Date(filter.start_date + 'T00:00:00');
+      const e = new Date(filter.end_date + 'T23:59:59');
       const diff = Math.ceil((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24));
       return diff > 30;
     }

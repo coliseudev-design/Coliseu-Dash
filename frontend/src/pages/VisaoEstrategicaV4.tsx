@@ -79,10 +79,12 @@ export default function VisaoEstrategicaV4() {
   const marcasFull = useBranchPeriodQuery<any>('/ranking/marcas', { limit: 100 });
   const cidadesFull = useBranchPeriodQuery<any>('/ranking/cidades', { limit: 100 });
 
-  // Query parameter merging
+  // Query parameter merging — inclui todos os filtros locais como extraParams
   const extraParams = useMemo(() => ({
-    vendedor_id: selectedVendedor || undefined
-  }), [selectedVendedor]);
+    vendedor_id: selectedVendedor || undefined,
+    marca: selectedMarca || undefined,
+    cidade: selectedCidade || undefined
+  }), [selectedVendedor, selectedMarca, selectedCidade]);
 
   // Main page data queries
   const ov = useBranchPeriodQuery<any>('/estatisticas/overview', extraParams);

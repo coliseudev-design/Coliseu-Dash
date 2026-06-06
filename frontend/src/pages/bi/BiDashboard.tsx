@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import PeriodFilter from '../../components/PeriodFilter';
-import { usePeriodStore, PERIOD_OPTIONS } from '../../store/periodStore';
+import { usePeriodStore, PERIOD_OPTIONS, periodToParams } from '../../store/periodStore';
 import { BiPeriodFilter } from '../../types/bi.types';
 import { useBranchParam } from '../../contexts/BranchContext';
 import { X } from 'lucide-react';
@@ -21,12 +21,11 @@ export default function BiDashboard() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Compatibilidade com as páginas filhas que ainda esperam `filter` no contexto
-  // Caso a página já utilize `useBranchPeriodQuery` diretamente, este context não fará efeito negativo.
-  const filter: BiPeriodFilter & { depto_id?: number } = {
-    period: periodState.period,
-    startDate: periodState.startDate || '',
-    endDate: periodState.endDate || '',
+  // Contexto de filtros para páginas filhas via Outlet.
+  // Usa periodToParams() para garantir snake_case (start_date/end_date) conforme padrão da API.
+  // branchParam injeta depto_id e centro_custo quando uma filial está selecionada.
+  const filter: BiPeriodFilter = {
+    ...periodToParams(periodState),
     ...branchParam
   };
 
