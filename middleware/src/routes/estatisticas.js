@@ -23,7 +23,7 @@ router.get('/overview', async (req, res, next) => {
 
         let anchorDate = new Date();
         const { rows: anchorRows } = await db.query(
-            `SELECT MAX(data_venda) AS max_date FROM dash_vendas WHERE tenant_id = $1 AND UPPER(TRIM(status)) NOT IN ('CANCELADO', 'ORCAMENTO', 'ORÇAMENTO', 'NULO', 'TESTE')`,
+            `SELECT MAX(data_venda) AS max_date FROM dash_vendas WHERE tenant_id = $1 AND UPPER(TRIM(status)) IN ('FATURADO', 'FINALIZADO')`,
             [tenantId]
         );
         // Fallback: se nao ha vendas faturadas, usa o MAX geral
@@ -185,7 +185,7 @@ router.get('/kpis', async (req, res, next) => {
         const maxDate = new Date();
         let anchorKpi = maxDate;
         const { rows: anchorRowsKpi } = await db.query(
-            `SELECT MAX(data_venda) AS max_date FROM dash_vendas WHERE tenant_id = $1 AND UPPER(TRIM(status)) NOT IN ('CANCELADO', 'ORCAMENTO', 'ORÇAMENTO', 'NULO', 'TESTE')`,
+            `SELECT MAX(data_venda) AS max_date FROM dash_vendas WHERE tenant_id = $1 AND UPPER(TRIM(status)) IN ('FATURADO', 'FINALIZADO')`,
             [tenantId]
         );
         // Fallback: se nao ha vendas faturadas, usa o MAX geral

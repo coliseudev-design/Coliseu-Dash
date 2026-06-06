@@ -3,7 +3,6 @@
 const db = require('../db/postgres');
 
 // CFOPs válidos de venda (com nota fiscal emitida)
-// Vendas com CFOP NULL ou fora desta lista são EXCLUÍDAS do faturamento
 const SALES_CFOPS = [
     5101, 5102, 5103, 5104, 5105, 5106, 5109, 5110, 5111, 5112, 5113, 5114, 5115, 5116, 5118, 5119, 5120, 5122, 5123,
     5251, 5252, 5253, 5254, 5255, 5256, 5257, 5258,
@@ -26,9 +25,7 @@ function isVetContext() {
 }
 
 /**
- * STRICT_SALES_FILTER (CFOP): Exige CFOP explicitamente na lista.
- * Vendas com cfop NULL ou fora da lista são excluídas — apenas notas fiscais válidas.
- * Aplicado em contexto Vet; em outros contextos não há filtro de CFOP.
+ * STRICT_SALES_FILTER (CFOP): sem filtro de CFOP para Sistema Coliseu.
  */
 function getCfopFilterClause(tableAlias = 'v') {
     return '';
@@ -36,18 +33,16 @@ function getCfopFilterClause(tableAlias = 'v') {
 
 /**
  * STATUS_FILTER para Sistema Coliseu (Layouts 1, 2 e 3):
- * Usa DENYLIST — exclui apenas status inválidos (cancelamentos, orçamentos, testes).
- * NÃO usa allowlist ('FATURADO','FINALIZADO') pois o ERP Coliseu registra vendas faturadas
- * com status como 'A VISTA/DINHEIRO', '1 X', '3 X' (forma de pagamento), que são vendas VÁLIDAS.
+ * Allowlist: inclui apenas FATURADO e FINALIZADO (status de venda concluída no ERP Coliseu).
+ * Usa UPPER(TRIM()) para tolerância a espaços e variações de case.
  */
 function getStatusFilterClause(tableAlias = 'v') {
     const prefix = tableAlias ? `${tableAlias}.` : '';
-    return `AND UPPER(TRIM(${prefix}status)) NOT IN ('CANCELADO', 'ORCAMENTO', 'ORÇAMENTO', 'NULO', 'TESTE', 'ABERTO', 'PENDENTE')`;
+    return `AND UPPER(TRIM(${prefix}status)) IN ('FATURADO', 'FINALIZADO')`;
 }
 
-
 /**
- * STRICT_SALES_FILTER completo = CFOP IN lista + STATUS NOT IN excluídos.
+ * STRICT_SALES_FILTER completo.
  * Use este em todas as queries de faturamento e ranking.
  */
 function getSalesFilterClause(tableAlias = 'v') {

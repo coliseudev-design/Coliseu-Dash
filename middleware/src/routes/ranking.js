@@ -16,7 +16,7 @@ const cfopUtil = require('../utils/cfop');
 async function getAnchoredRange(tenantId, period, start_date, end_date) {
     // Usa o ultimo dia com venda FATURADA/FINALIZADA para garantir dados reais no "hoje"
     const { rows } = await db.query(
-        `SELECT MAX(data_venda) AS max_date FROM dash_vendas WHERE tenant_id = $1 AND UPPER(TRIM(status)) NOT IN ('CANCELADO', 'ORCAMENTO', 'ORÇAMENTO', 'NULO', 'TESTE')`,
+        `SELECT MAX(data_venda) AS max_date FROM dash_vendas WHERE tenant_id = $1 AND UPPER(TRIM(status)) IN ('FATURADO', 'FINALIZADO')`,
         [tenantId]
     );
     let anchor;

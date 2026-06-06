@@ -17,7 +17,7 @@ router.get('/faturadas', async (req, res, next) => {
 
         let anchorDate = new Date();
         const { rows: anchorRows } = await db.query(
-            `SELECT MAX(data_venda) AS max_date FROM dash_vendas WHERE tenant_id = $1 AND UPPER(TRIM(status)) NOT IN ('CANCELADO', 'ORCAMENTO', 'ORÇAMENTO', 'NULO', 'TESTE')`,
+            `SELECT MAX(data_venda) AS max_date FROM dash_vendas WHERE tenant_id = $1 AND UPPER(TRIM(status)) IN ('FATURADO', 'FINALIZADO')`,
             [tenantId]
         );
         if (anchorRows[0].max_date) {
@@ -128,7 +128,7 @@ router.get('/pedidos-abertos', async (req, res, next) => {
                 SUM(valor_total) AS total
             FROM dash_vendas
             WHERE tenant_id = $1 
-              AND UPPER(TRIM(status)) IN ('ABERTO', 'PENDENTE')
+              AND TRIM(status) NOT IN ('FATURADO', 'FINALIZADO', 'CANCELADO')
             GROUP BY TRIM(status)
             ORDER BY quantidade DESC
         `, [tenantId]);
@@ -154,7 +154,7 @@ router.get('/kpis', async (req, res, next) => {
 
         let anchorDate = new Date();
         const { rows: anchorRows } = await db.query(
-            `SELECT MAX(data_venda) AS max_date FROM dash_vendas WHERE tenant_id = $1 AND UPPER(TRIM(status)) NOT IN ('CANCELADO', 'ORCAMENTO', 'ORÇAMENTO', 'NULO', 'TESTE')`,
+            `SELECT MAX(data_venda) AS max_date FROM dash_vendas WHERE tenant_id = $1 AND UPPER(TRIM(status)) IN ('FATURADO', 'FINALIZADO')`,
             [tenantId]
         );
         if (anchorRows[0].max_date) {

@@ -58,4 +58,43 @@ router.get('/db-summary', async (req, res) => {
     }
 });
 
+router.get('/status-report', async (req, res) => {
+    try {
+        const tenantId = req.tenant.id;
+        const { rows: statusRows } = await db.query(`
+            SELECT 
+                COALESCE(TRIM(status), '(NULL)') AS status_val,
+                COUNT(*) AS count,
+                SUM(valor_total) AS total_valor,
+                MIN(data_venda) AS primeira_venda,
+                MAX(data_venda) AS ultima_venda
+            FROM dash_vendas
+            WHERE tenant_id = $1
+            GROUP BY COALESCE(TRIM(status), '(NULL)')
+            ORDER BY count DESC
+        `, [tenantId]);
+
+        // Vendas do mês atual com cada status
+        const { rows: mesRows } = await db.query(`
+            SELECT 
+                COALESCE(TRIM(status), '(NULL)') AS status_val,
+                COUNT(*) AS count,
+                SUM(valor_total) AS total_valor
+            FROM dash_vendas
+            WHERE tenant_id = $1
+              AND data_venda >= date_trunc('month', NOW())
+            GROUP BY COALESCE(TRIM(status), '(NULL)')
+            ORDER BY count DESC
+        `, [tenantId]);
+
+        res.json({
+            tenant_id: tenantId,
+            todos_status: statusRows,
+            status_mes_atual: mesRows
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 module.exports = router;
