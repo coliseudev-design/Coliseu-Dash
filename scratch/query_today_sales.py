@@ -1,52 +1,49 @@
 import paramiko
-import json
+import time
 
 client = paramiko.SSHClient()
 client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-client.connect('177.39.17.7', username='root', password='6EFBC!c0:wzr%Ij', timeout=15)
+
+connected = False
+for attempt in range(5):
+    try:
+        client.connect('177.39.17.7', username='root', password='6EFBC!c0:wzr%Ij', timeout=10)
+        connected = True
+        break
+    except Exception as e:
+        time.sleep(2)
+
+if not connected:
+    exit(1)
 
 stdin, stdout, stderr = client.exec_command("docker ps --format '{{.Names}}' | grep 'dashboard-middleware'")
 MW = stdout.read().decode('utf-8').strip()
 
 script = """
 const { Pool } = require('pg');
-
-const databases = ['coliseu_dashboard', 'coliseu_dashboard_vet', 'coliseu_identity'];
-const searchUuid = '816f97c4-66fb-4ef8-905d-e0551cbf2942';
-
-async function search(dbName) {
-    const p = new Pool({
-        host: process.env.PG_HOST || 'localhost',
-        user: process.env.PG_USER || 'coliseu_admin',
-        password: process.env.PG_PASSWORD || 'ColiseuDB2026Prod',
-        database: dbName,
-        port: parseInt(process.env.PG_PORT || 5432)
-    });
-    try {
-        const tableList = await p.query("SELECT table_name FROM information_schema.tables WHERE table_schema='public'");
-        for (const r of tableList.rows) {
-            const cols = await p.query(`SELECT column_name FROM information_schema.columns WHERE table_name='${r.table_name}'`);
-            for (const col of cols.rows) {
-                try {
-                    const check = await p.query(`SELECT COUNT(*) as count FROM ${r.table_name} WHERE CAST("${col.column_name}" AS TEXT) = $1`, [searchUuid]);
-                    if (parseInt(check.rows[0].count) > 0) {
-                        console.log(`FOUND in DB: ${dbName}, Table: ${r.table_name}, Col: ${col.column_name}, Count: ${check.rows[0].count}`);
-                        const sample = await p.query(`SELECT * FROM ${r.table_name} WHERE CAST("${col.column_name}" AS TEXT) = $1 LIMIT 1`, [searchUuid]);
-                        console.log("Sample:", sample.rows[0]);
-                    }
-                } catch(e) {}
-            }
-        }
-    } catch(e) {
-        console.error(`Error in ${dbName}: ${e.message}`);
-    } finally {
-        await p.end();
-    }
-}
+const p = new Pool({
+    host: '2.24.82.19',
+    user: 'postgres',
+    password: '0r0E6oV!qG3h',
+    database: 'coliseudash',
+    port: 5432,
+    connectionTimeoutMillis: 5000
+});
 
 async function run() {
-    for (const dbName of databases) {
-        await search(dbName);
+    try {
+        console.log("=== Querying Production DB dash_clientes ===");
+        const c1 = await p.query("SELECT id_firebird, nome, tenant_id FROM dash_clientes WHERE nome ILIKE '%RACHEL%' OR nome ILIKE '%SILESIA%'");
+        console.log("Clientes:", c1.rows);
+
+        console.log("=== Querying Production DB dash_vendas ===");
+        const v1 = await p.query("SELECT id_firebird, numero_pedido, data_venda::text, data_vencimento::text, valor_total, status, tenant_id FROM dash_vendas WHERE numero_pedido IN ('514592', '514591', '196540', '196539') OR id_firebird IN (514592, 514591)");
+        console.log("Vendas by Numbers:", v1.rows);
+
+    } catch(e) {
+        console.error("ERR:" + e.message);
+    } finally {
+        await p.end();
     }
 }
 run();
