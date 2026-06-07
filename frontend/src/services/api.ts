@@ -11,6 +11,20 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
+  
+  // Inject client's timezone offset (in minutes, sign reversed to represent offset from UTC)
+  const offsetMinutes = -new Date().getTimezoneOffset();
+  config.headers['X-Timezone-Offset'] = offsetMinutes.toString();
+
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (tz) {
+      config.headers['X-User-Timezone'] = tz;
+    }
+  } catch (e) {
+    // ignore
+  }
+
   return config
 })
 

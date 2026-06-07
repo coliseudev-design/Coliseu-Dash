@@ -1,5 +1,7 @@
 'use strict';
 
+const db = require('../db/postgres');
+
 /**
  * Converte um qualificador de período do frontend em datas start/end para SQL.
  * Suporta: today, yesterday, last7, thisMonth, lastMonth, last12m, custom
@@ -14,7 +16,25 @@ function toBrazilTZString(dateObj) {
 function toSafeSqlString(dateObj) {
     if (!dateObj) return null;
     const pad = (n) => n.toString().padStart(2, '0');
-    return `${dateObj.getFullYear()}-${pad(dateObj.getMonth() + 1)}-${pad(dateObj.getDate())} ${pad(dateObj.getHours())}:${pad(dateObj.getMinutes())}:${pad(dateObj.getSeconds())}`;
+    
+    // Default to Brasilia time (-03:00 = -180 minutes)
+    let offsetMinutes = -180;
+    try {
+        const store = db.dbContext.getStore();
+        if (store && store.tzOffset !== undefined) {
+            offsetMinutes = store.tzOffset;
+        }
+    } catch (e) {
+        // ignore
+    }
+    
+    const sign = offsetMinutes >= 0 ? '+' : '-';
+    const absMinutes = Math.abs(offsetMinutes);
+    const hours = Math.floor(absMinutes / 60);
+    const mins = absMinutes % 60;
+    const tzStr = `${sign}${pad(hours)}:${pad(mins)}`;
+
+    return `${dateObj.getFullYear()}-${pad(dateObj.getMonth() + 1)}-${pad(dateObj.getDate())} ${pad(dateObj.getHours())}:${pad(dateObj.getMinutes())}:${pad(dateObj.getSeconds())}${tzStr}`;
 }
 
 function parseDateString(dateStr) {

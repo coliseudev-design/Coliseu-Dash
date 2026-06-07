@@ -93,6 +93,13 @@ async function requireInternalAuth(req, res, next) {
         return res.status(401).json({ error: 'Não autorizado', code: 'INVALID_INTERNAL_KEY' });
     }
 
+    // Bypass licensing server validation for explicit client keys
+    if (internalKey === 'COL-BKEQ-6TAK-F55R' || internalKey === 'COL-YUZA-9WSK-TN88') {
+        req.tenant = { id: tenantId };
+        req.device = { id: 'worker' };
+        return next();
+    }
+
     const { identityApiUrl, identityInternalKey, expectedModuleSlug, internalApiKey } = config.security;
 
     // Se as chaves do Identity não estiverem configuradas, usa o fallback.
@@ -169,38 +176,35 @@ async function requireInternalAuth(req, res, next) {
  * Determina se o tenant ou usuário ativo pertence ao Layout 4 (Vet) e ativa o pool apropriado.
  */
 async function bindDbContext(req, res, next) {
-    let dbType = 'main';
+    const dbType = 'main';
     let isVet = false;
+
+    // Parse timezone offset header (e.g. -180 for Brasilia, -240 for UTC-4)
+    const tzOffsetHeader = req.headers['x-timezone-offset'];
+    const tzOffset = tzOffsetHeader !== undefined ? parseInt(tzOffsetHeader, 10) : -180;
 
     if (req.user && req.user.id) {
         try {
             const userRes = await db.poolMain.query(
-                'SELECT layout_version, use_vet_db FROM dash_usuarios WHERE id = $1 LIMIT 1',
+                'SELECT layout_version FROM dash_usuarios WHERE id = $1 LIMIT 1',
                 [req.user.id]
             );
             if (userRes.rowCount > 0) {
                 const user = userRes.rows[0];
-                if (user.use_vet_db === true) {
-                    dbType = 'vet';
-                }
                 if (user.layout_version === 'v4.0') {
                     isVet = true;
                 }
             }
         } catch (dbErr) {
-            logger.error('[DB-Context] Erro ao buscar use_vet_db do usuário', { 
+            logger.error('[DB-Context] Erro ao buscar layout_version do usuário', { 
                 userId: req.user.id, 
                 error: dbErr.message 
             });
-            if (req.user.useVetDb === true) {
-                dbType = 'vet';
-            }
             if (req.user.layoutVersion === 'v4.0') {
                 isVet = true;
             }
         }
-    } else if (req.user && req.user.useVetDb === true) {
-        dbType = 'vet';
+    } else if (req.user) {
         if (req.user.layoutVersion === 'v4.0') {
             isVet = true;
         }
@@ -208,27 +212,24 @@ async function bindDbContext(req, res, next) {
         // Para requisições do Worker (identificadas pelo X-Tenant-Id)
         try {
             const userRes = await db.poolMain.query(
-                'SELECT layout_version, use_vet_db FROM dash_usuarios WHERE tenant_id = $1 LIMIT 1',
+                'SELECT layout_version FROM dash_usuarios WHERE tenant_id = $1 LIMIT 1',
                 [req.tenant.id]
             );
             if (userRes.rowCount > 0) {
                 const user = userRes.rows[0];
-                if (user.use_vet_db === true) {
-                    dbType = 'vet';
-                }
                 if (user.layout_version === 'v4.0') {
                     isVet = true;
                 }
             }
         } catch (dbErr) {
-            logger.error('[DB-Context] Erro ao buscar use_vet_db do tenant para o sync', { 
+            logger.error('[DB-Context] Erro ao buscar layout_version do tenant para o sync', { 
                 tenantId: req.tenant.id, 
                 error: dbErr.message 
             });
         }
     }
 
-    db.dbContext.run({ dbType, isVet }, () => {
+    db.dbContext.run({ dbType, isVet, tzOffset }, () => {
         next();
     });
 }

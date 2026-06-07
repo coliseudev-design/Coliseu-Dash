@@ -1,8 +1,8 @@
 import urllib.request, urllib.error, json, ssl
 
-BASE = "https://dashboard.coliseusistemas.com.br"
-TENANT = "1e40d65f-4319-4c68-ae13-66223820c095"
-API_KEY = "COL-YUZA-9WSK-TN88"
+BASE = "http://177.39.17.7"
+TENANT = "816f97c4-66fb-4ef8-905d-e0551cbf2492"
+API_KEY = "COL-BKEQ-6TAK-F55R"
 
 ctx = ssl.create_default_context()
 ctx.check_hostname = False
@@ -12,6 +12,7 @@ def call(method, path, data=None, headers=None):
     h = {
         "X-Tenant-Id": TENANT,
         "X-Internal-Key": API_KEY,
+        "Host": "dashboard.coliseusistemas.com.br",
         "Content-Type": "application/json"
     }
     if headers:
