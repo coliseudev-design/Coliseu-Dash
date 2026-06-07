@@ -5,9 +5,9 @@ USER = 'root'
 PASS = '6EFBC!c0:wzr%Ij'
 CONTAINER = 'coliseu-db-thyqkc5gkvp7i1nld555wakz-172547374937'
 
-def run_query(label, sql, db='coliseu_dashboard'):
+def run_query(label, sql):
     sql_escaped = sql.replace('"', '\\"')
-    cmd = f'docker exec {CONTAINER} psql -U coliseu_admin -d {db} -c "{sql_escaped}"'
+    cmd = f'docker exec {CONTAINER} psql -U coliseu_admin -d coliseu_dashboard -c "{sql_escaped}"'
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     try:
@@ -17,21 +17,27 @@ def run_query(label, sql, db='coliseu_dashboard'):
         err = stderr.read().decode('utf-8')
         print(f"\n=== {label} ===")
         print(out or "(sem resultado)")
+        if err.strip():
+            print("ERR:", err)
     except Exception as e:
         print(f"[ERRO] {label}: {e}")
     finally:
         client.close()
 
-# Query 1: List tables in coliseu_identity
+# Query 1: Sales count by tenant
 run_query(
-    "Tables in coliseu_identity",
-    "SELECT tablename FROM pg_tables WHERE schemaname = 'public'",
-    db='coliseu_identity'
+    "Sales count by tenant",
+    "SELECT tenant_id, COUNT(*) FROM dash_vendas GROUP BY tenant_id"
 )
 
-# Query 2: List companies in coliseu_identity.companies
+# Query 2: Vendedores count by tenant
 run_query(
-    "Companies in coliseu_identity.companies",
-    "SELECT id, name, document FROM companies",
-    db='coliseu_identity'
+    "Vendedores count by tenant",
+    "SELECT tenant_id, COUNT(*) FROM dash_vendedores GROUP BY tenant_id"
+)
+
+# Query 3: Find any vendedor named Alice in the entire database
+run_query(
+    "Find Alice anywhere in dash_vendedores",
+    "SELECT tenant_id, id_firebird, nome FROM dash_vendedores WHERE nome ILIKE '%ALICE%'"
 )

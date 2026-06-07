@@ -126,7 +126,7 @@ router.get('/vendas-dia', async (req, res) => {
             FROM dash_vendas
             WHERE tenant_id = $1
               AND DATE(data_venda) = $2::date
-              AND UPPER(TRIM(status)) IN ('FATURADO', 'FINALIZADO')
+              AND UPPER(TRIM(status)) IN ('FATURADO', 'FINALIZADO', 'PROCESSADO')
         `, [tenantId, date]);
 
         // 4. Vendas do dia onde data_venda != data prevista (emissao em outro mês)
@@ -152,7 +152,7 @@ router.get('/vendas-dia', async (req, res) => {
             total_dash_filtrado: {
                 count: parseInt(totalFiltrado[0].count),
                 valor: parseFloat(totalFiltrado[0].total || 0),
-                filtro: "UPPER(TRIM(status)) IN ('FATURADO', 'FINALIZADO')"
+                filtro: "UPPER(TRIM(status)) IN ('FATURADO', 'FINALIZADO', 'PROCESSADO')"
             },
             diferenca: parseFloat(totalGeral[0].total || 0) - parseFloat(totalFiltrado[0].total || 0),
             por_status: byStatus.map(r => ({

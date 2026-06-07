@@ -71,9 +71,9 @@ router.get('/kpis', async (req, res, next) => {
         const tenantId = req.tenant.id;
         const { start_date, end_date } = req.query;
         
-        // ANCORAGEM: usa ultimo dia com venda FATURADA/FINALIZADA
+        // ANCORAGEM: usa ultimo dia com venda FATURADA/FINALIZADA/PROCESSADA
         const { rows: anchorRows } = await db.query(
-            `SELECT MAX(data_venda) AS max_date FROM dash_vendas WHERE tenant_id = $1 AND UPPER(TRIM(status)) IN ('FATURADO', 'FINALIZADO')`,
+            `SELECT MAX(data_venda) AS max_date FROM dash_vendas WHERE tenant_id = $1 AND UPPER(TRIM(status)) IN ('FATURADO', 'FINALIZADO', 'PROCESSADO')`,
             [tenantId]
         );
         let anchorDate;

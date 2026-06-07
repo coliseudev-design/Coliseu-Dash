@@ -11,6 +11,16 @@ def run_query(sql, db="coliseu_identity"):
     cmd = f"docker exec {DB_CONTAINER} psql -U coliseu_admin -d {db} -c '{sql_escaped}'"
     stdin, stdout, stderr = client.exec_command(cmd)
     print(stdout.read().decode('utf-8'))
+    err = stderr.read().decode('utf-8')
+    if err:
+        print("ERR:", err)
 
-run_query("SELECT id, name, api_key FROM companies")
+print("=== Companies Columns ===")
+run_query("SELECT * FROM companies LIMIT 1")
+
+print("=== All Companies ===")
+run_query("SELECT id, name FROM companies")
+
+print("=== Company Modules ===")
+run_query("SELECT * FROM company_modules LIMIT 3")
 client.close()

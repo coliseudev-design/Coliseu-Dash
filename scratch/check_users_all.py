@@ -6,11 +6,12 @@ client.connect('177.39.17.7', username='root', password='6EFBC!c0:wzr%Ij')
 
 DB_CONTAINER = "coliseu-db-thyqkc5gkvp7i1nld555wakz-172547374937"
 
-def run_query(sql, db="coliseu_identity"):
+def run_query(sql, db="coliseu_dashboard"):
     sql_escaped = sql.replace("'", "'\\''")
     cmd = f"docker exec {DB_CONTAINER} psql -U coliseu_admin -d {db} -c '{sql_escaped}'"
     stdin, stdout, stderr = client.exec_command(cmd)
     print(stdout.read().decode('utf-8'))
 
-run_query("SELECT id, name, api_key FROM companies")
+print("=== Users ===")
+run_query("SELECT id, tenant_id, nome, email, ativo FROM dash_usuarios")
 client.close()

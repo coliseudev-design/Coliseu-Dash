@@ -6,11 +6,16 @@ client.connect('177.39.17.7', username='root', password='6EFBC!c0:wzr%Ij')
 
 DB_CONTAINER = "coliseu-db-thyqkc5gkvp7i1nld555wakz-172547374937"
 
-def run_query(sql, db="coliseu_identity"):
+def run_query(label, sql, db="coliseu_identity"):
     sql_escaped = sql.replace("'", "'\\''")
     cmd = f"docker exec {DB_CONTAINER} psql -U coliseu_admin -d {db} -c '{sql_escaped}'"
     stdin, stdout, stderr = client.exec_command(cmd)
+    print(f"=== {label} ===")
     print(stdout.read().decode('utf-8'))
+    err = stderr.read().decode('utf-8')
+    if err:
+        print("ERR:", err)
 
-run_query("SELECT id, name, api_key FROM companies")
+run_query("Companies", 'SELECT "Id", "Name" FROM companies')
+run_query("Company Modules", 'SELECT "CompanyId", "ModuleSlug", "IsActive" FROM company_modules')
 client.close()

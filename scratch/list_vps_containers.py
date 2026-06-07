@@ -1,11 +1,17 @@
 import paramiko
 
+HOST = '177.39.17.7'
+USER = 'root'
+PASS = '6EFBC!c0:wzr%Ij'
+
 client = paramiko.SSHClient()
 client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-client.connect('177.39.17.7', username='root', password='6EFBC!c0:wzr%Ij')
-
-stdin, stdout, stderr = client.exec_command("docker ps --format '{{.Names}}\t{{.Ports}}\t{{.Image}}'")
-print("=== Containers Rodando ===")
-print(stdout.read().decode('utf-8'))
-
-client.close()
+try:
+    client.connect(HOST, username=USER, password=PASS)
+    print("=== docker ps -a ===")
+    stdin, stdout, stderr = client.exec_command("docker ps -a")
+    print(stdout.read().decode('utf-8'))
+except Exception as e:
+    print("Error:", e)
+finally:
+    client.close()

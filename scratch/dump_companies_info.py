@@ -12,5 +12,9 @@ def run_query(sql, db="coliseu_identity"):
     stdin, stdout, stderr = client.exec_command(cmd)
     print(stdout.read().decode('utf-8'))
 
+print("=== Companies ===")
 run_query("SELECT id, name, api_key FROM companies")
+
+print("=== Company Modules ===")
+run_query("SELECT company_id, module_slug, active FROM company_webhooks")
 client.close()
