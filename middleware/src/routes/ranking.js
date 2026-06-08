@@ -31,59 +31,7 @@ async function getAnchoredRange(tenantId, period, start_date, end_date) {
         anchor = fallback[0].max_date ? new Date(fallback[0].max_date) : new Date();
     }
 
-    let start = new Date(anchor);
-    let end = new Date(anchor);
-    end.setHours(23, 59, 59, 999);
-
-    switch (period) {
-        case 'today': case 'hoje':
-            start.setHours(0, 0, 0, 0);
-            end.setHours(23, 59, 59, 999);
-            break;
-        case 'yesterday':
-            start.setDate(start.getDate() - 1);
-            start.setHours(0, 0, 0, 0);
-            end = new Date(start);
-            end.setHours(23, 59, 59, 999);
-            break;
-        case 'last7': case '7d':
-            start.setDate(start.getDate() - 7);
-            start.setHours(0, 0, 0, 0);
-            break;
-        case 'thisMonth': case '1m':
-            start = new Date(anchor.getFullYear(), anchor.getMonth(), 1, 0, 0, 0, 0);
-            end = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0, 23, 59, 59, 999);
-            break;
-        case 'lastMonth':
-            start = new Date(anchor.getFullYear(), anchor.getMonth() - 1, 1, 0, 0, 0, 0);
-            end = new Date(anchor.getFullYear(), anchor.getMonth(), 0, 23, 59, 59, 999);
-            break;
-        case 'custom':
-            if (start_date && end_date) {
-                const sDate = parseDateString(start_date);
-                const eDate = parseDateString(end_date);
-                if (sDate && !isNaN(sDate.getTime())) {
-                    start = sDate;
-                    start.setHours(0, 0, 0, 0);
-                }
-                if (eDate && !isNaN(eDate.getTime())) {
-                    end = eDate;
-                    end.setHours(23, 59, 59, 999);
-                }
-                return { start: toSafeSqlString(start), end: toSafeSqlString(end) };
-            }
-            start.setFullYear(start.getFullYear() - 1);
-            break;
-        case 'all':
-            start = new Date(1970, 0, 1);
-            break;
-        case 'last12m': case '1y': default:
-            start.setFullYear(start.getFullYear() - 1);
-            start.setHours(0, 0, 0, 0);
-            break;
-    }
-
-    return { start: toSafeSqlString(start), end: toSafeSqlString(end) };
+    return getPeriodRange(period, start_date, end_date, anchor);
 }
 
 

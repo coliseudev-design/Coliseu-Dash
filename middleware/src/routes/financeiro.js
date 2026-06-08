@@ -19,39 +19,12 @@ async function getFinanceiroAnchor(tenantId, period, start_date, end_date) {
     if (rows.length > 0 && rows[0].anchor) {
         fakeNow = new Date(rows[0].anchor);
     }
-    const { getPeriodRange } = require('../utils/period');
-    // Calcula usando a âncora (ou hoje real) como se fosse 'agora'
-    let start = new Date(fakeNow);
-    let end = new Date(fakeNow);
-    end.setHours(23, 59, 59, 999);
-
-    switch (period) {
-        case 'today': case 'hoje': start.setHours(0, 0, 0, 0); break;
-        case 'yesterday':
-            start.setDate(start.getDate() - 1); start.setHours(0, 0, 0, 0);
-            end = new Date(start); end.setHours(23, 59, 59, 999); break;
-        case 'last7': case '7d': start.setDate(start.getDate() - 7); break;
-        case 'thisMonth': case '1m':
-            start = new Date(fakeNow.getFullYear(), fakeNow.getMonth(), 1);
-            end = new Date(fakeNow.getFullYear(), fakeNow.getMonth() + 1, 0, 23, 59, 59); break;
-        case 'lastMonth':
-            start = new Date(fakeNow.getFullYear(), fakeNow.getMonth() - 1, 1);
-            end = new Date(fakeNow.getFullYear(), fakeNow.getMonth(), 0, 23, 59, 59); break;
-        case 'custom':
-            if (start_date && end_date) {
-                const [sy, sm, sd] = start_date.split('T')[0].split('-');
-                const s = new Date(parseInt(sy), parseInt(sm) - 1, parseInt(sd), 0, 0, 0, 0);
-                
-                const [ey, em, ed] = end_date.split('T')[0].split('-');
-                const e = new Date(parseInt(ey), parseInt(em) - 1, parseInt(ed), 23, 59, 59, 999);
-                return { start: s, end: e };
-            }
-            start.setFullYear(start.getFullYear() - 1); break;
-        case 'all': start = new Date(1970, 0, 1); break;
-        case 'last12m': case '1y': default:
-            start.setFullYear(start.getFullYear() - 1); break;
-    }
-    return { start, end };
+    const { getPeriodRange, parseDateString } = require('../utils/period');
+    const pr = getPeriodRange(period, start_date, end_date, fakeNow);
+    return {
+        start: parseDateString(pr.start),
+        end: parseDateString(pr.end)
+    };
 }
 
 // Helper: classifica conta 

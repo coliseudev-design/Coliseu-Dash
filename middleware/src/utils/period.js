@@ -3,129 +3,152 @@
 const db = require('../db/postgres');
 
 /**
- * Converte um qualificador de período do frontend em datas start/end para SQL.
- * Suporta: today, yesterday, last7, thisMonth, lastMonth, last12m, custom
- * e também os legados: hoje, 7d, 30d, 1m, 3m, 6m, 1y, ytd, all
+ * Converte um objeto Date em uma string no formato de fuso horário UTC (+00:00)
+ * para garantir que as queries SQL do PostgreSQL funcionem de forma consistente
+ * com o armazenamento em banco (que está em UTC).
  */
-function toBrazilTZString(dateObj) {
-    if (!dateObj) return null;
-    const pad = (n) => n.toString().padStart(2, '0');
-    return `${dateObj.getFullYear()}-${pad(dateObj.getMonth() + 1)}-${pad(dateObj.getDate())} ${pad(dateObj.getHours())}:${pad(dateObj.getMinutes())}:${pad(dateObj.getSeconds())}-03:00`;
-}
-
 function toSafeSqlString(dateObj) {
     if (!dateObj) return null;
     const pad = (n) => n.toString().padStart(2, '0');
-    
-    // Default to Brasilia time (-03:00 = -180 minutes)
-    let offsetMinutes = -180;
-    try {
-        const store = db.dbContext.getStore();
-        if (store && store.tzOffset !== undefined) {
-            offsetMinutes = store.tzOffset;
-        }
-    } catch (e) {
-        // ignore
-    }
-    
-    const sign = offsetMinutes >= 0 ? '+' : '-';
-    const absMinutes = Math.abs(offsetMinutes);
-    const hours = Math.floor(absMinutes / 60);
-    const mins = absMinutes % 60;
-    const tzStr = `${sign}${pad(hours)}:${pad(mins)}`;
-
-    return `${dateObj.getFullYear()}-${pad(dateObj.getMonth() + 1)}-${pad(dateObj.getDate())} ${pad(dateObj.getHours())}:${pad(dateObj.getMinutes())}:${pad(dateObj.getSeconds())}${tzStr}`;
+    return `${dateObj.getUTCFullYear()}-${pad(dateObj.getUTCMonth() + 1)}-${pad(dateObj.getUTCDate())} ${pad(dateObj.getUTCHours())}:${pad(dateObj.getUTCMinutes())}:${pad(dateObj.getUTCSeconds())}+00:00`;
 }
 
-function parseDateString(dateStr) {
+function toBrazilTZString(dateObj) {
+    return toSafeSqlString(dateObj);
+}
+
+/**
+ * Faz o parse de uma string de data (ou objeto Date) garantindo que seja
+ * tratado no fuso UTC nativo, sem deslocamentos dependentes do fuso local do servidor.
+ */
+function parseDateString(dateStr, defaultTimeSuffix = 'T00:00:00Z') {
     if (!dateStr) return null;
-    const cleanStr = dateStr.split('T')[0].split(' ')[0];
+    
+    let str = dateStr;
+    if (typeof dateStr === 'object' && dateStr instanceof Date) {
+        str = dateStr.toISOString();
+    }
+    
+    // Se for string e tiver indicador de hora/T/espaço
+    if (str.includes(' ') || str.includes('T')) {
+        let normalized = str.replace(' ', 'T');
+        const hasTimezone = /Z|[+-]\d{2}(?::?\d{2})?$/.test(normalized);
+        if (!hasTimezone) {
+            normalized += 'Z';
+        }
+        return new Date(normalized);
+    }
+    
+    const cleanStr = str.split('T')[0].split(' ')[0];
     const parts = cleanStr.includes('-') ? cleanStr.split('-') : cleanStr.split('/');
     if (parts.length === 3) {
+        let y, m, d;
         if (parts[0].length === 4) {
-            // YYYY-MM-DD or YYYY/MM/DD
-            return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+            y = parseInt(parts[0], 10);
+            m = parseInt(parts[1], 10) - 1;
+            d = parseInt(parts[2], 10);
         } else if (parts[2].length === 4) {
-            // DD-MM-YYYY or DD/MM/YYYY
-            return new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
+            y = parseInt(parts[2], 10);
+            m = parseInt(parts[1], 10) - 1;
+            d = parseInt(parts[0], 10);
+        }
+        if (y !== undefined) {
+            const pad = (n) => n.toString().padStart(2, '0');
+            const isoStr = `${y}-${pad(m + 1)}-${pad(d)}${defaultTimeSuffix}`;
+            return new Date(isoStr);
         }
     }
-    return new Date(dateStr);
+    
+    return new Date(str);
 }
 
 function getPeriodRange(period, startDate, endDate, anchorDate) {
-    const now = anchorDate ? new Date(anchorDate) : new Date();
+    // Trata anchorDate de maneira segura em UTC
+    const now = anchorDate ? parseDateString(anchorDate, 'T12:00:00Z') : new Date();
     let start = new Date(now);
     let end = new Date(now);
 
     switch (period) {
-        // Valores enviados pelo frontend React
         case 'today':
         case 'hoje':
-            start.setHours(0, 0, 0, 0);
-            end.setHours(23, 59, 59, 999);
+            start.setUTCHours(0, 0, 0, 0);
+            end.setUTCHours(23, 59, 59, 999);
             break;
         case 'yesterday':
-            start.setDate(start.getDate() - 1);
-            start.setHours(0, 0, 0, 0);
-            end.setDate(end.getDate() - 1);
-            end.setHours(23, 59, 59, 999);
+            start.setUTCDate(start.getUTCDate() - 1);
+            start.setUTCHours(0, 0, 0, 0);
+            end.setUTCDate(end.getUTCDate() - 1);
+            end.setUTCHours(23, 59, 59, 999);
             break;
         case 'last7':
         case '7d':
-            start.setDate(start.getDate() - 7);
+            start.setUTCDate(start.getUTCDate() - 7);
+            start.setUTCHours(0, 0, 0, 0);
+            end.setUTCHours(23, 59, 59, 999);
             break;
         case 'thisMonth':
         case '1m':
-            start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
-            end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+            start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0));
+            end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999));
             break;
         case 'lastMonth':
-            start = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
-            end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+            start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1, 0, 0, 0, 0));
+            end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 0, 23, 59, 59, 999));
             break;
         case 'last12m':
         case '1y':
-            start.setFullYear(start.getFullYear() - 1);
+            start.setUTCFullYear(start.getUTCFullYear() - 1);
+            start.setUTCHours(0, 0, 0, 0);
+            end.setUTCHours(23, 59, 59, 999);
             break;
         case 'custom':
             if (startDate && endDate) {
-                const sDate = parseDateString(startDate);
-                const eDate = parseDateString(endDate);
+                const sDate = parseDateString(startDate, 'T00:00:00Z');
+                const eDate = parseDateString(endDate, 'T23:59:59Z');
                 if (sDate && !isNaN(sDate.getTime())) {
                     start = sDate;
-                    start.setHours(0, 0, 0, 0);
                 }
                 if (eDate && !isNaN(eDate.getTime())) {
                     end = eDate;
-                    end.setHours(23, 59, 59, 999);
                 }
             } else {
-                // fallback
-                start.setDate(start.getDate() - 30);
+                start.setUTCDate(start.getUTCDate() - 30);
+                start.setUTCHours(0, 0, 0, 0);
+                end.setUTCHours(23, 59, 59, 999);
             }
             break;
         case '15d':
-            start.setDate(start.getDate() - 15);
+            start.setUTCDate(start.getUTCDate() - 15);
+            start.setUTCHours(0, 0, 0, 0);
+            end.setUTCHours(23, 59, 59, 999);
             break;
         case '30d':
-            start.setDate(start.getDate() - 30);
+            start.setUTCDate(start.getUTCDate() - 30);
+            start.setUTCHours(0, 0, 0, 0);
+            end.setUTCHours(23, 59, 59, 999);
             break;
         case '3m':
-            start.setMonth(start.getMonth() - 3);
+            start.setUTCMonth(start.getUTCMonth() - 3);
+            start.setUTCHours(0, 0, 0, 0);
+            end.setUTCHours(23, 59, 59, 999);
             break;
         case '6m':
-            start.setMonth(start.getMonth() - 6);
+            start.setUTCMonth(start.getUTCMonth() - 6);
+            start.setUTCHours(0, 0, 0, 0);
+            end.setUTCHours(23, 59, 59, 999);
             break;
         case 'ytd':
-            start = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
+            start = new Date(Date.UTC(now.getUTCFullYear(), 0, 1, 0, 0, 0, 0));
+            end.setUTCHours(23, 59, 59, 999);
             break;
         case 'all':
-            start = new Date(1970, 0, 1);
+            start = new Date(Date.UTC(1970, 0, 1, 0, 0, 0, 0));
+            end.setUTCHours(23, 59, 59, 999);
             break;
         default:
-            // fallback: último ano para cobrir bases de teste antigas
-            start.setFullYear(start.getFullYear() - 1);
+            start.setUTCFullYear(start.getUTCFullYear() - 1);
+            start.setUTCHours(0, 0, 0, 0);
+            end.setUTCHours(23, 59, 59, 999);
             break;
     }
 

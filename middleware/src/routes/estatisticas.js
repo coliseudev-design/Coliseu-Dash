@@ -43,10 +43,10 @@ router.get('/overview', async (req, res, next) => {
 
         // "Hoje" = dia da âncora (último dia com venda registrada)
         const startHoje = new Date(anchorDate);
-        startHoje.setHours(0, 0, 0, 0);
+        startHoje.setUTCHours(0, 0, 0, 0);
         const startHojeStr = require('../utils/period').toSafeSqlString(startHoje);
         const endHoje = new Date(anchorDate);
-        endHoje.setHours(23, 59, 59, 999);
+        endHoje.setUTCHours(23, 59, 59, 999);
         const endHojeStr = require('../utils/period').toSafeSqlString(endHoje);
 
         // Filtro de departamento — injetado condicionalmente

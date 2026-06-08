@@ -3,7 +3,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db/postgres');
-const { getPeriodRange, toSafeSqlString } = require('../utils/period');
+const { getPeriodRange, toSafeSqlString, parseDateString } = require('../utils/period');
 const { 
     buildDeptoFilter, 
     buildCentroCustoFilter, 
@@ -28,23 +28,22 @@ const getBiDateRange = async (req, tenantId) => {
 
     if (period && period !== 'custom') {
         const pr = getPeriodRange(period, null, null, anchorDate);
-        // getPeriodRange retorna strings, precisamos converter para Date
         return { 
-            start: new Date(pr.start.replace(' ', 'T')), 
-            end: new Date(pr.end.replace(' ', 'T')) 
+            start: parseDateString(pr.start), 
+            end: parseDateString(pr.end) 
         };
     }
 
-    let start = new Date(1970, 0, 1);
+    let start = new Date(Date.UTC(1970, 0, 1, 0, 0, 0, 0));
     let end = new Date(anchorDate);
-    end.setHours(23, 59, 59, 999);
+    end.setUTCHours(23, 59, 59, 999);
 
     if (inicioParam) {
-        start = new Date(`${inicioParam}T00:00:00`);
+        start = parseDateString(inicioParam, 'T00:00:00Z');
     }
     
     if (fimParam) {
-        end = new Date(`${fimParam}T23:59:59.999`);
+        end = parseDateString(fimParam, 'T23:59:59Z');
     }
     
     return { start, end };
