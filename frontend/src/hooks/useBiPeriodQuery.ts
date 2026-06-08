@@ -2,6 +2,7 @@ import { useQuery, UseQueryOptions } from '@tanstack/react-query';
 import { BiPeriodFilter } from '../types/bi.types';
 import { format, subDays } from 'date-fns';
 import { useState } from 'react';
+import { useBranchParam } from '../contexts/BranchContext';
 
 // Estado global simples ou contexto para o período (usando estado local no momento para simplificar o hook)
 // O ideal seria usar Zustand se precisar compartilhar entre muitas rotas diferentes.
@@ -16,13 +17,17 @@ export const useBiFilterState = () => {
 
 export function useBiPeriodQuery<TData, TError = unknown>(
   queryKey: unknown[],
-  fetchFn: (filter: BiPeriodFilter) => Promise<TData>,
+  fetchFn: (filter: any) => Promise<TData>,
   filter: BiPeriodFilter,
   options?: Omit<UseQueryOptions<TData, TError, TData>, 'queryKey' | 'queryFn'>
 ) {
+  const branchParam = useBranchParam();
+  const mergedFilter = { ...filter, ...branchParam };
+
   return useQuery<TData, TError>({
-    queryKey: [...queryKey, filter],
-    queryFn: () => fetchFn(filter),
+    queryKey: [...queryKey, mergedFilter],
+    queryFn: () => fetchFn(mergedFilter),
     ...options,
   });
 }
+
