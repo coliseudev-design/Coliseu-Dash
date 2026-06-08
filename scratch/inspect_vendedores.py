@@ -20,4 +20,5 @@ def run_query(sql, label):
     finally:
         client.close()
 
-run_query("SELECT * FROM dash_filiais;", "All rows in dash_filiais")
+run_query("SELECT tenant_id, COUNT(*) FROM dash_vendedores GROUP BY tenant_id;", "Vendedores count by tenant")
+run_query("SELECT id_firebird, tenant_id, nome FROM dash_vendedores WHERE nome ILIKE '%FELIPE%';", "Vendedores named Felipe")

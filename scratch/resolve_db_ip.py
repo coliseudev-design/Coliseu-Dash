@@ -13,13 +13,11 @@ def run_cmd(cmd, label):
         _, stdout, stderr = client.exec_command(cmd)
         print(f"\n=== {label} ===")
         print(stdout.read().decode('utf-8'))
-        err = stderr.read().decode('utf-8').strip()
-        if err:
-            print("ERR:", err)
     except Exception as e:
         print(f"[ERROR]: {e}")
     finally:
         client.close()
 
-run_cmd(f"docker exec {CONTAINER} ls -la", "List root files in container")
-run_cmd(f"docker exec {CONTAINER} ls -la logs", "List logs directory")
+run_cmd(f"docker exec {CONTAINER} node -e \"require('dns').lookup('coliseu-db', (err, addr) => console.log('ADDR:', addr))\"", "Resolve coliseu-db IP")
+run_cmd(f"docker inspect coliseu-db-thyqkc5gkvp7i1nld555wakz-172547374937 --format '{{{{.NetworkSettings.Networks}}}}'", "Inspect DB networks")
+run_cmd(f"docker inspect {CONTAINER} --format '{{{{.NetworkSettings.Networks}}}}'", "Inspect Middleware networks")

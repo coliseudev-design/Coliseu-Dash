@@ -20,4 +20,15 @@ def run_query(sql, label):
     finally:
         client.close()
 
-run_query("SELECT * FROM dash_filiais;", "All rows in dash_filiais")
+# List counts grouped by tenant and month of data_venda
+run_query(
+    """SELECT 
+         tenant_id, 
+         TO_CHAR(data_venda, 'YYYY-MM') as mes, 
+         COUNT(*), 
+         SUM(valor_total) 
+       FROM dash_vendas 
+       GROUP BY tenant_id, TO_CHAR(data_venda, 'YYYY-MM') 
+       ORDER BY tenant_id, mes DESC;""",
+    "Sales counts by Tenant and Month"
+)

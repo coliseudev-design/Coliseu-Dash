@@ -20,4 +20,4 @@ def run_query(sql, label):
     finally:
         client.close()
 
-run_query("SELECT * FROM dash_filiais;", "All rows in dash_filiais")
+run_query("SELECT email, nome, tenant_id, role, use_vet_db FROM dash_usuarios;", "All users in dash_usuarios")

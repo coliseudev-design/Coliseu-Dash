@@ -1,42 +1,69 @@
 import paramiko
 
-client = paramiko.SSHClient()
-client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-client.connect('177.39.17.7', username='root', password='6EFBC!c0:wzr%Ij')
+HOST = '177.39.17.7'
+USER = 'root'
+PASS = '6EFBC!c0:wzr%Ij'
+MW_CONTAINER = 'dashboard-middleware-irerzifjwjb4q8ucbpfk2gb8-010649342983'
 
-# Get the container ID of the running dashboard-middleware
-stdin, stdout, stderr = client.exec_command("docker ps -q --filter name=dashboard-middleware | head -n 1")
-container_id = stdout.read().decode('utf-8').strip()
+def run_middleware_query(js_code, label):
+    cmd = f'docker exec {MW_CONTAINER} node -e "{js_code}"'
+    client = paramiko.SSHClient()
+    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    try:
+        client.connect(HOST, username=USER, password=PASS)
+        _, stdout, stderr = client.exec_command(cmd)
+        out = stdout.read().decode('utf-8')
+        err = stderr.read().decode('utf-8')
+        print(f"\n=== {label} ===")
+        print(out or "(no stdout)")
+        if err.strip():
+            print("ERR:", err)
+    except Exception as e:
+        print(f"[ERROR] {label}: {e}")
+    finally:
+        client.close()
 
-print(f"Middleware container: {container_id}")
+# 1. Check distinct tenants and sales counts in main context
+js_code_1 = """
+const db = require('./src/db/postgres');
+db.dbContext.run({ dbType: 'main' }, async () => {
+  try {
+    const res = await db.query('SELECT tenant_id, COUNT(*), SUM(valor_total) FROM dash_vendas GROUP BY tenant_id');
+    console.log(JSON.stringify(res.rows, null, 2));
+  } catch(e) {
+    console.error('ERR:', e.message);
+  }
+  process.exit(0);
+});
+"""
+run_middleware_query(js_code_1, "Sales Counts by Tenant (main)")
 
-node_script = (
-    "const db = require('./src/db/postgres');"
-    "db.dbContext.run({ dbType: 'main' }, async () => {"
-    "  try {"
-    "    const r = await db.query('SELECT COUNT(*), MAX(data_venda) FROM dash_vendas');"
-    "    console.log('Main DB: ' + JSON.stringify(r.rows));"
-    "  } catch(e) {"
-    "    console.error('Main DB ERR: ' + e.message);"
-    "  }"
-    "});"
-    "db.dbContext.run({ dbType: 'vet' }, async () => {"
-    "  try {"
-    "    const r = await db.query('SELECT COUNT(*), MAX(data_venda) FROM dash_vendas');"
-    "    console.log('Vet DB: ' + JSON.stringify(r.rows));"
-    "  } catch(e) {"
-    "    console.error('Vet DB ERR: ' + e.message);"
-    "  }"
-    "  setTimeout(() => process.exit(0), 1000);"
-    "});"
-)
+# 2. Check distinct tenants and sales counts in vet context
+js_code_2 = """
+const db = require('./src/db/postgres');
+db.dbContext.run({ dbType: 'vet' }, async () => {
+  try {
+    const res = await db.query('SELECT tenant_id, COUNT(*), SUM(valor_total) FROM dash_vendas GROUP BY tenant_id');
+    console.log(JSON.stringify(res.rows, null, 2));
+  } catch(e) {
+    console.error('ERR:', e.message);
+  }
+  process.exit(0);
+});
+"""
+run_middleware_query(js_code_2, "Sales Counts by Tenant (vet)")
 
-if container_id:
-    stdin, stdout, stderr = client.exec_command(f'docker exec {container_id} node -e "{node_script}"')
-    print("=== Execution Output ===")
-    print(stdout.read().decode('utf-8'))
-    print(stderr.read().decode('utf-8'))
-else:
-    print("No container found.")
-
-client.close()
+# 3. Search for HUGO in dash_clientes or dash_vendas in main database
+js_code_3 = """
+const db = require('./src/db/postgres');
+db.dbContext.run({ dbType: 'main' }, async () => {
+  try {
+    const res = await db.query("SELECT id_firebird, tenant_id, nome FROM dash_clientes WHERE nome ILIKE '%HUGO%' OR nome ILIKE '%DAYANE%'");
+    console.log(JSON.stringify(res.rows, null, 2));
+  } catch(e) {
+    console.error('ERR:', e.message);
+  }
+  process.exit(0);
+});
+"""
+run_middleware_query(js_code_3, "Search Customer by Name (main)")

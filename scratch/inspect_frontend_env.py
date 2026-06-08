@@ -4,7 +4,7 @@ import json
 HOST = '177.39.17.7'
 USER = 'root'
 PASS = '6EFBC!c0:wzr%Ij'
-CONTAINER = 'dashboard-middleware-irerzifjwjb4q8ucbpfk2gb8-010649342983'
+CONTAINER = 'dashboard-frontend-irerzifjwjb4q8ucbpfk2gb8-010649336876'
 
 def run_cmd(cmd):
     client = paramiko.SSHClient()
@@ -25,7 +25,7 @@ if out:
     try:
         data = json.loads(out)
         env = data[0]['Config']['Env']
-        print("=== Container Env Vars ===")
+        print("=== Frontend Container Env Vars ===")
         for item in env:
             print(item)
     except Exception as e:

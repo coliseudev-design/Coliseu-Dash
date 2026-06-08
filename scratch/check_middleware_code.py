@@ -21,5 +21,14 @@ def run_cmd(cmd, label):
     finally:
         client.close()
 
-run_cmd(f"docker exec {CONTAINER} ls -la", "List root files in container")
-run_cmd(f"docker exec {CONTAINER} ls -la logs", "List logs directory")
+# Let's inspect src/routes/bi.js inside the container
+run_cmd(
+    f"docker exec {CONTAINER} grep -n -C 3 'max_date' src/routes/bi.js",
+    "Grep max_date in bi.js inside container"
+)
+
+# Let's check when bi.js was modified in the container
+run_cmd(
+    f"docker exec {CONTAINER} ls -la src/routes/bi.js",
+    "ls -la of bi.js inside container"
+)

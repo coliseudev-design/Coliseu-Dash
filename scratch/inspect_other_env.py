@@ -4,7 +4,7 @@ import json
 HOST = '177.39.17.7'
 USER = 'root'
 PASS = '6EFBC!c0:wzr%Ij'
-CONTAINER = 'dashboard-middleware-irerzifjwjb4q8ucbpfk2gb8-010649342983'
+CONTAINER = 'api-nsnopymisrq9qphl5qjc3w5l-135847967979'
 
 def run_cmd(cmd):
     client = paramiko.SSHClient()

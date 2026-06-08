@@ -13,11 +13,14 @@ def run_query(sql, label):
     try:
         client.connect(HOST, username=USER, password=PASS)
         _, stdout, stderr = client.exec_command(cmd)
-        print(f"\n=== {label} ===")
+        print(f"=== {label} ===")
         print(stdout.read().decode('utf-8'))
     except Exception as e:
         print(f"[ERROR]: {e}")
     finally:
         client.close()
 
-run_query("SELECT * FROM dash_filiais;", "All rows in dash_filiais")
+PETCLUB = '816f97c4-66fb-4ef8-905d-e0551cbf2492'
+
+run_query(f"SELECT COUNT(*) FROM dash_vendas WHERE tenant_id = '{PETCLUB}';", "Sales Count for Petclub")
+run_query(f"SELECT id_firebird, numero_pedido, data_venda, data_vencimento, valor_total, status FROM dash_vendas WHERE tenant_id = '{PETCLUB}' ORDER BY data_venda DESC LIMIT 20;", "Recent Sales for Petclub")

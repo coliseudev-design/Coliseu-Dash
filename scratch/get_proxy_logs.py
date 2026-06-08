@@ -3,11 +3,9 @@ import paramiko
 HOST = '177.39.17.7'
 USER = 'root'
 PASS = '6EFBC!c0:wzr%Ij'
-CONTAINER = 'coliseu-db-thyqkc5gkvp7i1nld555wakz-172547374937'
+CONTAINER = 'coolify-proxy'
 
-def run_query(sql, label):
-    sql_escaped = sql.replace('"', '\\"')
-    cmd = f'docker exec {CONTAINER} psql -U coliseu_admin -d coliseu_dashboard -c "{sql_escaped}"'
+def run_cmd(cmd, label):
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     try:
@@ -15,9 +13,11 @@ def run_query(sql, label):
         _, stdout, stderr = client.exec_command(cmd)
         print(f"\n=== {label} ===")
         print(stdout.read().decode('utf-8'))
+        if stderr.read().decode('utf-8').strip():
+            print("STDERR:", stderr.read().decode('utf-8'))
     except Exception as e:
         print(f"[ERROR]: {e}")
     finally:
         client.close()
 
-run_query("SELECT * FROM dash_filiais;", "All rows in dash_filiais")
+run_cmd(f"docker logs --tail 100 {CONTAINER}", "coolify-proxy logs")
