@@ -182,6 +182,7 @@ CREATE TABLE IF NOT EXISTS dash_vendas_itens (
 );
 
 -- Migrações: adiciona colunas que podem não existir em instalações antigas
+DROP MATERIALIZED VIEW IF EXISTS mv_dash_vendas_diario;
 ALTER TABLE dash_vendas ADD COLUMN IF NOT EXISTS marca VARCHAR(255);
 ALTER TABLE dash_vendas ADD COLUMN IF NOT EXISTS categoria VARCHAR(255);
 ALTER TABLE dash_vendas ADD COLUMN IF NOT EXISTS especie VARCHAR(255);
