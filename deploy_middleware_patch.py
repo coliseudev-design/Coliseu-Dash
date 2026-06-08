@@ -14,8 +14,6 @@ FILES_TO_DEPLOY = [
     ('middleware/src/db/cleanup_non_faturados.js', '/usr/src/app/src/db/cleanup_non_faturados.js'),
 ]
 
-CONTAINER_NAME = 'dashboard-middleware-irerzifjwjb4q8ucbpfk2gb8-150845671848'
-
 def run(client, cmd, label=""):
     print(f"\n>>> {label or cmd[:80]}")
     stdin, stdout, stderr = client.exec_command(cmd)
@@ -30,7 +28,15 @@ def main():
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     try:
         client.connect(HOST, username=USER, password=PASSWORD)
-        print("✓ Conectado à VPS")
+        print("OK: Conectado à VPS")
+
+        # Discover active container name dynamically
+        stdin, stdout, stderr = client.exec_command("docker ps --format '{{.Names}}' | grep 'dashboard-middleware'")
+        container_name = stdout.read().decode('utf-8').strip().split('\n')[0]
+        if not container_name:
+            print("Erro: Container do middleware não encontrado!")
+            return
+        print(f"OK: Container ativo encontrado: {container_name}")
 
         # Open SFTP client
         sftp = client.open_sftp()
@@ -48,7 +54,7 @@ def main():
             sftp.put(local_path, temp_vps_path)
             
             # Copy from VPS temp to docker container path
-            copy_cmd = f"docker cp {temp_vps_path} {CONTAINER_NAME}:{container_path}"
+            copy_cmd = f"docker cp {temp_vps_path} {container_name}:{container_path}"
             run(client, copy_cmd, f"Copiando {filename} para o container")
             
             # Clean up temp file on VPS
@@ -57,7 +63,7 @@ def main():
         sftp.close()
 
         # Restart middleware container to apply updates
-        run(client, f"docker restart {CONTAINER_NAME}", "Reiniciando o container de middleware")
+        run(client, f"docker restart {container_name}", "Reiniciando o container de middleware")
         
         # Aguarda 3 segundos para o container subir e rodar as migrações automáticas
         import time
@@ -65,10 +71,10 @@ def main():
         time.sleep(3)
         
         # Executa a limpeza histórica de dados inválidos no banco de dados principal
-        cleanup_cmd = f"docker exec {CONTAINER_NAME} node /usr/src/app/src/db/cleanup_non_faturados.js"
+        cleanup_cmd = f"docker exec {container_name} node /usr/src/app/src/db/cleanup_non_faturados.js"
         run(client, cleanup_cmd, "Executando limpeza de vendas inválidas/canceladas no banco")
         
-        print("\n✓ Deploy e limpeza do middleware concluídos com sucesso!")
+        print("\nOK: Deploy e limpeza do middleware concluídos com sucesso!")
 
     except Exception as e:
         print(f"Erro durante o deploy: {e}")
