@@ -208,11 +208,12 @@ router.get('/recentes', async (req, res, next) => {
         const vf = buildVendedorFilter(vendedorId, 3, 'v');
 
         // join com tabelas sincronizadas usa id_firebird pq é ele quem vem nos FKs da tabela de vendas
+        const salesFilter = cfopUtil.getSalesFilterClause('v');
         const { rows } = await db.query(`
             SELECT 
                 v.id_firebird AS id, 
                 v.numero_pedido, 
-                COALESCE(v.data_vencimento, v.data_venda), 
+                COALESCE(v.data_vencimento, v.data_venda) AS data_venda, 
                 v.valor_total, 
                 v.status,
                 c.nome AS cliente, 
@@ -220,7 +221,7 @@ router.get('/recentes', async (req, res, next) => {
             FROM dash_vendas v
             LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
             LEFT JOIN dash_vendedores vd ON vd.id_firebird = v.vendedor_id_firebird AND vd.tenant_id = v.tenant_id
-            WHERE v.tenant_id = $1 AND TRIM(v.status) != 'CANCELADO' ${vf.clause}
+            WHERE v.tenant_id = $1 ${salesFilter} ${vf.clause}
             ORDER BY COALESCE(v.data_vencimento, v.data_venda) DESC
             LIMIT $2
         `, [tenantId, limit, ...vf.params]);

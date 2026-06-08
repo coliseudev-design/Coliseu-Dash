@@ -118,7 +118,8 @@ router.get('/sales/executive-summary', async (req, res, next) => {
             const needsVendedorJoin = (vendedorId && vendedorId !== 'todas' && vendedorId !== 'all' && vendedorId !== 'TODOS');
             const needsCidadeJoin = (cidade && cidade !== 'todas' && cidade !== 'all' && cidade !== 'TODOS');
 
-            if (needsVendedorJoin || needsCidadeJoin || (deptoId && deptoId !== 'todas' && deptoId !== 'all') || !cfopUtil.isVetContext()) {
+            // Sistema Coliseu unificado: JOIN sempre necessário
+            if (needsVendedorJoin || needsCidadeJoin || (deptoId && deptoId !== 'todas' && deptoId !== 'all') || true) {
                 sql += ` LEFT JOIN dash_vendas v2 ON v2.id_firebird = d.venda_id_firebird AND v2.tenant_id = d.tenant_id`;
             }
             if (needsCidadeJoin) {
@@ -561,7 +562,8 @@ router.get('/sales/commercial-kpis', async (req, res, next) => {
             const needsProdJoin = (grupo && grupo !== 'todas' && grupo !== 'all' && grupo !== 'TODOS') || 
                                   (marca && marca !== 'todas' && marca !== 'all' && marca !== 'TODOS');
 
-            if (needsVendedorJoin || needsCidadeJoin || (deptoId && deptoId !== 'todas' && deptoId !== 'all') || !cfopUtil.isVetContext()) {
+            // Sistema Coliseu unificado: JOIN sempre necessário
+            if (needsVendedorJoin || needsCidadeJoin || (deptoId && deptoId !== 'todas' && deptoId !== 'all') || true) {
                 sql += ` LEFT JOIN dash_vendas v2 ON v2.id_firebird = d.venda_id_firebird AND v2.tenant_id = d.tenant_id`;
             }
             if (needsCidadeJoin) {

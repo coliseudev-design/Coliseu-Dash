@@ -256,7 +256,6 @@ export default function Home() {
         <ChartCard title="Últimos Pedidos" subtitle="Recentes finalizados" loading={recentes.isLoading} className="hidden lg:flex flex-col">
           <div className="flex-1 overflow-y-auto pr-2 -mr-2 space-y-3">
             {((recentes.data?.data || []) as any[])
-              .filter((r) => ['FINALIZADO', 'PROCESSADO', '2', 'FATURADO'].includes(r.status?.trim()))
               .slice(0, 7)
               .map((r: any) => (
               <div key={r.id} className="flex justify-between items-center p-3 rounded-xl border border-border hover:shadow-card-hover transition-all bg-bg-primary">
