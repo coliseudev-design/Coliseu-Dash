@@ -20,7 +20,7 @@ const MEDAL_COLORS = ['#F59E0B', '#94A3B8', '#CD7C2F']
 const MEDAL_LABELS = ['🥇', '🥈', '🥉']
 const BAR_COLORS = [
   '#0066CC', '#10B981', '#F59E0B', '#EF4444',
-  '#06B6D4', '#8B5CF6', '#EC4899', '#F97316',
+  '#06B6D4', '#0891B2', '#EC4899', '#F97316',
   '#14B8A6', '#6366F1',
 ]
 
@@ -165,7 +165,7 @@ function RecentOrderRow({ order }: { order: any }) {
       <div className="flex-1 min-w-0 mr-3">
         <p className="text-xs font-semibold text-text-primary truncate">{order.cliente || 'Consumidor Final'}</p>
         <p className="text-[10px] text-text-muted mt-0.5">
-          #{order.numero_pedido} · {order.data_venda ? formatDate(order.data_venda) : '—'}
+          #{order.numero_pedido} · {order.data_venda ? formatDateTime(order.data_venda) : '—'}
         </p>
       </div>
       <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 mono shrink-0">{formatBRL(order.valor_total)}</span>
@@ -234,15 +234,10 @@ export default function HomeV1() {
   )
 
   return (
-<<<<<<< HEAD
-    <div className="space-y-6 sm:space-y-8" aria-label="Visão Estratégica">
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
-=======
-    <div className="space-y-5 pb-10">
+    <div className="space-y-5 pb-10" aria-label="Visão Estratégica">
 
       {/* ── HEADER ────────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
->>>>>>> 861c710e812e094bd2e5f9a2ba3027e9fe1c63ca
         <div>
           <h2 className="text-xl font-bold text-text-primary tracking-tight">Visão Estratégica</h2>
           <p className="text-sm text-text-secondary mt-0.5">Resumo consolidado do negócio</p>
@@ -359,23 +354,6 @@ export default function HomeV1() {
             </Link>
           </div>
 
-<<<<<<< HEAD
-        <ChartCard title="Últimos Pedidos" subtitle="Recentes finalizados" loading={recentes.isLoading} className="hidden lg:flex flex-col">
-          <div className="flex-1 overflow-y-auto pr-2 -mr-2 space-y-3">
-            {((recentes.data?.data || []) as any[])
-              .filter((r) => ['FINALIZADO', 'PROCESSADO', '2', 'FATURADO'].includes(r.status?.trim()))
-              .slice(0, 7)
-              .map((r: any) => (
-              <div key={r.id} className="flex justify-between items-center p-3 rounded-xl border border-border hover:shadow-card-hover transition-all bg-bg-primary">
-                <div className="space-y-1">
-                  <div className="text-xs font-semibold text-text-primary truncate max-w-[120px]" title={r.cliente}>{r.cliente || 'Consumidor Final'}</div>
-                  <div className="text-[10px] text-text-secondary mono">#{r.numero_pedido} - {formatDateTime(r.data_venda)}</div>
-                </div>
-                <div className="text-sm font-bold text-success mono">
-                  {formatBRL(r.valor_total)}
-                </div>
-              </div>
-=======
           {fatMes.isLoading ? (
             <SkeletonPulse className="h-56 w-full" />
           ) : chartData.length === 0 ? (
@@ -491,7 +469,6 @@ export default function HomeV1() {
               >
                 {t.label}
               </button>
->>>>>>> 861c710e812e094bd2e5f9a2ba3027e9fe1c63ca
             ))}
           </div>
 
