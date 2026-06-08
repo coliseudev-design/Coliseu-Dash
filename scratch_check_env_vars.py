@@ -3,7 +3,7 @@ import paramiko
 HOST = '177.39.17.7'
 USER = 'root'
 PASS = '6EFBC!c0:wzr%Ij'
-CONTAINER = 'dashboard-middleware-irerzifjwjb4q8ucbpfk2gb8-005649123523'
+CONTAINER = 'dashboard-middleware-irerzifjwjb4q8ucbpfk2gb8-150845671848'
 
 def run_cmd(label, cmd):
     client = paramiko.SSHClient()
@@ -24,5 +24,5 @@ def run_cmd(label, cmd):
 
 run_cmd(
     "ENVIRONMENT FOR MIDDLEWARE - ALL",
-    f"docker inspect {CONTAINER} | grep -i 'PG_'"
+    f"docker inspect {CONTAINER} --format '{{{{json .Config.Env}}}}'"
 )

@@ -100,17 +100,6 @@ router.post('/:tabela', async (req, res) => {
                     row[key.toLowerCase()] = rawRow[key];
                 }
 
-                if (tabela === 'dash_vendas') {
-                    // Alinhamento de Faturamento: usa data_vencimento (data de faturamento) como data_venda principal se presente
-                    if (row['data_vencimento'] && row['data_vencimento'] !== '') {
-                        row['data_venda'] = row['data_vencimento'];
-                    }
-                }
-
-                // Filtra apenas colunas mapeadas e presentes
-                const usedCols = allowedColumns.filter(c => Object.prototype.hasOwnProperty.call(row, c) && row[c] !== undefined);
-                if (usedCols.length === 0) continue;
-
                 // Guarda: valida chave primária obrigatória
                 const conflictKeyCheck = tabela === 'dash_filiais' ? 'depto_id' : 'id_firebird';
                 const pkVal = row[conflictKeyCheck];
@@ -118,6 +107,54 @@ router.post('/:tabela', async (req, res) => {
                     errors.push(`Row sem ${conflictKeyCheck}: dados inválidos ignorados`);
                     continue;
                 }
+
+                if (tabela === 'dash_vendas') {
+                    const status = row['status'] ? String(row['status']).trim().toUpperCase() : '';
+                    const dataVencimento = row['data_vencimento'];
+                    
+                    const isFaturado = ['FATURADO', 'FINALIZADO', 'PROCESSADO'].includes(status);
+                    const hasFaturamentoDate = dataVencimento !== undefined && dataVencimento !== null && dataVencimento !== '';
+                    
+                    if (status === 'CANCELADO' || !isFaturado || !hasFaturamentoDate) {
+                        // Deleta a venda e seus itens associados se não for válida ou for cancelada
+                        await client.query(`SAVEPOINT delete_save`);
+                        try {
+                            await client.query(
+                                `DELETE FROM dash_vendas_itens WHERE tenant_id = $1 AND venda_id_firebird = $2`,
+                                [tenantId, pkVal]
+                            );
+                            await client.query(
+                                `DELETE FROM dash_vendas WHERE tenant_id = $1 AND id_firebird = $2`,
+                                [tenantId, pkVal]
+                            );
+                            await client.query(`RELEASE SAVEPOINT delete_save`);
+                        } catch (delErr) {
+                            await client.query(`ROLLBACK TO SAVEPOINT delete_save`);
+                            logger.error('[Sync] Falha ao deletar venda invalida/cancelada', { error: delErr.message, tenantId, vendaId: pkVal });
+                        }
+                        // Não insere/atualiza este registro
+                        continue;
+                    }
+                    
+                    // Alinhamento de Faturamento: usa data_vencimento (data de faturamento) como data_venda principal
+                    row['data_venda'] = dataVencimento;
+                }
+
+                if (tabela === 'dash_vendas_itens') {
+                    const parentVendaId = row['venda_id_firebird'];
+                    const saleCheck = await client.query(
+                        `SELECT id_firebird FROM dash_vendas WHERE tenant_id = $1 AND id_firebird = $2`,
+                        [tenantId, parentVendaId]
+                    );
+                    if (saleCheck.rowCount === 0) {
+                        // Descarte de itens de vendas sem cabeçalho faturado correspondente
+                        continue;
+                    }
+                }
+
+                // Filtra apenas colunas mapeadas e presentes
+                const usedCols = allowedColumns.filter(c => Object.prototype.hasOwnProperty.call(row, c) && row[c] !== undefined);
+                if (usedCols.length === 0) continue;
 
                 // Adiciona o tenantId nas colunas a inserir
                 const insertCols = ['tenant_id', ...usedCols];
