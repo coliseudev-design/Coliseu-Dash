@@ -6,14 +6,13 @@ export interface BiPeriod {
 
 export interface BiPeriodFilter {
   period?: string; // e.g. 'thisMonth', 'today', 'custom'
-  startDate?: string; // ISO string YYYY-MM-DD
-  endDate?: string;
-  sellerId?: number;
-  customerId?: number;
-  city?: string;
-  companyId?: number;
-  brandId?: string;
-  groupId?: number;
+  /** snake_case - padrão canônico da API */
+  start_date?: string; // ISO string YYYY-MM-DD
+  end_date?: string;
+  /** Filtros de filial/departamento */
+  depto_id?: number;
+  centro_custo?: number;
+  /** Filtros extras de segmentação */
   vendedor_id?: string;
   cidade?: string;
   grupo?: string;

@@ -1,13 +1,34 @@
 import paramiko
+import json
 
-client = paramiko.SSHClient()
-client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-client.connect('177.39.17.7', username='root', password='6EFBC!c0:wzr%Ij')
+HOST = '177.39.17.7'
+USER = 'root'
+PASS = '6EFBC!c0:wzr%Ij'
+CONTAINER = 'dashboard-middleware-irerzifjwjb4q8ucbpfk2gb8-010649342983'
 
-CONTAINER = "dashboard-middleware-irerzifjwjb4q8ucbpfk2gb8-194727891772"
+def run_cmd(cmd):
+    client = paramiko.SSHClient()
+    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    try:
+        client.connect(HOST, username=USER, password=PASS)
+        _, stdout, stderr = client.exec_command(cmd)
+        out = stdout.read().decode('utf-8')
+        err = stderr.read().decode('utf-8')
+        return out, err
+    except Exception as e:
+        return None, str(e)
+    finally:
+        client.close()
 
-stdin, stdout, stderr = client.exec_command(f"docker inspect {CONTAINER} --format '{{{{json .Config.Env}}}}'")
-print("=== Env Variables ===")
-print(stdout.read().decode('utf-8'))
-
-client.close()
+out, err = run_cmd(f"docker inspect {CONTAINER}")
+if out:
+    try:
+        data = json.loads(out)
+        env = data[0]['Config']['Env']
+        print("=== Container Env Vars ===")
+        for item in env:
+            print(item)
+    except Exception as e:
+        print("JSON parse error:", e)
+else:
+    print("Error getting container info:", err)

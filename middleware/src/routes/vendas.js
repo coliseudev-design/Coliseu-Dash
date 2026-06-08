@@ -17,10 +17,18 @@ router.get('/faturadas', async (req, res, next) => {
 
         let anchorDate = new Date();
         const { rows: anchorRows } = await db.query(
-            'SELECT MAX(data_venda) AS max_date FROM dash_vendas WHERE tenant_id = $1',
+            `SELECT MAX(COALESCE(data_vencimento, data_venda)) AS max_date FROM dash_vendas WHERE tenant_id = $1 AND UPPER(TRIM(status)) IN ('FATURADO', 'FINALIZADO', 'PROCESSADO')`,
             [tenantId]
         );
-        if (anchorRows[0].max_date) anchorDate = new Date(anchorRows[0].max_date);
+        if (anchorRows[0].max_date) {
+            anchorDate = new Date(anchorRows[0].max_date);
+        } else {
+            const { rows: fallbackRows } = await db.query(
+                'SELECT MAX(COALESCE(data_vencimento, data_venda)) AS max_date FROM dash_vendas WHERE tenant_id = $1',
+                [tenantId]
+            );
+            if (fallbackRows[0].max_date) anchorDate = new Date(fallbackRows[0].max_date);
+        }
         const { start, end } = getPeriodRange(period, start_date, end_date, anchorDate);
 
         const salesFilter = cfopUtil.getSalesFilterClause('v');
@@ -28,16 +36,16 @@ router.get('/faturadas', async (req, res, next) => {
 
         const { rows } = await db.query(`
             SELECT 
-                TO_CHAR(v.data_venda, 'YYYY-MM-DD') AS data,
+                TO_CHAR(COALESCE(v.data_vencimento, v.data_venda), 'YYYY-MM-DD') AS data,
                 SUM(v.valor_total) AS total,
                 COUNT(*) AS quantidade
             FROM dash_vendas v
             WHERE v.tenant_id = $1 
-              AND v.data_venda >= $2 
-              AND v.data_venda <= $3
+              AND COALESCE(v.data_vencimento, v.data_venda) >= $2 
+              AND COALESCE(v.data_vencimento, v.data_venda) <= $3
               ${salesFilter}
               ${vf.clause}
-            GROUP BY TO_CHAR(v.data_venda, 'YYYY-MM-DD')
+            GROUP BY TO_CHAR(COALESCE(v.data_vencimento, v.data_venda), 'YYYY-MM-DD')
             ORDER BY data
         `, [tenantId, start, end, ...vf.params]);
 
@@ -65,14 +73,14 @@ router.get('/por-horario', async (req, res, next) => {
         if (date) {
             sql = `
                 SELECT 
-                    EXTRACT(HOUR FROM data_venda) AS hora,
+                    EXTRACT(HOUR FROM COALESCE(data_vencimento, data_venda)) AS hora,
                     COUNT(*) AS quantidade,
                     SUM(valor_total) AS total
                 FROM dash_vendas
                 WHERE tenant_id = $1
-                  AND TO_CHAR(data_venda, 'YYYY-MM-DD') = $2
+                  AND TO_CHAR(COALESCE(data_vencimento, data_venda), 'YYYY-MM-DD') = $2
                   ${cfopUtil.getSalesFilterClause('')}
-                GROUP BY EXTRACT(HOUR FROM data_venda)
+                GROUP BY EXTRACT(HOUR FROM COALESCE(data_vencimento, data_venda))
                 ORDER BY hora
             `;
             params = [tenantId, date];
@@ -80,14 +88,14 @@ router.get('/por-horario', async (req, res, next) => {
             // Últimos 30 dias
             sql = `
                 SELECT 
-                    EXTRACT(HOUR FROM data_venda) AS hora,
+                    EXTRACT(HOUR FROM COALESCE(data_vencimento, data_venda)) AS hora,
                     COUNT(*) AS quantidade,
                     SUM(valor_total) AS total
                 FROM dash_vendas
                 WHERE tenant_id = $1
-                  AND data_venda >= NOW() - INTERVAL '30 days'
+                  AND COALESCE(data_vencimento, data_venda) >= NOW() - INTERVAL '30 days'
                   ${cfopUtil.getSalesFilterClause('')}
-                GROUP BY EXTRACT(HOUR FROM data_venda)
+                GROUP BY EXTRACT(HOUR FROM COALESCE(data_vencimento, data_venda))
                 ORDER BY hora
             `;
             params = [tenantId];
@@ -120,7 +128,7 @@ router.get('/pedidos-abertos', async (req, res, next) => {
                 SUM(valor_total) AS total
             FROM dash_vendas
             WHERE tenant_id = $1 
-              AND TRIM(status) NOT IN ('FATURADO', 'FINALIZADO', 'CANCELADO')
+              AND TRIM(status) NOT IN ('FATURADO', 'FINALIZADO', 'CANCELADO', 'PROCESSADO')
             GROUP BY TRIM(status)
             ORDER BY quantidade DESC
         `, [tenantId]);
@@ -146,10 +154,18 @@ router.get('/kpis', async (req, res, next) => {
 
         let anchorDate = new Date();
         const { rows: anchorRows } = await db.query(
-            'SELECT MAX(data_venda) AS max_date FROM dash_vendas WHERE tenant_id = $1',
+            `SELECT MAX(COALESCE(data_vencimento, data_venda)) AS max_date FROM dash_vendas WHERE tenant_id = $1 AND UPPER(TRIM(status)) IN ('FATURADO', 'FINALIZADO', 'PROCESSADO')`,
             [tenantId]
         );
-        if (anchorRows[0].max_date) anchorDate = new Date(anchorRows[0].max_date);
+        if (anchorRows[0].max_date) {
+            anchorDate = new Date(anchorRows[0].max_date);
+        } else {
+            const { rows: fallbackRows } = await db.query(
+                'SELECT MAX(COALESCE(data_vencimento, data_venda)) AS max_date FROM dash_vendas WHERE tenant_id = $1',
+                [tenantId]
+            );
+            if (fallbackRows[0].max_date) anchorDate = new Date(fallbackRows[0].max_date);
+        }
         const { start, end } = getPeriodRange(period, start_date, end_date, anchorDate);
 
         const salesFilter = cfopUtil.getSalesFilterClause('v');
@@ -163,8 +179,8 @@ router.get('/kpis', async (req, res, next) => {
                 COALESCE(MIN(v.valor_total), 0) AS menor_venda
             FROM dash_vendas v
             WHERE v.tenant_id = $1
-              AND v.data_venda >= $2
-              AND v.data_venda <= $3
+              AND COALESCE(v.data_vencimento, v.data_venda) >= $2
+              AND COALESCE(v.data_vencimento, v.data_venda) <= $3
               ${salesFilter}
         `, [tenantId, start, end]);
 
@@ -192,11 +208,12 @@ router.get('/recentes', async (req, res, next) => {
         const vf = buildVendedorFilter(vendedorId, 3, 'v');
 
         // join com tabelas sincronizadas usa id_firebird pq é ele quem vem nos FKs da tabela de vendas
+        const salesFilter = cfopUtil.getSalesFilterClause('v');
         const { rows } = await db.query(`
             SELECT 
                 v.id_firebird AS id, 
                 v.numero_pedido, 
-                v.data_venda, 
+                COALESCE(v.data_vencimento, v.data_venda) AS data_venda, 
                 v.valor_total, 
                 v.status,
                 c.nome AS cliente, 
@@ -204,8 +221,8 @@ router.get('/recentes', async (req, res, next) => {
             FROM dash_vendas v
             LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
             LEFT JOIN dash_vendedores vd ON vd.id_firebird = v.vendedor_id_firebird AND vd.tenant_id = v.tenant_id
-            WHERE v.tenant_id = $1 AND TRIM(v.status) != 'CANCELADO' ${vf.clause}
-            ORDER BY v.data_venda DESC
+            WHERE v.tenant_id = $1 ${salesFilter} ${vf.clause}
+            ORDER BY COALESCE(v.data_vencimento, v.data_venda) DESC
             LIMIT $2
         `, [tenantId, limit, ...vf.params]);
 

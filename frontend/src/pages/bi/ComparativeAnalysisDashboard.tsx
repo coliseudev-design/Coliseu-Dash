@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { useBiPeriodQuery } from '../../hooks/useBiPeriodQuery';
 import { BIService } from '../../services/biApi';
 import { BiPeriodFilter } from '../../types/bi.types';
@@ -28,33 +29,33 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 export default function ProfitabilityDashboard() {
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [year, setYear] = useState(new Date().getFullYear());
-  
-  const getFilterFromState = (m: number, y: number): BiPeriodFilter => {
-    const start = new Date(y, m - 1, 1);
-    const end = new Date(y, m, 0);
-    const formatStr = (d: Date) => {
-      const yStr = d.getFullYear();
-      const mStr = String(d.getMonth() + 1).padStart(2, '0');
-      const dStr = String(d.getDate()).padStart(2, '0');
-      return `${yStr}-${mStr}-${dStr}`;
-    };
+
+  // Consome o filtro global de período e filial do contexto do BiDashboard pai
+  const { filter: globalFilter } = useOutletContext<{ filter: BiPeriodFilter }>();
+
+  // Gera as datas de início/fim com base no mês/ano selecionado localmente,
+  // mas preserva depto_id e centro_custo do filtro global.
+  const buildDateRange = (m: number, y: number) => {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const lastDay = new Date(y, m, 0).getDate();
     return {
-      period: 'custom',
-      startDate: formatStr(start),
-      endDate: formatStr(end)
+      start_date: `${y}-${pad(m)}-01`,
+      end_date: `${y}-${pad(m)}-${pad(lastDay)}`
     };
   };
 
-  const [localFilter, setLocalFilter] = useState<BiPeriodFilter>(getFilterFromState(month, year));
-
-  const applyFilter = () => {
-    setLocalFilter(getFilterFromState(month, year));
-  };
+  // Filtro ativo: datas locais + filial do contexto global
+  const activeFilter = useMemo<BiPeriodFilter>(() => ({
+    period: 'custom',
+    ...buildDateRange(month, year),
+    depto_id: globalFilter.depto_id,
+    centro_custo: globalFilter.centro_custo
+  }), [month, year, globalFilter.depto_id, globalFilter.centro_custo]);
 
   const { data, isLoading, isError } = useBiPeriodQuery(
     ['bi', 'comparative'],
     BIService.getComparativeAnalysis,
-    localFilter
+    activeFilter
   );
 
   if (isLoading) {
@@ -144,7 +145,7 @@ export default function ProfitabilityDashboard() {
              <option>TODAS</option>
            </select>
         </div>
-        <button onClick={applyFilter} className="bg-blue-500 hover:bg-blue-600 text-white font-bold px-5 py-2 rounded-lg flex items-center gap-2 h-[36px] text-xs transition-colors shadow-sm">
+        <button className="bg-blue-500 hover:bg-blue-600 text-white font-bold px-5 py-2 rounded-lg flex items-center gap-2 h-[36px] text-xs transition-colors shadow-sm">
           <Filter size={14} /> FILTRAR
         </button>
       </div>

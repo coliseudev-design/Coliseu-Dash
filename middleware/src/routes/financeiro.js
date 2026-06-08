@@ -19,39 +19,12 @@ async function getFinanceiroAnchor(tenantId, period, start_date, end_date) {
     if (rows.length > 0 && rows[0].anchor) {
         fakeNow = new Date(rows[0].anchor);
     }
-    const { getPeriodRange } = require('../utils/period');
-    // Calcula usando a âncora (ou hoje real) como se fosse 'agora'
-    let start = new Date(fakeNow);
-    let end = new Date(fakeNow);
-    end.setHours(23, 59, 59, 999);
-
-    switch (period) {
-        case 'today': case 'hoje': start.setHours(0, 0, 0, 0); break;
-        case 'yesterday':
-            start.setDate(start.getDate() - 1); start.setHours(0, 0, 0, 0);
-            end = new Date(start); end.setHours(23, 59, 59, 999); break;
-        case 'last7': case '7d': start.setDate(start.getDate() - 7); break;
-        case 'thisMonth': case '1m':
-            start = new Date(fakeNow.getFullYear(), fakeNow.getMonth(), 1);
-            end = new Date(fakeNow.getFullYear(), fakeNow.getMonth() + 1, 0, 23, 59, 59); break;
-        case 'lastMonth':
-            start = new Date(fakeNow.getFullYear(), fakeNow.getMonth() - 1, 1);
-            end = new Date(fakeNow.getFullYear(), fakeNow.getMonth(), 0, 23, 59, 59); break;
-        case 'custom':
-            if (start_date && end_date) {
-                const [sy, sm, sd] = start_date.split('T')[0].split('-');
-                const s = new Date(parseInt(sy), parseInt(sm) - 1, parseInt(sd), 0, 0, 0, 0);
-                
-                const [ey, em, ed] = end_date.split('T')[0].split('-');
-                const e = new Date(parseInt(ey), parseInt(em) - 1, parseInt(ed), 23, 59, 59, 999);
-                return { start: s, end: e };
-            }
-            start.setFullYear(start.getFullYear() - 1); break;
-        case 'all': start = new Date(1970, 0, 1); break;
-        case 'last12m': case '1y': default:
-            start.setFullYear(start.getFullYear() - 1); break;
-    }
-    return { start, end };
+    const { getPeriodRange, parseDateString } = require('../utils/period');
+    const pr = getPeriodRange(period, start_date, end_date, fakeNow);
+    return {
+        start: parseDateString(pr.start),
+        end: parseDateString(pr.end)
+    };
 }
 
 // Helper: classifica conta 
@@ -262,7 +235,7 @@ router.get('/caixa', async (req, res, next) => {
                 SELECT TRIM(UPPER(especie)) as nome_especie, COALESCE(SUM(valor_total), 0) AS total_especie
                 FROM dash_vendas
                 WHERE tenant_id = $1
-                  AND data_venda >= $2 AND data_venda <= $3
+                  AND COALESCE(data_vencimento, data_venda) >= $2 AND COALESCE(data_vencimento, data_venda) <= $3
                   ${cfopUtil.getSalesFilterClause('')}
                   AND especie IS NOT NULL AND TRIM(especie) != ''
                 GROUP BY TRIM(UPPER(especie))
@@ -332,7 +305,7 @@ router.get('/especies-vendidas', async (req, res, next) => {
             INNER JOIN dash_vendas v ON v.id_firebird = i.venda_id_firebird AND v.tenant_id = i.tenant_id
             INNER JOIN dash_produtos p ON p.id_firebird = i.produto_id_firebird AND p.tenant_id = i.tenant_id
             WHERE i.tenant_id = $1
-              AND v.data_venda >= $2 AND v.data_venda <= $3
+              AND COALESCE(v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_vencimento, v.data_venda) <= $3
               ${cfopUtil.getSalesFilterClause('v')}
             GROUP BY p.id_firebird, p.codigo, p.nome, p.categoria
             ORDER BY total_vendido DESC
@@ -348,7 +321,7 @@ router.get('/especies-vendidas', async (req, res, next) => {
             INNER JOIN dash_vendas v ON v.id_firebird = i.venda_id_firebird AND v.tenant_id = i.tenant_id
             INNER JOIN dash_produtos p ON p.id_firebird = i.produto_id_firebird AND p.tenant_id = i.tenant_id
             WHERE i.tenant_id = $1
-              AND v.data_venda >= $2 AND v.data_venda <= $3
+              AND COALESCE(v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_vencimento, v.data_venda) <= $3
               ${cfopUtil.getSalesFilterClause('v')}
             GROUP BY COALESCE(NULLIF(p.categoria, ''), 'Sem categoria')
             ORDER BY total DESC
@@ -359,7 +332,7 @@ router.get('/especies-vendidas', async (req, res, next) => {
             FROM dash_vendas_itens i
             INNER JOIN dash_vendas v ON v.id_firebird = i.venda_id_firebird AND v.tenant_id = i.tenant_id
             WHERE i.tenant_id = $1
-              AND v.data_venda >= $2 AND v.data_venda <= $3
+              AND COALESCE(v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_vencimento, v.data_venda) <= $3
               ${cfopUtil.getSalesFilterClause('v')}
         `, [tenantId, start, end]);
 

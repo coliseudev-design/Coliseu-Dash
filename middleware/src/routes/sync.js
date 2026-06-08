@@ -156,10 +156,26 @@ router.post('/:tabela', async (req, res) => {
                 const conflictKey = tabela === 'dash_filiais' ? 'depto_id' : 'id_firebird';
 
                 // Regra de conflito: Atualiza todos os campos menos conflictKey e tenant_id
-                const updateSet = usedCols
-                    .filter(c => c !== conflictKey)
-                    .map(c => `${c} = EXCLUDED.${c}`)
-                    .join(', ');
+                let updateSet = '';
+                if (tabela === 'dash_vendas') {
+                    updateSet = usedCols
+                        .filter(c => c !== conflictKey)
+                        .map(c => {
+                            if (c === 'data_vencimento') {
+                                return `data_vencimento = COALESCE(EXCLUDED.data_vencimento, dash_vendas.data_vencimento)`;
+                            }
+                            if (c === 'data_venda') {
+                                return `data_venda = COALESCE(EXCLUDED.data_vencimento, dash_vendas.data_vencimento, EXCLUDED.data_venda, dash_vendas.data_venda)`;
+                            }
+                            return `${c} = EXCLUDED.${c}`;
+                        })
+                        .join(', ');
+                } else {
+                    updateSet = usedCols
+                        .filter(c => c !== conflictKey)
+                        .map(c => `${c} = EXCLUDED.${c}`)
+                        .join(', ');
+                }
 
                 let sql = `
                     INSERT INTO ${tabela} (${insertCols.join(', ')}, sincronizado_em)
@@ -206,29 +222,44 @@ router.post('/:tabela', async (req, res) => {
             errors.length > 0 ? errors.slice(0, 3).join(' | ') : null
         ]);
 
-        await client.query('COMMIT');
-
-        // Pós-Processamento: Atualizar Cache e Materialized Views
-        if (['dash_vendas', 'dash_vendas_itens', 'dash_financeiro', 'dash_devolucoes'].includes(tabela)) {
-            invalidateTenant(tenantId);
-
-            // WORKAROUND: Correção para pedidos zerados (Apenas Serviços)
-            // Se o worker enviar a venda com valor_total = 0, tentamos recalcular pela soma dos itens.
-            if (tabela === 'dash_vendas_itens') {
-                db.query(`
+        // Recalcular valor total dos pedidos afetados para incluir produtos + serviços
+        if (tabela === 'dash_vendas_itens') {
+            const vendaIds = [...new Set(rows.map(r => r.venda_id_firebird || r.VENDA_ID_FIREBIRD).filter(Boolean))];
+            if (vendaIds.length > 0) {
+                await client.query(`
                     UPDATE dash_vendas v
                     SET valor_total = (
                         SELECT COALESCE(SUM(CASE WHEN vi.valor_total = 0 THEN vi.quantidade * vi.preco_unitario ELSE vi.valor_total END), 0)
                         FROM dash_vendas_itens vi
                         WHERE vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id
                     )
-                    WHERE v.tenant_id = $1 AND v.valor_total = 0
+                    WHERE v.tenant_id = $1 AND v.id_firebird = ANY($2)
+                `, [tenantId, vendaIds]);
+            }
+        } else if (tabela === 'dash_vendas') {
+            const vendaIds = [...new Set(rows.map(r => r.id_firebird || r.ID_FIREBIRD).filter(Boolean))];
+            if (vendaIds.length > 0) {
+                await client.query(`
+                    UPDATE dash_vendas v
+                    SET valor_total = (
+                        SELECT COALESCE(SUM(CASE WHEN vi.valor_total = 0 THEN vi.quantidade * vi.preco_unitario ELSE vi.valor_total END), 0)
+                        FROM dash_vendas_itens vi
+                        WHERE vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id
+                    )
+                    WHERE v.tenant_id = $1 AND v.id_firebird = ANY($2)
                       AND EXISTS (
                           SELECT 1 FROM dash_vendas_itens vi2
                           WHERE vi2.venda_id_firebird = v.id_firebird AND vi2.tenant_id = v.tenant_id
                       )
-                `, [tenantId]).catch(e => console.error('[Sync] Erro ao recalcular valor_total de serviços', e.message));
+                `, [tenantId, vendaIds]);
             }
+        }
+
+        await client.query('COMMIT');
+
+        // Pós-Processamento: Atualizar Cache e Materialized Views
+        if (['dash_vendas', 'dash_vendas_itens', 'dash_financeiro', 'dash_devolucoes'].includes(tabela)) {
+            invalidateTenant(tenantId);
             
             // Tenta dar refresh na visão de forma assíncrona para não prender o Worker
             const viewName = tabela === 'dash_financeiro' ? 'mv_dash_financeiro_diario' : 'mv_dash_vendas_diario';

@@ -10,16 +10,7 @@ def run_query(sql, db="coliseu_identity"):
     sql_escaped = sql.replace("'", "'\\''")
     cmd = f"docker exec {DB_CONTAINER} psql -U coliseu_admin -d {db} -c '{sql_escaped}'"
     stdin, stdout, stderr = client.exec_command(cmd)
-    out = stdout.read().decode('utf-8')
-    err = stderr.read().decode('utf-8')
-    return out, err
+    print(stdout.read().decode('utf-8'))
 
-out, err = run_query('SELECT * FROM companies')
-with open("scratch/companies_dump.txt", "w", encoding="utf-8") as f:
-    f.write("=== STDOUT ===\n")
-    f.write(out)
-    f.write("=== STDERR ===\n")
-    f.write(err)
-
-print("Dump complete!")
+run_query("SELECT id, name, api_key FROM companies")
 client.close()
