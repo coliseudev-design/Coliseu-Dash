@@ -6,13 +6,13 @@
 CREATE MATERIALIZED VIEW IF NOT EXISTS mv_dash_vendas_diario AS
 SELECT 
     tenant_id, 
-    DATE(data_venda) AS data_venda, 
+    DATE(COALESCE(data_vencimento, data_venda)) AS data_venda, 
     COALESCE(SUM(valor_total), 0) AS faturamento,
     COUNT(DISTINCT id_firebird) AS qtd_pedidos,
     COALESCE(SUM(valor_desconto), 0) AS total_descontos,
     COALESCE(AVG(valor_total), 0) AS ticket_medio
 FROM dash_vendas
-GROUP BY tenant_id, DATE(data_venda);
+GROUP BY tenant_id, DATE(COALESCE(data_vencimento, data_venda));
 
 -- Índice único essencial para permitir REFRESH CONCURRENTLY
 CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_vendas_diario ON mv_dash_vendas_diario(tenant_id, data_venda);

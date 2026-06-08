@@ -10,11 +10,12 @@ def run_query(sql, label):
     cmd = f'docker exec {DB_CONTAINER} psql -U coliseu_admin -d coliseu_dashboard -c "{sql}"'
     stdin, stdout, stderr = client.exec_command(cmd)
     print(f"=== {label} ===")
-    print(stdout.read().decode('utf-8'))
+    print("STDOUT:", stdout.read().decode('utf-8'))
+    print("STDERR:", stderr.read().decode('utf-8'))
 
 run_query(
-    "SELECT id_firebird, numero_pedido, data_venda, data_vencimento, valor_total, status, cfop FROM dash_vendas WHERE tenant_id = '816f97c4-66fb-4ef8-905d-e0551cbf2492' ORDER BY id_firebird DESC;",
-    "All sales for 816f97c4"
+    "SELECT pg_get_viewdef('mv_dash_vendas_diario'::regclass, true);",
+    "View definition of mv_dash_vendas_diario"
 )
 
 client.close()

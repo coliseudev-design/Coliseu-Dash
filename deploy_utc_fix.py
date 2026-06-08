@@ -11,6 +11,8 @@ FILES_TO_DEPLOY = [
     ('middleware/src/routes/ranking.js', '/usr/src/app/src/routes/ranking.js'),
     ('middleware/src/routes/financeiro.js', '/usr/src/app/src/routes/financeiro.js'),
     ('middleware/src/routes/estatisticas.js', '/usr/src/app/src/routes/estatisticas.js'),
+    ('middleware/src/routes/vendas.js', '/usr/src/app/src/routes/vendas.js'),
+    ('middleware/src/db/views.sql', '/usr/src/app/src/db/views.sql'),
 ]
 
 def run(client, cmd, label=""):
