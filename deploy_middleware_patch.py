@@ -12,6 +12,11 @@ FILES_TO_DEPLOY = [
     ('middleware/src/db/migrations/006_add_data_hora_proc.sql', '/usr/src/app/src/db/migrations/006_add_data_hora_proc.sql'),
     ('middleware/src/routes/sync.js', '/usr/src/app/src/routes/sync.js'),
     ('middleware/src/db/cleanup_non_faturados.js', '/usr/src/app/src/db/cleanup_non_faturados.js'),
+    ('middleware/src/routes/bi.js', '/usr/src/app/src/routes/bi.js'),
+    ('middleware/src/routes/clientes.js', '/usr/src/app/src/routes/clientes.js'),
+    ('middleware/src/routes/estatisticas.js', '/usr/src/app/src/routes/estatisticas.js'),
+    ('middleware/src/routes/ranking.js', '/usr/src/app/src/routes/ranking.js'),
+    ('middleware/src/routes/vendas.js', '/usr/src/app/src/routes/vendas.js'),
 ]
 
 def run(client, cmd, label=""):

@@ -19,12 +19,9 @@ const getBiDateRange = async (req, tenantId) => {
     const inicioParam = req.query.inicio || req.query.startDate || req.query.start_date;
     const fimParam = req.query.fim || req.query.endDate || req.query.end_date;
     
-    // REGRA DE ANCORAGEM: obter a data máxima de venda registrada
-    const { rows } = await db.query(
-        'SELECT MAX(COALESCE(data_vencimento, data_venda)) AS max_date FROM dash_vendas WHERE tenant_id = $1',
-        [tenantId]
-    );
-    const anchorDate = rows[0].max_date ? new Date(rows[0].max_date) : new Date();
+    const store = db.dbContext.getStore();
+    const tzOffset = store ? store.tzOffset : -180;
+    const anchorDate = new Date(Date.now() + (tzOffset * 60 * 1000));
 
     if (period && period !== 'custom') {
         const pr = getPeriodRange(period, null, null, anchorDate);

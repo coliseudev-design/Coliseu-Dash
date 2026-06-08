@@ -14,22 +14,9 @@ const cfopUtil = require('../utils/cfop');
  * independente da data atual do servidor.
  */
 async function getAnchoredRange(tenantId, period, start_date, end_date) {
-    // Usa o ultimo dia com venda FATURADA/FINALIZADA para garantir dados reais no "hoje"
-    const { rows } = await db.query(
-        `SELECT MAX(COALESCE(data_vencimento, data_venda)) AS max_date FROM dash_vendas WHERE tenant_id = $1 AND UPPER(TRIM(status)) IN ('FATURADO', 'FINALIZADO', 'PROCESSADO')`,
-        [tenantId]
-    );
-    let anchor;
-    if (rows[0].max_date) {
-        anchor = new Date(rows[0].max_date);
-    } else {
-        // Fallback: se nao ha vendas faturadas ainda, usa o MAX geral
-        const { rows: fallback } = await db.query(
-            'SELECT MAX(COALESCE(data_vencimento, data_venda)) AS max_date FROM dash_vendas WHERE tenant_id = $1',
-            [tenantId]
-        );
-        anchor = fallback[0].max_date ? new Date(fallback[0].max_date) : new Date();
-    }
+    const store = db.dbContext.getStore();
+    const tzOffset = store ? store.tzOffset : -180;
+    const anchor = new Date(Date.now() + (tzOffset * 60 * 1000));
 
     return getPeriodRange(period, start_date, end_date, anchor);
 }

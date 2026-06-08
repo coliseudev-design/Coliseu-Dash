@@ -21,21 +21,9 @@ router.get('/overview', async (req, res, next) => {
         const cached = getCache(cacheKey);
         if (cached) return res.json(cached);
 
-        let anchorDate = new Date();
-        const { rows: anchorRows } = await db.query(
-            `SELECT MAX(COALESCE(data_vencimento, data_venda)) AS max_date FROM dash_vendas WHERE tenant_id = $1 AND UPPER(TRIM(status)) IN ('FATURADO', 'FINALIZADO', 'PROCESSADO')`,
-            [tenantId]
-        );
-        // Fallback: se nao ha vendas faturadas, usa o MAX geral
-        if (anchorRows[0].max_date) {
-            anchorDate = new Date(anchorRows[0].max_date);
-        } else {
-            const { rows: fallbackRows } = await db.query(
-                'SELECT MAX(COALESCE(data_vencimento, data_venda)) AS max_date FROM dash_vendas WHERE tenant_id = $1',
-                [tenantId]
-            );
-            if (fallbackRows[0].max_date) anchorDate = new Date(fallbackRows[0].max_date);
-        }
+        const store = db.dbContext.getStore();
+        const tzOffset = store ? store.tzOffset : -180;
+        const anchorDate = new Date(Date.now() + (tzOffset * 60 * 1000));
         const anchorDateFin = new Date(anchorDate);
 
         const { start, end } = getPeriodRange(period, start_date, end_date, anchorDate);
@@ -168,22 +156,9 @@ router.get('/kpis', async (req, res, next) => {
         const deptoId = req.query.depto_id;
         const vendedorId = req.query.vendedor_id;
 
-        const maxDate = new Date();
-        let anchorKpi = maxDate;
-        const { rows: anchorRowsKpi } = await db.query(
-            `SELECT MAX(COALESCE(data_vencimento, data_venda)) AS max_date FROM dash_vendas WHERE tenant_id = $1 AND UPPER(TRIM(status)) IN ('FATURADO', 'FINALIZADO', 'PROCESSADO')`,
-            [tenantId]
-        );
-        // Fallback: se nao ha vendas faturadas, usa o MAX geral
-        if (anchorRowsKpi[0].max_date) {
-            anchorKpi = new Date(anchorRowsKpi[0].max_date);
-        } else {
-            const { rows: fallbackRowsKpi } = await db.query(
-                'SELECT MAX(COALESCE(data_vencimento, data_venda)) AS max_date FROM dash_vendas WHERE tenant_id = $1',
-                [tenantId]
-            );
-            if (fallbackRowsKpi[0].max_date) anchorKpi = new Date(fallbackRowsKpi[0].max_date);
-        }
+        const store = db.dbContext.getStore();
+        const tzOffset = store ? store.tzOffset : -180;
+        const anchorKpi = new Date(Date.now() + (tzOffset * 60 * 1000));
         const { start, end } = getPeriodRange(period, start_date, end_date, anchorKpi);
 
         const df = buildDeptoFilter(deptoId, 4, 'v');

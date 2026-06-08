@@ -15,20 +15,9 @@ router.get('/faturadas', async (req, res, next) => {
         const vendedorId = req.query.vendedor_id;
         const { start_date, end_date } = req.query;
 
-        let anchorDate = new Date();
-        const { rows: anchorRows } = await db.query(
-            `SELECT MAX(COALESCE(data_vencimento, data_venda)) AS max_date FROM dash_vendas WHERE tenant_id = $1 AND UPPER(TRIM(status)) IN ('FATURADO', 'FINALIZADO', 'PROCESSADO')`,
-            [tenantId]
-        );
-        if (anchorRows[0].max_date) {
-            anchorDate = new Date(anchorRows[0].max_date);
-        } else {
-            const { rows: fallbackRows } = await db.query(
-                'SELECT MAX(COALESCE(data_vencimento, data_venda)) AS max_date FROM dash_vendas WHERE tenant_id = $1',
-                [tenantId]
-            );
-            if (fallbackRows[0].max_date) anchorDate = new Date(fallbackRows[0].max_date);
-        }
+        const store = db.dbContext.getStore();
+        const tzOffset = store ? store.tzOffset : -180;
+        const anchorDate = new Date(Date.now() + (tzOffset * 60 * 1000));
         const { start, end } = getPeriodRange(period, start_date, end_date, anchorDate);
 
         const salesFilter = cfopUtil.getSalesFilterClause('v');
@@ -152,20 +141,9 @@ router.get('/kpis', async (req, res, next) => {
         const tenantId = req.tenant.id;
         const { start_date, end_date } = req.query;
 
-        let anchorDate = new Date();
-        const { rows: anchorRows } = await db.query(
-            `SELECT MAX(COALESCE(data_vencimento, data_venda)) AS max_date FROM dash_vendas WHERE tenant_id = $1 AND UPPER(TRIM(status)) IN ('FATURADO', 'FINALIZADO', 'PROCESSADO')`,
-            [tenantId]
-        );
-        if (anchorRows[0].max_date) {
-            anchorDate = new Date(anchorRows[0].max_date);
-        } else {
-            const { rows: fallbackRows } = await db.query(
-                'SELECT MAX(COALESCE(data_vencimento, data_venda)) AS max_date FROM dash_vendas WHERE tenant_id = $1',
-                [tenantId]
-            );
-            if (fallbackRows[0].max_date) anchorDate = new Date(fallbackRows[0].max_date);
-        }
+        const store = db.dbContext.getStore();
+        const tzOffset = store ? store.tzOffset : -180;
+        const anchorDate = new Date(Date.now() + (tzOffset * 60 * 1000));
         const { start, end } = getPeriodRange(period, start_date, end_date, anchorDate);
 
         const salesFilter = cfopUtil.getSalesFilterClause('v');
