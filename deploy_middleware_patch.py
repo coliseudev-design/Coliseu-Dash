@@ -7,11 +7,14 @@ USER     = 'root'
 PASSWORD = '6EFBC!c0:wzr%Ij'
 
 FILES_TO_DEPLOY = [
-    ('middleware/src/utils/period.js', '/usr/src/app/src/utils/period.js'),
-    ('middleware/src/middleware/auth.js', '/usr/src/app/src/middleware/auth.js'),
+    ('middleware/src/index.js', '/usr/src/app/src/index.js'),
+    ('middleware/src/db/schema.sql', '/usr/src/app/src/db/schema.sql'),
+    ('middleware/src/db/migrations/006_add_data_hora_proc.sql', '/usr/src/app/src/db/migrations/006_add_data_hora_proc.sql'),
+    ('middleware/src/routes/sync.js', '/usr/src/app/src/routes/sync.js'),
+    ('middleware/src/db/cleanup_non_faturados.js', '/usr/src/app/src/db/cleanup_non_faturados.js'),
 ]
 
-CONTAINER_NAME = 'dashboard-middleware-irerzifjwjb4q8ucbpfk2gb8-203733456093'
+CONTAINER_NAME = 'dashboard-middleware-irerzifjwjb4q8ucbpfk2gb8-150845671848'
 
 def run(client, cmd, label=""):
     print(f"\n>>> {label or cmd[:80]}")
@@ -53,9 +56,19 @@ def main():
 
         sftp.close()
 
-        # Restart middleware container
+        # Restart middleware container to apply updates
         run(client, f"docker restart {CONTAINER_NAME}", "Reiniciando o container de middleware")
-        print("\n✓ Deploy do middleware concluído com sucesso!")
+        
+        # Aguarda 3 segundos para o container subir e rodar as migrações automáticas
+        import time
+        print("Aguardando 3 segundos para inicialização do container...")
+        time.sleep(3)
+        
+        # Executa a limpeza histórica de dados inválidos no banco de dados principal
+        cleanup_cmd = f"docker exec {CONTAINER_NAME} node /usr/src/app/src/db/cleanup_non_faturados.js"
+        run(client, cleanup_cmd, "Executando limpeza de vendas inválidas/canceladas no banco")
+        
+        print("\n✓ Deploy e limpeza do middleware concluídos com sucesso!")
 
     except Exception as e:
         print(f"Erro durante o deploy: {e}")
