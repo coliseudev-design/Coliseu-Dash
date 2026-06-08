@@ -63,6 +63,32 @@ router.post('/start', async (req, res) => {
 });
 
 /**
+ * Heartbeat do Worker C#.
+ * Atualiza o status de sincronização e o ping de pulso de vida.
+ */
+router.post('/heartbeat', async (req, res) => {
+    const { id: tenantId } = req.tenant;
+    const { status } = req.body || {};
+    const finalStatus = status || 'OK';
+
+    try {
+        await db.query(`
+            INSERT INTO dash_sync_metadata (tenant_id, tabela, ultima_sincronizacao, registros_sincronizados, status, erro_mensagem)
+            VALUES ($1, $2, NOW(), 0, $3, NULL)
+            ON CONFLICT (tenant_id, tabela) DO UPDATE SET 
+                ultima_sincronizacao = NOW(),
+                registros_sincronizados = 0,
+                status = $3
+        `, [tenantId, '__heartbeat__', finalStatus]);
+        
+        return res.status(200).json({ status: 'OK' });
+    } catch (err) {
+        logger.error('[Sync] Heartbeat query error', err);
+        return res.status(500).json({ error: err.message });
+    }
+});
+
+/**
  * Endpoint primário de ingestão (Usado pelo Worker .NET).
  * Payload: { tabela: "dash_clientes", rows: [...] }
  * Header obriga: X-Internal-Key e X-Tenant-Id
@@ -299,14 +325,28 @@ router.get('/status', async (req, res) => {
         const { rows } = await db.query(`
             SELECT tabela, ultima_sincronizacao as ultima, status, registros_sincronizados as registros
             FROM dash_sync_metadata
-            WHERE tenant_id = $1
+            WHERE tenant_id = $1 AND tabela != '__heartbeat__'
             ORDER BY tabela
         `, [tenantId]);
         
+        const { rows: hbRows } = await db.query(`
+            SELECT ultima_sincronizacao as ultima, status
+            FROM dash_sync_metadata
+            WHERE tenant_id = $1 AND tabela = '__heartbeat__'
+        `, [tenantId]);
+
         let heartbeatStatus = 'OFFLINE';
         let ultimaHeartbeat = null;
-        if (rows.length > 0) {
-            // Agente ativo se teve alguma sync nos últimos 30 minutos
+
+        if (hbRows.length > 0) {
+            const lastPing = new Date(hbRows[0].ultima);
+            ultimaHeartbeat = lastPing.toISOString();
+            // Se o último ping do worker foi nos últimos 10 minutos, o agente está OK
+            if (Date.now() - lastPing.getTime() < 10 * 60 * 1000) {
+                heartbeatStatus = hbRows[0].status === 'OK' ? 'OK' : 'FIREBIRD_OFFLINE';
+            }
+        } else if (rows.length > 0) {
+            // Fallback para o comportamento antigo caso o worker novo ainda não tenha enviado ping
             const lastSyncDate = new Date(Math.max(...rows.map(r => new Date(r.ultima).getTime())));
             ultimaHeartbeat = lastSyncDate.toISOString();
             if (Date.now() - lastSyncDate.getTime() < 30 * 60 * 1000) {
