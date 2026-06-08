@@ -7,6 +7,9 @@ USER     = 'root'
 PASSWORD = '6EFBC!c0:wzr%Ij'
 
 FILES_TO_DEPLOY = [
+    ('middleware/src/index.js', '/usr/src/app/src/index.js'),
+    ('middleware/src/db/schema.sql', '/usr/src/app/src/db/schema.sql'),
+    ('middleware/src/db/migrations/006_add_data_hora_proc.sql', '/usr/src/app/src/db/migrations/006_add_data_hora_proc.sql'),
     ('middleware/src/routes/sync.js', '/usr/src/app/src/routes/sync.js'),
     ('middleware/src/db/cleanup_non_faturados.js', '/usr/src/app/src/db/cleanup_non_faturados.js'),
 ]
@@ -55,6 +58,11 @@ def main():
 
         # Restart middleware container to apply updates
         run(client, f"docker restart {CONTAINER_NAME}", "Reiniciando o container de middleware")
+        
+        # Aguarda 3 segundos para o container subir e rodar as migrações automáticas
+        import time
+        print("Aguardando 3 segundos para inicialização do container...")
+        time.sleep(3)
         
         # Executa a limpeza histórica de dados inválidos no banco de dados principal
         cleanup_cmd = f"docker exec {CONTAINER_NAME} node /usr/src/app/src/db/cleanup_non_faturados.js"

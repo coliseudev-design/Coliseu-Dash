@@ -6,7 +6,7 @@ export default function AcessoNegado() {
 
   return (
     <div className="min-h-screen bg-bg-secondary flex flex-col items-center justify-center p-6 text-center">
-      <div className="bg-bg-primary border border-divider shadow-card max-w-md w-full rounded-2xl p-8 flex flex-col items-center">
+      <div className="bg-bg-primary border border-divider shadow-card max-w-md w-full rounded-2xl p-8 flex flex-col items-center" aria-label="Acesso Negado">
         <div className="bg-danger/10 p-4 rounded-full text-danger mb-6">
           <ShieldAlert size={48} />
         </div>

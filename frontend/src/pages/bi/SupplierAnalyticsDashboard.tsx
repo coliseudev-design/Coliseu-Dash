@@ -91,7 +91,7 @@ export default function SupplierAnalyticsDashboard() {
   const currentShare = currentBrandData && overview.receita > 0 ? ((currentBrandData.receita / overview.receita) * 100).toFixed(1) + '%' : '-';
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300 pb-10">
+    <div aria-label="Fornecedores Dashboard" className="space-y-6 animate-in fade-in duration-300 pb-10">
       
       {/* HEADER & FILTERS */}
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-4 mb-2">
@@ -107,6 +107,7 @@ export default function SupplierAnalyticsDashboard() {
         </div>
         <div className="flex items-center gap-3">
           <select 
+            aria-label="Selecionar Marca"
             className="bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary outline-none focus:border-brand-500 max-w-[250px]"
             value={selectedBrand}
             onChange={(e) => setSelectedBrand(e.target.value)}
@@ -260,7 +261,7 @@ export default function SupplierAnalyticsDashboard() {
         </div>
         <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between">
           <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">
-            <ShoppingCart size={14} className="text-purple-500" /> Ticket Médio
+            <ShoppingCart size={14} className="text-cyan-500" /> Ticket Médio
           </div>
           <div>
             <div className="text-xl font-extrabold text-text-primary mb-1">{formatBRL(ticketMedio)}</div>
@@ -307,7 +308,7 @@ export default function SupplierAnalyticsDashboard() {
         </div>
         <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between">
           <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">
-            <Building2 size={14} className="text-purple-500" /> Clientes Ativos
+            <Building2 size={14} className="text-cyan-500" /> Clientes Ativos
           </div>
           <div>
             <div className="text-xl font-extrabold text-text-primary mb-1">{overview.clientes}</div>

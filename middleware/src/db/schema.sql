@@ -143,6 +143,7 @@ CREATE TABLE IF NOT EXISTS dash_vendas (
     numero_pedido VARCHAR(50),
     data_venda TIMESTAMPTZ NOT NULL,
     data_vencimento TIMESTAMPTZ DEFAULT NULL,
+    data_hora_proc TIMESTAMPTZ DEFAULT NULL,
     cliente_id_firebird INTEGER,
     vendedor_id_firebird INTEGER,
     valor_total DECIMAL(15,2) NOT NULL DEFAULT 0,
@@ -363,11 +364,11 @@ VALUES (
     senha_hash = EXCLUDED.senha_hash;
 
 -- Correção crítica: garante tenant correto para o usuário de teste
--- (pode ter sido inserido com tenant_id '00000000...' em versões antigas)
-UPDATE dash_usuarios 
-SET tenant_id = 'ed1d3a98-4c4d-48db-99c0-8751926eb8e5'
+-- (remove duplicados para evitar erro de chave única ao atualizar)
+DELETE FROM dash_usuarios 
 WHERE email = 'cliente@teste.com.br' 
   AND tenant_id != 'ed1d3a98-4c4d-48db-99c0-8751926eb8e5';
+
 
 CREATE TABLE IF NOT EXISTS dash_auditoria (
     id SERIAL PRIMARY KEY,

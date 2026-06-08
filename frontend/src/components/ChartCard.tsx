@@ -16,7 +16,7 @@ export default function ChartCard({
   title, subtitle, children, className, action, loading, empty, emptyText = 'Sem dados no período',
 }: Props) {
   return (
-    <div className={clsx('card', className)}>
+    <div className={clsx('card', className)} aria-label={title}>
       <div className="flex items-start justify-between mb-4">
         <div>
           <h3 className="font-heading font-semibold text-sm">{title}</h3>

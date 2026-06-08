@@ -69,11 +69,11 @@
     --color-text-primary: #0F172A;
     --color-text-secondary: #475569;
     --color-text-muted: #94A3B8;
-    --color-brand-50: #F5F3FF;
-    --color-brand-100: #EDE9FE;
-    --color-brand-500: #8B5CF6; /* Roxo vibrante */
-    --color-brand-600: #7C3AED;
-    --color-brand-700: #6D28D9;
+    --color-brand-50: #ECFEFF;
+    --color-brand-100: #CFFAFE;
+    --color-brand-500: #06B6D4; /* Cyan vibrante */
+    --color-brand-600: #0891B2;
+    --color-brand-700: #0369A1;
     --color-border: #E2E8F0;
     --color-divider: rgba(226, 232, 240, 0.8);
     --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);

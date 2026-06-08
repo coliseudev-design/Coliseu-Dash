@@ -47,6 +47,7 @@ export default function Financeiro() {
             value={selectedCaixa}
             onChange={(e) => setSelectedCaixa(e.target.value)}
             className="bg-transparent border-none text-sm font-medium text-text-primary focus:ring-0 cursor-pointer pr-8"
+            aria-label="Selecionar Caixa"
           >
             <option value="todos">Todos os Caixas</option>
             {caixas.map((c: any) => (

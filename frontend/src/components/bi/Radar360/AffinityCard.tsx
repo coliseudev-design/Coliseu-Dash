@@ -25,13 +25,13 @@ export const AffinityCard: React.FC<AffinityCardProps> = ({ vendedor, shareOfWal
   };
 
   return (
-    <div className="bg-bg-primary/60 backdrop-blur-md border border-white/10 rounded-3xl p-6 shadow-card hover:shadow-card-hover transition-all duration-300 relative overflow-hidden group">
+    <div className="bg-bg-primary/60 backdrop-blur-md border border-white/10 rounded-3xl p-6 shadow-card hover:shadow-card-hover transition-all duration-300 relative overflow-hidden group" aria-label="Afinidade Comercial">
       {/* Decorative gradient orb */}
-      <div className="absolute -top-10 -right-10 w-32 h-32 bg-purple-500/20 rounded-full blur-3xl group-hover:bg-purple-500/30 transition-all duration-500"></div>
+      <div className="absolute -top-10 -right-10 w-32 h-32 bg-cyan-500/20 rounded-full blur-3xl group-hover:bg-cyan-500/30 transition-all duration-500"></div>
 
       <div className="flex justify-between items-start mb-6">
         <h3 className="text-sm font-bold text-text-secondary uppercase tracking-wider flex items-center">
-          <TrendingUp size={16} className="mr-2 text-purple-500" />
+          <TrendingUp size={16} className="mr-2 text-cyan-500" />
           Afinidade Comercial
         </h3>
       </div>
@@ -53,14 +53,14 @@ export const AffinityCard: React.FC<AffinityCardProps> = ({ vendedor, shareOfWal
             />
             <defs>
               <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#8B5CF6" />
+                <stop offset="0%" stopColor="#06B6D4" />
                 <stop offset="100%" stopColor="#0EA5E9" />
               </linearGradient>
             </defs>
           </svg>
           <div className="absolute inset-0 m-auto w-20 h-20 bg-bg-secondary rounded-full flex items-center justify-center shadow-inner overflow-hidden">
              {vendedor && vendedor !== 'N/A' ? (
-                <span className="text-2xl font-bold bg-gradient-to-r from-purple-500 to-blue-500 bg-clip-text text-transparent">
+                <span className="text-2xl font-bold bg-gradient-to-r from-cyan-500 to-blue-500 bg-clip-text text-transparent">
                   {getInitials(vendedor)}
                 </span>
              ) : (

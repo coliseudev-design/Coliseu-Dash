@@ -20,7 +20,7 @@ const MEDAL_COLORS = ['#F59E0B', '#94A3B8', '#CD7C2F']
 const MEDAL_LABELS = ['🥇', '🥈', '🥉']
 const BAR_COLORS = [
   '#0066CC', '#10B981', '#F59E0B', '#EF4444',
-  '#06B6D4', '#8B5CF6', '#EC4899', '#F97316',
+  '#06B6D4', '#0891B2', '#EC4899', '#F97316',
   '#14B8A6', '#6366F1',
 ]
 
@@ -165,7 +165,7 @@ function RecentOrderRow({ order }: { order: any }) {
       <div className="flex-1 min-w-0 mr-3">
         <p className="text-xs font-semibold text-text-primary truncate">{order.cliente || 'Consumidor Final'}</p>
         <p className="text-[10px] text-text-muted mt-0.5">
-          #{order.numero_pedido} · {order.data_venda ? formatDate(order.data_venda) : '—'}
+          #{order.numero_pedido} · {order.data_venda ? formatDateTime(order.data_venda) : '—'}
         </p>
       </div>
       <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400 mono shrink-0">{formatBRL(order.valor_total)}</span>
@@ -234,7 +234,7 @@ export default function HomeV1() {
   )
 
   return (
-    <div className="space-y-5 pb-10">
+    <div className="space-y-5 pb-10" aria-label="Visão Estratégica">
 
       {/* ── HEADER ────────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">

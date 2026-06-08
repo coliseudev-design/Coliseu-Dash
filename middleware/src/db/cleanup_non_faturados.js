@@ -23,7 +23,7 @@ async function runCleanup() {
             WHERE (tenant_id, venda_id_firebird) IN (
                 SELECT tenant_id, id_firebird 
                 FROM dash_vendas 
-                WHERE data_vencimento IS NULL 
+                WHERE (data_vencimento IS NULL AND data_hora_proc IS NULL)
                    OR UPPER(TRIM(status)) NOT IN ('FATURADO', 'FINALIZADO', 'PROCESSADO')
             ) OR (tenant_id, venda_id_firebird) NOT IN (
                 SELECT tenant_id, id_firebird 
@@ -36,7 +36,7 @@ async function runCleanup() {
         console.log('Purga de vendas inválidas, canceladas ou sem data de faturamento...');
         const deleteVendasRes = await client.query(`
             DELETE FROM dash_vendas 
-            WHERE data_vencimento IS NULL 
+            WHERE (data_vencimento IS NULL AND data_hora_proc IS NULL)
                OR UPPER(TRIM(status)) NOT IN ('FATURADO', 'FINALIZADO', 'PROCESSADO')
         `);
         console.log(`Vendas deletadas: ${deleteVendasRes.rowCount}`);

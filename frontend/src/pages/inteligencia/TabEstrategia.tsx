@@ -29,7 +29,7 @@ const mockQuadrante = [
 
 export default function TabEstrategia() {
   return (
-    <div className="space-y-6 animate-fade-in py-2">
+    <div aria-label="Tab Estratégia" className="space-y-6 animate-fade-in py-2">
       
       {/* Previsões de Vendas */}
       <div>

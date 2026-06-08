@@ -39,7 +39,7 @@ export default function Vendas() {
   const categorias = categoriasReq.data?.data || []
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-4 sm:space-y-6" aria-label="Vendas">
       <PeriodFilter />
 
       {/* Resumo no Topo */}

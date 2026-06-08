@@ -11,7 +11,7 @@ const TABELAS_MAP = {
     'dash_produtos': ['id_firebird', 'codigo', 'nome', 'descricao', 'categoria', 'marca', 'preco', 'custo', 'estoque', 'estoque_minimo', 'ativo', 'referencia', 'codigo_fabrica', 'marca_id', 'grupo_id'],
     'dash_vendedores': ['id_firebird', 'nome', 'email', 'ativo'],
     'dash_fornecedores': ['id_firebird', 'nome', 'documento', 'cidade', 'estado'],
-    'dash_vendas': ['id_firebird', 'numero_pedido', 'data_venda', 'data_vencimento', 'cliente_id_firebird', 'vendedor_id_firebird', 'valor_total', 'valor_custo', 'valor_desconto', 'status', 'marca', 'categoria', 'especie', 'depto_id', 'cfop', 'numero_nota'],
+    'dash_vendas': ['id_firebird', 'numero_pedido', 'data_venda', 'data_vencimento', 'cliente_id_firebird', 'vendedor_id_firebird', 'valor_total', 'valor_custo', 'valor_desconto', 'status', 'marca', 'categoria', 'especie', 'depto_id', 'cfop', 'numero_nota', 'data_hora_proc'],
     'dash_vendas_itens': ['id_firebird', 'venda_id_firebird', 'produto_id_firebird', 'quantidade', 'preco_unitario', 'custo_unitario', 'valor_total', 'vendedor', 'produto', 'marca', 'categoria', 'depto_id'],
     'dash_comissoes': ['id_firebird', 'vendedor_id_firebird', 'venda_id_firebird', 'periodo', 'valor_vendas', 'percentual', 'valor_comissao', 'data_referencia'],
     'dash_financeiro': ['id_firebird', 'tipo', 'tipo_documento', 'descricao', 'cliente_id_firebird', 'fornecedor_id_firebird', 'caixa_id_firebird', 'data_emissao', 'data_vencimento', 'data_pagamento', 'valor', 'valor_pago', 'status_pagamento', 'depto_id', 'centro_custo'],
@@ -100,6 +100,7 @@ router.post('/:tabela', async (req, res) => {
                     row[key.toLowerCase()] = rawRow[key];
                 }
 
+
                 // Guarda: valida chave primária obrigatória
                 const conflictKeyCheck = tabela === 'dash_filiais' ? 'depto_id' : 'id_firebird';
                 const pkVal = row[conflictKeyCheck];
@@ -110,10 +111,12 @@ router.post('/:tabela', async (req, res) => {
 
                 if (tabela === 'dash_vendas') {
                     const status = row['status'] ? String(row['status']).trim().toUpperCase() : '';
+                    const dataHoraProc = row['data_hora_proc'];
                     const dataVencimento = row['data_vencimento'];
                     
                     const isFaturado = ['FATURADO', 'FINALIZADO', 'PROCESSADO'].includes(status);
-                    const hasFaturamentoDate = dataVencimento !== undefined && dataVencimento !== null && dataVencimento !== '';
+                    const faturamentoDate = (dataHoraProc && dataHoraProc !== '') ? dataHoraProc : dataVencimento;
+                    const hasFaturamentoDate = faturamentoDate !== undefined && faturamentoDate !== null && faturamentoDate !== '';
                     
                     if (status === 'CANCELADO' || !isFaturado || !hasFaturamentoDate) {
                         // Deleta a venda e seus itens associados se não for válida ou for cancelada
@@ -136,8 +139,8 @@ router.post('/:tabela', async (req, res) => {
                         continue;
                     }
                     
-                    // Alinhamento de Faturamento: usa data_vencimento (data de faturamento) como data_venda principal
-                    row['data_venda'] = dataVencimento;
+                    // Alinhamento de Faturamento: usa data_hora_proc ou data_vencimento como data_venda principal
+                    row['data_venda'] = faturamentoDate;
                 }
 
                 if (tabela === 'dash_vendas_itens') {

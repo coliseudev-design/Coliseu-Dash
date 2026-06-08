@@ -37,7 +37,7 @@ export default function Estatisticas() {
   const k = kpis.data?.kpis
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" aria-label="Estatísticas">
       <PeriodFilter />
 
       {/* Seção Central - Estatísticas */}

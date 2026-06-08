@@ -18,7 +18,7 @@ export default function ThemeToggle() {
   }, [])
 
   return (
-    <div className="relative" ref={menuRef}>
+    <div className="relative" ref={menuRef} aria-label="Menu de Temas">
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="p-2 text-text-secondary hover:bg-bg-secondary rounded-lg active:bg-bg-tertiary transition-colors"

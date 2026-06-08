@@ -43,7 +43,7 @@ export default function TabRankings() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in py-2">
+    <div aria-label="Tab Rankings" className="space-y-6 animate-fade-in py-2">
       
       {/* Cabeçalho de Controle */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">

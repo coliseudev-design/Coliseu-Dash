@@ -22,7 +22,7 @@ export default function DataTable<T>({
   columns, data, loading, empty = 'Sem registros', rowKey,
 }: Props<T>) {
   return (
-    <div className="card !p-0 overflow-hidden">
+    <div className="card !p-0 overflow-hidden" aria-label="Tabela de Dados">
       <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
         <table className="w-full text-xs sm:text-sm">
           <thead className="bg-bg-secondary/90 backdrop-blur-md sticky top-0 z-10 border-b border-border/80">
