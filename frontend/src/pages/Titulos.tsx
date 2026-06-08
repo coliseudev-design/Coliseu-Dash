@@ -27,6 +27,7 @@ export default function Titulos() {
           className="input !w-auto min-w-[150px]"
           value={tipo}
           onChange={(e) => setTipo(e.target.value as any)}
+          aria-label="Tipo de Conta"
         >
           <option value="">Todas as Contas</option>
           <option value="RECEBER">A Receber</option>
@@ -36,6 +37,7 @@ export default function Titulos() {
           className="input !w-auto min-w-[150px]"
           value={status}
           onChange={(e) => setStatus(e.target.value as any)}
+          aria-label="Status de Pagamento"
         >
           <option value="">Todos os Status</option>
           <option value="ABERTO">Em Aberto</option>

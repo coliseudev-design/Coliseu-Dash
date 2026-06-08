@@ -30,17 +30,17 @@ export default function Radar360Dashboard() {
   const formatCurrency = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 relative min-h-screen pb-12">
+    <div aria-label="Radar 360 Dashboard" className="space-y-8 animate-in fade-in duration-500 relative min-h-screen pb-12">
       {/* Background gradients for Glassmorphism effect */}
       <div className="fixed inset-0 pointer-events-none z-[-1] overflow-hidden">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-brand-500/10 blur-[120px]"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-purple-500/10 blur-[150px]"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-cyan-500/10 blur-[150px]"></div>
       </div>
 
       {/* CommandCenter (Busca Preditiva Flutuante) */}
       <div className="pt-4 pb-8">
         <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-brand-500 to-purple-500 bg-clip-text text-transparent">Radar 360</h1>
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-brand-500 to-cyan-500 bg-clip-text text-transparent">Radar 360</h1>
           <p className="text-text-secondary mt-1">Busque um cliente para ativar a Interface Antecipatória</p>
         </div>
         <CommandCenter onSelectCustomer={handleSelectCustomer} />
@@ -70,9 +70,9 @@ export default function Radar360Dashboard() {
               
               {/* Profile Card (Neumorphic) */}
               <div className="bg-bg-primary/60 backdrop-blur-md border border-white/10 rounded-3xl p-6 shadow-card relative overflow-hidden flex-shrink-0">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-brand-500 to-purple-500"></div>
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-brand-500 to-cyan-500"></div>
                 <div className="flex items-center gap-4 mb-6">
-                  <div className="w-16 h-16 bg-gradient-to-br from-brand-500 to-purple-600 rounded-full flex items-center justify-center text-white shadow-lg border-2 border-bg-primary">
+                  <div className="w-16 h-16 bg-gradient-to-br from-brand-500 to-cyan-600 rounded-full flex items-center justify-center text-white shadow-lg border-2 border-bg-primary">
                     <User size={30} />
                   </div>
                   <div>

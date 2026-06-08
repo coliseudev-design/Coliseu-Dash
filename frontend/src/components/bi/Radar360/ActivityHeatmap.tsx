@@ -38,7 +38,7 @@ export const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({ bestHour }) =>
   };
 
   return (
-    <div className="bg-bg-primary/60 backdrop-blur-md border border-white/10 rounded-3xl p-6 shadow-card transition-all duration-300 h-full">
+    <div className="bg-bg-primary/60 backdrop-blur-md border border-white/10 rounded-3xl p-6 shadow-card transition-all duration-300 h-full" aria-label="Densidade de Compras">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-sm font-bold text-text-secondary uppercase tracking-wider flex items-center">
           <Clock size={16} className="mr-2 text-orange-500" />

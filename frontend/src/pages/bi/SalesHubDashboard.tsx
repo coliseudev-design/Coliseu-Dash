@@ -106,7 +106,7 @@ export default function SalesHubDashboard() {
   );
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
+    <div aria-label="Hub de Vendas Dashboard" className="space-y-6 animate-in fade-in duration-300">
       
       {/* HEADER */}
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 mb-2">
@@ -119,6 +119,7 @@ export default function SalesHubDashboard() {
         <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
           {/* VENDEDOR */}
           <select
+            aria-label="Selecionar Vendedor"
             value={selectedVendedor}
             onChange={(e) => setSelectedVendedor(e.target.value)}
             className="px-3 py-1.5 bg-bg-primary border border-border text-text-primary rounded-lg text-xs font-medium shadow-sm focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300 w-full sm:w-auto"
@@ -133,6 +134,7 @@ export default function SalesHubDashboard() {
 
           {/* CIDADE */}
           <select
+            aria-label="Selecionar Cidade"
             value={selectedCidade}
             onChange={(e) => setSelectedCidade(e.target.value)}
             className="px-3 py-1.5 bg-bg-primary border border-border text-text-primary rounded-lg text-xs font-medium shadow-sm focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300 w-full sm:w-auto"
@@ -147,6 +149,7 @@ export default function SalesHubDashboard() {
 
           {/* GRUPO */}
           <select
+            aria-label="Selecionar Grupo"
             value={selectedGrupo}
             onChange={(e) => setSelectedGrupo(e.target.value)}
             className="px-3 py-1.5 bg-bg-primary border border-border text-text-primary rounded-lg text-xs font-medium shadow-sm focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300 w-full sm:w-auto"
@@ -164,6 +167,7 @@ export default function SalesHubDashboard() {
 
           {/* MARCA */}
           <select
+            aria-label="Selecionar Marca"
             value={selectedMarca}
             onChange={(e) => setSelectedMarca(e.target.value)}
             className="px-3 py-1.5 bg-bg-primary border border-border text-text-primary rounded-lg text-xs font-medium shadow-sm focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300 w-full sm:w-auto"
@@ -220,7 +224,7 @@ export default function SalesHubDashboard() {
         {/* TICKET MÉDIO */}
         <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 relative overflow-hidden">
           <div className="flex items-center gap-2 mb-4">
-            <div className="p-1.5 bg-purple-500/10 text-purple-500 rounded-lg">
+            <div className="p-1.5 bg-cyan-500/10 text-cyan-500 rounded-lg">
               <Target size={16} />
             </div>
             <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Ticket Médio</span>
@@ -228,9 +232,9 @@ export default function SalesHubDashboard() {
           <div className="text-3xl font-extrabold text-text-primary pl-1 mb-1">
             {formatBRL(data?.ticket_medio || 0)}
           </div>
-          <div className="flex justify-end text-[10px] text-purple-500 font-bold mt-1">92% atingido</div>
+          <div className="flex justify-end text-[10px] text-cyan-500 font-bold mt-1">92% atingido</div>
           <div className="w-full bg-bg-secondary h-1 mt-1 rounded-full overflow-hidden">
-             <div className="bg-purple-500 h-full w-[92%]"></div>
+             <div className="bg-cyan-500 h-full w-[92%]"></div>
           </div>
         </div>
       </div>

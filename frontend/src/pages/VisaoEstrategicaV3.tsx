@@ -145,12 +145,12 @@ export default function VisaoEstrategicaV3() {
   const mockTopClients = cli.data?.data?.map((c: any, i: number) => ({ rank: i + 1, name: c.nome, value: c.total })) || [];
 
   const barColors = [
-    '#3B82F6', '#10B981', '#8B5CF6', '#F59E0B', '#EF4444', 
-    '#06B6D4', '#EC4899', '#6366F1', '#14B8A6', '#F97316'
+    '#3B82F6', '#10B981', '#06B6D4', '#F59E0B', '#EF4444', 
+    '#0D9488', '#EC4899', '#6366F1', '#14B8A6', '#F97316'
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" aria-label="Visão Estratégica">
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-text-primary">Visão Estratégica</h2>
@@ -215,7 +215,7 @@ export default function VisaoEstrategicaV3() {
           { label: 'Ticket Médio', value: formatBRL(ticketMedio), icon: DollarSign, color: 'text-warning', bg: 'bg-warning/10' },
           { label: 'Taxa de Conversão', value: `${taxaConversao.toFixed(1)}%`, icon: TrendingUp, color: 'text-danger', bg: 'bg-danger/10' },
           { label: 'Clientes Ativos', value: `${clientesAtivos} / ${totalClientes}`, icon: Users, color: 'text-blue-500', bg: 'bg-blue-500/10' },
-          { label: 'Vendedores Ativos', value: vd.data?.data?.length || 0, icon: Briefcase, color: 'text-purple-500', bg: 'bg-purple-500/10' }
+          { label: 'Vendedores Ativos', value: vd.data?.data?.length || 0, icon: Briefcase, color: 'text-cyan-500', bg: 'bg-cyan-500/10' }
         ].map((kpi, idx) => (
           <div key={idx} className="bg-bg-primary rounded-xl p-4 border border-border shadow-card flex items-center gap-4">
             <div className={clsx('p-3 rounded-lg', kpi.bg, kpi.color)}>
@@ -437,16 +437,16 @@ export default function VisaoEstrategicaV3() {
                 />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.4 }} />
                 <Bar dataKey="value" fill={CHART_COLORS.primary} radius={[0, 4, 4, 0]} barSize={16}>
-                   <Cell fill="#8B5CF6" />
-                   <Cell fill="#8B5CF6" />
-                   <Cell fill="#8B5CF6" />
-                   <Cell fill="#8B5CF6" />
-                   <Cell fill="#8B5CF6" />
-                   <Cell fill="#8B5CF6" />
-                   <Cell fill="#8B5CF6" />
-                   <Cell fill="#8B5CF6" />
-                   <Cell fill="#8B5CF6" />
-                   <Cell fill="#8B5CF6" />
+                   <Cell fill="#06B6D4" />
+                   <Cell fill="#06B6D4" />
+                   <Cell fill="#06B6D4" />
+                   <Cell fill="#06B6D4" />
+                   <Cell fill="#06B6D4" />
+                   <Cell fill="#06B6D4" />
+                   <Cell fill="#06B6D4" />
+                   <Cell fill="#06B6D4" />
+                   <Cell fill="#06B6D4" />
+                   <Cell fill="#06B6D4" />
                 </Bar>
               </BarChart>
             </ResponsiveContainer>

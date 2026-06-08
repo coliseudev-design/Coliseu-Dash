@@ -46,7 +46,8 @@ async function initDbForType(dbType) {
                     { name: '002', file: '002_add_centro_custo.sql' },
                     { name: '003', file: '003_add_classificacao.sql' },
                     { name: '004', file: '004_add_data_vencimento_vendas.sql' },
-                    { name: '005', file: '005_increase_varchar_limits.sql' }
+                    { name: '005', file: '005_increase_varchar_limits.sql' },
+                    { name: '006', file: '006_add_data_hora_proc.sql' }
                 ];
 
                 for (const mig of migrations) {
@@ -78,11 +79,14 @@ async function startServer() {
         } else {
             try {
                 await initDbForType('main');
+                // O sistema VET foi descontinuado, ignorando inicialização do banco VET
+                /*
                 try {
                     await initDbForType('vet');
                 } catch (vetErr) {
                     logger.error('[App] Falha ao inicializar o banco de dados VET (pode não estar ativo/criado ainda):', vetErr.message);
                 }
+                */
             } catch (dbErr) {
                 logger.error('[App] Erro ao sincronizar as tabelas do banco principal:', dbErr);
             }

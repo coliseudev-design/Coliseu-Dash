@@ -311,7 +311,7 @@ export default function VisaoEstrategicaV4() {
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
+    <div className="space-y-6 animate-in fade-in duration-300" aria-label="Visão Estratégica V4">
       
       {/* 1. CABEÇALHO DA PÁGINA (PASSO 2) */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-divider/40 pb-5">
@@ -333,6 +333,7 @@ export default function VisaoEstrategicaV4() {
             value={selectedVendedor}
             onChange={(e) => setSelectedVendedor(e.target.value)}
             className="h-12 px-4 bg-bg-secondary border border-divider text-text-primary rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all duration-300 w-full cursor-pointer shadow-sm"
+            aria-label="Selecionar Vendedor"
           >
             <option value="">Todos os Vendedores</option>
             {vdFull.data?.data?.map((v: any) => (
@@ -347,6 +348,7 @@ export default function VisaoEstrategicaV4() {
             value={selectedMarca}
             onChange={(e) => setSelectedMarca(e.target.value)}
             className="h-12 px-4 bg-bg-secondary border border-divider text-text-primary rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all duration-300 w-full cursor-pointer shadow-sm"
+            aria-label="Selecionar Marca"
           >
             <option value="">Todas as Marcas</option>
             {marcasFull.data?.data?.map((m: any, idx: number) => (
@@ -361,6 +363,7 @@ export default function VisaoEstrategicaV4() {
             value={selectedCidade}
             onChange={(e) => setSelectedCidade(e.target.value)}
             className="h-12 px-4 bg-bg-secondary border border-divider text-text-primary rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all duration-300 w-full cursor-pointer shadow-sm"
+            aria-label="Selecionar Cidade"
           >
             <option value="">Todas as Cidades</option>
             {cidadesFull.data?.data?.map((c: any, idx: number) => (
@@ -427,6 +430,7 @@ export default function VisaoEstrategicaV4() {
                   value={selectedVendedor}
                   onChange={(e) => setSelectedVendedor(e.target.value)}
                   className="h-12 px-4 bg-bg-secondary border border-divider text-text-primary rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 w-full cursor-pointer shadow-sm"
+                  aria-label="Selecionar Vendedor Mobile"
                 >
                   <option value="">Todos os Vendedores</option>
                   {vdFull.data?.data?.map((v: any) => (
@@ -442,6 +446,7 @@ export default function VisaoEstrategicaV4() {
                   value={selectedMarca}
                   onChange={(e) => setSelectedMarca(e.target.value)}
                   className="h-12 px-4 bg-bg-secondary border border-divider text-text-primary rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 w-full cursor-pointer shadow-sm"
+                  aria-label="Selecionar Marca Mobile"
                 >
                   <option value="">Todas as Marcas</option>
                   {marcasFull.data?.data?.map((m: any, idx: number) => (
@@ -457,6 +462,7 @@ export default function VisaoEstrategicaV4() {
                   value={selectedCidade}
                   onChange={(e) => setSelectedCidade(e.target.value)}
                   className="h-12 px-4 bg-bg-secondary border border-divider text-text-primary rounded-2xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 w-full cursor-pointer shadow-sm"
+                  aria-label="Selecionar Cidade Mobile"
                 >
                   <option value="">Todas as Cidades</option>
                   {cidadesFull.data?.data?.map((c: any, idx: number) => (

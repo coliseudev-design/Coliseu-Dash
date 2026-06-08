@@ -34,7 +34,7 @@ export default function Comissoes() {
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6 pb-6">
+    <div className="space-y-4 sm:space-y-6 pb-6" aria-label="Vendedores">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold font-heading text-text-primary flex items-center gap-2">
           <Users className="text-brand-600" />

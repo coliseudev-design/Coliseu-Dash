@@ -37,6 +37,7 @@ export default function BranchSelector() {
         onClick={() => setOpen((o) => !o)}
         className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-divider bg-bg-secondary hover:bg-bg-tertiary text-sm font-medium transition-colors"
         title="Filtrar por Filial"
+        aria-label="Filtrar por Filial"
       >
         <Building2 size={14} className="text-brand-500 shrink-0" />
         <span className="max-w-[120px] truncate text-text-primary">{selectedLabel}</span>

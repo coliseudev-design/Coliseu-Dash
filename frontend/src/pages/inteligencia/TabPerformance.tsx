@@ -47,7 +47,7 @@ export default function TabPerformance() {
   else if (percentualMeta >= 70) thermoColor = 'bg-warning' // Amarelo (70% - 90%)
 
   return (
-    <div className="space-y-6 animate-fade-in py-2">
+    <div aria-label="Tab Performance" className="space-y-6 animate-fade-in py-2">
       
       {/* 1. Visão Geral de Vendas */}
       <div>

@@ -51,7 +51,7 @@ export default function CustomerAnalyticsDashboard() {
   const formatCurrency = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 
   return (
-    <div className="space-y-4 animate-in fade-in duration-300">
+    <div aria-label="Análise de Clientes Dashboard" className="space-y-4 animate-in fade-in duration-300">
       
       {/* Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

@@ -11,7 +11,7 @@ export const DNAVisualizer: React.FC<DNAVisualizerProps> = ({ produtoFavorito, m
   const topProducts = [
     { name: produtoFavorito !== 'Análise dinâmica pendente' ? produtoFavorito : 'Ração Premium 15kg', pct: 45, color: 'bg-blue-500' },
     { name: 'Antipulgas Avançado', pct: 25, color: 'bg-indigo-500' },
-    { name: 'Banho Super Premium', pct: 15, color: 'bg-purple-500' },
+    { name: 'Banho Super Premium', pct: 15, color: 'bg-emerald-500' },
     { name: 'Petisco Natural', pct: 10, color: 'bg-pink-500' },
     { name: 'Shampoo Neutro', pct: 5, color: 'bg-rose-500' },
   ];
@@ -19,21 +19,21 @@ export const DNAVisualizer: React.FC<DNAVisualizerProps> = ({ produtoFavorito, m
   const topBrands = [
     { name: marcaFavorita !== 'Análise dinâmica pendente' ? marcaFavorita : 'Royal Canin', initial: 'R', color: 'from-blue-400 to-blue-600' },
     { name: 'Bravecto', initial: 'B', color: 'from-indigo-400 to-indigo-600' },
-    { name: 'PremieR', initial: 'P', color: 'from-purple-400 to-purple-600' },
+    { name: 'PremieR', initial: 'P', color: 'from-emerald-400 to-emerald-600' },
     { name: 'Zee.Dog', initial: 'Z', color: 'from-pink-400 to-pink-600' },
   ];
 
   const categories = [
     { name: 'Alimentação', size: 100, color: 'bg-blue-500/20 text-blue-500 border-blue-500/30' },
     { name: 'Farmácia', size: 80, color: 'bg-indigo-500/20 text-indigo-500 border-indigo-500/30' },
-    { name: 'Estética', size: 60, color: 'bg-purple-500/20 text-purple-500 border-purple-500/30' },
+    { name: 'Estética', size: 60, color: 'bg-emerald-500/20 text-emerald-500 border-emerald-500/30' },
     { name: 'Acessórios', size: 40, color: 'bg-pink-500/20 text-pink-500 border-pink-500/30' },
   ];
 
   return (
-    <div className="bg-bg-primary/60 backdrop-blur-md border border-white/10 rounded-3xl p-6 shadow-card transition-all duration-300 h-full flex flex-col">
+    <div className="bg-bg-primary/60 backdrop-blur-md border border-white/10 rounded-3xl p-6 shadow-card transition-all duration-300 h-full flex flex-col" aria-label="DNA de Consumo">
       <div className="flex items-center mb-6 border-b border-white/5 pb-4">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center mr-3 border border-white/10">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-emerald-500/20 flex items-center justify-center mr-3 border border-white/10">
           <Fingerprint size={20} className="text-blue-400" />
         </div>
         <h3 className="text-lg font-bold text-text-primary">DNA de Consumo</h3>

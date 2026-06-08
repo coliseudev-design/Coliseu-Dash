@@ -143,6 +143,7 @@ CREATE TABLE IF NOT EXISTS dash_vendas (
     numero_pedido VARCHAR(50),
     data_venda TIMESTAMPTZ NOT NULL,
     data_vencimento TIMESTAMPTZ DEFAULT NULL,
+    data_hora_proc TIMESTAMPTZ DEFAULT NULL,
     cliente_id_firebird INTEGER,
     vendedor_id_firebird INTEGER,
     valor_total DECIMAL(15,2) NOT NULL DEFAULT 0,

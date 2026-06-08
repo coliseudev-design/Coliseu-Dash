@@ -41,7 +41,7 @@ export const FinancialPrediction: React.FC<FinancialPredictionProps> = ({ ltv, t
   const sparklineData = isUp ? [30, 40, 35, 50, 49, 60, 70, 91] : [91, 80, 75, 60, 65, 50, 40, 30];
 
   return (
-    <div className="bg-bg-primary/60 backdrop-blur-md border border-white/10 rounded-3xl p-6 shadow-card hover:shadow-card-hover transition-all duration-300 h-full relative overflow-hidden">
+    <div className="bg-bg-primary/60 backdrop-blur-md border border-white/10 rounded-3xl p-6 shadow-card hover:shadow-card-hover transition-all duration-300 h-full relative overflow-hidden" aria-label="Visão Financeira">
       <div className="absolute top-0 right-0 w-64 h-64 bg-green-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
       
       <div className="flex items-center justify-between mb-8 relative z-10">

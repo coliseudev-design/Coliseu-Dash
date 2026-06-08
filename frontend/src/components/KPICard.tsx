@@ -18,7 +18,7 @@ export default function KPICard({
   hint, trend, trendValue, loading, compactValue,
 }: Props) {
   return (
-    <div className="card h-full flex flex-col justify-between hover:shadow-md transition-shadow">
+    <div className="card h-full flex flex-col justify-between hover:shadow-md transition-shadow" aria-label={label}>
       <div className="flex items-start justify-between gap-2">
         <div className="text-[10px] sm:text-xs font-bold text-text-secondary uppercase tracking-tight sm:tracking-normal flex-1 truncate" title={label}>{label}</div>
         {Icon && (

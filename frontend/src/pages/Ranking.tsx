@@ -135,7 +135,7 @@ export default function Ranking() {
   const currentTab = tabs.find(t => t.id === activeTab) || tabs[0]
 
   return (
-    <div className="space-y-6 sm:space-y-8">
+    <div className="space-y-6 sm:space-y-8" aria-label="Super Guia de Rankings">
       <div>
         <h2 className="font-heading text-xl font-semibold text-text-primary">Super Guia de Rankings</h2>
         <p className="text-text-secondary text-sm mb-4">Métricas detalhadas separadas por categorias.</p>

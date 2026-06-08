@@ -93,7 +93,7 @@ export const CommandCenter: React.FC<CommandCenterProps> = ({ onSelectCustomer }
                 className="flex items-center justify-between p-3 rounded-xl hover:bg-bg-secondary/80 cursor-pointer transition-all border border-transparent hover:border-border-primary"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-md">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-brand-500 to-cyan-600 flex items-center justify-center text-white font-bold shadow-md">
                     {c.nome.substring(0, 2).toUpperCase()}
                   </div>
                   <div>

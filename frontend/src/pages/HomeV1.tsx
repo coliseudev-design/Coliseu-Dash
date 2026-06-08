@@ -42,7 +42,7 @@ export default function Home() {
   const ticketMedio = qtdPeriodo > 0 ? totalPeriodo / qtdPeriodo : 0
 
   return (
-    <div className="space-y-6 sm:space-y-8">
+    <div className="space-y-6 sm:space-y-8" aria-label="Visão Estratégica">
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
         <div>
           <h2 className="font-heading text-2xl font-bold tracking-tight text-text-primary">Visão Estratégica</h2>
@@ -262,7 +262,7 @@ export default function Home() {
               <div key={r.id} className="flex justify-between items-center p-3 rounded-xl border border-border hover:shadow-card-hover transition-all bg-bg-primary">
                 <div className="space-y-1">
                   <div className="text-xs font-semibold text-text-primary truncate max-w-[120px]" title={r.cliente}>{r.cliente || 'Consumidor Final'}</div>
-                  <div className="text-[10px] text-text-secondary mono">#{r.numero_pedido} - {formatDateTime(r.data_venda)?.split(' ')[0]}</div>
+                  <div className="text-[10px] text-text-secondary mono">#{r.numero_pedido} - {formatDateTime(r.data_venda)}</div>
                 </div>
                 <div className="text-sm font-bold text-success mono">
                   {formatBRL(r.valor_total)}

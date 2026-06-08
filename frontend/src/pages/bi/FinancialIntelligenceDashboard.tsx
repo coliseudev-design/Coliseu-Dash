@@ -92,7 +92,7 @@ export default function FinancialIntelligenceDashboard() {
   ];
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300 pb-10">
+    <div aria-label="Inteligência Financeira Dashboard" className="space-y-6 animate-in fade-in duration-300 pb-10">
       
       {/* FILTROS HEADER */}
       <div className="flex flex-col md:flex-row gap-4 mb-2 items-end justify-between xl:justify-start">
