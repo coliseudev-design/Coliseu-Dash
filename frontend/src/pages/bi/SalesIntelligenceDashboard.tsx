@@ -683,7 +683,7 @@ export default function SalesIntelligenceDashboard() {
 
       {isError && (
         <div className="bg-danger/10 border border-danger/20 text-danger p-3 rounded-lg text-sm mt-4">
-          Aviso: Os dados não puderam ser totalmente carregados devido a uma falha com a API do banco de dados Vet.
+          Aviso: Os dados não puderam ser carregados devido a uma falha de conexão com o banco de dados/API.
         </div>
       )}
 

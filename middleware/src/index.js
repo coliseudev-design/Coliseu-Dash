@@ -101,8 +101,7 @@ async function startServer() {
             server.close(async () => {
                 logger.info('[App] Servidor HTTP fechado.');
                 await db.poolMain.end();
-                await db.poolVet.end();
-                logger.info('[App] Conexões com PostgreSQL (Principal e Vet) fechadas.');
+                logger.info('[App] Conexão com PostgreSQL Principal fechada.');
                 process.exit(0);
             });
 
@@ -162,12 +161,6 @@ async function initializeRbac(db) {
             'clientes', 'vendas', 'usuarios', 'layout_1', 'layout_2', 'layout_3'
         ];
 
-        const vetModules = [
-            'inicio', 'bi_seller_hub', 'bi_sales', 'bi_hub', 'bi_supplier', 'bi_abc', 
-            'bi_finance', 'bi_customer', 'bi_comparative', 'bi_customer_analytics', 
-            'usuarios', 'layout_4'
-        ];
-
         for (const combo of userCombos) {
             const { tenant_id, layout_version } = combo;
             const layout = layout_version || 'v1.0';
@@ -184,7 +177,7 @@ async function initializeRbac(db) {
             const groupId = groupRes.rows[0].id;
 
             // Inserir as permissões padrão para esse grupo com base no layout (grupo Administrador tem acesso total por padrão)
-            const modules = layout === 'v4.0' ? vetModules : coliseuModules;
+            const modules = coliseuModules;
             for (const mod of modules) {
                 const podeAcessar = true;
 

@@ -177,57 +177,11 @@ async function requireInternalAuth(req, res, next) {
  */
 async function bindDbContext(req, res, next) {
     const dbType = 'main';
-    let isVet = false;
+    const isVet = false;
 
     // Parse timezone offset header (e.g. -180 for Brasilia, -240 for UTC-4)
     const tzOffsetHeader = req.headers['x-timezone-offset'];
     const tzOffset = tzOffsetHeader !== undefined ? parseInt(tzOffsetHeader, 10) : -180;
-
-    if (req.user && req.user.id) {
-        try {
-            const userRes = await db.poolMain.query(
-                'SELECT layout_version FROM dash_usuarios WHERE id = $1 LIMIT 1',
-                [req.user.id]
-            );
-            if (userRes.rowCount > 0) {
-                const user = userRes.rows[0];
-                if (user.layout_version === 'v4.0') {
-                    isVet = true;
-                }
-            }
-        } catch (dbErr) {
-            logger.error('[DB-Context] Erro ao buscar layout_version do usuário', { 
-                userId: req.user.id, 
-                error: dbErr.message 
-            });
-            if (req.user.layoutVersion === 'v4.0') {
-                isVet = true;
-            }
-        }
-    } else if (req.user) {
-        if (req.user.layoutVersion === 'v4.0') {
-            isVet = true;
-        }
-    } else if (req.tenant && req.tenant.id) {
-        // Para requisições do Worker (identificadas pelo X-Tenant-Id)
-        try {
-            const userRes = await db.poolMain.query(
-                'SELECT layout_version FROM dash_usuarios WHERE tenant_id = $1 LIMIT 1',
-                [req.tenant.id]
-            );
-            if (userRes.rowCount > 0) {
-                const user = userRes.rows[0];
-                if (user.layout_version === 'v4.0') {
-                    isVet = true;
-                }
-            }
-        } catch (dbErr) {
-            logger.error('[DB-Context] Erro ao buscar layout_version do tenant para o sync', { 
-                tenantId: req.tenant.id, 
-                error: dbErr.message 
-            });
-        }
-    }
 
     db.dbContext.run({ dbType, isVet, tzOffset }, () => {
         next();

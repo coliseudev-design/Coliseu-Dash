@@ -72,7 +72,6 @@ async function runCleanup() {
         client.release();
         // Terminar a conexão para encerrar o script graciosamente
         await db.poolMain.end();
-        await db.poolVet.end();
     }
 }
 

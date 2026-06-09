@@ -34,20 +34,6 @@ const COLISEU_MODULES = [
   { id: 'layout_3', label: 'Acesso Layout v3.0' }
 ]
 
-const VET_MODULES = [
-  { id: 'inicio', label: 'Visão Estratégica (Início)' },
-  { id: 'bi_seller_hub', label: 'Hub do Vendedor (BI)' },
-  { id: 'bi_sales', label: 'Inteligência de Vendas (BI)' },
-  { id: 'bi_hub', label: 'Hub de Vendas (BI)' },
-  { id: 'bi_supplier', label: 'Hub do Fornecedor (BI)' },
-  { id: 'bi_abc', label: 'Gestão de Inventário (BI)' },
-  { id: 'bi_finance', label: 'Financeiro (BI)' },
-  { id: 'bi_customer', label: 'Radar 360 (BI)' },
-  { id: 'bi_comparative', label: 'Lucratividade (BI)' },
-  { id: 'bi_customer_analytics', label: 'Análise de Clientes (BI)' },
-  { id: 'usuarios', label: 'Usuários (Configurações)' },
-  { id: 'layout_4', label: 'Acesso Layout v4.0' }
-]
 
 export default function Grupos() {
   const queryClient = useQueryClient()
@@ -62,7 +48,7 @@ export default function Grupos() {
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([])
   const [errorMsg, setErrorMsg] = useState('')
 
-  const availableModules = currentLayout === 'v4.0' ? VET_MODULES : COLISEU_MODULES
+  const availableModules = COLISEU_MODULES
 
   const { data: groups, isLoading } = useQuery<GroupRow[]>({
     queryKey: ['grupos', currentLayout],

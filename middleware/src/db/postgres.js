@@ -25,22 +25,6 @@ pool.on('error', (err) => {
     logger.error('[DB] Erro inesperado em cliente ocioso do PostgreSQL', err);
 });
 
-// PostgreSQL Pool for Vet (Siscom)
-const poolVet = new Pool({
-    host: config.postgresVet.host,
-    port: config.postgresVet.port,
-    database: config.postgresVet.database,
-    user: config.postgresVet.user,
-    password: config.postgresVet.password,
-    ssl: config.postgresVet.ssl ? { rejectUnauthorized: false } : false,
-    max: 20, // Max number of clients
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 5000,
-});
-
-poolVet.on('error', (err) => {
-    logger.error('[DB-Vet] Erro inesperado em cliente ocioso do PostgreSQL Vet', err);
-});
 
 /**
  * Executa uma query no PostgreSQL.
@@ -50,17 +34,11 @@ poolVet.on('error', (err) => {
  */
 async function query(text, params) {
     const start = Date.now();
-    const store = dbContext.getStore();
-    const activePool = store && store.dbType === 'vet' ? poolVet : pool;
-    const dbLabel = store && store.dbType === 'vet' ? '[DB-Vet]' : '[DB]';
     try {
-        const res = await activePool.query(text, params);
-        const duration = Date.now() - start;
-        // Debug mode queries are extremely noisy, comment out or trace-level
-        // logger.debug(`${dbLabel} Executed query`, { text: text.substring(0, 100), duration, rows: res.rowCount });
+        const res = await pool.query(text, params);
         return res;
     } catch (err) {
-        logger.error(`${dbLabel} Falha ao executar query`, { text: text.substring(0, 150), error: err.message });
+        logger.error('[DB] Falha ao executar query', { text: text.substring(0, 150), error: err.message });
         throw err;
     }
 }
@@ -164,14 +142,7 @@ async function checkConnection() {
         logger.error('[DB] Falha ao conectar ao PostgreSQL principal', { error: err.message });
     }
 
-    // Check Vet database connection
-    try {
-        await poolVet.query('SELECT 1 AS ok', []);
-        logger.info(`[DB-Vet] Conectado ao PostgreSQL Vet (${config.postgresVet.database})`);
-        vetOk = true;
-    } catch (err) {
-        logger.warn('[DB-Vet] Falha ao conectar ao PostgreSQL Vet', { error: err.message });
-    }
+
 
     return mainOk; // Retorna status da principal para não quebrar fluxo original do health check do Docker
 }
@@ -179,11 +150,9 @@ async function checkConnection() {
 module.exports = {
     query,
     get pool() {
-        const store = dbContext.getStore();
-        return store && store.dbType === 'vet' ? poolVet : pool;
+        return pool;
     },
     poolMain: pool,
-    poolVet,
     checkConnection,
     dbContext
 };
