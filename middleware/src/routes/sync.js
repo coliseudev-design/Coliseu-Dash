@@ -147,7 +147,7 @@ router.post('/:tabela', async (req, res) => {
                     const dataVencimento = row['data_vencimento'];
                     
                     const isFaturado = ['FATURADO', 'FINALIZADO', 'PROCESSADO'].includes(status);
-                    const faturamentoDate = (dataHoraProc && dataHoraProc !== '') ? dataHoraProc : dataVencimento;
+                    const faturamentoDate = (dataHoraProc && dataHoraProc !== '') ? dataHoraProc : (dataVencimento && dataVencimento !== '' ? dataVencimento : row['data_venda']);
                     const hasFaturamentoDate = faturamentoDate !== undefined && faturamentoDate !== null && faturamentoDate !== '';
                     
                     if (status === 'CANCELADO' || !isFaturado || !hasFaturamentoDate) {

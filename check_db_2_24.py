@@ -15,6 +15,11 @@ def run_cmd(cmd):
         print("ERR:", err)
 
 # Query company details
-run_cmd("docker exec vasjsucz4yxcb7m4rtqindd2 psql -U coliseu_admin -d coliseu_identity -c \"SELECT \\\"Id\\\", \\\"Name\\\", \\\"FirebirdHost\\\", \\\"FirebirdDatabasePath\\\", \\\"Status\\\" FROM companies WHERE \\\"Id\\\" = '1e40d65f-4319-4c68-ae13-66223820c095'\"")
+tenant = '1e40d65f-4319-4c68-ae13-66223820c095'
+run_cmd(f"docker exec vasjsucz4yxcb7m4rtqindd2 psql -U coliseu_admin -d coliseu_dashboard -c \"SELECT '{tenant}' as tenant, 'dash_clientes' as table_name, COUNT(*) FROM dash_clientes WHERE tenant_id = '{tenant}' UNION ALL SELECT '{tenant}', 'dash_vendas', COUNT(*) FROM dash_vendas WHERE tenant_id = '{tenant}' UNION ALL SELECT '{tenant}', 'dash_vendas_itens', COUNT(*) FROM dash_vendas_itens WHERE tenant_id = '{tenant}'\"")
 
 client.close()
+
+
+
+
