@@ -6,7 +6,7 @@ def run_query(sql):
     password = '6EFBC!c0:wzr%Ij'
     container = 'coliseu-db-thyqkc5gkvp7i1nld555wakz-172547374937'
     
-    cmd = f'docker exec {container} psql -U coliseu_admin -d coliseu_identity -c "{sql}"'
+    cmd = f'docker exec {container} psql -U coliseu_admin -d coliseu_dashboard -c "{sql}"'
     
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -21,4 +21,4 @@ def run_query(sql):
     finally:
         client.close()
 
-run_query("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';")
+run_query("SELECT id_firebird, tenant_id, data_emissao, valor, status_pagamento, sincronizado_em FROM dash_financeiro WHERE tenant_id = 'ed1d3a98-4c4d-48db-99c0-8751926eb8e5' ORDER BY sincronizado_em DESC LIMIT 10;")

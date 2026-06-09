@@ -1,0 +1,203 @@
+=== Logs for dashboard-middleware-g115wwb76cltjli9wew0cgfi-125244749473 ===
+STDOUT:
+2026-06-09 10:13:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:13:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:13:44 [info] [Sync] Visão materializada mv_dash_vendas_diario atualizada com sucesso. {"service":"dashboard-middleware"}
+2026-06-09 10:13:46 [info] [Sync] Visão materializada mv_dash_vendas_diario atualizada com sucesso. {"service":"dashboard-middleware"}
+2026-06-09 10:13:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:13:49 [info] [Sync] Visão materializada mv_dash_financeiro_diario atualizada com sucesso. {"service":"dashboard-middleware"}
+2026-06-09 10:13:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:14:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:14:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:14:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:14:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:15:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:15:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:15:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:15:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:16:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:16:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:16:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:16:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:17:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:17:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:17:38 [info] [Sync] Visão materializada mv_dash_vendas_diario atualizada com sucesso. {"service":"dashboard-middleware"}
+2026-06-09 10:17:40 [info] [Sync] Visão materializada mv_dash_vendas_diario atualizada com sucesso. {"service":"dashboard-middleware"}
+2026-06-09 10:17:43 [info] [Sync] Visão materializada mv_dash_financeiro_diario atualizada com sucesso. {"service":"dashboard-middleware"}
+2026-06-09 10:17:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:17:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:18:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:18:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:18:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:18:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:19:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:19:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:19:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:19:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:20:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:20:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:20:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:20:50 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:21:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:21:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:21:38 [info] [Sync] Visão materializada mv_dash_vendas_diario atualizada com sucesso. {"service":"dashboard-middleware"}
+2026-06-09 10:21:39 [info] [Sync] Visão materializada mv_dash_vendas_diario atualizada com sucesso. {"service":"dashboard-middleware"}
+2026-06-09 10:21:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:21:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:22:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:22:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:22:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:22:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:23:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:23:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:23:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:23:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:24:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:24:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:24:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:24:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:25:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:25:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:25:38 [info] [Sync] Visão materializada mv_dash_vendas_diario atualizada com sucesso. {"service":"dashboard-middleware"}
+2026-06-09 10:25:40 [info] [Sync] Visão materializada mv_dash_vendas_diario atualizada com sucesso. {"service":"dashboard-middleware"}
+2026-06-09 10:25:43 [info] [Sync] Visão materializada mv_dash_financeiro_diario atualizada com sucesso. {"service":"dashboard-middleware"}
+2026-06-09 10:25:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:25:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:26:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:26:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:26:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:26:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:27:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:27:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:27:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:27:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:28:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:28:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:28:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:28:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:29:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:29:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:29:36 [info] [Sync] Visão materializada mv_dash_vendas_diario atualizada com sucesso. {"service":"dashboard-middleware"}
+2026-06-09 10:29:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:29:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:30:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:30:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:30:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:30:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:31:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:31:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:31:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:31:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:32:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:32:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:32:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:32:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:33:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:33:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:33:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:33:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:34:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:34:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:34:44 [info] [Sync] Visão materializada mv_dash_financeiro_diario atualizada com sucesso. {"service":"dashboard-middleware"}
+2026-06-09 10:34:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:34:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:35:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:35:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:35:54 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:35:54 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:36:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:36:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:36:20 [warn] [InternalAuth] Resposta real do Identity: {"service":"dashboard-middleware","valid":false,"reason":"Empresa não encontrada ou inativa."}
+2026-06-09 10:36:20 [warn] [InternalAuth] Resposta real do Identity: {"service":"dashboard-middleware","valid":false,"reason":"Empresa não encontrada ou inativa."}
+2026-06-09 10:36:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:36:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:37:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:37:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:37:37 [info] [Sync] Visão materializada mv_dash_vendas_diario atualizada com sucesso. {"service":"dashboard-middleware"}
+2026-06-09 10:37:39 [info] [Sync] Visão materializada mv_dash_vendas_diario atualizada com sucesso. {"service":"dashboard-middleware"}
+2026-06-09 10:37:41 [info] [Sync] Visão materializada mv_dash_financeiro_diario atualizada com sucesso. {"service":"dashboard-middleware"}
+2026-06-09 10:37:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:37:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:38:22 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:38:22 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:38:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:38:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:39:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:39:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:39:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:39:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:40:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:40:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:40:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:40:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:41:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:41:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:41:43 [info] [Sync] Visão materializada mv_dash_vendas_diario atualizada com sucesso. {"service":"dashboard-middleware"}
+2026-06-09 10:41:45 [info] [Sync] Visão materializada mv_dash_vendas_diario atualizada com sucesso. {"service":"dashboard-middleware"}
+2026-06-09 10:41:48 [info] [Sync] Visão materializada mv_dash_financeiro_diario atualizada com sucesso. {"service":"dashboard-middleware"}
+2026-06-09 10:41:50 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:41:51 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:42:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:42:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:42:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:42:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:43:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:43:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:43:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:43:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:44:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:44:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:44:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:44:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:45:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:45:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:45:38 [info] [Sync] Visão materializada mv_dash_vendas_diario atualizada com sucesso. {"service":"dashboard-middleware"}
+2026-06-09 10:45:40 [info] [Sync] Visão materializada mv_dash_vendas_diario atualizada com sucesso. {"service":"dashboard-middleware"}
+2026-06-09 10:45:42 [info] [Sync] Visão materializada mv_dash_financeiro_diario atualizada com sucesso. {"service":"dashboard-middleware"}
+2026-06-09 10:45:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:45:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:46:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:46:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:46:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:46:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:47:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:47:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:47:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:47:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:48:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:48:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:48:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:48:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:49:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:49:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:49:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:49:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:50:09 [info] [Sync] Visão materializada mv_dash_vendas_diario atualizada com sucesso. {"service":"dashboard-middleware"}
+2026-06-09 10:50:11 [info] [Sync] Visão materializada mv_dash_vendas_diario atualizada com sucesso. {"service":"dashboard-middleware"}
+2026-06-09 10:50:14 [info] [Sync] Visão materializada mv_dash_financeiro_diario atualizada com sucesso. {"service":"dashboard-middleware"}
+2026-06-09 10:50:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:50:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:50:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:50:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:51:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:51:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:51:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:51:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:52:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:52:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:52:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:52:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:53:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:53:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:53:44 [info] [Sync] Visão materializada mv_dash_vendas_diario atualizada com sucesso. {"service":"dashboard-middleware"}
+2026-06-09 10:53:46 [info] [Sync] Visão materializada mv_dash_vendas_diario atualizada com sucesso. {"service":"dashboard-middleware"}
+2026-06-09 10:53:49 [info] [Sync] Visão materializada mv_dash_financeiro_diario atualizada com sucesso. {"service":"dashboard-middleware"}
+2026-06-09 10:53:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:53:50 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:54:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:54:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:54:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:54:49 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"fdaf:d356:8600::14","path":"/sync/status"}
+2026-06-09 10:55:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+2026-06-09 10:55:19 [warn] [Auth] Requisição sem token JWT (Bearer) {"service":"dashboard-middleware","ip":"::ffff:172.16.1.20","path":"/sync/status"}
+

@@ -21,4 +21,6 @@ def run_query(sql):
     finally:
         client.close()
 
-run_query("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';")
+run_query("SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'companies';")
+run_query("SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'company_modules';")
+run_query("SELECT * FROM company_modules LIMIT 10;")

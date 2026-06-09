@@ -2,9 +2,9 @@ import paramiko
 import os
 import sys
 
-HOST     = '177.39.17.7'
+HOST     = '2.24.82.19'
 USER     = 'root'
-PASSWORD = '6EFBC!c0:wzr%Ij'
+PASSWORD = 'Col@13894645'
 
 FILES_TO_DEPLOY = [
     ('middleware/src/index.js', '/usr/src/app/src/index.js'),

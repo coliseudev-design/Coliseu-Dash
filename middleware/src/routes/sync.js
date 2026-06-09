@@ -108,6 +108,12 @@ router.post('/:tabela', async (req, res) => {
     }
 
     const { id: tenantId } = req.tenant;
+    if (tabela === 'dash_vendas' || tabela === 'dash_vendas_itens') {
+        logger.info(`[SyncDebug] Recebido sync para tabela ${tabela} com ${rows.length} linhas. Tenant: ${tenantId}`);
+        if (rows.length > 0) {
+            logger.info(`[SyncDebug] Primeira linha: ${JSON.stringify(rows[0])}`);
+        }
+    }
     const allowedColumns = TABELAS_MAP[tabela];
     let inserted = 0;
     const errors = [];

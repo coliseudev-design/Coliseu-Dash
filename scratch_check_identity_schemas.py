@@ -21,4 +21,5 @@ def run_query(sql):
     finally:
         client.close()
 
-run_query("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';")
+run_query("SELECT schema_name FROM information_schema.schemata;")
+run_query("SELECT table_schema, table_name FROM information_schema.tables WHERE table_schema NOT IN ('pg_catalog', 'information_schema');")

@@ -1,21 +1,21 @@
 import paramiko
 
-HOST = '177.39.17.7'
-USER = 'root'
-PASS = '6EFBC!c0:wzr%Ij'
+client = paramiko.SSHClient()
+client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+client.connect('177.39.17.7', username='root', password='6EFBC!c0:wzr%Ij')
 
-def run_cmd(cmd, label):
-    client = paramiko.SSHClient()
-    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    try:
-        client.connect(HOST, username=USER, password=PASS)
-        _, stdout, stderr = client.exec_command(cmd)
-        print(f"\n=== {label} ===")
-        print(stdout.read().decode('utf-8'))
-    except Exception as e:
-        print(f"[ERROR]: {e}")
-    finally:
-        client.close()
+# Inspeciona as variáveis de ambiente do middleware de produção
+stdin, stdout, stderr = client.exec_command(
+    "docker inspect dashboard-middleware-irerzifjwjb4q8ucbpfk2gb8-201101912420 --format '{{range .Config.Env}}{{println .}}{{end}}'"
+)
+print("=== Middleware Production Env ===")
+print(stdout.read().decode('utf-8'))
 
-run_cmd("cat /data/coolify/applications/irerzifjwjb4q8ucbpfk2gb8/.env", "App env file")
-run_cmd("cat /artifacts/rc82x53lzbjrbqj6mbkvzwa3/.env", "Artifact env file")
+# Inspeciona as variáveis de ambiente do container do banco de dados principal
+stdin, stdout, stderr = client.exec_command(
+    "docker inspect coliseu-db-thyqkc5gkvp7i1nld555wakz-172547374937 --format '{{range .Config.Env}}{{println .}}{{end}}'"
+)
+print("=== Database Production Env ===")
+print(stdout.read().decode('utf-8'))
+
+client.close()

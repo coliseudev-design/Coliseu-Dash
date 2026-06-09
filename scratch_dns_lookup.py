@@ -1,7 +1,16 @@
 import socket
 
-try:
-    ip = socket.gethostbyname('dashboard.coliseusistemas.com.br')
-    print("dashboard.coliseusistemas.com.br resolves to:", ip)
-except Exception as e:
-    print("Failed to resolve:", e)
+domains = [
+    "adminlicencas.coliseusistemas.com.br",
+    "licencas.coliseusistemas.com.br",
+    "dashboard.coliseusistemas.com.br",
+    "garantias.coliseusistemas.com.br",
+    "api.garantias.coliseusistemas.com.br"
+]
+
+for d in domains:
+    try:
+        ip = socket.gethostbyname(d)
+        print(f"Domain: {d} -> IP: {ip}")
+    except Exception as e:
+        print(f"Domain: {d} -> Error: {e}")
