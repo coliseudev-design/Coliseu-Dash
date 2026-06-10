@@ -10,7 +10,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Cell, LineChart, Line, ReferenceLine,
 } from 'recharts'
-import { formatBRL, formatBRLCompact, formatNum, formatDate } from '../utils/format'
+import { formatBRL, formatBRLCompact, formatNum, formatDate, formatDateTime } from '../utils/format'
 import { usePeriodStore } from '../store/periodStore'
 import PeriodFilter from '../components/PeriodFilter'
 
