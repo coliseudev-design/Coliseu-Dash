@@ -60,7 +60,7 @@ services:
       - "3200" # Exposto apenas para a rede interna; Nginx/Traefik cuidam do roteamento externo
       
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --spider http://localhost:3200/health/liveness || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --spider http://127.0.0.1:3200/health/liveness || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
