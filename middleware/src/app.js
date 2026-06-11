@@ -25,6 +25,7 @@ const configuracoesRouter = require('./routes/configuracoes');
 const biRouter = require('./routes/bi');
 const { router: filiaisRouter } = require('./routes/filiais');
 const debugRouter = require('./routes/debug');
+const adminRouter = require('./routes/admin');
 
 const app = express();
 
@@ -43,6 +44,7 @@ app.use(express.json({ limit: '50mb' }));
 
 app.use('/api/auth', authRouter); // Pública (limitada pelo rateLimiter adiante, mas no momento tá sem)
 app.use('/health', healthRouter);
+app.use('/api/admin', bindDbContext, adminRouter); // Rotas administrativas (comunicação server-to-server)
 
 // Rotas do sistema (Frontend Web)
 app.use('/api', requireWebJwt);
