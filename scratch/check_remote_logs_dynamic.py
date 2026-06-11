@@ -11,18 +11,8 @@ container_name = stdout.read().decode('utf-8').strip()
 print(f"Container name: {container_name}")
 
 if container_name:
-    # Run a Node snippet inside the middleware container to query its active database
-    node_cmd = (
-        "node -e \""
-        "const db = require('./src/db/postgres'); "
-        "db.query('SELECT id_firebird, numero_pedido, data_venda, valor_total, valor_desconto, status, tenant_id, depto_id FROM dash_vendas ORDER BY sincronizado_em DESC LIMIT 20')"
-        ".then(r => console.log(JSON.stringify(r.rows, null, 2)))"
-        ".catch(e => console.error(e));\""
-    )
-    cmd = f"docker exec -w /usr/src/app {container_name} {node_cmd}"
-    stdin, stdout, stderr = client.exec_command(cmd)
-    
-    print("=== Query Results ===")
+    stdin, stdout, stderr = client.exec_command(f'docker logs --tail 100 {container_name}')
+    print("=== Middleware Logs ===")
     print(stdout.read().decode('utf-8'))
     print("=== Error (if any) ===")
     print(stderr.read().decode('utf-8'))

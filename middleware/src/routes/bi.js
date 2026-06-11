@@ -636,7 +636,7 @@ router.get('/sales/commercial-kpis', async (req, res, next) => {
                     c.nome as cliente,
                     vend.nome as vendedor,
                     TO_CHAR(COALESCE(v.data_vencimento, v.data_venda), 'DD/MM/YYYY') as data,
-                    v.valor_total as valor,
+                    v.valor_total - COALESCE(v.valor_desconto, 0) as valor,
                     v.status
                 FROM dash_vendas v
                 LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
@@ -664,7 +664,7 @@ router.get('/sales/commercial-kpis', async (req, res, next) => {
                     c.nome as cliente,
                     vend.nome as vendedor,
                     TO_CHAR(COALESCE(v.data_vencimento, v.data_venda), 'DD/MM/YYYY') as data,
-                    v.valor_total as valor,
+                    v.valor_total - COALESCE(v.valor_desconto, 0) as valor,
                     v.status
                 FROM dash_vendas v
                 LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id

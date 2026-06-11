@@ -90,13 +90,13 @@ router.get('/overview', async (req, res, next) => {
             topMarcasVendas, topCatsVendas
         ] = await Promise.all([
             // 1. Vendas do dia âncora
-            db.query(`SELECT COALESCE(SUM(v.valor_total),0) AS total, COUNT(*) AS qtd FROM dash_vendas v WHERE v.tenant_id = $1 AND COALESCE(v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_vencimento, v.data_venda) <= $3 ${salesFilter} ${df.clause} ${vf.clause}`, [tenantId, startHojeStr, endHojeStr, ...df.params, ...vf.params]),
+            db.query(`SELECT COALESCE(SUM(v.valor_total - COALESCE(v.valor_desconto, 0)),0) AS total, COUNT(*) AS qtd FROM dash_vendas v WHERE v.tenant_id = $1 AND COALESCE(v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_vencimento, v.data_venda) <= $3 ${salesFilter} ${df.clause} ${vf.clause}`, [tenantId, startHojeStr, endHojeStr, ...df.params, ...vf.params]),
             db.query(devHoje.sql, devHoje.params),
             // 2. Vendas do período selecionado
-            db.query(`SELECT COALESCE(SUM(v.valor_total),0) AS total, COUNT(*) AS qtd FROM dash_vendas v WHERE v.tenant_id = $1 AND COALESCE(v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_vencimento, v.data_venda) <= $3 ${salesFilter} ${df.clause} ${vf.clause}`, [tenantId, start, end, ...df.params, ...vf.params]),
+            db.query(`SELECT COALESCE(SUM(v.valor_total - COALESCE(v.valor_desconto, 0)),0) AS total, COUNT(*) AS qtd FROM dash_vendas v WHERE v.tenant_id = $1 AND COALESCE(v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_vencimento, v.data_venda) <= $3 ${salesFilter} ${df.clause} ${vf.clause}`, [tenantId, start, end, ...df.params, ...vf.params]),
             db.query(devMes.sql, devMes.params),
             // 3. Período anterior de mesmo tamanho
-            db.query(`SELECT COALESCE(SUM(v.valor_total),0) AS total, COUNT(*) AS qtd FROM dash_vendas v WHERE v.tenant_id = $1 AND COALESCE(v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_vencimento, v.data_venda) <= $3 ${salesFilter} ${df.clause} ${vf.clause}`, [tenantId, prevStart, prevEnd, ...df.params, ...vf.params]),
+            db.query(`SELECT COALESCE(SUM(v.valor_total - COALESCE(v.valor_desconto, 0)),0) AS total, COUNT(*) AS qtd FROM dash_vendas v WHERE v.tenant_id = $1 AND COALESCE(v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_vencimento, v.data_venda) <= $3 ${salesFilter} ${df.clause} ${vf.clause}`, [tenantId, prevStart, prevEnd, ...df.params, ...vf.params]),
             db.query(devAnterior.sql, devAnterior.params),
             // 4. Status PENDENTE/ABERTO
             db.query(`SELECT COUNT(*) AS qtd FROM dash_vendas v WHERE v.tenant_id = $1 AND COALESCE(v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_vencimento, v.data_venda) <= $3 AND UPPER(TRIM(v.status)) IN ('PENDENTE','ABERTO') ${cfopFilter} ${df.clause} ${vf.clause}`, [tenantId, start, end, ...df.params, ...vf.params]),
@@ -236,7 +236,7 @@ router.get('/kpis', async (req, res, next) => {
         const { rows: rTotCli } = await db.query(`SELECT COUNT(*) AS total FROM dash_clientes WHERE tenant_id = $1 AND ativo = true`, [tenantId]);
 
         const { rows: topClientes } = await db.query(`
-            SELECT COALESCE(c.nome, 'Cliente ' || COALESCE(v.cliente_id_firebird::text, '?')) AS nome, SUM(v.valor_total) AS total
+            SELECT COALESCE(c.nome, 'Cliente ' || COALESCE(v.cliente_id_firebird::text, '?')) AS nome, SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) AS total
             FROM dash_vendas v
             LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
             WHERE v.tenant_id = $1 AND COALESCE(v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_vencimento, v.data_venda) <= $3 ${salesFilter} ${df.clause} ${vf.clause}

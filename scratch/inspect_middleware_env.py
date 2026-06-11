@@ -1,34 +1,26 @@
 import paramiko
 import json
 
-HOST = '177.39.17.7'
-USER = 'root'
-PASS = '6EFBC!c0:wzr%Ij'
-CONTAINER = 'dashboard-middleware-irerzifjwjb4q8ucbpfk2gb8-010649342983'
+client = paramiko.SSHClient()
+client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+client.connect('177.39.17.7', username='root', password='6EFBC!c0:wzr%Ij')
 
-def run_cmd(cmd):
-    client = paramiko.SSHClient()
-    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    try:
-        client.connect(HOST, username=USER, password=PASS)
-        _, stdout, stderr = client.exec_command(cmd)
-        out = stdout.read().decode('utf-8')
-        err = stderr.read().decode('utf-8')
-        return out, err
-    except Exception as e:
-        return None, str(e)
-    finally:
-        client.close()
+# Find the middleware container dynamically
+stdin, stdout, stderr = client.exec_command('docker ps --format "{{.Names}}" | grep dashboard-middleware')
+container_name = stdout.read().decode('utf-8').strip()
 
-out, err = run_cmd(f"docker inspect {CONTAINER}")
-if out:
-    try:
-        data = json.loads(out)
-        env = data[0]['Config']['Env']
-        print("=== Container Env Vars ===")
-        for item in env:
+print(f"Container name: {container_name}")
+
+if container_name:
+    stdin, stdout, stderr = client.exec_command(f'docker inspect {container_name}')
+    data = json.loads(stdout.read().decode('utf-8'))
+    env = data[0]['Config']['Env']
+    print("=== Container Env Vars ===")
+    for item in env:
+        # Don't print secrets unless needed, but host/port/database is safe
+        if "PASS" not in item and "SECRET" not in item and "KEY" not in item:
             print(item)
-    except Exception as e:
-        print("JSON parse error:", e)
 else:
-    print("Error getting container info:", err)
+    print("No dashboard-middleware container found.")
+
+client.close()

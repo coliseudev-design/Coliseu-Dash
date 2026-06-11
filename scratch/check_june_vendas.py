@@ -8,11 +8,14 @@ DB = "coliseu-db-thyqkc5gkvp7i1nld555wakz-172547374937"
 
 def pg(sql, label):
     sql_escaped = sql.replace('"', '\\"')
-    cmd = f'docker exec {DB} psql -U coliseu_admin -d postgres -c "{sql_escaped}" 2>&1'
+    cmd = f'docker exec {DB} psql -U coliseu_admin -d coliseu_dashboard -c "{sql_escaped}" 2>&1'
     stdin, stdout, stderr = client.exec_command(cmd)
     print(f"\n=== {label} ===")
     print(stdout.read().decode('utf-8'))
 
-pg("SELECT datname FROM pg_database WHERE datistemplate = false;", "Databases List")
+pg(
+    "SELECT id_firebird, numero_pedido, data_venda, valor_total, valor_desconto, status, tenant_id FROM dash_vendas WHERE data_venda >= '2026-06-10 00:00:00' ORDER BY data_venda DESC LIMIT 50;",
+    "Pedidos desde 10/06/2026 no PG"
+)
 
 client.close()
