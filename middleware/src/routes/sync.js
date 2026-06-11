@@ -173,6 +173,14 @@ router.post('/:tabela', async (req, res) => {
                     
                     // Alinhamento de Faturamento: usa data_hora_proc ou data_vencimento como data_venda principal
                     row['data_venda'] = faturamentoDate;
+
+                    // Ajustar valor_total no Postgres para ser bruto (total + desconto)
+                    // para manter a consistência com as consultas do dashboard que subtraem valor_desconto.
+                    if (row['valor_total'] !== undefined && row['valor_total'] !== null) {
+                        const total = parseFloat(row['valor_total']) || 0;
+                        const desc = parseFloat(row['valor_desconto']) || 0;
+                        row['valor_total'] = total + desc;
+                    }
                 }
 
                 if (tabela === 'dash_vendas_itens') {
@@ -286,38 +294,8 @@ router.post('/:tabela', async (req, res) => {
             errors.length > 0 ? errors.slice(0, 3).join(' | ') : null
         ]);
 
-        // Recalcular valor total dos pedidos afetados para incluir produtos + serviços
-        if (tabela === 'dash_vendas_itens') {
-            const vendaIds = [...new Set(rows.map(r => r.venda_id_firebird || r.VENDA_ID_FIREBIRD).filter(Boolean))];
-            if (vendaIds.length > 0) {
-                await client.query(`
-                    UPDATE dash_vendas v
-                    SET valor_total = (
-                        SELECT COALESCE(SUM(CASE WHEN vi.valor_total = 0 THEN vi.quantidade * vi.preco_unitario ELSE vi.valor_total END), 0)
-                        FROM dash_vendas_itens vi
-                        WHERE vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id
-                    )
-                    WHERE v.tenant_id = $1 AND v.id_firebird = ANY($2)
-                `, [tenantId, vendaIds]);
-            }
-        } else if (tabela === 'dash_vendas') {
-            const vendaIds = [...new Set(rows.map(r => r.id_firebird || r.ID_FIREBIRD).filter(Boolean))];
-            if (vendaIds.length > 0) {
-                await client.query(`
-                    UPDATE dash_vendas v
-                    SET valor_total = (
-                        SELECT COALESCE(SUM(CASE WHEN vi.valor_total = 0 THEN vi.quantidade * vi.preco_unitario ELSE vi.valor_total END), 0)
-                        FROM dash_vendas_itens vi
-                        WHERE vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id
-                    )
-                    WHERE v.tenant_id = $1 AND v.id_firebird = ANY($2)
-                      AND EXISTS (
-                          SELECT 1 FROM dash_vendas_itens vi2
-                          WHERE vi2.venda_id_firebird = v.id_firebird AND vi2.tenant_id = v.tenant_id
-                      )
-                `, [tenantId, vendaIds]);
-            }
-        }
+        // O valor_total enviado pelo ERP já é o valor final líquido correto (produtos + frete + acréscimo + outras_despesas - desconto).
+        // Não recalculamos a partir dos itens para não perder o frete, acréscimos, outras despesas e descontos de cabeçalho.
 
         await client.query('COMMIT');
 
