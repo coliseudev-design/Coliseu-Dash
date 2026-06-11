@@ -26,7 +26,7 @@ router.get('/faturadas', async (req, res, next) => {
         const { rows } = await db.query(`
             SELECT 
                 TO_CHAR(COALESCE(v.data_vencimento, v.data_venda), 'YYYY-MM-DD') AS data,
-                SUM(v.valor_total) AS total,
+                SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) AS total,
                 COUNT(*) AS quantidade
             FROM dash_vendas v
             WHERE v.tenant_id = $1 
@@ -64,7 +64,7 @@ router.get('/por-horario', async (req, res, next) => {
                 SELECT 
                     EXTRACT(HOUR FROM COALESCE(data_vencimento, data_venda)) AS hora,
                     COUNT(*) AS quantidade,
-                    SUM(valor_total) AS total
+                    SUM(valor_total - COALESCE(valor_desconto, 0)) AS total
                 FROM dash_vendas
                 WHERE tenant_id = $1
                   AND TO_CHAR(COALESCE(data_vencimento, data_venda), 'YYYY-MM-DD') = $2
@@ -79,7 +79,7 @@ router.get('/por-horario', async (req, res, next) => {
                 SELECT 
                     EXTRACT(HOUR FROM COALESCE(data_vencimento, data_venda)) AS hora,
                     COUNT(*) AS quantidade,
-                    SUM(valor_total) AS total
+                    SUM(valor_total - COALESCE(valor_desconto, 0)) AS total
                 FROM dash_vendas
                 WHERE tenant_id = $1
                   AND COALESCE(data_vencimento, data_venda) >= NOW() - INTERVAL '30 days'
@@ -114,7 +114,7 @@ router.get('/pedidos-abertos', async (req, res, next) => {
             SELECT 
                 TRIM(status) as status, 
                 COUNT(*) AS quantidade, 
-                SUM(valor_total) AS total
+                SUM(valor_total - COALESCE(valor_desconto, 0)) AS total
             FROM dash_vendas
             WHERE tenant_id = $1 
               AND TRIM(status) NOT IN ('FATURADO', 'FINALIZADO', 'CANCELADO', 'PROCESSADO')
@@ -150,11 +150,11 @@ router.get('/kpis', async (req, res, next) => {
 
         const { rows } = await db.query(`
             SELECT 
-                COALESCE(SUM(v.valor_total), 0) AS total_faturado,
+                COALESCE(SUM(v.valor_total - COALESCE(v.valor_desconto, 0)), 0) AS total_faturado,
                 COUNT(*) AS qtd_pedidos,
-                COALESCE(AVG(v.valor_total), 0) AS ticket_medio,
-                COALESCE(MAX(v.valor_total), 0) AS maior_venda,
-                COALESCE(MIN(v.valor_total), 0) AS menor_venda
+                COALESCE(AVG(v.valor_total - COALESCE(v.valor_desconto, 0)), 0) AS ticket_medio,
+                COALESCE(MAX(v.valor_total - COALESCE(v.valor_desconto, 0)), 0) AS maior_venda,
+                COALESCE(MIN(v.valor_total - COALESCE(v.valor_desconto, 0)), 0) AS menor_venda
             FROM dash_vendas v
             WHERE v.tenant_id = $1
               AND COALESCE(v.data_vencimento, v.data_venda) >= $2
@@ -192,7 +192,7 @@ router.get('/recentes', async (req, res, next) => {
                 v.id_firebird AS id, 
                 v.numero_pedido, 
                 COALESCE(v.data_vencimento, v.data_venda) AS data_venda, 
-                v.valor_total, 
+                (v.valor_total - COALESCE(v.valor_desconto, 0)) AS valor_total, 
                 v.status,
                 c.nome AS cliente, 
                 vd.nome AS vendedor

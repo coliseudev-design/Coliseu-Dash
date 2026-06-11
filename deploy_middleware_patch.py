@@ -7,7 +7,10 @@ USER     = 'root'
 PASSWORD = 'Col@13894645'
 
 FILES_TO_DEPLOY = [
-    ('middleware/src/routes/sync.js', '/usr/src/app/src/routes/sync.js'),
+    ('middleware/src/routes/estatisticas.js', '/usr/src/app/src/routes/estatisticas.js'),
+    ('middleware/src/routes/bi.js', '/usr/src/app/src/routes/bi.js'),
+    ('middleware/src/routes/vendas.js', '/usr/src/app/src/routes/vendas.js'),
+    ('middleware/src/routes/ranking.js', '/usr/src/app/src/routes/ranking.js'),
 ]
 
 def run(client, cmd, label=""):

@@ -203,10 +203,10 @@ router.get('/kpis', async (req, res, next) => {
 
         const totalBruto = parseFloat(salesData.total_bruto);
         const totalDev = parseFloat(devData.total);
-        const faturamentoLiquido = totalBruto - totalDev;
+        const totalDescontos = parseFloat(salesData.total_descontos);
+        const faturamentoLiquido = totalBruto - totalDev - totalDescontos;
         const qtdPedidos = parseInt(salesData.qtd_pedidos, 10);
         const ticketMedio = qtdPedidos > 0 ? faturamentoLiquido / qtdPedidos : 0;
-        const totalDescontos = parseFloat(salesData.total_descontos);
 
         const { rows: f } = await db.query(`
             SELECT 
