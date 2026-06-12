@@ -106,7 +106,7 @@ router.post('/', async (req, res) => {
         }
 
         // Valida se o email já existe
-        const checkQuery = `SELECT id FROM dash_usuarios WHERE email = $1`;
+        const checkQuery = `SELECT id FROM dash_usuarios WHERE LOWER(TRIM(email)) = LOWER(TRIM($1))`;
         const checkResult = await db.query(checkQuery, [email]);
         
         if (checkResult.rowCount > 0) {

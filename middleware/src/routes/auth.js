@@ -22,7 +22,7 @@ router.post('/login', async (req, res) => {
         }
 
         // Buscar usuário localmente
-        const query = `SELECT id, tenant_id, email, nome, role, ativo, senha_hash, permissions, layout_version FROM dash_usuarios WHERE email = $1`;
+        const query = `SELECT id, tenant_id, email, nome, role, ativo, senha_hash, permissions, layout_version FROM dash_usuarios WHERE LOWER(TRIM(email)) = LOWER(TRIM($1))`;
         const result = await db.query(query, [email]);
 
         if (result.rowCount === 0) {
@@ -152,7 +152,7 @@ router.post('/register', async (req, res) => {
         }
 
         // 2. Valida se o email já existe
-        const checkQuery = `SELECT id FROM dash_usuarios WHERE email = $1`;
+        const checkQuery = `SELECT id FROM dash_usuarios WHERE LOWER(TRIM(email)) = LOWER(TRIM($1))`;
         const checkResult = await db.query(checkQuery, [email]);
         
         if (checkResult.rowCount > 0) {
