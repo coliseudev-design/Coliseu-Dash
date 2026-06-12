@@ -17,8 +17,7 @@ const MODULES = [
   { to: '/',              label: 'Início',        icon: LayoutDashboard,  exact: true,  id: 'inicio' },
   { to: '/comissoes',     label: 'Vendedores',    icon: Users,                          id: 'vendedores' },
   { to: '/fluxo-caixa',   label: 'Fluxo de Caixa',icon: Wallet,                         id: 'fluxo_caixa' },
-  { to: '/ranking',       label: 'Ranking',       icon: Trophy,                         id: 'ranking' },
-  { to: '/estatisticas',  label: 'Estatísticas',  icon: BarChart3,                      id: 'estatisticas' }
+  { to: '/ranking',       label: 'Ranking',       icon: Trophy,                         id: 'ranking' }
 ]
 
 const CONFIG_MODULES = [

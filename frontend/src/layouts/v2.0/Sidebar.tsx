@@ -147,13 +147,11 @@ export default function Sidebar({ open, onClose, isCollapsed }: Props) {
   }
 
   const hasAccess = (moduleId: string) => {
-    if (!user) return false
-    if (user.role === 'master' || !user.permissions) return true
-    return user.permissions.includes(moduleId)
+    return true
   }
 
   const allowedModules = MODULES.filter((m) => hasAccess(m.id))
-  const allowedBiModules = BI_MODULES.filter((m) => hasAccess(m.id) && visibility[m.id] !== false)
+  const allowedBiModules = BI_MODULES
   const allowedConfigModules = CONFIG_MODULES.filter((m) => hasAccess(m.id))
 
   return (
@@ -299,20 +297,6 @@ export default function Sidebar({ open, onClose, isCollapsed }: Props) {
                 "pl-4 mt-1 space-y-1 border-l-2 border-divider ml-3 transition-all duration-300",
                 isCollapsed ? "md:hidden group-hover:block" : "block"
               )}>
-                {/* Botão de Personalização de Menus */}
-                <button
-                  onClick={() => {
-                    onClose();
-                    setIsCustomizing(true);
-                  }}
-                  className="w-full flex items-center gap-3 px-3 py-1.5 rounded-xl text-sm font-medium transition-all duration-200 border border-transparent text-text-secondary hover:bg-bg-secondary/60 hover:text-text-primary text-left cursor-pointer"
-                >
-                  <div className="p-1.5 rounded-lg flex-shrink-0 bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400">
-                    <Settings size={14} className="transition-transform duration-200 hover:scale-110" />
-                  </div>
-                  <span className="truncate">Personalizar Menus</span>
-                </button>
-
                 {/* Submenus Originais se existirem */}
                 {allowedConfigModules.map(({ to, label, icon: Icon, exact, iconColor, iconBg }) => (
                   <NavLink
