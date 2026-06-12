@@ -576,7 +576,8 @@ export default function SalesIntelligenceDashboard() {
                     <ArrowUpDown size={11} className={clsx(sortField === 'data' ? "text-brand-500" : "text-text-muted")} />
                   </div>
                 </th>
-                <th className="py-3 px-4 w-48">VENDEDOR</th>
+                <th className="py-3 px-4 w-28">PEDIDO</th>
+                <th className="py-3 px-4 w-40">VENDEDOR</th>
                 <th 
                   onClick={() => handleSort('cliente')}
                   className="py-3 px-4 cursor-pointer hover:bg-bg-secondary/80 select-none transition-colors"
@@ -586,6 +587,7 @@ export default function SalesIntelligenceDashboard() {
                     <ArrowUpDown size={11} className={clsx(sortField === 'cliente' ? "text-brand-500" : "text-text-muted")} />
                   </div>
                 </th>
+                <th className="py-3 px-4 w-28">TIPO</th>
                 <th 
                   onClick={() => handleSort('valor')}
                   className="py-3 px-4 text-right cursor-pointer hover:bg-bg-secondary/80 select-none transition-colors w-40"
@@ -598,21 +600,39 @@ export default function SalesIntelligenceDashboard() {
               </tr>
             </thead>
             <tbody className="divide-y divide-divider/20">
-              {currentOrders.map((order: any, idx: number) => (
-                <tr key={order.id || idx} className="hover:bg-bg-secondary/40 transition-colors">
-                  <td className="py-3 px-4 text-text-secondary font-medium">{order.data_emissao || order.data}</td>
-                  <td className="py-3 px-4 text-text-secondary">{order.vendedor_nome || order.vendedor}</td>
-                  <td className="py-3 px-4 font-bold text-text-primary truncate max-w-[280px]" title={order.cliente_nome}>
-                    {order.cliente_nome || order.cliente}
-                  </td>
-                  <td className="py-3 px-4 text-right font-mono font-extrabold text-success">
-                    {formatBRL(order.valor_total || order.valor)}
-                  </td>
-                </tr>
-              ))}
+              {currentOrders.map((order: any, idx: number) => {
+                const isDevolucao = order.es === 2 || order.processo === 2 || (order.valor_total || order.valor || 0) < 0;
+                return (
+                  <tr key={order.id || idx} className="hover:bg-bg-secondary/40 transition-colors">
+                    <td className="py-3 px-4 text-text-secondary font-medium">{order.data_emissao || order.data}</td>
+                    <td className="py-3 px-4 text-text-secondary font-mono">{order.numero_nota || order.numero_pedido || '-'}</td>
+                    <td className="py-3 px-4 text-text-secondary">{order.vendedor_nome || order.vendedor}</td>
+                    <td className="py-3 px-4 font-bold text-text-primary truncate max-w-[240px]" title={order.cliente_nome}>
+                      {order.cliente_nome || order.cliente}
+                    </td>
+                    <td className="py-3 px-4">
+                      {isDevolucao ? (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-danger/10 text-danger">
+                          Devolução
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-success/10 text-success">
+                          Venda
+                        </span>
+                      )}
+                    </td>
+                    <td className={clsx(
+                      "py-3 px-4 text-right font-mono font-extrabold",
+                      isDevolucao ? "text-danger" : "text-success"
+                    )}>
+                      {formatBRL(order.valor_total || order.valor)}
+                    </td>
+                  </tr>
+                );
+              })}
               {currentOrders.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="py-8 text-center text-text-muted font-medium">
+                  <td colSpan={6} className="py-8 text-center text-text-muted font-medium">
                     Nenhuma nota encontrada para os filtros selecionados.
                   </td>
                 </tr>
@@ -623,23 +643,41 @@ export default function SalesIntelligenceDashboard() {
 
         {/* Mobile Card View Fallback */}
         <div className="sm:hidden space-y-3">
-          {currentOrders.map((order: any, idx: number) => (
-            <div key={order.id || idx} className="p-4 border border-divider rounded-xl bg-bg-secondary/10 flex flex-col gap-2">
-              <div>
-                <h4 className="text-xs font-bold text-text-primary leading-tight">{order.cliente_nome || order.cliente}</h4>
-                <p className="text-[10px] text-text-secondary mt-0.5">Vendedor: {order.vendedor_nome || order.vendedor}</p>
-              </div>
-              <div className="flex justify-between items-center pt-2 border-t border-divider mt-1">
-                <div className="flex items-center gap-1 text-[10px] text-text-muted">
-                  <Calendar size={12} />
-                  {order.data_emissao || order.data}
+          {currentOrders.map((order: any, idx: number) => {
+            const isDevolucao = order.es === 2 || order.processo === 2 || (order.valor_total || order.valor || 0) < 0;
+            return (
+              <div key={order.id || idx} className="p-4 border border-divider rounded-xl bg-bg-secondary/10 flex flex-col gap-2">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h4 className="text-xs font-bold text-text-primary leading-tight">{order.cliente_nome || order.cliente}</h4>
+                    <p className="text-[10px] text-text-secondary mt-0.5">Vendedor: {order.vendedor_nome || order.vendedor}</p>
+                    <p className="text-[10px] text-text-muted mt-0.5 font-mono">Pedido: {order.numero_nota || order.numero_pedido || '-'}</p>
+                  </div>
+                  {isDevolucao ? (
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-danger/10 text-danger shrink-0">
+                      Devolução
+                    </span>
+                  ) : (
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-success/10 text-success shrink-0">
+                      Venda
+                    </span>
+                  )}
                 </div>
-                <div className="text-xs font-mono font-bold text-success">
-                  {formatBRL(order.valor_total || order.valor)}
+                <div className="flex justify-between items-center pt-2 border-t border-divider mt-1">
+                  <div className="flex items-center gap-1 text-[10px] text-text-muted">
+                    <Calendar size={12} />
+                    {order.data_emissao || order.data}
+                  </div>
+                  <div className={clsx(
+                    "text-xs font-mono font-bold",
+                    isDevolucao ? "text-danger" : "text-success"
+                  )}>
+                    {formatBRL(order.valor_total || order.valor)}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
           {currentOrders.length === 0 && (
             <div className="py-8 text-center text-text-muted text-xs">
               Nenhuma nota encontrada.

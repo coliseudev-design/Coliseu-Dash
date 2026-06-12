@@ -12,7 +12,5 @@ def run_query(sql, label):
     print(f"=== {label} ===")
     print(stdout.read().decode('utf-8'))
 
-tenant_id = '1ca30f62-4487-4103-b529-c6d7b041b245'
-run_query(f"SELECT status, COUNT(*), SUM(valor_total) FROM dash_vendas WHERE tenant_id = '{tenant_id}' GROUP BY status;", "Vendas by Status")
-run_query(f"SELECT DISTINCT cfop FROM dash_vendas WHERE tenant_id = '{tenant_id}';", "Distinct CFOPs in Vendas")
+run_query("SELECT tenant_id, COUNT(*) FROM dash_vendas_itens GROUP BY tenant_id;", "dash_vendas_itens count by tenant")
 client.close()

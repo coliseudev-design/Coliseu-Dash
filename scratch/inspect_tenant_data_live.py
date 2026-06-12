@@ -11,8 +11,14 @@ def run_query(sql, label):
     stdin, stdout, stderr = client.exec_command(cmd)
     print(f"=== {label} ===")
     print(stdout.read().decode('utf-8'))
+    err = stderr.read().decode('utf-8')
+    if err.strip():
+        print("ERR:", err)
 
 tenant_id = '1ca30f62-4487-4103-b529-c6d7b041b245'
-run_query(f"SELECT status, COUNT(*), SUM(valor_total) FROM dash_vendas WHERE tenant_id = '{tenant_id}' GROUP BY status;", "Vendas by Status")
-run_query(f"SELECT DISTINCT cfop FROM dash_vendas WHERE tenant_id = '{tenant_id}';", "Distinct CFOPs in Vendas")
+
+run_query(f"SELECT COUNT(*), tenant_id FROM dash_devolucoes GROUP BY tenant_id;", "Devolucoes count by tenant")
+run_query(f"SELECT COUNT(*), tenant_id FROM dash_vendas GROUP BY tenant_id;", "Vendas count by tenant")
+run_query(f"SELECT * FROM dash_devolucoes WHERE tenant_id = '{tenant_id}' LIMIT 5;", "Devolucoes Sample")
+run_query(f"SELECT * FROM dash_vendas WHERE tenant_id = '{tenant_id}' LIMIT 5;", "Vendas Sample")
 client.close()

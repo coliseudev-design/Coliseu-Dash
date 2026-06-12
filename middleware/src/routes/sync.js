@@ -11,7 +11,7 @@ const TABELAS_MAP = {
     'dash_produtos': ['id_firebird', 'codigo', 'nome', 'descricao', 'categoria', 'marca', 'preco', 'custo', 'estoque', 'estoque_minimo', 'ativo', 'referencia', 'codigo_fabrica', 'marca_id', 'grupo_id'],
     'dash_vendedores': ['id_firebird', 'nome', 'email', 'ativo'],
     'dash_fornecedores': ['id_firebird', 'nome', 'documento', 'cidade', 'estado'],
-    'dash_vendas': ['id_firebird', 'numero_pedido', 'data_venda', 'data_vencimento', 'cliente_id_firebird', 'vendedor_id_firebird', 'valor_total', 'valor_custo', 'valor_desconto', 'status', 'marca', 'categoria', 'especie', 'depto_id', 'cfop', 'numero_nota', 'data_hora_proc'],
+    'dash_vendas': ['id_firebird', 'numero_pedido', 'data_venda', 'data_vencimento', 'cliente_id_firebird', 'vendedor_id_firebird', 'valor_total', 'valor_custo', 'valor_desconto', 'status', 'marca', 'categoria', 'especie', 'depto_id', 'cfop', 'numero_nota', 'data_hora_proc', 'es', 'processo'],
     'dash_vendas_itens': ['id_firebird', 'venda_id_firebird', 'produto_id_firebird', 'quantidade', 'preco_unitario', 'custo_unitario', 'valor_total', 'vendedor', 'produto', 'marca', 'categoria', 'depto_id'],
     'dash_comissoes': ['id_firebird', 'vendedor_id_firebird', 'venda_id_firebird', 'periodo', 'valor_vendas', 'percentual', 'valor_comissao', 'data_referencia'],
     'dash_financeiro': ['id_firebird', 'tipo', 'tipo_documento', 'descricao', 'cliente_id_firebird', 'fornecedor_id_firebird', 'caixa_id_firebird', 'data_emissao', 'data_vencimento', 'data_pagamento', 'valor', 'valor_pago', 'status_pagamento', 'depto_id', 'centro_custo'],
@@ -177,9 +177,20 @@ router.post('/:tabela', async (req, res) => {
                     // Ajustar valor_total no Postgres para ser bruto (total + desconto)
                     // para manter a consistência com as consultas do dashboard que subtraem valor_desconto.
                     if (row['valor_total'] !== undefined && row['valor_total'] !== null) {
-                        const total = parseFloat(row['valor_total']) || 0;
-                        const desc = parseFloat(row['valor_desconto']) || 0;
+                        let total = parseFloat(row['valor_total']) || 0;
+                        let desc = parseFloat(row['valor_desconto']) || 0;
+                        let custo = parseFloat(row['valor_custo']) || 0;
+
+                        const isDevolucao = parseInt(row['es']) === 2 || parseInt(row['processo']) === 2;
+                        if (isDevolucao) {
+                            total = -Math.abs(total);
+                            desc = -Math.abs(desc);
+                            custo = -Math.abs(custo);
+                        }
+
                         row['valor_total'] = total + desc;
+                        row['valor_desconto'] = desc;
+                        row['valor_custo'] = custo;
                     }
                 }
 

@@ -637,7 +637,9 @@ router.get('/sales/commercial-kpis', async (req, res, next) => {
                     vend.nome as vendedor,
                     TO_CHAR(COALESCE(v.data_vencimento, v.data_venda), 'DD/MM/YYYY') as data,
                     v.valor_total - COALESCE(v.valor_desconto, 0) as valor,
-                    v.status
+                    v.status,
+                    v.es,
+                    v.processo
                 FROM dash_vendas v
                 LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
                 LEFT JOIN dash_vendedores vend ON vend.id_firebird = v.vendedor_id_firebird AND vend.tenant_id = v.tenant_id
@@ -665,7 +667,9 @@ router.get('/sales/commercial-kpis', async (req, res, next) => {
                     vend.nome as vendedor,
                     TO_CHAR(COALESCE(v.data_vencimento, v.data_venda), 'DD/MM/YYYY') as data,
                     v.valor_total - COALESCE(v.valor_desconto, 0) as valor,
-                    v.status
+                    v.status,
+                    v.es,
+                    v.processo
                 FROM dash_vendas v
                 LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
                 LEFT JOIN dash_vendedores vend ON vend.id_firebird = v.vendedor_id_firebird AND vend.tenant_id = v.tenant_id
@@ -695,7 +699,9 @@ router.get('/sales/commercial-kpis', async (req, res, next) => {
                 vendedor: r.vendedor || 'Vendedor',
                 data: r.data,
                 valor: parseFloat(r.valor || 0),
-                status: r.status
+                status: r.status,
+                es: r.es,
+                processo: r.processo
             }))
         });
     } catch (err) { next(err); }

@@ -13,6 +13,6 @@ def run_query(sql, label):
     print(stdout.read().decode('utf-8'))
 
 tenant_id = '1ca30f62-4487-4103-b529-c6d7b041b245'
-run_query(f"SELECT status, COUNT(*), SUM(valor_total) FROM dash_vendas WHERE tenant_id = '{tenant_id}' GROUP BY status;", "Vendas by Status")
-run_query(f"SELECT DISTINCT cfop FROM dash_vendas WHERE tenant_id = '{tenant_id}';", "Distinct CFOPs in Vendas")
+run_query(f"SELECT MIN(valor_total), MAX(valor_total), AVG(valor_total) FROM dash_vendas WHERE tenant_id = '{tenant_id}';", "Min/Max/Avg valor_total")
+run_query(f"SELECT COUNT(*) FROM dash_vendas WHERE tenant_id = '{tenant_id}' AND valor_total < 0;", "Negative sales count")
 client.close()
