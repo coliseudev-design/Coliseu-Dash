@@ -15,6 +15,8 @@ interface Props {
 
 const MODULES = [
   { to: '/',              label: 'Início',        icon: LayoutDashboard,  exact: true,  id: 'inicio' },
+  { to: '/bi',            label: 'Hub de Vendas', icon: BarChart3,        exact: true,  id: 'bi_sales' },
+  { to: '/bi/finance',    label: 'Financeiro',    icon: Wallet,                         id: 'bi_finance' },
   { to: '/comissoes',     label: 'Vendedores',    icon: Users,                          id: 'vendedores' },
   { to: '/fluxo-caixa',   label: 'Fluxo de Caixa',icon: Wallet,                         id: 'fluxo_caixa' },
   { to: '/ranking',       label: 'Ranking',       icon: Trophy,                         id: 'ranking' }
