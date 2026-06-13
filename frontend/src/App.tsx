@@ -44,6 +44,10 @@ function Protected({ children }: { children: JSX.Element }) {
   return children
 }
 
+import Comercial from './pages/Comercial'
+import FinanceiroConsolidado from './pages/FinanceiroConsolidado'
+
+
 export default function App() {
   const init = useAuthStore((s) => s.init)
   const initTheme = useThemeStore((s) => s.initTheme)
@@ -91,6 +95,21 @@ export default function App() {
         <Route path="usuarios" element={<ProtectedRoute permission="usuarios"><Usuarios /></ProtectedRoute>} />
         <Route path="grupos" element={<ProtectedRoute permission="usuarios"><Grupos /></ProtectedRoute>} />
         
+        {/* Rotas Consolidadas do Layout 1 */}
+        <Route path="comercial" element={<Comercial />}>
+          <Route index element={<SalesIntelligenceDashboard />} />
+          <Route path="vendas" element={<SalesIntelligenceDashboard />} />
+          <Route path="equipe" element={<Comissoes />} />
+          <Route path="vendedor/:sellerId" element={<SellerHubDashboard />} />
+          <Route path="rankings" element={<Ranking />} />
+        </Route>
+
+        <Route path="financeiro-consolidado" element={<FinanceiroConsolidado />}>
+          <Route index element={<FinancialIntelligenceDashboard />} />
+          <Route path="gestao" element={<FinancialIntelligenceDashboard />} />
+          <Route path="fluxo-caixa" element={<FluxoCaixa />} />
+        </Route>
+
         {/* Novas Rotas de BI */}
         <Route path="bi" element={<ProtectedRoute permission="layout_4"><BiDashboard /></ProtectedRoute>}>
           <Route index element={<ProtectedRoute permission="bi_sales"><SalesIntelligenceDashboard /></ProtectedRoute>} />

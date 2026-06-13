@@ -241,9 +241,7 @@ interface Overview {
 
 export default function HomeV1() {
   const period = usePeriodStore((s) => s.period)
-  const [rankTab, setRankTab] = useState<'vendedores' | 'marcas' | 'clientes'>('vendedores')
   const [isMobile, setIsMobile] = useState(false)
-  const [showAllRank, setShowAllRank] = useState(false)
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 640)
@@ -254,10 +252,7 @@ export default function HomeV1() {
 
   const ov       = useBranchPeriodQuery<Overview>('/estatisticas/overview')
   const fatMes   = useBranchPeriodQuery<any>('/vendas/faturadas')
-  const recentes = useBranchPeriodQuery<any>('/vendas/recentes', { limit: 8 })
-  const vendors  = useBranchPeriodQuery<any>('/ranking/vendedores', { limit: 8 })
-  const brands   = useBranchPeriodQuery<any>('/ranking/marcas', { limit: 8 })
-  const clients  = useBranchPeriodQuery<any>('/ranking/clientes', { limit: 8 })
+  const fin      = useBranchPeriodQuery<any>('/bi/financial/summary')
 
   const totalPeriodo  = ov.data?.mes?.total || 0
   const totalAnterior = ov.data?.anterior?.total || 0
@@ -265,21 +260,37 @@ export default function HomeV1() {
   const ticketMedio   = qtdPeriodo > 0 ? totalPeriodo / qtdPeriodo : 0
   const crescimentoPct = totalAnterior > 0 ? ((totalPeriodo - totalAnterior) / totalAnterior) * 100 : 0
 
-  // Normaliza ranking data
-  const normalize = (arr: any[], nameKey1: string, nameKey2: string) =>
-    (arr || []).slice(0, 8).map((d: any) => ({
-      nome: d[nameKey1] || d[nameKey2] || 'Desconhecido',
-      total: parseFloat(d.total || d.faturamento || 0),
-    }))
+  const alerts = useMemo(() => {
+    const list: { text: string; type: 'danger' | 'warning' | 'info' }[] = []
 
-  const vendData  = normalize(vendors.data?.data,  'vendedor', 'nome')
-  const brandData = normalize(brands.data?.data,   'nome',     'marca')
-  const clientData= normalize(clients.data?.data,  'cliente',  'nome')
+    // 1. Pedidos em aberto
+    const openOrders = ov.data?.pedidos_abertos || 0
+    if (openOrders > 0) {
+      list.push({
+        text: `Existem ${openOrders} pedido${openOrders === 1 ? '' : 's'} em aberto aguardando processamento/faturamento.`,
+        type: 'warning'
+      })
+    }
 
-  const rankData = rankTab === 'vendedores' ? vendData
-                 : rankTab === 'marcas'     ? brandData
-                 : clientData
-  const rankMax = rankData.length > 0 ? rankData[0].total : 1
+    // 2. Inadimplência
+    const inadPct = fin.data?.inadimplencia_pct || 0
+    if (inadPct > 5) {
+      list.push({
+        text: `Inadimplência Elevada: Taxa de inadimplência está em ${inadPct}%, acima do limite aceitável de 5%.`,
+        type: 'danger'
+      })
+    }
+
+    // 3. Queda de faturamento
+    if (crescimentoPct < -2) {
+      list.push({
+        text: `Desempenho Comercial: O faturamento atual está ${Math.abs(crescimentoPct).toFixed(1)}% abaixo do período anterior.`,
+        type: 'info'
+      })
+    }
+
+    return list
+  }, [ov.data, fin.data, crescimentoPct])
 
   const chartData = useMemo(() => {
     const raw = fatMes.data?.data || []
@@ -290,22 +301,41 @@ export default function HomeV1() {
     return chartData.map((d: any) => d.total || 0)
   }, [chartData])
 
-  const recentOrders = useMemo(
-    () => (recentes.data?.data || []).slice(0, 7),
-    [recentes.data]
-  )
-
   return (
     <div className="space-y-5 pb-10" aria-label="Visão Estratégica">
 
       {/* ── HEADER ────────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-text-primary tracking-tight">Visão Estratégica</h2>
+          <h2 className="text-xl font-bold text-text-primary tracking-tight">Visão Geral</h2>
           <p className="text-sm text-text-secondary mt-0.5">Resumo consolidado do negócio</p>
         </div>
         <PeriodFilter />
       </div>
+
+      {/* ── ALERTA CRÍTICOS ────────────────────────────────────────── */}
+      {alerts.length > 0 && (
+        <div className="card !p-4 border-l-4 border-l-amber-500 bg-amber-50/50 dark:bg-amber-950/20 shadow-md transition-all duration-300 hover:scale-[1.005]">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="text-amber-500 shrink-0 mt-0.5 animate-pulse" size={18} />
+            <div className="space-y-1">
+              <h4 className="text-xs font-black text-amber-800 dark:text-amber-300 uppercase tracking-wider leading-none">Alertas Importantes</h4>
+              <div className="space-y-1.5 pt-2">
+                {alerts.map((alert, index) => (
+                  <div key={index} className="flex items-center gap-2 text-xs">
+                    <span className={clsx(
+                      "w-2 h-2 rounded-full shrink-0",
+                      alert.type === 'danger' ? 'bg-red-500 animate-pulse' :
+                      alert.type === 'warning' ? 'bg-amber-500' : 'bg-blue-500'
+                    )} />
+                    <span className="text-text-primary leading-tight font-medium">{alert.text}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── HERO KPI — Faturamento Principal ──────────────────────── */}
       <div className="card relative overflow-hidden !p-5 sm:!p-6">
@@ -340,7 +370,7 @@ export default function HomeV1() {
               </p>
             </div>
 
-            {/* Mini donut / pill stats */}
+            {/* Mini stats */}
             <div className="flex flex-wrap gap-2">
               {[
                 { label: 'Hoje', value: ov.data?.hoje?.total, qty: ov.data?.hoje?.qtd, color: 'text-brand-500', bg: 'bg-brand-50 dark:bg-brand-500/10' },
@@ -401,7 +431,7 @@ export default function HomeV1() {
         />
       </div>
 
-      {/* ── GRID: Gráfico + Ranking ────────────────────────────────── */}
+      {/* ── GRID: Gráfico + Saúde Financeira ────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
 
         {/* Gráfico de faturamento */}
@@ -414,10 +444,10 @@ export default function HomeV1() {
               </h3>
             </div>
             <Link
-              to="/vendas"
+              to="/comercial"
               className="flex items-center gap-1 text-[11px] text-brand-500 hover:text-brand-600 font-semibold transition-colors"
             >
-              Ver tudo <ArrowUpRight size={12} />
+              Ver Detalhes <ArrowUpRight size={12} />
             </Link>
           </div>
 
@@ -495,172 +525,12 @@ export default function HomeV1() {
             <FinanceRow label="Pago"        value={ov.data?.total_pago     || 0} color="bg-blue-400"   loading={ov.isLoading} />
           </div>
           <Link
-            to="/fluxo-caixa"
+            to="/financeiro-consolidado/fluxo-caixa"
             className="mt-4 flex items-center justify-center gap-1.5 text-xs font-semibold text-brand-500 hover:text-brand-600 border border-brand-500/20 hover:border-brand-500/40 rounded-lg py-2 transition-all duration-200"
           >
             <Wallet size={13} /> Ver Fluxo de Caixa
           </Link>
         </div>
-      </div>
-
-      {/* ── GRID: Ranking + Pedidos Recentes ──────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-
-        {/* Ranking com medalhas */}
-        <div className="lg:col-span-7 card !p-4 sm:!p-5">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Trophy size={15} className="text-amber-500" />
-              <h3 className="text-sm font-bold text-text-primary uppercase tracking-wider">Ranking</h3>
-            </div>
-            <Link to="/ranking" className="flex items-center gap-1 text-[11px] text-brand-500 hover:text-brand-600 font-semibold transition-colors">
-              Completo <ChevronRight size={12} />
-            </Link>
-          </div>
-
-          {/* Tab switcher */}
-          <div className="flex gap-1 mb-4 bg-bg-secondary p-1 rounded-lg">
-            {([
-              { id: 'vendedores', label: 'Vendedores' },
-              { id: 'marcas',    label: 'Marcas' },
-              { id: 'clientes',  label: 'Clientes' },
-            ] as const).map(t => (
-              <button
-                key={t.id}
-                onClick={() => setRankTab(t.id)}
-                className={`flex-1 py-1.5 px-2 rounded-md text-[11px] font-semibold transition-all duration-200 cursor-pointer ${
-                  rankTab === t.id
-                    ? 'bg-bg-primary text-brand-600 shadow-sm'
-                    : 'text-text-muted hover:text-text-secondary'
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Seller list */}
-          <div className="space-y-0.5">
-            {(vendors.isLoading || brands.isLoading || clients.isLoading) ? (
-              Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="flex items-center gap-3 py-2.5">
-                  <SkeletonPulse className="h-5 w-5 rounded-full" />
-                  <SkeletonPulse className="h-4 flex-1" />
-                  <SkeletonPulse className="h-4 w-16" />
-                </div>
-              ))
-            ) : rankData.length === 0 ? (
-              <p className="text-center text-sm text-text-muted py-8">Sem dados no período</p>
-            ) : (
-              <>
-                {(isMobile && !showAllRank ? rankData.slice(0, 3) : rankData).map((item, i) => (
-                  <SellerRow
-                    key={i}
-                    rank={i + 1}
-                    name={item.nome}
-                    value={item.total}
-                    maxValue={rankMax}
-                    showAvatar={isMobile}
-                  />
-                ))}
-                
-                {isMobile && rankData.length > 3 && (
-                  <button
-                    onClick={() => setShowAllRank(!showAllRank)}
-                    className="w-full mt-3 py-2.5 text-center text-xs font-bold text-brand-500 hover:text-brand-600 bg-brand-50/50 dark:bg-brand-900/10 rounded-xl border border-brand-500/10 active:scale-[0.98] transition-all cursor-pointer"
-                  >
-                    {showAllRank ? 'Mostrar Apenas os Top 3' : `Mais ${rankTab === 'vendedores' ? 'Vendedores' : rankTab === 'marcas' ? 'Marcas' : 'Clientes'} (${rankData.length - 3})`}
-                  </button>
-                )}
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Pedidos Recentes */}
-        <div className="lg:col-span-5 card !p-4 sm:!p-5 flex flex-col">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Receipt size={15} className="text-brand-500" />
-              <h3 className="text-sm font-bold text-text-primary uppercase tracking-wider">Últimos Pedidos</h3>
-            </div>
-            <Link to="/vendas" className="flex items-center gap-1 text-[11px] text-brand-500 hover:text-brand-600 font-semibold transition-colors">
-              Ver todos <ChevronRight size={12} />
-            </Link>
-          </div>
-
-          <div className="flex-1 overflow-y-auto max-h-[320px] pr-1">
-            {recentes.isLoading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="flex justify-between py-2.5 border-b border-divider">
-                  <SkeletonPulse className="h-8 w-3/4" />
-                  <SkeletonPulse className="h-4 w-16" />
-                </div>
-              ))
-            ) : recentOrders.length === 0 ? (
-              <p className="text-center text-sm text-text-muted py-8">Nenhum pedido recente</p>
-            ) : (
-              recentOrders.map((order: any) => (
-                <RecentOrderRow key={order.id} order={order} />
-              ))
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* ── Marcas + Categorias ────────────────────────────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {([
-          {
-            title: 'Marcas Mais Vendidas',
-            data: (ov.data?.top_marcas || []).slice(0, 6).map((m) => ({ nome: m.marca, total: m.total })),
-            loading: ov.isLoading,
-          },
-          {
-            title: 'Categorias Principais',
-            data: (ov.data?.top_categorias || []).slice(0, 6).map((c) => ({ nome: c.categoria, total: c.total })),
-            loading: ov.isLoading,
-          },
-        ] ).map((section) => (
-          <div key={section.title} className="card !p-4 sm:!p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <Medal size={15} className="text-amber-500" />
-              <h3 className="text-sm font-bold text-text-primary uppercase tracking-wider">{section.title}</h3>
-            </div>
-            {section.loading ? (
-              <SkeletonPulse className="h-40 w-full" />
-            ) : section.data.length === 0 ? (
-              <p className="text-center text-sm text-text-muted py-6">Sem dados no período</p>
-            ) : (
-              <div className="h-44">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={section.data}
-                    layout="vertical"
-                    margin={{ left: 0, right: 48, top: 0, bottom: 0 }}
-                  >
-                    <XAxis type="number" hide />
-                    <YAxis
-                      type="category"
-                      dataKey="nome"
-                      axisLine={false}
-                      tickLine={false}
-                      width={96}
-                      tick={{ fontSize: 10, fill: 'var(--color-text-secondary)' }}
-                      tickFormatter={(v: string) => (v?.length > 14 ? v.substring(0, 13) + '…' : v) || '—'}
-                    />
-                    <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.5 }} />
-                    <Bar dataKey="total" radius={[0, 4, 4, 0]} barSize={14} label={{ position: 'right', fontSize: 9, fill: 'var(--color-text-muted)', formatter: formatBRLCompact }}>
-                      {section.data.map((_: any, i: number) => (
-                        <Cell key={i} fill={BAR_COLORS[i % BAR_COLORS.length]} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </div>
-        ))}
       </div>
 
     </div>

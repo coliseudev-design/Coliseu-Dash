@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, useParams, useNavigate } from 'react-router-dom';
 import { useBiPeriodQuery } from '../../hooks/useBiPeriodQuery';
 import { useBranchPeriodQuery } from '../../hooks/useApi';
 import { BIService } from '../../services/biApi';
@@ -45,6 +45,8 @@ const COLORS = ['#0D9488', '#0F766E', '#115E59', '#134E4A', '#14B8A6', '#2DD4BF'
 
 export default function SellerHubDashboard() {
   const { filter: globalFilter } = useOutletContext<{ filter: BiPeriodFilter }>();
+  const { sellerId } = useParams();
+  const navigate = useNavigate();
 
   // Fetch list of sellers dynamically
   const vdFull = useBranchPeriodQuery<any>('/ranking/vendedores', { limit: 100 });
@@ -103,10 +105,12 @@ export default function SellerHubDashboard() {
 
   // Set default seller when list loaded
   useEffect(() => {
-    if (vdFull.data?.data && vdFull.data.data.length > 0 && !selectedVendedor) {
+    if (sellerId) {
+      setSelectedVendedor(sellerId);
+    } else if (vdFull.data?.data && vdFull.data.data.length > 0 && !selectedVendedor) {
       setSelectedVendedor(String(vdFull.data.data[0].id));
     }
-  }, [vdFull.data, selectedVendedor]);
+  }, [vdFull.data, selectedVendedor, sellerId]);
 
   const activeFilter = useMemo(() => ({
     ...globalFilter,
@@ -288,19 +292,29 @@ export default function SellerHubDashboard() {
         </div>
         
         <div className="flex flex-wrap items-end gap-3 w-full lg:w-auto">
-          <div className="flex flex-col gap-1 min-w-[240px] flex-1 sm:flex-initial">
-            <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Vendedor</span>
-            <select
-              value={selectedVendedor}
-              onChange={(e) => setSelectedVendedor(e.target.value)}
-              className="h-12 px-4 bg-bg-secondary border border-divider text-text-primary rounded-2xl text-sm md:text-base font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all duration-300 w-full cursor-pointer shadow-sm"
+          {sellerId ? (
+            <button
+              onClick={() => navigate('/comercial/equipe')}
+              className="px-4 py-2.5 bg-bg-secondary hover:bg-bg-tertiary border border-divider text-text-primary rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
             >
-              <option value="">Selecione um vendedor...</option>
-              {vdFull.data?.data?.map((v: any) => (
-                <option key={v.id} value={v.id}>{v.nome}</option>
-              ))}
-            </select>
-          </div>
+              <ChevronLeft size={16} />
+              Voltar para Equipe
+            </button>
+          ) : (
+            <div className="flex flex-col gap-1 min-w-[240px] flex-1 sm:flex-initial">
+              <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Vendedor</span>
+              <select
+                value={selectedVendedor}
+                onChange={(e) => setSelectedVendedor(e.target.value)}
+                className="h-12 px-4 bg-bg-secondary border border-divider text-text-primary rounded-2xl text-sm md:text-base font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all duration-300 w-full cursor-pointer shadow-sm"
+              >
+                <option value="">Selecione um vendedor...</option>
+                {vdFull.data?.data?.map((v: any) => (
+                  <option key={v.id} value={v.id}>{v.nome}</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
       </div>
 

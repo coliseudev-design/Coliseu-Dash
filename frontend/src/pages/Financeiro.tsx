@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { usePeriodQuery, useApiQuery } from '../hooks/useApi'
 import { useBranchParam } from '../contexts/BranchContext'
+import { useLocation } from 'react-router-dom'
 import KPICard from '../components/KPICard'
 import ChartCard from '../components/ChartCard'
 import PeriodFilter from '../components/PeriodFilter'
@@ -15,6 +16,9 @@ import { formatBRL, formatBRLCompact } from '../utils/format'
 import { CHART_COLORS } from '../utils/chartColors'
 
 export default function Financeiro() {
+  const location = useLocation()
+  const isConsolidated = location.pathname.includes('/financeiro-consolidado')
+
   // Seletor de Caixas Real
   const [selectedCaixa, setSelectedCaixa] = useState('todos')
   const branchParam = useBranchParam()
@@ -38,7 +42,7 @@ export default function Financeiro() {
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:flex-wrap justify-between items-start sm:items-center gap-4 w-full min-w-0">
-        <PeriodFilter excludePeriods={['lastMonth', 'last12m']} />
+        {!isConsolidated && <PeriodFilter excludePeriods={['lastMonth', 'last12m']} />}
         
         {/* Seletor de Caixa */}
         <div className="flex items-center gap-2 bg-bg-primary rounded-lg border border-border p-1.5 shadow-sm">

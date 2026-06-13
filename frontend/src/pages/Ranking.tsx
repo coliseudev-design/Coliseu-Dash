@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useBranchPeriodQuery } from '../hooks/useApi'
 import PeriodFilter from '../components/PeriodFilter'
 import DataTable from '../components/DataTable'
+import { useLocation } from 'react-router-dom'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
 } from 'recharts'
@@ -149,14 +150,18 @@ export default function Ranking() {
   ]
 
   const currentTab = tabs.find(t => t.id === activeTab) || tabs[0]
+  const location = useLocation()
+  const isConsolidated = location.pathname.includes('/comercial')
 
   return (
     <div className="space-y-6 sm:space-y-8" aria-label="Super Guia de Rankings">
-      <div>
-        <h2 className="font-heading text-xl font-semibold text-text-primary">Super Guia de Rankings</h2>
-        <p className="text-text-secondary text-sm mb-4">Métricas detalhadas separadas por categorias.</p>
-        <PeriodFilter excludePeriods={['last7d']} />
-      </div>
+      {!isConsolidated && (
+        <div>
+          <h2 className="font-heading text-xl font-semibold text-text-primary">Super Guia de Rankings</h2>
+          <p className="text-text-secondary text-sm mb-4">Métricas detalhadas separadas por categorias.</p>
+          <PeriodFilter excludePeriods={['last7d']} />
+        </div>
+      )}
 
       <div 
         className="grid grid-cols-3 sm:flex sm:overflow-visible sm:flex-wrap pb-2 sm:pb-0 gap-2 sm:gap-4 sm:border-b sm:border-divider w-full"

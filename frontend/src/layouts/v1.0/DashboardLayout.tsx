@@ -4,13 +4,16 @@ import Sidebar from './Sidebar'
 import Header from './Header'
 
 const TITLES: Record<string, string> = {
-  '/': 'Início',
-  '/bi': 'Hub de Vendas',
-  '/bi/vendedor': 'Hub do Vendedor',
-  '/bi/finance': 'Financeiro',
+  '/': 'Visão Geral',
+  '/comercial': 'Comercial - Visão Consolidada',
+  '/comercial/vendas': 'Comercial - Visão Consolidada',
+  '/comercial/equipe': 'Comercial - Equipe',
+  '/comercial/rankings': 'Comercial - Rankings',
+  '/financeiro-consolidado': 'Financeiro - Gestão',
+  '/financeiro-consolidado/gestao': 'Financeiro - Gestão',
+  '/financeiro-consolidado/fluxo-caixa': 'Financeiro - Fluxo de Caixa',
   '/vendas': 'Vendas',
-  '/financeiro': 'Fluxo de Caixa',
-  '/comissoes': 'Vendas',
+  '/comissoes': 'Vendedores',
   '/ranking': 'Ranking',
   '/estatisticas': 'Estatísticas',
   '/produtos': 'Produtos',
@@ -20,7 +23,12 @@ const TITLES: Record<string, string> = {
 export default function DashboardLayout() {
   const [menuOpen, setMenuOpen] = useState(false)
   const loc = useLocation()
-  const title = TITLES[loc.pathname] || 'Coliseu Dash'
+  
+  let title = TITLES[loc.pathname]
+  if (!title && loc.pathname.startsWith('/comercial/vendedor')) {
+    title = 'Comercial - Detalhamento de Vendedor'
+  }
+  title = title || 'Coliseu Dash'
 
   return (
     <div className="min-h-screen bg-bg-secondary flex">

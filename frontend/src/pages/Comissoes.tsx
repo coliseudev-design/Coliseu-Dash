@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useBranchPeriodQuery } from '../hooks/useApi'
 import PeriodFilter from '../components/PeriodFilter'
+import { useNavigate, useLocation } from 'react-router-dom'
 import clsx from 'clsx'
 import {
   Users, Percent, ArrowDownAZ, Hash, Trophy, BarChart3,
@@ -12,6 +13,8 @@ import KPICard from '../components/KPICard'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 
 export default function Comissoes() {
+  const navigate = useNavigate()
+  const location = useLocation()
   const ranking = useBranchPeriodQuery<any>('/comissoes/ranking')
 
   const dadosVendedores = ranking.data?.data || []
@@ -40,15 +43,19 @@ export default function Comissoes() {
     setExpandedCards(prev => ({ ...prev, [id]: !prev[id] }))
   }
 
+  const isConsolidated = location.pathname.includes('/comercial')
+
   return (
     <div className="space-y-4 sm:space-y-6 pb-6" aria-label="Vendedores">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold font-heading text-text-primary flex items-center gap-2">
-          <Users className="text-brand-600" />
-          Vendedores
-        </h1>
-        <PeriodFilter />
-      </div>
+      {!isConsolidated && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <h1 className="text-2xl font-semibold font-heading text-text-primary flex items-center gap-2">
+            <Users className="text-brand-600" />
+            Vendedores
+          </h1>
+          <PeriodFilter />
+        </div>
+      )}
 
       {ranking.isLoading ? (
         <div className="py-8 text-center text-text-secondary text-sm">Carregando dados dos vendedores...</div>
@@ -66,7 +73,11 @@ export default function Comissoes() {
             
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {sortedData.map((v: any, i: number) => (
-                <div key={v.vendedor_id} className="border border-divider rounded-2xl p-5 bg-bg-primary hover:shadow-card-hover transition-all duration-300 relative shadow-card flex flex-col justify-between h-full hover:scale-[1.01]">
+                <div 
+                  key={v.vendedor_id} 
+                  onClick={() => navigate(`/comercial/vendedor/${v.vendedor_id}`)}
+                  className="border border-divider rounded-2xl p-5 bg-bg-primary hover:shadow-card-hover hover:border-brand-500/40 transition-all duration-300 relative shadow-card flex flex-col justify-between h-full hover:scale-[1.01] cursor-pointer group"
+                >
                   {/* Badge Rank / Medal */}
                   {i < 3 ? (
                     <span className="absolute -top-3 -left-3 text-2xl drop-shadow-md select-none">
@@ -78,20 +89,23 @@ export default function Comissoes() {
                     </span>
                   )}
                   
-                  <h3 className="font-semibold text-text-primary mb-3 pl-3 truncate border-b border-divider pb-2" title={v.vendedor}>
+                  <h3 className="font-semibold text-text-primary mb-3 pl-3 truncate border-b border-divider pb-2 group-hover:text-brand-500 transition-colors" title={v.vendedor}>
                     {v.vendedor}
                   </h3>
                   
                   <div className="space-y-4 flex-1 flex flex-col justify-between">
                     {/* Faturamento em Destaque */}
-                    <div className="flex flex-col gap-1.5 items-center justify-center p-4 bg-brand-500/[0.03] dark:bg-brand-500/[0.01] rounded-2xl border border-brand-500/20">
+                    <div className="flex flex-col gap-1.5 items-center justify-center p-4 bg-brand-500/[0.03] dark:bg-brand-500/[0.01] rounded-2xl border border-brand-500/20 group-hover:border-brand-500/40 transition-colors">
                       <span className="text-brand-600 dark:text-brand-400 text-[10px] font-black uppercase tracking-widest">Total Faturado</span>
                       <span className="text-2xl font-black text-brand-500 tracking-tight">{formatBRL(v.total_vendas)}</span>
                     </div>
 
                     {/* Expander Button (Mobile Only) */}
                     <button
-                      onClick={() => toggleCard(String(v.vendedor_id))}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        toggleCard(String(v.vendedor_id))
+                      }}
                       className="w-full flex items-center justify-center gap-1.5 py-2.5 px-3 bg-bg-secondary hover:bg-bg-secondary/80 border border-divider/60 rounded-xl text-[11px] font-bold text-text-secondary sm:hidden cursor-pointer transition-all mt-1"
                     >
                       <span>{expandedCards[String(v.vendedor_id)] ? "Ocultar Detalhes" : "Ver Detalhes"}</span>
