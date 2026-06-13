@@ -1,7 +1,7 @@
 import { usePeriodStore, PERIOD_OPTIONS, type PeriodKey } from '../store/periodStore'
 import { Calendar } from 'lucide-react'
 import clsx from 'clsx'
-import { useState } from 'react'
+import React, { useState, useRef } from 'react'
 
 interface Props {
   excludePeriods?: PeriodKey[]
@@ -16,7 +16,41 @@ export default function PeriodFilter({ excludePeriods = [], compact = false }: P
   const setCustomRange = usePeriodStore((s) => s.setCustomRange)
   const [showCustom, setShowCustom] = useState(period === 'custom')
 
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const hasDragged = useRef(false)
+  const [isDragging, setIsDragging] = useState(false)
+  const [startX, setStartX] = useState(0)
+  const [scrollLeftState, setScrollLeftState] = useState(0)
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!scrollRef.current) return
+    setIsDragging(true)
+    setStartX(e.pageX)
+    setScrollLeftState(scrollRef.current.scrollLeft)
+    hasDragged.current = false
+  }
+
+  const handleMouseLeave = () => {
+    setIsDragging(false)
+  }
+
+  const handleMouseUp = () => {
+    setIsDragging(false)
+  }
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || !scrollRef.current) return
+    e.preventDefault()
+    const x = e.pageX
+    const walk = (x - startX) * 1.5 // Scroll sensitivity factor
+    scrollRef.current.scrollLeft = scrollLeftState - walk
+    if (Math.abs(x - startX) > 5) {
+      hasDragged.current = true
+    }
+  }
+
   const handleClick = (p: PeriodKey) => {
+    if (hasDragged.current) return // Prevent click if we were dragging
     if (p === 'custom') {
       setShowCustom(true)
       setPeriod('custom')
@@ -34,10 +68,20 @@ export default function PeriodFilter({ excludePeriods = [], compact = false }: P
 
   return (
     <div className={clsx(
-      "w-full sm:w-auto max-w-full min-w-0 bg-bg-tertiary/40 dark:bg-bg-secondary/80 border border-divider/40 shadow-sm",
+      "w-full sm:w-auto max-w-full min-w-0 bg-bg-tertiary/40 dark:bg-bg-secondary/80 border border-divider/40 shadow-sm overflow-hidden",
       compact ? "p-0.5 rounded-lg" : "p-1 rounded-xl"
     )}>
-      <div className="flex items-center gap-0.5 w-full sm:w-auto overflow-x-auto no-scrollbar">
+      <div 
+        ref={scrollRef}
+        onMouseDown={handleMouseDown}
+        onMouseLeave={handleMouseLeave}
+        onMouseUp={handleMouseUp}
+        onMouseMove={handleMouseMove}
+        className={clsx(
+          "flex items-center gap-1.5 w-full sm:w-auto overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden select-none [WebkitOverflowScrolling:touch]",
+          isDragging ? "cursor-grabbing" : "cursor-grab"
+        )}
+      >
         {PERIOD_OPTIONS.filter(opt => !excludePeriods.includes(opt.key)).map((opt) => (
           <button
             key={opt.key}

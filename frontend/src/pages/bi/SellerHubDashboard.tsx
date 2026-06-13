@@ -571,8 +571,7 @@ export default function SellerHubDashboard() {
             <h3 className="text-base font-extrabold text-text-primary uppercase tracking-wider">Rankings de Desempenho</h3>
             <p className="text-xs text-text-secondary mt-0.5">Visão consolidada de faturamento por Cliente, Grupo e Produto</p>
           </div>
-          
-          <div className="flex bg-bg-secondary p-0.5 rounded-xl border border-divider shadow-sm shrink-0 w-full sm:w-auto overflow-x-auto">
+          <div className="flex bg-bg-secondary p-0.5 rounded-xl border border-divider shadow-sm shrink-0 w-full sm:w-auto overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden [WebkitOverflowScrolling:touch]">
             <button
               onClick={() => scrollToTab('clientes')}
               className={clsx(

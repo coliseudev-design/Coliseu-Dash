@@ -33,6 +33,9 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 export default function FinancialIntelligenceDashboard() {
   const { filter } = useOutletContext<{ filter: BiPeriodFilter }>();
 
+  const [expandedReceberIndex, setExpandedReceberIndex] = useState<number | null>(null);
+  const [expandedPagarIndex, setExpandedPagarIndex] = useState<number | null>(null);
+
   const { data, isLoading } = useBiPeriodQuery(
     ['bi', 'financial'],
     BIService.getFinancialIntelligence,
@@ -327,114 +330,107 @@ export default function FinancialIntelligenceDashboard() {
       </div>
 
       {/* MAPA DE VENCIMENTOS (AGING) */}
-      {(() => {
-        const [expandedReceberIndex, setExpandedReceberIndex] = useState<number | null>(null);
-        const [expandedPagarIndex, setExpandedPagarIndex] = useState<number | null>(null);
-
-        return (
-          <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5">
-            <h3 className="font-bold text-text-primary text-sm flex items-center gap-2 mb-6">
-              <Clock size={16} className="text-warning"/> Mapa de Vencimentos (Aging)
-            </h3>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* Contas a Receber Aging */}
-              <div>
-                <h4 className="font-bold text-[11px] uppercase tracking-wider text-blue-500 flex items-center gap-2 mb-3">
-                  <DollarSign size={14} /> CONTAS A RECEBER
-                </h4>
-                <div className="flex flex-col gap-2">
-                  {agingReceber.map((row, i) => {
-                    const isExpanded = expandedReceberIndex === i;
-                    const details = [
-                      "Títulos com atraso no pagamento. Requer ação de cobrança comercial ativa.",
-                      "Recebimentos previstos para os próximos 15 dias. Fluxo garantido para pagamentos imediatos.",
-                      "Previsão de entrada na segunda quinzena do mês corrente.",
-                      "Carteira de recebíveis de médio prazo cadastrada no ERP.",
-                      "Planejamento financeiro de longo prazo com vencimento estendido."
-                    ];
-                    return (
-                      <div key={i} className="flex flex-col">
-                        <button 
-                          onClick={() => setExpandedReceberIndex(isExpanded ? null : i)}
-                          className={`w-full flex justify-between items-center p-3 rounded-xl transition-all duration-200 text-xs font-bold text-left focus:outline-none ${
-                            row.red 
-                              ? "bg-danger/5 hover:bg-danger/10 border border-danger/20" 
-                              : "bg-bg-secondary/20 hover:bg-bg-secondary/40 border border-divider/60"
-                          }`}
-                        >
-                          <span className={`flex items-center gap-2 ${row.red ? "text-danger" : "text-text-primary"}`}>
-                            {row.red && <AlertTriangle size={13} />}
-                            <span>{row.label}</span>
-                          </span>
-                          <div className="flex items-center gap-2 font-mono">
-                            <span className={row.red ? "text-danger" : "text-blue-500"}>
-                              {formatBRL(row.valor)}
-                            </span>
-                            <ChevronDown size={14} className={clsx("text-text-secondary transition-transform duration-300", isExpanded && "rotate-180")} />
-                          </div>
-                        </button>
-                        {isExpanded && (
-                          <div className="bg-bg-secondary/35 border-x border-b border-divider/50 p-3 rounded-b-xl -mt-1 text-[11px] font-medium text-text-secondary animate-in slide-in-from-top-1 duration-200">
-                            {details[i]}
-                          </div>
-                        )}
+      <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5">
+        <h3 className="font-bold text-text-primary text-sm flex items-center gap-2 mb-6">
+          <Clock size={16} className="text-warning"/> Mapa de Vencimentos (Aging)
+        </h3>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Contas a Receber Aging */}
+          <div>
+            <h4 className="font-bold text-[11px] uppercase tracking-wider text-blue-500 flex items-center gap-2 mb-3">
+              <DollarSign size={14} /> CONTAS A RECEBER
+            </h4>
+            <div className="flex flex-col gap-2">
+              {agingReceber.map((row, i) => {
+                const isExpanded = expandedReceberIndex === i;
+                const details = [
+                  "Títulos com atraso no pagamento. Requer ação de cobrança comercial ativa.",
+                  "Recebimentos previstos para os próximos 15 dias. Fluxo garantido para pagamentos imediatos.",
+                  "Previsão de entrada na segunda quinzena do mês corrente.",
+                  "Carteira de recebíveis de médio prazo cadastrada no ERP.",
+                  "Planejamento financeiro de longo prazo com vencimento estendido."
+                ];
+                return (
+                  <div key={i} className="flex flex-col">
+                    <button 
+                      onClick={() => setExpandedReceberIndex(isExpanded ? null : i)}
+                      className={`w-full flex justify-between items-center p-3 rounded-xl transition-all duration-200 text-xs font-bold text-left focus:outline-none ${
+                        row.red 
+                          ? "bg-danger/5 hover:bg-danger/10 border border-danger/20" 
+                          : "bg-bg-secondary/20 hover:bg-bg-secondary/40 border border-divider/60"
+                      }`}
+                    >
+                      <span className={`flex items-center gap-2 ${row.red ? "text-danger" : "text-text-primary"}`}>
+                        {row.red && <AlertTriangle size={13} />}
+                        <span>{row.label}</span>
+                      </span>
+                      <div className="flex items-center gap-2 font-mono">
+                        <span className={row.red ? "text-danger" : "text-blue-500"}>
+                          {formatBRL(row.valor)}
+                        </span>
+                        <ChevronDown size={14} className={clsx("text-text-secondary transition-transform duration-300", isExpanded && "rotate-180")} />
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Contas a Pagar Aging */}
-              <div>
-                <h4 className="font-bold text-[11px] uppercase tracking-wider text-warning flex items-center gap-2 mb-3">
-                  <CreditCard size={14} /> CONTAS A PAGAR
-                </h4>
-                <div className="flex flex-col gap-2">
-                  {agingPagar.map((row, i) => {
-                    const isExpanded = expandedPagarIndex === i;
-                    const details = [
-                      "Contas vencidas em atraso. Priorizar pagamento para evitar acúmulo de juros e multas.",
-                      "Contas com vencimento próximo. Provisão de saldo bancário recomendada.",
-                      "Previsão de saída programada para a segunda quinzena do mês.",
-                      "Duplicatas de fornecedores e prestadores de médio prazo.",
-                      "Parcelamentos e compromissos contratuais de longo prazo."
-                    ];
-                    return (
-                      <div key={i} className="flex flex-col">
-                        <button 
-                          onClick={() => setExpandedPagarIndex(isExpanded ? null : i)}
-                          className={`w-full flex justify-between items-center p-3 rounded-xl transition-all duration-200 text-xs font-bold text-left focus:outline-none ${
-                            row.red 
-                              ? "bg-danger/5 hover:bg-danger/10 border border-danger/20" 
-                              : "bg-bg-secondary/20 hover:bg-bg-secondary/40 border border-divider/60"
-                          }`}
-                        >
-                          <span className={`flex items-center gap-2 ${row.red ? "text-danger" : "text-text-primary"}`}>
-                            {row.red && <AlertTriangle size={13} />}
-                            <span>{row.label}</span>
-                          </span>
-                          <div className="flex items-center gap-2 font-mono">
-                            <span className={row.red ? "text-danger" : "text-warning"}>
-                              {formatBRL(row.valor)}
-                            </span>
-                            <ChevronDown size={14} className={clsx("text-text-secondary transition-transform duration-300", isExpanded && "rotate-180")} />
-                          </div>
-                        </button>
-                        {isExpanded && (
-                          <div className="bg-bg-secondary/35 border-x border-b border-divider/50 p-3 rounded-b-xl -mt-1 text-[11px] font-medium text-text-secondary animate-in slide-in-from-top-1 duration-200">
-                            {details[i]}
-                          </div>
-                        )}
+                    </button>
+                    {isExpanded && (
+                      <div className="bg-bg-secondary/35 border-x border-b border-divider/50 p-3 rounded-b-xl -mt-1 text-[11px] font-medium text-text-secondary animate-in slide-in-from-top-1 duration-200">
+                        {details[i]}
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
-        );
-      })()}
+
+          {/* Contas a Pagar Aging */}
+          <div>
+            <h4 className="font-bold text-[11px] uppercase tracking-wider text-warning flex items-center gap-2 mb-3">
+              <CreditCard size={14} /> CONTAS A PAGAR
+            </h4>
+            <div className="flex flex-col gap-2">
+              {agingPagar.map((row, i) => {
+                const isExpanded = expandedPagarIndex === i;
+                const details = [
+                  "Contas vencidas em atraso. Priorizar pagamento para evitar acúmulo de juros e multas.",
+                  "Contas com vencimento próximo. Provisão de saldo bancário recomendada.",
+                  "Previsão de saída programada para a segunda quinzena do mês.",
+                  "Duplicatas de fornecedores e prestadores de médio prazo.",
+                  "Parcelamentos e compromissos contratuais de longo prazo."
+                ];
+                return (
+                  <div key={i} className="flex flex-col">
+                    <button 
+                      onClick={() => setExpandedPagarIndex(isExpanded ? null : i)}
+                      className={`w-full flex justify-between items-center p-3 rounded-xl transition-all duration-200 text-xs font-bold text-left focus:outline-none ${
+                        row.red 
+                          ? "bg-danger/5 hover:bg-danger/10 border border-danger/20" 
+                          : "bg-bg-secondary/20 hover:bg-bg-secondary/40 border border-divider/60"
+                      }`}
+                    >
+                      <span className={`flex items-center gap-2 ${row.red ? "text-danger" : "text-text-primary"}`}>
+                        {row.red && <AlertTriangle size={13} />}
+                        <span>{row.label}</span>
+                      </span>
+                      <div className="flex items-center gap-2 font-mono">
+                        <span className={row.red ? "text-danger" : "text-warning"}>
+                          {formatBRL(row.valor)}
+                        </span>
+                        <ChevronDown size={14} className={clsx("text-text-secondary transition-transform duration-300", isExpanded && "rotate-180")} />
+                      </div>
+                    </button>
+                    {isExpanded && (
+                      <div className="bg-bg-secondary/35 border-x border-b border-divider/50 p-3 rounded-b-xl -mt-1 text-[11px] font-medium text-text-secondary animate-in slide-in-from-top-1 duration-200">
+                        {details[i]}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
 
     </div>
   );
