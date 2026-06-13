@@ -13,6 +13,7 @@ import {
 import { formatBRL, formatBRLCompact, formatNum, formatDate, formatDateTime } from '../utils/format'
 import { usePeriodStore } from '../store/periodStore'
 import PeriodFilter from '../components/PeriodFilter'
+import clsx from 'clsx'
 
 // ─── Sparkline Component ──────────────────────────────────────────────────────
 function Sparkline({ data }: { data: number[] }) {
