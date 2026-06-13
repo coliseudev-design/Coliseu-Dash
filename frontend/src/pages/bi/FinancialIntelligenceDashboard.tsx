@@ -1,4 +1,6 @@
+import React, { useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
+import clsx from 'clsx';
 import { useBiPeriodQuery } from '../../hooks/useBiPeriodQuery';
 import { BIService } from '../../services/biApi';
 import { BiPeriodFilter } from '../../types/bi.types';
@@ -117,14 +119,17 @@ export default function FinancialIntelligenceDashboard() {
       {/* TOP KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
         {/* Saldo Real */}
-        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between">
-          <div className="flex items-center gap-2 text-text-muted mb-2 text-[10px] font-bold uppercase tracking-wider">
-            <Wallet size={14} className="text-success"/> Saldo Real
+        <div className="bg-brand-500/[0.04] border-2 border-brand-500/80 shadow-[0_8px_30px_rgba(13,148,136,0.08)] rounded-2xl p-5 flex flex-col justify-between hover:scale-[1.01] transition-transform duration-300 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-16 h-16 bg-brand-500/10 rounded-full -mr-6 -mt-6"></div>
+          <div className="flex items-center gap-2 text-brand-600 dark:text-brand-400 mb-3 text-[10px] font-black uppercase tracking-widest relative z-10">
+            <Wallet size={16} className="text-brand-500 stroke-[2.5]" /> Saldo Real
           </div>
-          <div>
-            <div className="text-2xl font-extrabold text-text-primary mb-1 tracking-tight">{formatBRL(data?.saldo_atual || 0)}</div>
-            <div className="text-[10px] text-success font-bold flex items-center gap-1">
-              <ArrowUpRight size={12}/> Recebido: {formatBRLCompact(data?.recebimentos_realizados || 0)}
+          <div className="relative z-10">
+            <div className="text-2xl font-black text-brand-600 dark:text-brand-400 mb-1 tracking-tight">
+              {formatBRL(data?.saldo_atual || 0)}
+            </div>
+            <div className="text-[10px] text-success font-extrabold flex items-center gap-1">
+              <ArrowUpRight size={13} className="stroke-[2.5]" /> Recebido: {formatBRLCompact(data?.recebimentos_realizados || 0)}
             </div>
           </div>
         </div>
@@ -181,26 +186,27 @@ export default function FinancialIntelligenceDashboard() {
       {/* INADIMPLÊNCIA & PROJEÇÃO */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Inadimplência */}
-        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex flex-col">
-          <h3 className="font-bold text-text-primary text-sm flex items-center gap-2 mb-8">
+        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex flex-col justify-between">
+          <h3 className="font-bold text-text-primary text-sm flex items-center gap-2 mb-6">
             <AlertTriangle size={16} className="text-warning"/> Inadimplência
           </h3>
           
           <div className="flex-1 flex flex-col items-center justify-center">
             {/* Custom SVG Donut Gauge */}
-            <div className="relative w-40 h-40 mb-10">
+            <div className="relative w-48 h-48 mb-8">
               <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
                 {/* Background Ring */}
-                <circle cx="50" cy="50" r="40" fill="none" stroke="var(--color-bg-tertiary)" strokeWidth="12" />
+                <circle cx="50" cy="50" r="40" fill="none" stroke="var(--color-bg-tertiary)" strokeWidth="10" />
                 {/* Value Ring (inadimplencia) */}
                 <circle 
-                  cx="50" cy="50" r="40" fill="none" stroke="#EF4444" strokeWidth="12" 
+                  cx="50" cy="50" r="40" fill="none" stroke="#EF4444" strokeWidth="10" 
                   strokeDasharray={`${(data?.inadimplencia_pct || 0) * 2.51} ${100 * 2.51}`} 
                   strokeLinecap="round"
                 />
               </svg>
               <div className="absolute top-0 left-0 w-full h-full flex flex-col items-center justify-center">
-                <span className="text-2xl font-black text-danger tracking-tighter">{data?.inadimplencia_pct || 0}%</span>
+                <span className="text-3xl font-black text-danger tracking-tighter">{data?.inadimplencia_pct || 0}%</span>
+                <span className="text-[9px] text-text-muted font-bold uppercase tracking-wider mt-0.5">Taxa de Atraso</span>
               </div>
             </div>
 
@@ -321,51 +327,114 @@ export default function FinancialIntelligenceDashboard() {
       </div>
 
       {/* MAPA DE VENCIMENTOS (AGING) */}
-      <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5">
-        <h3 className="font-bold text-text-primary text-sm flex items-center gap-2 mb-6">
-          <Clock size={16} className="text-warning"/> Mapa de Vencimentos (Aging)
-        </h3>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Contas a Receber Aging */}
-          <div>
-            <h4 className="font-bold text-[11px] uppercase tracking-wider text-blue-500 flex items-center gap-2 mb-3">
-              <DollarSign size={14} /> CONTAS A RECEBER
-            </h4>
-            <div className="flex flex-col gap-1">
-              {agingReceber.map((row, i) => (
-                <div key={i} className={`flex justify-between items-center p-2.5 rounded transition-colors text-xs font-bold ${row.red ? "border-b-2 border-danger/80 bg-danger/5" : "hover:bg-bg-secondary/50 border-b border-divider"}`}>
-                  <span className={`flex items-center gap-1 ${row.red ? "text-danger" : "text-text-primary"}`}>
-                    {row.red && <AlertTriangle size={12} />} {row.label}
-                  </span>
-                  <span className={`font-mono ${row.red ? "text-danger" : "text-blue-500"}`}>
-                    {formatBRL(row.valor)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
+      {(() => {
+        const [expandedReceberIndex, setExpandedReceberIndex] = useState<number | null>(null);
+        const [expandedPagarIndex, setExpandedPagarIndex] = useState<number | null>(null);
 
-          {/* Contas a Pagar Aging */}
-          <div>
-            <h4 className="font-bold text-[11px] uppercase tracking-wider text-warning flex items-center gap-2 mb-3">
-              <CreditCard size={14} /> CONTAS A PAGAR
-            </h4>
-            <div className="flex flex-col gap-1">
-              {agingPagar.map((row, i) => (
-                <div key={i} className={`flex justify-between items-center p-2.5 rounded transition-colors text-xs font-bold ${row.red ? "border-b-2 border-danger/80 bg-danger/5" : "hover:bg-bg-secondary/50 border-b border-divider"}`}>
-                  <span className={`flex items-center gap-1 ${row.red ? "text-danger" : "text-text-primary"}`}>
-                    {row.red && <AlertTriangle size={12} />} {row.label}
-                  </span>
-                  <span className={`font-mono ${row.red ? "text-danger" : "text-warning"}`}>
-                    {formatBRL(row.valor)}
-                  </span>
+        return (
+          <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5">
+            <h3 className="font-bold text-text-primary text-sm flex items-center gap-2 mb-6">
+              <Clock size={16} className="text-warning"/> Mapa de Vencimentos (Aging)
+            </h3>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Contas a Receber Aging */}
+              <div>
+                <h4 className="font-bold text-[11px] uppercase tracking-wider text-blue-500 flex items-center gap-2 mb-3">
+                  <DollarSign size={14} /> CONTAS A RECEBER
+                </h4>
+                <div className="flex flex-col gap-2">
+                  {agingReceber.map((row, i) => {
+                    const isExpanded = expandedReceberIndex === i;
+                    const details = [
+                      "Títulos com atraso no pagamento. Requer ação de cobrança comercial ativa.",
+                      "Recebimentos previstos para os próximos 15 dias. Fluxo garantido para pagamentos imediatos.",
+                      "Previsão de entrada na segunda quinzena do mês corrente.",
+                      "Carteira de recebíveis de médio prazo cadastrada no ERP.",
+                      "Planejamento financeiro de longo prazo com vencimento estendido."
+                    ];
+                    return (
+                      <div key={i} className="flex flex-col">
+                        <button 
+                          onClick={() => setExpandedReceberIndex(isExpanded ? null : i)}
+                          className={`w-full flex justify-between items-center p-3 rounded-xl transition-all duration-200 text-xs font-bold text-left focus:outline-none ${
+                            row.red 
+                              ? "bg-danger/5 hover:bg-danger/10 border border-danger/20" 
+                              : "bg-bg-secondary/20 hover:bg-bg-secondary/40 border border-divider/60"
+                          }`}
+                        >
+                          <span className={`flex items-center gap-2 ${row.red ? "text-danger" : "text-text-primary"}`}>
+                            {row.red && <AlertTriangle size={13} />}
+                            <span>{row.label}</span>
+                          </span>
+                          <div className="flex items-center gap-2 font-mono">
+                            <span className={row.red ? "text-danger" : "text-blue-500"}>
+                              {formatBRL(row.valor)}
+                            </span>
+                            <ChevronDown size={14} className={clsx("text-text-secondary transition-transform duration-300", isExpanded && "rotate-180")} />
+                          </div>
+                        </button>
+                        {isExpanded && (
+                          <div className="bg-bg-secondary/35 border-x border-b border-divider/50 p-3 rounded-b-xl -mt-1 text-[11px] font-medium text-text-secondary animate-in slide-in-from-top-1 duration-200">
+                            {details[i]}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
+              </div>
+
+              {/* Contas a Pagar Aging */}
+              <div>
+                <h4 className="font-bold text-[11px] uppercase tracking-wider text-warning flex items-center gap-2 mb-3">
+                  <CreditCard size={14} /> CONTAS A PAGAR
+                </h4>
+                <div className="flex flex-col gap-2">
+                  {agingPagar.map((row, i) => {
+                    const isExpanded = expandedPagarIndex === i;
+                    const details = [
+                      "Contas vencidas em atraso. Priorizar pagamento para evitar acúmulo de juros e multas.",
+                      "Contas com vencimento próximo. Provisão de saldo bancário recomendada.",
+                      "Previsão de saída programada para a segunda quinzena do mês.",
+                      "Duplicatas de fornecedores e prestadores de médio prazo.",
+                      "Parcelamentos e compromissos contratuais de longo prazo."
+                    ];
+                    return (
+                      <div key={i} className="flex flex-col">
+                        <button 
+                          onClick={() => setExpandedPagarIndex(isExpanded ? null : i)}
+                          className={`w-full flex justify-between items-center p-3 rounded-xl transition-all duration-200 text-xs font-bold text-left focus:outline-none ${
+                            row.red 
+                              ? "bg-danger/5 hover:bg-danger/10 border border-danger/20" 
+                              : "bg-bg-secondary/20 hover:bg-bg-secondary/40 border border-divider/60"
+                          }`}
+                        >
+                          <span className={`flex items-center gap-2 ${row.red ? "text-danger" : "text-text-primary"}`}>
+                            {row.red && <AlertTriangle size={13} />}
+                            <span>{row.label}</span>
+                          </span>
+                          <div className="flex items-center gap-2 font-mono">
+                            <span className={row.red ? "text-danger" : "text-warning"}>
+                              {formatBRL(row.valor)}
+                            </span>
+                            <ChevronDown size={14} className={clsx("text-text-secondary transition-transform duration-300", isExpanded && "rotate-180")} />
+                          </div>
+                        </button>
+                        {isExpanded && (
+                          <div className="bg-bg-secondary/35 border-x border-b border-divider/50 p-3 rounded-b-xl -mt-1 text-[11px] font-medium text-text-secondary animate-in slide-in-from-top-1 duration-200">
+                            {details[i]}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
+        );
+      })()}
 
     </div>
   );

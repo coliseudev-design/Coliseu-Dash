@@ -4,7 +4,7 @@ import { useBiPeriodQuery } from '../../hooks/useBiPeriodQuery';
 import { useBranchPeriodQuery } from '../../hooks/useApi';
 import { BIService } from '../../services/biApi';
 import { BiPeriodFilter } from '../../types/bi.types';
-import { Box, DollarSign, Target, CheckCircle2 } from 'lucide-react';
+import { Box, DollarSign, Target, CheckCircle2, X, Filter, Calendar } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { formatBRL, formatNum, formatBRLCompact } from '../../utils/format';
 import clsx from 'clsx';
@@ -29,6 +29,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 export default function SalesHubDashboard() {
   const [isMobile, setIsMobile] = useState(false);
+  const [showFiltersSheet, setShowFiltersSheet] = useState(false);
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 640);
     handleResize();
@@ -109,20 +110,42 @@ export default function SalesHubDashboard() {
     <div aria-label="Hub de Vendas Dashboard" className="space-y-6 animate-in fade-in duration-300">
       
       {/* HEADER */}
-      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 mb-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
         <div>
-          <h2 className="text-2xl font-bold text-text-primary flex items-center gap-2">
+          <h2 className="text-2xl font-black text-text-primary flex items-center gap-2">
             Hub de Vendas
           </h2>
-          <p className="text-sm text-text-secondary mt-1">Central de monitoramento de pedidos, status de faturamento e performance</p>
+          <p className="text-xs text-text-secondary">Central de monitoramento de pedidos, status de faturamento e performance</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
+        
+        {isMobile && (
+          <button
+            onClick={() => setShowFiltersSheet(true)}
+            className="w-full sm:w-auto px-4 h-11 bg-bg-primary border border-divider text-text-primary rounded-xl text-xs font-bold shadow-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer shrink-0"
+          >
+            <Filter size={14} className="text-brand-500" />
+            <span>Filtros Comerciais</span>
+            {(selectedVendedor !== 'all' || selectedCidade !== 'all' || selectedGrupo !== 'all' || selectedMarca !== 'all') && (
+              <span className="w-2 h-2 rounded-full bg-brand-500 animate-pulse" />
+            )}
+          </button>
+        )}
+      </div>
+
+      {/* DESKTOP FILTERS BAR */}
+      {!isMobile && (
+        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-4 flex flex-wrap items-center gap-3 w-full animate-in fade-in duration-200">
+          <span className="text-[10px] font-black text-text-secondary uppercase tracking-widest mr-2 flex items-center gap-1.5">
+            <Filter size={13} className="text-brand-500" />
+            Filtros:
+          </span>
+          
           {/* VENDEDOR */}
           <select
             aria-label="Selecionar Vendedor"
             value={selectedVendedor}
             onChange={(e) => setSelectedVendedor(e.target.value)}
-            className="px-3 py-1.5 bg-bg-primary border border-border text-text-primary rounded-lg text-xs font-medium shadow-sm focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300 w-full sm:w-auto"
+            className="px-3 py-1.5 bg-bg-secondary border border-divider text-text-primary rounded-lg text-xs font-bold shadow-sm focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300 cursor-pointer"
           >
             <option value="all">Todos os Vendedores</option>
             {vdFull.data?.data?.map((seller: any) => (
@@ -137,7 +160,7 @@ export default function SalesHubDashboard() {
             aria-label="Selecionar Cidade"
             value={selectedCidade}
             onChange={(e) => setSelectedCidade(e.target.value)}
-            className="px-3 py-1.5 bg-bg-primary border border-border text-text-primary rounded-lg text-xs font-medium shadow-sm focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300 w-full sm:w-auto"
+            className="px-3 py-1.5 bg-bg-secondary border border-divider text-text-primary rounded-lg text-xs font-bold shadow-sm focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300 cursor-pointer"
           >
             <option value="all">Todas as Cidades</option>
             {cidFull.data?.data?.map((city: any) => (
@@ -152,7 +175,7 @@ export default function SalesHubDashboard() {
             aria-label="Selecionar Grupo"
             value={selectedGrupo}
             onChange={(e) => setSelectedGrupo(e.target.value)}
-            className="px-3 py-1.5 bg-bg-primary border border-border text-text-primary rounded-lg text-xs font-medium shadow-sm focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300 w-full sm:w-auto"
+            className="px-3 py-1.5 bg-bg-secondary border border-divider text-text-primary rounded-lg text-xs font-bold shadow-sm focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300 cursor-pointer"
           >
             <option value="all">Todos os Grupos</option>
             <option value="Sem Grupo">Sem Grupo</option>
@@ -170,7 +193,7 @@ export default function SalesHubDashboard() {
             aria-label="Selecionar Marca"
             value={selectedMarca}
             onChange={(e) => setSelectedMarca(e.target.value)}
-            className="px-3 py-1.5 bg-bg-primary border border-border text-text-primary rounded-lg text-xs font-medium shadow-sm focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300 w-full sm:w-auto"
+            className="px-3 py-1.5 bg-bg-secondary border border-divider text-text-primary rounded-lg text-xs font-bold shadow-sm focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300 cursor-pointer"
           >
             <option value="all">Todas as Marcas</option>
             <option value="Sem Marca">Sem Marca</option>
@@ -183,7 +206,7 @@ export default function SalesHubDashboard() {
             ))}
           </select>
         </div>
-      </div>
+      )}
 
       {/* TOP KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -336,67 +359,112 @@ export default function SalesHubDashboard() {
       </div>
 
       {/* FILA DE PEDIDOS RECENTES */}
-      <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex flex-col">
+      <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 sm:p-5 flex flex-col">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
           <h3 className="font-bold text-text-primary text-sm uppercase tracking-wider">Fila de Pedidos Recentes</h3>
           
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-text-muted font-medium">Status:</span>
-            <select
-              value={statusFilter}
-              onChange={(e) => handleFilterChange(e.target.value)}
-              className="bg-bg-secondary border border-divider rounded-lg text-sm px-3 py-1.5 text-text-primary focus:outline-none focus:border-brand-500"
-            >
-              <option value="TODOS">Todos os Status</option>
-              {availableStatuses.map(status => (
-                <option key={status} value={status}>{status}</option>
-              ))}
-            </select>
-          </div>
+          {!isMobile && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-text-muted font-medium">Status:</span>
+              <select
+                value={statusFilter}
+                onChange={(e) => handleFilterChange(e.target.value)}
+                className="bg-bg-secondary border border-divider rounded-lg text-sm px-3 py-1.5 text-text-primary focus:outline-none focus:border-brand-500 cursor-pointer font-bold"
+              >
+                <option value="TODOS">Todos os Status</option>
+                {availableStatuses.map(status => (
+                  <option key={status} value={status}>{status}</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
         
-        <div className="flex-1 overflow-x-auto">
-          <table className="w-full text-left text-sm whitespace-nowrap">
-            <thead>
-              <tr className="border-b border-divider text-[10px] text-text-muted uppercase font-bold tracking-wider">
-                <th className="pb-2">CÓD</th>
-                <th className="pb-2">Nº NOTA</th>
-                <th className="pb-2">CLIENTE</th>
-                <th className="pb-2">VENDEDOR</th>
-                <th className="pb-2">DATA</th>
-                <th className="pb-2 text-right">VALOR TOTAL</th>
-                <th className="pb-2 text-center">STATUS</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-divider/30 text-xs">
-              {currentOrders.map((order: any, i: number) => (
-                <tr key={order.id || i} className="hover:bg-bg-secondary transition-colors">
-                  <td className="py-2.5 font-mono text-text-muted">{order.id}</td>
-                  <td className="py-2.5 text-text-primary font-medium">{order.numero_nota}</td>
-                  <td className="py-2.5 text-text-primary truncate max-w-[200px]" title={order.cliente}>{order.cliente}</td>
-                  <td className="py-2.5 text-text-secondary font-medium">{order.vendedor}</td>
-                  <td className="py-2.5 text-text-muted">{order.data}</td>
-                  <td className="py-2.5 text-right font-mono font-bold text-success">{formatBRL(order.valor)}</td>
-                  <td className="py-2.5 text-center">
+        {isMobile ? (
+          <div className="grid grid-cols-1 gap-3.5">
+            {currentOrders.map((order: any, i: number) => {
+              const isFaturado = order.status && ['FATURADO', 'FINALIZADO'].includes(order.status.trim().toUpperCase());
+              const isCancelado = order.status && ['CANCELADO', 'DEVOLVIDO'].includes(order.status.trim().toUpperCase());
+              
+              return (
+                <div key={order.id || i} className="p-4 border border-divider/50 rounded-2xl bg-bg-secondary/20 flex flex-col gap-2.5 shadow-sm hover:border-divider transition-all duration-300">
+                  <div className="flex justify-between items-center">
+                    <span className="font-mono text-[10px] text-text-muted font-black">Nº NOTA: {order.numero_nota}</span>
                     <span className={clsx(
-                      "text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider",
-                      order.status === 'FATURADO' || order.status === 'FINALIZADO' ? 'bg-success/10 text-success' :
-                      order.status === 'CANCELADO' ? 'bg-danger/10 text-danger' :
-                      'bg-warning/10 text-warning'
+                      "text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider border",
+                      isFaturado ? 'bg-success/15 text-success border-success/10' :
+                      isCancelado ? 'bg-danger/15 text-danger border-danger/10' :
+                      'bg-warning/15 text-warning border-warning/10'
                     )}>
-                      {order.status}
+                      {order.status ? order.status.trim() : 'NORMAL'}
                     </span>
-                  </td>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-text-primary leading-snug">{order.cliente}</h4>
+                    <p className="text-[10px] text-text-secondary mt-1 font-medium">Vendedor: {order.vendedor}</p>
+                  </div>
+                  <div className="flex justify-between items-center pt-3 border-t border-divider/20 mt-1">
+                    <div className="flex items-center gap-1 text-[11px] text-text-secondary font-bold">
+                      <Calendar size={13} className="text-text-muted" />
+                      {order.data}
+                    </div>
+                    <div className="text-sm font-mono font-extrabold text-success">
+                      {formatBRL(order.valor)}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            {currentOrders.length === 0 && (
+              <p className="text-center text-xs text-text-muted py-8 font-semibold">Nenhum pedido encontrado.</p>
+            )}
+          </div>
+        ) : (
+          <div className="flex-1 overflow-x-auto border border-divider/50 rounded-2xl shadow-sm">
+            <table className="w-full text-left text-xs whitespace-nowrap">
+              <thead>
+                <tr className="border-b border-divider text-[10px] text-text-secondary uppercase font-black tracking-wider bg-bg-secondary/60">
+                  <th className="py-3.5 px-5 font-mono text-[9px]">CÓD</th>
+                  <th className="py-3.5 px-5">Nº NOTA</th>
+                  <th className="py-3.5 px-5">CLIENTE</th>
+                  <th className="py-3.5 px-5">VENDEDOR</th>
+                  <th className="py-3.5 px-5">DATA</th>
+                  <th className="py-3.5 px-5 text-right">VALOR TOTAL</th>
+                  <th className="py-3.5 px-5 text-center">STATUS</th>
                 </tr>
-              ))}
-              {currentOrders.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="py-8 text-center text-text-muted">Nenhum pedido encontrado.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-divider/20">
+                {currentOrders.map((order: any, i: number) => (
+                  <tr key={order.id || i} className="hover:bg-bg-secondary/40 transition-colors">
+                    <td className="py-3.5 px-5 font-mono text-text-muted">{order.id}</td>
+                    <td className="py-3.5 px-5 text-brand-500 font-extrabold">{order.numero_nota}</td>
+                    <td className="py-3.5 px-5 text-text-primary font-bold truncate max-w-[200px]" title={order.cliente}>{order.cliente}</td>
+                    <td className="py-3.5 px-5 text-text-secondary font-medium">{order.vendedor}</td>
+                    <td className="py-3.5 px-5 text-text-muted">{order.data}</td>
+                    <td className="py-3.5 px-5 text-right font-mono font-extrabold text-success">{formatBRL(order.valor)}</td>
+                    <td className="py-3.5 px-5 text-center">
+                      <span className={clsx(
+                        "text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider border",
+                        order.status && ['FATURADO', 'FINALIZADO'].includes(order.status.trim().toUpperCase())
+                          ? 'bg-success/15 text-success border-success/10'
+                          : order.status && ['CANCELADO', 'DEVOLVIDO'].includes(order.status.trim().toUpperCase())
+                          ? 'bg-danger/15 text-danger border-danger/10'
+                          : 'bg-warning/15 text-warning border-warning/10'
+                      )}>
+                        {order.status ? order.status.trim() : 'NORMAL'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+                {currentOrders.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="py-8 text-center text-text-muted font-bold">Nenhum pedido encontrado.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {/* PAGINATION */}
         {totalPages > 1 && (
@@ -408,17 +476,17 @@ export default function SalesHubDashboard() {
               <button
                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className="px-3 py-1 rounded-md text-xs font-medium border border-divider hover:bg-bg-secondary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="px-3 py-1.5 rounded-xl text-xs font-bold border border-divider hover:bg-bg-secondary disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer shadow-sm"
               >
                 Anterior
               </button>
               <div className="flex items-center px-2">
-                <span className="text-xs text-text-muted">Página {currentPage} de {totalPages}</span>
+                <span className="text-xs text-text-muted font-medium">Página {currentPage} de {totalPages}</span>
               </div>
               <button
                 onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
-                className="px-3 py-1 rounded-md text-xs font-medium border border-divider hover:bg-bg-secondary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="px-3 py-1.5 rounded-xl text-xs font-bold border border-divider hover:bg-bg-secondary disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer shadow-sm"
               >
                 Próxima
               </button>
@@ -430,6 +498,140 @@ export default function SalesHubDashboard() {
       {isError && (
         <div className="bg-danger/10 border border-danger/20 text-danger p-3 rounded-lg text-sm mt-4">
           Aviso: Os dados não puderam ser carregados devido a uma falha de conexão com o banco de dados/API.
+        </div>
+      )}
+
+      {/* BottomSheet for Filters on Mobile */}
+      {isMobile && showFiltersSheet && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center">
+          {/* Backdrop overlay */}
+          <div
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300"
+            onClick={() => setShowFiltersSheet(false)}
+          />
+          {/* Sheet container */}
+          <div className="relative w-full max-h-[85vh] bg-bg-primary rounded-t-3xl border-t border-divider shadow-2xl flex flex-col z-10 animate-in slide-in-from-bottom duration-300">
+            {/* Grab handle decoration */}
+            <div className="w-12 h-1.5 bg-bg-tertiary rounded-full mx-auto my-3 shrink-0" />
+            
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 pb-4 border-b border-divider shrink-0">
+              <h3 className="text-base font-bold text-text-primary">Filtros Comerciais</h3>
+              <button
+                onClick={() => setShowFiltersSheet(false)}
+                className="p-1.5 text-text-secondary hover:bg-bg-secondary rounded-lg cursor-pointer"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Scrollable Filters Content */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-4 pb-10">
+              {/* VENDEDOR */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-text-secondary uppercase">Vendedor</label>
+                <select
+                  value={selectedVendedor}
+                  onChange={(e) => setSelectedVendedor(e.target.value)}
+                  className="w-full h-11 px-3 bg-bg-secondary border border-divider text-text-primary rounded-xl text-sm font-semibold cursor-pointer"
+                >
+                  <option value="all">Todos os Vendedores</option>
+                  {vdFull.data?.data?.map((seller: any) => (
+                    <option key={seller.id} value={seller.id}>{seller.nome}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* CIDADE */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-text-secondary uppercase">Cidade</label>
+                <select
+                  value={selectedCidade}
+                  onChange={(e) => setSelectedCidade(e.target.value)}
+                  className="w-full h-11 px-3 bg-bg-secondary border border-divider text-text-primary rounded-xl text-sm font-semibold cursor-pointer"
+                >
+                  <option value="all">Todas as Cidades</option>
+                  {cidFull.data?.data?.map((city: any) => (
+                    <option key={city.nome} value={city.nome}>{city.nome}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* GRUPO */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-text-secondary uppercase">Grupo</label>
+                <select
+                  value={selectedGrupo}
+                  onChange={(e) => setSelectedGrupo(e.target.value)}
+                  className="w-full h-11 px-3 bg-bg-secondary border border-divider text-text-primary rounded-xl text-sm font-semibold cursor-pointer"
+                >
+                  <option value="all">Todos os Grupos</option>
+                  <option value="Sem Grupo">Sem Grupo</option>
+                  {catFull.data?.data?.map((cat: any) => (
+                    cat.nome !== 'Sem Grupo' && cat.nome !== 'S/ GRUPO' && (
+                      <option key={cat.nome} value={cat.nome}>{cat.nome}</option>
+                    )
+                  ))}
+                </select>
+              </div>
+
+              {/* MARCA */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-text-secondary uppercase">Marca</label>
+                <select
+                  value={selectedMarca}
+                  onChange={(e) => setSelectedMarca(e.target.value)}
+                  className="w-full h-11 px-3 bg-bg-secondary border border-divider text-text-primary rounded-xl text-sm font-semibold cursor-pointer"
+                >
+                  <option value="all">Todas as Marcas</option>
+                  <option value="Sem Marca">Sem Marca</option>
+                  {marFull.data?.data?.map((brand: any) => (
+                    brand.nome !== 'Sem Marca' && brand.nome !== 'S/ MARCA' && (
+                      <option key={brand.nome} value={brand.nome}>{brand.nome}</option>
+                    )
+                  ))}
+                </select>
+              </div>
+
+              {/* STATUS DE PEDIDOS */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-text-secondary uppercase">Status do Pedido</label>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => handleFilterChange(e.target.value)}
+                  className="w-full h-11 px-3 bg-bg-secondary border border-divider text-text-primary rounded-xl text-sm font-semibold cursor-pointer"
+                >
+                  <option value="TODOS">Todos os Status</option>
+                  {availableStatuses.map((status: string) => (
+                    <option key={status} value={status}>{status}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Sticky Action Footer */}
+            <div className="p-4 border-t border-divider bg-bg-primary flex gap-3 shrink-0">
+              <button
+                onClick={() => {
+                  setSelectedVendedor('all');
+                  setSelectedCidade('all');
+                  setSelectedGrupo('all');
+                  setSelectedMarca('all');
+                  setStatusFilter('TODOS');
+                  setShowFiltersSheet(false);
+                }}
+                className="flex-1 py-3 border border-divider text-text-secondary font-bold text-sm rounded-xl active:bg-bg-secondary cursor-pointer"
+              >
+                Limpar
+              </button>
+              <button
+                onClick={() => setShowFiltersSheet(false)}
+                className="flex-1 py-3 bg-brand-500 text-white font-bold text-sm rounded-xl active:bg-brand-600 shadow-sm cursor-pointer"
+              >
+                Aplicar Filtros
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

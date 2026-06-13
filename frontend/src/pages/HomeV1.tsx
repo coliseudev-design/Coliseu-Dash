@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useBranchPeriodQuery } from '../hooks/useApi'
 import { Link } from 'react-router-dom'
 import {
@@ -13,6 +13,34 @@ import {
 import { formatBRL, formatBRLCompact, formatNum, formatDate, formatDateTime } from '../utils/format'
 import { usePeriodStore } from '../store/periodStore'
 import PeriodFilter from '../components/PeriodFilter'
+
+// ─── Sparkline Component ──────────────────────────────────────────────────────
+function Sparkline({ data }: { data: number[] }) {
+  if (!data || data.length === 0) return null
+  const max = Math.max(...data)
+  const min = Math.min(...data)
+  const range = max - min || 1
+  const width = 140
+  const height = 40
+  const points = data.map((val, index) => {
+    const x = (index / (data.length - 1)) * width
+    const y = height - ((val - min) / range) * (height - 6) - 3
+    return `${x.toFixed(1)},${y.toFixed(1)}`
+  })
+  const pathD = `M ${points.join(' L ')}`
+  return (
+    <svg className="overflow-visible shrink-0 opacity-80" width={width} height={height}>
+      <path
+        d={pathD}
+        fill="none"
+        stroke="var(--color-brand-500)"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -109,19 +137,40 @@ interface SellerRowProps {
   name: string
   value: number
   maxValue: number
+  showAvatar?: boolean
 }
 
-function SellerRow({ rank, name, value, maxValue }: SellerRowProps) {
+function SellerRow({ rank, name, value, maxValue, showAvatar = false }: SellerRowProps) {
   const pct = maxValue > 0 ? (value / maxValue) * 100 : 0
   const medal = rank <= 3 ? MEDAL_LABELS[rank - 1] : null
+  const initials = name ? name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() : 'V'
+
+  const avatarGradients = [
+    'from-amber-400 to-amber-600 text-white shadow-amber-500/10',
+    'from-slate-300 to-slate-500 text-white shadow-slate-500/10',
+    'from-orange-400 to-amber-800 text-white shadow-orange-500/10',
+    'from-brand-400 to-brand-600 text-white shadow-brand-500/10',
+  ]
+  const grad = rank <= 3 ? avatarGradients[rank - 1] : avatarGradients[3]
 
   return (
     <div className="flex items-center gap-3 py-2.5 px-1 group hover:bg-bg-secondary rounded-lg transition-colors duration-200">
-      <div className="w-7 text-center shrink-0">
-        {medal ? (
-          <span className="text-base">{medal}</span>
+      <div className="shrink-0 relative">
+        {showAvatar ? (
+          <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${grad} flex items-center justify-center text-xs font-black shadow-sm border border-white/15`}>
+            {initials}
+            <span className="absolute -bottom-1 -right-1 bg-bg-primary text-[10px] w-5 h-5 flex items-center justify-center rounded-full border border-divider shadow-sm font-bold">
+              {medal || `${rank}º`}
+            </span>
+          </div>
         ) : (
-          <span className="text-[11px] font-bold text-text-muted mono">{rank}º</span>
+          <div className="w-7 text-center shrink-0">
+            {medal ? (
+              <span className="text-base">{medal}</span>
+            ) : (
+              <span className="text-[11px] font-bold text-text-muted mono">{rank}º</span>
+            )}
+          </div>
         )}
       </div>
       <div className="flex-1 min-w-0">
@@ -193,6 +242,15 @@ interface Overview {
 export default function HomeV1() {
   const period = usePeriodStore((s) => s.period)
   const [rankTab, setRankTab] = useState<'vendedores' | 'marcas' | 'clientes'>('vendedores')
+  const [isMobile, setIsMobile] = useState(false)
+  const [showAllRank, setShowAllRank] = useState(false)
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 640)
+    handleResize()
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   const ov       = useBranchPeriodQuery<Overview>('/estatisticas/overview')
   const fatMes   = useBranchPeriodQuery<any>('/vendas/faturadas')
@@ -228,6 +286,10 @@ export default function HomeV1() {
     return raw.slice(-30)
   }, [fatMes.data])
 
+  const sparklineData = useMemo(() => {
+    return chartData.map((d: any) => d.total || 0)
+  }, [chartData])
+
   const recentOrders = useMemo(
     () => (recentes.data?.data || []).slice(0, 7),
     [recentes.data]
@@ -248,21 +310,26 @@ export default function HomeV1() {
       {/* ── HERO KPI — Faturamento Principal ──────────────────────── */}
       <div className="card relative overflow-hidden !p-5 sm:!p-6">
         {/* Accent stripe */}
-        <div className="absolute left-0 top-0 h-full w-1 bg-brand-500 rounded-l-xl" />
+        <div className="absolute left-0 top-0 h-full w-1.5 bg-brand-500 rounded-l-xl" />
         <div className="pl-3 sm:pl-4">
-          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-            <div>
-              <p className="text-xs font-semibold text-text-secondary uppercase tracking-widest mb-2">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold text-text-secondary uppercase tracking-widest mb-2">
                 Faturamento do Período
               </p>
               {ov.isLoading ? (
-                <SkeletonPulse className="h-12 w-48" />
+                <SkeletonPulse className="h-14 w-48" />
               ) : (
-                <div className="flex items-end gap-3">
-                  <span className="text-4xl sm:text-5xl font-extrabold text-text-primary mono leading-none">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                  <span className="text-5xl sm:text-6xl font-black text-text-primary mono leading-none tracking-tight">
                     {formatBRL(totalPeriodo)}
                   </span>
-                  <Trend pct={crescimentoPct} />
+                  <div className="flex items-center gap-2">
+                    <Trend pct={crescimentoPct} />
+                    {!isMobile && sparklineData.length > 0 && (
+                      <Sparkline data={sparklineData} />
+                    )}
+                  </div>
                 </div>
               )}
               <p className="text-xs text-text-muted mt-2 flex items-center gap-2">
@@ -485,15 +552,27 @@ export default function HomeV1() {
             ) : rankData.length === 0 ? (
               <p className="text-center text-sm text-text-muted py-8">Sem dados no período</p>
             ) : (
-              rankData.map((item, i) => (
-                <SellerRow
-                  key={i}
-                  rank={i + 1}
-                  name={item.nome}
-                  value={item.total}
-                  maxValue={rankMax}
-                />
-              ))
+              <>
+                {(isMobile && !showAllRank ? rankData.slice(0, 3) : rankData).map((item, i) => (
+                  <SellerRow
+                    key={i}
+                    rank={i + 1}
+                    name={item.nome}
+                    value={item.total}
+                    maxValue={rankMax}
+                    showAvatar={isMobile}
+                  />
+                ))}
+                
+                {isMobile && rankData.length > 3 && (
+                  <button
+                    onClick={() => setShowAllRank(!showAllRank)}
+                    className="w-full mt-3 py-2.5 text-center text-xs font-bold text-brand-500 hover:text-brand-600 bg-brand-50/50 dark:bg-brand-900/10 rounded-xl border border-brand-500/10 active:scale-[0.98] transition-all cursor-pointer"
+                  >
+                    {showAllRank ? 'Mostrar Apenas os Top 3' : `Mais ${rankTab === 'vendedores' ? 'Vendedores' : rankTab === 'marcas' ? 'Marcas' : 'Clientes'} (${rankData.length - 3})`}
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>

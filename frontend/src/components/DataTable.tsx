@@ -16,10 +16,14 @@ interface Props<T> {
   loading?: boolean
   empty?: string
   rowKey?: (row: T, idx: number) => string | number
+  onRowMouseEnter?: (row: T, idx: number) => void
+  onRowMouseLeave?: (row: T, idx: number) => void
+  rowClassName?: (row: T, idx: number) => string
 }
 
 export default function DataTable<T>({
   columns, data, loading, empty = 'Sem registros', rowKey,
+  onRowMouseEnter, onRowMouseLeave, rowClassName,
 }: Props<T>) {
   return (
     <div className="card !p-0 overflow-hidden" aria-label="Tabela de Dados">
@@ -64,7 +68,12 @@ export default function DataTable<T>({
               data.map((row, idx) => (
                 <tr
                   key={rowKey ? rowKey(row, idx) : idx}
-                  className="border-b border-divider last:border-0 hover:bg-bg-secondary/50 transition-colors"
+                  onMouseEnter={() => onRowMouseEnter?.(row, idx)}
+                  onMouseLeave={() => onRowMouseLeave?.(row, idx)}
+                  className={clsx(
+                    'border-b border-divider last:border-0 hover:bg-bg-secondary/50 transition-colors',
+                    rowClassName?.(row, idx),
+                  )}
                 >
                   {columns.map((c) => (
                     <td

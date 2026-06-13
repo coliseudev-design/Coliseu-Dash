@@ -12,6 +12,7 @@ import { Trophy, Package, Tag, Layers, Users, CreditCard } from 'lucide-react'
 // Componente Unificado Moderno (Card de Ranking)
 function RankingSection({ title, subtitle, icon: Icon, data, loading }: any) {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null)
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768)
@@ -38,13 +39,16 @@ function RankingSection({ title, subtitle, icon: Icon, data, loading }: any) {
       <div className="p-2 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10">
         
         {/* Lado Esquerdo: Tabela */}
-        <div className="flex flex-col lg:col-span-6 min-w-0">
+        <div className="flex flex-col lg:col-span-6 min-w-0 order-2 lg:order-1">
           <h3 className="text-xs font-bold text-text-muted uppercase tracking-wider mb-3">Tabela de Desempenho</h3>
           <div className="flex-1 w-full">
             <DataTable
               loading={loading}
               data={data || []}
               empty="Sem dados no período"
+              onRowMouseEnter={(_, idx) => setHoveredIdx(idx)}
+              onRowMouseLeave={() => setHoveredIdx(null)}
+              rowClassName={(_, idx) => idx === hoveredIdx ? '!bg-brand-500/10' : ''}
               columns={[
                 { key: '#', label: 'RANK', width: isMobile ? '40px' : '60px', render: (_: any, i: number) => <span className="text-text-muted mono font-semibold">{i + 1}º</span> },
                 { key: 'nome', label: 'DESCRIÇÃO', render: (r: any) => <span className="font-medium text-text-primary capitalize truncate block max-w-[100px] text-[10px] sm:text-[14px] sm:max-w-[220px]" title={r.nome}>{r.nome}</span> },
@@ -55,7 +59,7 @@ function RankingSection({ title, subtitle, icon: Icon, data, loading }: any) {
         </div>
 
         {/* Lado Direito: Gráfico de Barras */}
-        <div className="flex flex-col lg:col-span-6 min-w-0">
+        <div className="flex flex-col lg:col-span-6 min-w-0 order-1 lg:order-2">
           <h3 className="text-xs font-bold text-text-muted uppercase tracking-wider mb-3">Visualização de Impacto</h3>
           <div className="h-[280px] sm:h-[320px] w-full relative">
             {!loading && (!data || data.length === 0) ? (
@@ -82,9 +86,21 @@ function RankingSection({ title, subtitle, icon: Icon, data, loading }: any) {
                     contentStyle={{ fontSize: 12, borderRadius: '12px', border: '1px solid #f3f4f6', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} 
                     cursor={{ fill: '#f9fafb' }} 
                   />
-                  <Bar dataKey="total" radius={[0, 6, 6, 0]} barSize={22} animationDuration={1000}>
+                  <Bar 
+                    dataKey="total" 
+                    radius={[0, 6, 6, 0]} 
+                    barSize={22} 
+                    animationDuration={1000}
+                    onMouseEnter={(_, idx) => setHoveredIdx(idx)}
+                    onMouseLeave={() => setHoveredIdx(null)}
+                  >
                     {(data || []).map((_: any, i: number) => (
-                      <Cell key={i} fill={CHART_PALETTE[i % CHART_PALETTE.length]} />
+                      <Cell 
+                        key={i} 
+                        fill={CHART_PALETTE[i % CHART_PALETTE.length]} 
+                        opacity={hoveredIdx === null || hoveredIdx === i ? 1 : 0.4}
+                        className="transition-opacity duration-200 cursor-pointer"
+                      />
                     ))}
                   </Bar>
                 </BarChart>

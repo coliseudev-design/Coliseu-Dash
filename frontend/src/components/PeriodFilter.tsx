@@ -34,22 +34,22 @@ export default function PeriodFilter({ excludePeriods = [], compact = false }: P
 
   return (
     <div className={clsx(
-      "w-full sm:w-auto max-w-full min-w-0 bg-bg-secondary/40 border border-divider/50 shadow-sm",
-      compact ? "p-1 rounded-xl" : "p-1.5 rounded-2xl"
+      "w-full sm:w-auto max-w-full min-w-0 bg-bg-tertiary/40 dark:bg-bg-secondary/80 border border-divider/40 shadow-sm",
+      compact ? "p-0.5 rounded-lg" : "p-1 rounded-xl"
     )}>
-      <div className="flex flex-wrap items-center gap-1.5 w-full">
+      <div className="flex items-center gap-0.5 w-full sm:w-auto overflow-x-auto no-scrollbar">
         {PERIOD_OPTIONS.filter(opt => !excludePeriods.includes(opt.key)).map((opt) => (
           <button
             key={opt.key}
             onClick={() => handleClick(opt.key)}
             className={clsx(
-              'font-black tracking-wider uppercase transition-all duration-200 whitespace-nowrap flex items-center justify-center flex-shrink-0 cursor-pointer',
+              'font-bold tracking-wide uppercase transition-all duration-200 whitespace-nowrap flex items-center justify-center flex-shrink-0 cursor-pointer',
               compact 
-                ? 'px-2.5 py-1.5 text-[9px] rounded-lg' 
-                : 'px-4 py-2.5 sm:py-2 text-[11px] md:text-xs rounded-xl',
+                ? 'px-2.5 py-1 text-[9px] rounded-md' 
+                : 'px-3.5 py-1.5 text-[10px] md:text-xs rounded-lg flex-1 sm:flex-initial',
               period === opt.key
-                ? 'bg-brand-500 text-white shadow-lg shadow-brand-500/15 scale-[1.02]'
-                : 'bg-transparent text-text-secondary hover:text-text-primary hover:bg-bg-primary/40 border border-transparent active:scale-[0.98]',
+                ? 'bg-bg-primary dark:bg-bg-tertiary text-brand-600 dark:text-brand-400 shadow-sm'
+                : 'bg-transparent text-text-secondary hover:text-text-primary hover:bg-bg-primary/30 border border-transparent active:scale-[0.98]',
             )}
           >
             {opt.label}

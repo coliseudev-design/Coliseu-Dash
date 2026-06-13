@@ -51,9 +51,9 @@ export default function Sidebar({ open, onClose }: Props) {
       )}
       <aside
         className={clsx(
-          'fixed lg:sticky top-0 left-0 h-screen w-64 bg-bg-primary/95 backdrop-blur-xl border-r border-divider z-40',
-          'transform transition-transform duration-200 ease-out lg:translate-x-0',
-          'flex flex-col shadow-card lg:shadow-none',
+          'fixed lg:sticky top-0 left-0 h-screen w-64 bg-bg-primary/95 backdrop-blur-xl border-r border-divider/40 z-40',
+          'transform transition-transform duration-250 ease-out lg:translate-x-0',
+          'flex flex-col shadow-2xl lg:shadow-[8px_0_32px_rgba(0,0,0,0.02)] dark:lg:shadow-[8px_0_32px_rgba(0,0,0,0.15)]',
           open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
         )}
       >

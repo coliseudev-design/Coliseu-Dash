@@ -1,9 +1,11 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useBranchPeriodQuery } from '../hooks/useApi'
 import PeriodFilter from '../components/PeriodFilter'
+import clsx from 'clsx'
 import {
   Users, Percent, ArrowDownAZ, Hash, Trophy, BarChart3,
-  ShoppingCart, Receipt, Tag, User, DollarSign, BadgePercent
+  ShoppingCart, Receipt, Tag, User, DollarSign, BadgePercent,
+  ChevronDown
 } from 'lucide-react'
 import { formatBRL, formatBRLCompact, formatNum } from '../utils/format'
 import KPICard from '../components/KPICard'
@@ -33,6 +35,11 @@ export default function Comissoes() {
     return null;
   };
 
+  const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({})
+  const toggleCard = (id: string) => {
+    setExpandedCards(prev => ({ ...prev, [id]: !prev[id] }))
+  }
+
   return (
     <div className="space-y-4 sm:space-y-6 pb-6" aria-label="Vendedores">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -57,80 +64,101 @@ export default function Comissoes() {
               <h2 className="font-heading font-semibold text-text-primary">Desempenho Consolidado</h2>
             </div>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {sortedData.map((v: any, i: number) => (
-                <div key={v.vendedor_id} className="border border-border rounded-xl p-4 bg-bg-primary hover:shadow-card-hover transition-shadow relative shadow-card">
-                  {/* Badge Rank */}
-                  <span className={`absolute -top-3 -left-3 w-8 h-8 flex items-center justify-center text-xs font-bold rounded-full shadow-md text-white ${i === 0 ? 'bg-warning' : i === 1 ? 'bg-text-muted' : 'bg-brand-500'}`}>
-                    {i + 1}º
-                  </span>
+                <div key={v.vendedor_id} className="border border-divider rounded-2xl p-5 bg-bg-primary hover:shadow-card-hover transition-all duration-300 relative shadow-card flex flex-col justify-between h-full hover:scale-[1.01]">
+                  {/* Badge Rank / Medal */}
+                  {i < 3 ? (
+                    <span className="absolute -top-3 -left-3 text-2xl drop-shadow-md select-none">
+                      {i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}
+                    </span>
+                  ) : (
+                    <span className="absolute -top-3 -left-3 w-8 h-8 flex items-center justify-center text-xs font-black rounded-full shadow-md text-white bg-brand-500">
+                      {i + 1}º
+                    </span>
+                  )}
                   
                   <h3 className="font-semibold text-text-primary mb-3 pl-3 truncate border-b border-divider pb-2" title={v.vendedor}>
                     {v.vendedor}
                   </h3>
                   
-                  <div className="space-y-4">
+                  <div className="space-y-4 flex-1 flex flex-col justify-between">
                     {/* Faturamento em Destaque */}
-                    <div className="flex flex-col gap-1 items-center justify-center p-3 bg-brand-50 rounded-lg border border-brand-100">
-                      <span className="text-brand-600 text-[10px] font-bold uppercase tracking-wider">Total Faturado</span>
-                      <span className="text-2xl font-bold text-brand-700">{formatBRL(v.total_vendas)}</span>
+                    <div className="flex flex-col gap-1.5 items-center justify-center p-4 bg-brand-500/[0.03] dark:bg-brand-500/[0.01] rounded-2xl border border-brand-500/20">
+                      <span className="text-brand-600 dark:text-brand-400 text-[10px] font-black uppercase tracking-widest">Total Faturado</span>
+                      <span className="text-2xl font-black text-brand-500 tracking-tight">{formatBRL(v.total_vendas)}</span>
                     </div>
 
-                    {/* Secundário: Vendas e Ticket */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="flex items-center gap-2">
-                        <div className="bg-bg-secondary p-1.5 rounded-md text-text-secondary">
-                          <ShoppingCart size={14} />
-                        </div>
-                        <div>
-                          <p className="text-[10px] text-text-secondary leading-none mb-1 uppercase font-semibold">Vendas</p>
-                          <p className="font-semibold text-text-primary text-sm leading-none">{formatNum(v.qtd_vendas)}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="bg-bg-secondary p-1.5 rounded-md text-text-secondary">
-                          <Receipt size={14} />
-                        </div>
-                        <div>
-                          <p className="text-[10px] text-text-secondary leading-none mb-1 uppercase font-semibold">Ticket Médio</p>
-                          <p className="font-semibold text-text-primary text-sm leading-none">{formatBRL(v.ticket_medio)}</p>
-                        </div>
-                      </div>
-                    </div>
+                    {/* Expander Button (Mobile Only) */}
+                    <button
+                      onClick={() => toggleCard(String(v.vendedor_id))}
+                      className="w-full flex items-center justify-center gap-1.5 py-2.5 px-3 bg-bg-secondary hover:bg-bg-secondary/80 border border-divider/60 rounded-xl text-[11px] font-bold text-text-secondary sm:hidden cursor-pointer transition-all mt-1"
+                    >
+                      <span>{expandedCards[String(v.vendedor_id)] ? "Ocultar Detalhes" : "Ver Detalhes"}</span>
+                      <ChevronDown size={14} className={clsx("transition-transform duration-300", expandedCards[String(v.vendedor_id)] && "rotate-180")} />
+                    </button>
 
-                    {/* Destaques Inferiores */}
-                    <div className="space-y-2.5 pt-3 border-t border-divider">
-                      <div className="flex flex-col gap-1 text-sm">
-                        <div className="flex justify-between items-center">
+                    {/* Collapsible content (hidden on mobile by default, always visible on sm+) */}
+                    <div className={clsx(
+                      "space-y-4",
+                      expandedCards[String(v.vendedor_id)] ? "block" : "hidden sm:block"
+                    )}>
+                      {/* Secundário: Vendas e Ticket */}
+                      <div className="grid grid-cols-2 gap-3 pt-2">
+                        <div className="flex items-center gap-2">
+                          <div className="bg-bg-secondary p-1.5 rounded-md text-text-secondary">
+                            <ShoppingCart size={14} />
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-text-secondary leading-none mb-1 uppercase font-semibold">Vendas</p>
+                            <p className="font-semibold text-text-primary text-sm leading-none">{formatNum(v.qtd_vendas)}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="bg-bg-secondary p-1.5 rounded-md text-text-secondary">
+                            <Receipt size={14} />
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-text-secondary leading-none mb-1 uppercase font-semibold">Ticket Médio</p>
+                            <p className="font-semibold text-text-primary text-sm leading-none">{formatBRL(v.ticket_medio)}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Destaques Inferiores */}
+                      <div className="space-y-2.5 pt-3 border-t border-divider">
+                        <div className="flex flex-col gap-1 text-sm">
+                          <div className="flex justify-between items-center">
+                            <span className="text-text-secondary text-xs flex items-center gap-1">
+                              <Trophy size={12} className="text-warning"/> Maior Venda
+                            </span>
+                            <span className="font-bold text-text-primary">{formatBRL(v.maior_venda)}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-xs text-text-secondary bg-bg-secondary px-2 py-1 rounded-md">
+                            <User size={12} className="shrink-0" />
+                            <span className="truncate font-medium" title={v.cliente_maior_venda}>{v.cliente_maior_venda}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col gap-1 text-sm">
                           <span className="text-text-secondary text-xs flex items-center gap-1">
-                            <Trophy size={12} className="text-warning"/> Maior Venda
+                            <Tag size={12} className="text-brand-500" /> Produto Mais Vendido
                           </span>
-                          <span className="font-bold text-text-primary">{formatBRL(v.maior_venda)}</span>
+                          <div className="text-xs text-text-primary font-medium bg-bg-secondary px-2 py-1 rounded-md truncate" title={v.melhor_produto}>
+                            {v.melhor_produto}
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1.5 text-xs text-text-secondary bg-bg-secondary px-2 py-1 rounded-md">
-                          <User size={12} className="shrink-0" />
-                          <span className="truncate font-medium" title={v.cliente_maior_venda}>{v.cliente_maior_venda}</span>
-                        </div>
+                        
+                        {v.qtd_descontos > 0 && (
+                          <div className="flex justify-between items-center text-xs bg-danger/10 text-danger px-2 py-1.5 rounded-md mt-1 border border-danger/20">
+                            <span className="font-medium flex items-center gap-1">
+                              <BadgePercent size={12} className="shrink-0" />
+                              Descontos ({v.qtd_descontos})
+                            </span>
+                            <span className="font-bold">{formatBRL(v.total_desconto)}</span>
+                          </div>
+                        )}
                       </div>
-
-                      <div className="flex flex-col gap-1 text-sm">
-                        <span className="text-text-secondary text-xs flex items-center gap-1">
-                          <Tag size={12} className="text-brand-500" /> Produto Mais Vendido
-                        </span>
-                        <div className="text-xs text-text-primary font-medium bg-bg-secondary px-2 py-1 rounded-md truncate" title={v.melhor_produto}>
-                          {v.melhor_produto}
-                        </div>
-                      </div>
-                      
-                      {v.qtd_descontos > 0 && (
-                        <div className="flex justify-between items-center text-xs bg-danger/10 text-danger px-2 py-1.5 rounded-md mt-1 border border-danger/20">
-                          <span className="font-medium flex items-center gap-1">
-                            <BadgePercent size={12} className="shrink-0" />
-                            Descontos ({v.qtd_descontos})
-                          </span>
-                          <span className="font-bold">{formatBRL(v.total_desconto)}</span>
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>

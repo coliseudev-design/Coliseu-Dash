@@ -15,11 +15,11 @@
     --color-brand-500: #0066CC;
     --color-brand-600: #0052A3;
     --color-brand-700: #003D7A;
-    --color-border: #E0E0E0;
-    --color-divider: rgba(224, 224, 224, 0.5);
-    --shadow-card: 0 1px 3px 0 rgba(0,0,0,0.05), 0 1px 2px 0 rgba(0,0,0,0.03);
-    --shadow-card-hover: 0 4px 12px 0 rgba(0,0,0,0.08);
-    --border-radius-base: 0.75rem; /* 12px default for rounded-xl */
+    --color-border: #E5E7EB;
+    --color-divider: rgba(229, 231, 235, 0.5);
+    --shadow-card: 0 4px 20px -2px rgba(0, 0, 0, 0.05), 0 2px 8px -1px rgba(0, 0, 0, 0.02);
+    --shadow-card-hover: 0 12px 32px -4px rgba(0, 0, 0, 0.1), 0 4px 12px -2px rgba(0, 0, 0, 0.04);
+    --border-radius-base: 1rem; /* 16px default for rounded-2xl */
   }
 
   .dark {
@@ -36,9 +36,9 @@
     --color-brand-700: #1D4ED8;       /* Blue 700 */
     --color-border: #334155;          /* Slate 700 */
     --color-divider: rgba(51, 65, 85, 0.5);
-    --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
-    --shadow-card-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.7), 0 4px 6px -2px rgba(0, 0, 0, 0.5);
-    --border-radius-base: 0.75rem;
+    --shadow-card: 0 6px 20px -4px rgba(0, 0, 0, 0.4), 0 2px 6px -2px rgba(0, 0, 0, 0.3);
+    --shadow-card-hover: 0 16px 36px -6px rgba(0, 0, 0, 0.6), 0 6px 12px -3px rgba(0, 0, 0, 0.4);
+    --border-radius-base: 1rem;
   }
 
   /* Estilos para Layout v2.0 (Moderno e Minimalista) */
