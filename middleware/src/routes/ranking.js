@@ -126,7 +126,10 @@ router.get('/produtos', async (req, res, next) => {
         `, [tenantId, start, end, ...df.params, ...vf.params, limit]);
 
         res.json({ data: rows.map(r => ({
-            name: r.nome, total: parseFloat(r.total || 0),
+            nome: r.nome,
+            name: r.nome,
+            produto: r.nome,
+            total: parseFloat(r.total || 0),
             qtd_vendida: parseFloat(r.qtd_vendida || 0),
             preco_medio: parseFloat(r.preco_medio || 0)
         })) });
