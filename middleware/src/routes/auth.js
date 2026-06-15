@@ -43,6 +43,56 @@ router.post('/login', async (req, res) => {
 
         // TODO: Futuramente chamar o Identity Server aqui para checar limite de licenças simultâneas do tenant
 
+        // Validar licença de versão no Identity Server
+        let licensedVersions = [];
+        if (user.tenant_id !== '00000000-0000-0000-0000-000000000000') {
+            const { identityApiUrl, identityInternalKey, expectedModuleSlug } = config.security;
+
+            if (identityApiUrl && identityInternalKey) {
+                try {
+                    const url = `${identityApiUrl}/internal/companies/${user.tenant_id}/modules/${expectedModuleSlug}/info`;
+                    const controller = new AbortController();
+                    const timeout = setTimeout(() => controller.abort(), 3000);
+
+                    const response = await fetch(url, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Internal-Api-Key': identityInternalKey
+                        },
+                        signal: controller.signal
+                    });
+                    clearTimeout(timeout);
+
+                    if (response.status === 200) {
+                        const licenseData = await response.json();
+                        if (licenseData.isActive === false) {
+                            return res.status(403).json({ error: 'Licença desativada no servidor de licenças.', code: 'LICENSE_INACTIVE' });
+                        }
+                        licensedVersions = licenseData.versions || [];
+                        const userVersion = user.versao || 'Dash 1.0';
+                        if (licensedVersions.length > 0 && !licensedVersions.includes(userVersion)) {
+                            logger.warn('[Auth] Bloqueio de login: versão não habilitada na licença', { email: user.email, userVersion, licensedVersions });
+                            return res.status(403).json({ 
+                                error: `A versão '${userVersion}' configurada para o seu usuário não está habilitada na licença da empresa.`, 
+                                code: 'VERSION_NOT_LICENSED' 
+                            });
+                        }
+                    } else if (response.status === 403) {
+                        const licenseData = await response.json().catch(() => ({}));
+                        const reason = licenseData.reason || licenseData.error || 'Empresa inativa ou módulo bloqueado no controle de licenças.';
+                        logger.warn('[Auth] Login bloqueado pelo Identity Server (403)', { email: user.email, reason });
+                        return res.status(403).json({ error: reason, code: 'MODULE_BLOCKED' });
+                    } else {
+                        logger.warn('[Auth] Resposta inesperada do Identity Server no login', { status: response.status, tenant: user.tenant_id });
+                    }
+                } catch (err) {
+                    logger.error('[Auth] Erro ao comunicar com o servidor de licenças durante login', err);
+                    // Tolerância: prosseguir caso de erro na comunicação
+                }
+            }
+        }
+
         // Gerar JWT
         const token = jwt.sign(
             {
@@ -79,6 +129,11 @@ router.post('/login', async (req, res) => {
             if (user.versao && !available_versions.includes(user.versao)) {
                 available_versions.push(user.versao);
             }
+        }
+
+        // Filtrar as versões disponíveis baseadas na licença
+        if (user.tenant_id !== '00000000-0000-0000-0000-000000000000' && licensedVersions.length > 0) {
+            available_versions = available_versions.filter(v => licensedVersions.includes(v));
         }
 
         res.status(200).json({
@@ -239,6 +294,37 @@ router.get('/me', requireWebJwt, async (req, res) => {
         const user = rows[0];
         const permissions = await getUserPermissions(user.id, user.tenant_id);
 
+        // Buscar licença no Identity Server para filtrar versões
+        let licensedVersions = [];
+        if (user.tenant_id !== '00000000-0000-0000-0000-000000000000') {
+            const { identityApiUrl, identityInternalKey, expectedModuleSlug } = config.security;
+
+            if (identityApiUrl && identityInternalKey) {
+                try {
+                    const url = `${identityApiUrl}/internal/companies/${user.tenant_id}/modules/${expectedModuleSlug}/info`;
+                    const controller = new AbortController();
+                    const timeout = setTimeout(() => controller.abort(), 2000);
+
+                    const response = await fetch(url, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Internal-Api-Key': identityInternalKey
+                        },
+                        signal: controller.signal
+                    });
+                    clearTimeout(timeout);
+
+                    if (response.status === 200) {
+                        const licenseData = await response.json();
+                        licensedVersions = licenseData.versions || [];
+                    }
+                } catch (err) {
+                    logger.warn('[Auth] Falha tolerada ao consultar licenças no /me', { err: err.message, tenantId: user.tenant_id });
+                }
+            }
+        }
+
         // Buscar as versões às quais o usuário tem acesso
         let available_versions = [];
         if (user.role === 'master' || user.role === 'admin') {
@@ -255,6 +341,11 @@ router.get('/me', requireWebJwt, async (req, res) => {
             if (user.versao && !available_versions.includes(user.versao)) {
                 available_versions.push(user.versao);
             }
+        }
+
+        // Filtrar as versões disponíveis baseadas na licença
+        if (user.tenant_id !== '00000000-0000-0000-0000-000000000000' && licensedVersions.length > 0) {
+            available_versions = available_versions.filter(v => licensedVersions.includes(v));
         }
 
         res.json({
