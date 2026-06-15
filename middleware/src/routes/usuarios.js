@@ -13,7 +13,7 @@ const logger = require('../config/logger');
  */
 router.get('/', async (req, res) => {
     try {
-        let query = `SELECT id, tenant_id, email, nome, role, ativo, created_at, permissions, layout_version, filial_acesso, grupo_id FROM dash_usuarios`;
+        let query = `SELECT id, tenant_id, email, nome, role, ativo, created_at, permissions, versao, filial_acesso, grupo_id FROM dash_usuarios`;
         let params = [];
         
         if (req.tenant.id !== '00000000-0000-0000-0000-000000000000') {
@@ -24,7 +24,11 @@ router.get('/', async (req, res) => {
         query += ` ORDER BY created_at DESC`;
         
         const result = await db.query(query, params);
-        res.json(result.rows);
+        res.json(result.rows.map(r => ({
+            ...r,
+            versao: r.versao,
+            layout_version: r.versao
+        })));
     } catch (err) {
         logger.error('[Usuarios] Erro ao listar', err);
         res.status(500).json({ error: 'Erro ao listar usuários' });
@@ -119,12 +123,16 @@ router.post('/', async (req, res) => {
 
         // Insere o usuário (default role: admin)
         const insertQuery = `
-            INSERT INTO dash_usuarios (tenant_id, email, nome, role, ativo, senha_hash, permissions, layout_version, filial_acesso, grupo_id)
-            VALUES ($1, $2, $3, 'admin', true, $4, NULL, 'v1.0', 'todas', $5)
-            RETURNING id, tenant_id, email, nome, role, ativo, created_at, permissions, layout_version, filial_acesso, grupo_id
+            INSERT INTO dash_usuarios (tenant_id, email, nome, role, ativo, senha_hash, permissions, versao, filial_acesso, grupo_id)
+            VALUES ($1, $2, $3, 'admin', true, $4, NULL, 'Dash 1.0', 'todas', $5)
+            RETURNING id, tenant_id, email, nome, role, ativo, created_at, permissions, versao, filial_acesso, grupo_id
         `;
         const result = await db.query(insertQuery, [companyKey, email, nome, senhaHash, grupo_id || null]);
-        const user = result.rows[0];
+        const user = {
+            ...result.rows[0],
+            versao: result.rows[0].versao,
+            layout_version: result.rows[0].versao
+        };
 
         logger.info('[Usuarios] Novo usuário criado via painel', { email: user.email, by: req.user.email });
 
@@ -230,22 +238,23 @@ router.put('/:id/permissions', async (req, res) => {
  */
 router.put('/:id/layout', async (req, res) => {
     try {
-        const { layout_version } = req.body;
+        const { layout_version, versao } = req.body;
+        const targetVersion = versao || layout_version;
         const targetId = req.params.id;
 
-        if (!['v1.0', 'v2.0', 'v3.0'].includes(layout_version)) {
-            return res.status(400).json({ error: 'Versão de layout inválida. Opções: v1.0, v2.0, v3.0' });
+        if (!['Dash 1.0', 'B.I 1.0', 'B.I IA.'].includes(targetVersion)) {
+            return res.status(400).json({ error: 'Versão de layout inválida. Opções: Dash 1.0, B.I 1.0, B.I IA.' });
         }
 
-        let query = `UPDATE dash_usuarios SET layout_version = $1 WHERE id = $2`;
-        let params = [layout_version, targetId];
+        let query = `UPDATE dash_usuarios SET versao = $1 WHERE id = $2`;
+        let params = [targetVersion, targetId];
 
         if (req.tenant.id !== '00000000-0000-0000-0000-000000000000') {
             query += ` AND tenant_id = $3`;
             params.push(req.tenant.id);
         }
 
-        query += ` RETURNING id, layout_version`;
+        query += ` RETURNING id, versao`;
 
         const result = await db.query(query, params);
 
@@ -253,8 +262,13 @@ router.put('/:id/layout', async (req, res) => {
             return res.status(404).json({ error: 'Usuário não encontrado ou sem permissão.' });
         }
 
-        logger.info('[Usuarios] Layout version alterado', { targetId, layout_version, by: req.user.email });
-        res.json({ message: 'Versão do layout atualizada com sucesso', user: result.rows[0] });
+        logger.info('[Usuarios] Version alterada', { targetId, targetVersion, by: req.user.email });
+        const returnedUser = {
+            id: result.rows[0].id,
+            versao: result.rows[0].versao,
+            layout_version: result.rows[0].versao
+        };
+        res.json({ message: 'Versão do layout atualizada com sucesso', user: returnedUser });
     } catch (err) {
         logger.error('[Usuarios] Erro ao alterar layout version', err);
         res.status(500).json({ error: 'Erro interno ao alterar versão do layout.' });

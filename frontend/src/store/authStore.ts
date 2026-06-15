@@ -8,6 +8,7 @@ export interface User {
   nome: string
   role?: string
   permissions?: string[] | null
+  versao?: string
   layout_version?: string
 }
 
@@ -49,7 +50,8 @@ export const useAuthStore = create<AuthState>((set) => ({
       const token = data.token
       // Se não devolver user object, criamos um mock pra manter a UI feliz. Normalmente devolve user ou profile.
       const user = data.user || data.profile || { email, nome: data.companyName || email }
-      user.layout_version = data.user?.layout_version || data.profile?.layout_version || 'v1.0';
+      user.versao = data.user?.versao || data.profile?.versao || data.user?.layout_version || data.profile?.layout_version || 'Dash 1.0';
+      user.layout_version = user.versao;
 
       localStorage.setItem('coliseu_token', token)
       localStorage.setItem('coliseu_user', JSON.stringify(user))

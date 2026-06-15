@@ -8,7 +8,8 @@ import { useAuthStore } from '../store/authStore'
 interface GroupRow {
   id: number
   nome: string
-  layout_version: string
+  versao: string
+  layout_version?: string
 }
 
 interface PermissionRow {
@@ -29,16 +30,29 @@ const COLISEU_MODULES = [
   { id: 'clientes', label: 'Clientes' },
   { id: 'vendas', label: 'Vendas' },
   { id: 'usuarios', label: 'Usuários (Configurações)' },
-  { id: 'layout_1', label: 'Acesso Layout v1.0' },
-  { id: 'layout_2', label: 'Acesso Layout v2.0' },
-  { id: 'layout_3', label: 'Acesso Layout v3.0' }
+  { id: 'layout_1', label: 'Acesso Versão Dash 1.0' },
+  { id: 'layout_2', label: 'Acesso Versão B.I 1.0' },
+  { id: 'layout_3', label: 'Acesso Versão B.I IA.' },
+  // Submenus de BI
+  { id: 'bi_seller_hub', label: 'BI - Hub do Vendedor' },
+  { id: 'bi_sales', label: 'BI - Hub de Vendas' },
+  { id: 'bi_hub', label: 'BI - Dashboard Geral de Vendas' },
+  { id: 'bi_supplier', label: 'BI - Hub do Fornecedor' },
+  { id: 'bi_abc', label: 'BI - Gestão de Inventário' },
+  { id: 'bi_finance', label: 'BI - Financeiro' },
+  { id: 'bi_customer', label: 'BI - Radar 360' },
+  { id: 'bi_comparative', label: 'BI - Lucratividade' },
+  { id: 'bi_customer_analytics', label: 'BI - Análise de Clientes' },
+  { id: 'bi_goals', label: 'BI - Análise de Metas' },
+  { id: 'bi_heatmap', label: 'BI - Mapa de Calor' },
+  { id: 'bi_ai_insights', label: 'BI - Coliseu AI' }
 ]
 
 
 export default function Grupos() {
   const queryClient = useQueryClient()
   const activeUser = useAuthStore((s) => s.user)
-  const currentLayout = activeUser?.layout_version || 'v1.0'
+  const currentLayout = activeUser?.versao || activeUser?.layout_version || 'Dash 1.0'
 
   const [modalOpen, setModalOpen] = useState(false)
   const [permissionsModalOpen, setPermissionsModalOpen] = useState(false)
@@ -53,7 +67,7 @@ export default function Grupos() {
   const { data: groups, isLoading } = useQuery<GroupRow[]>({
     queryKey: ['grupos', currentLayout],
     queryFn: async () => {
-      const res = await api.get(`/grupos?layout_version=${currentLayout}`)
+      const res = await api.get(`/grupos?versao=${currentLayout}`)
       return res.data
     }
   })
@@ -62,7 +76,7 @@ export default function Grupos() {
     mutationFn: async () => {
       const res = await api.post('/grupos', {
         nome,
-        layout_version: currentLayout,
+        versao: currentLayout,
         permissions: selectedPermissions
       })
       return res.data
@@ -142,7 +156,7 @@ export default function Grupos() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="font-heading text-xl font-semibold text-text-primary">Gestão de Grupos de Acesso</h2>
-          <p className="text-text-secondary text-sm">Configure perfis de acesso e permissões para o layout {currentLayout}.</p>
+          <p className="text-text-secondary text-sm">Configure perfis de acesso e permissões para a versão {currentLayout}.</p>
         </div>
         <button
           onClick={() => {
@@ -160,7 +174,7 @@ export default function Grupos() {
         <DataTable
           loading={isLoading}
           data={groups || []}
-          empty="Nenhum grupo cadastrado para este layout."
+          empty="Nenhum grupo cadastrado para esta versão."
           columns={[
             {
               key: 'nome',
@@ -175,11 +189,11 @@ export default function Grupos() {
               )
             },
             {
-              key: 'layout_version',
-              label: 'LAYOUT',
+              key: 'versao',
+              label: 'VERSÃO',
               render: (r: GroupRow) => (
                 <span className="text-xs font-bold font-mono bg-bg-secondary text-text-secondary px-2.5 py-1 rounded-md border border-divider">
-                  {r.layout_version}
+                  {r.versao || r.layout_version}
                 </span>
               )
             },

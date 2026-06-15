@@ -147,11 +147,12 @@ export default function Sidebar({ open, onClose, isCollapsed }: Props) {
   }
 
   const hasAccess = (moduleId: string) => {
-    return true
+    if (user?.role === 'master') return true
+    return user?.permissions?.includes(moduleId) || false
   }
 
   const allowedModules = MODULES.filter((m) => hasAccess(m.id))
-  const allowedBiModules = BI_MODULES
+  const allowedBiModules = BI_MODULES.filter((m) => hasAccess(m.id))
   const allowedConfigModules = CONFIG_MODULES.filter((m) => hasAccess(m.id))
 
   return (

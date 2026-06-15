@@ -43,7 +43,8 @@ export default function Sidebar({ open, onClose }: Props) {
 
   // Filtra as rotas (sempre ativo para layouts 1, 2 e 3)
   const hasAccess = (moduleId: string) => {
-    return true
+    if (user?.role === 'master') return true
+    return user?.permissions?.includes(moduleId) || false
   }
 
   const allowedModules = MODULES.filter((m) => hasAccess(m.id))

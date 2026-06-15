@@ -15,6 +15,7 @@ interface UserRow {
   created_at: string
   permissions: string[] | null
   tenant_id: string
+  versao?: string
   layout_version?: string
   filial_acesso?: string
   grupo_id?: number | null
@@ -42,10 +43,10 @@ export default function Usuarios() {
   const [selectedFilialAcesso, setSelectedFilialAcesso] = useState<string>('todas')
 
   const { data: groups } = useQuery<any[]>({
-    queryKey: ['grupos', selectedUser?.layout_version || 'v1.0'],
+    queryKey: ['grupos', selectedUser?.versao || 'Dash 1.0'],
     queryFn: async () => {
       if (!selectedUser) return []
-      const res = await api.get(`/grupos?layout_version=${selectedUser.layout_version || 'v1.0'}`)
+      const res = await api.get(`/grupos?versao=${selectedUser.versao || 'Dash 1.0'}`)
       return res.data
     },
     enabled: !!selectedUser
@@ -135,21 +136,25 @@ export default function Usuarios() {
   }
 
   const updateLayout = useMutation({
-    mutationFn: async ({ id, layout_version }: { id: number, layout_version: string }) => {
-      const res = await api.put(`/usuarios/${id}/layout`, { layout_version })
+    mutationFn: async ({ id, versao }: { id: number, versao: string }) => {
+      const res = await api.put(`/usuarios/${id}/layout`, { versao })
       return res.data
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['usuarios'] })
       const currentUser = useAuthStore.getState().user;
       if (currentUser && data.user && data.user.id === currentUser.id) {
-         const user = { ...currentUser, layout_version: data.user.layout_version };
+         const user = { 
+            ...currentUser, 
+            versao: data.user.versao,
+            layout_version: data.user.versao 
+         };
          useAuthStore.setState({ user });
          localStorage.setItem('coliseu_user', JSON.stringify(user));
       }
     },
     onError: (err: any) => {
-      alert(err.response?.data?.error || 'Erro ao alterar layout')
+      alert(err.response?.data?.error || 'Erro ao alterar versão')
     }
   })
 
@@ -238,19 +243,19 @@ export default function Usuarios() {
               }
             },
             {
-              key: 'layout',
-              label: 'LAYOUT',
+              key: 'versao',
+              label: 'VERSÃO',
               render: (r: UserRow) => (
                 <div className="flex items-center">
                   <select
                     className="bg-bg-secondary text-text-primary border border-border rounded-lg px-2 py-1 text-sm outline-none focus:border-brand-500 transition-colors"
-                    value={r.layout_version || 'v1.0'}
-                    onChange={(e) => updateLayout.mutate({ id: r.id, layout_version: e.target.value })}
+                    value={r.versao || r.layout_version || 'Dash 1.0'}
+                    onChange={(e) => updateLayout.mutate({ id: r.id, versao: e.target.value })}
                     disabled={updateLayout.isPending}
                   >
-                    <option value="v1.0">v1.0 (Padrão)</option>
-                    <option value="v2.0">v2.0 (Moderno)</option>
-                    <option value="v3.0">v3.0 (Escuro)</option>
+                    <option value="Dash 1.0">Dash 1.0</option>
+                    <option value="B.I 1.0">B.I 1.0</option>
+                    <option value="B.I IA.">B.I IA.</option>
                   </select>
                 </div>
               )
@@ -404,7 +409,7 @@ export default function Usuarios() {
             
             <div className="p-6 space-y-4">
               <p className="text-sm text-text-secondary mb-4">
-                Selecione o grupo de acesso para este usuário. Ele herdará todas as permissões configuradas para o grupo no layout <span className="font-semibold">{selectedUser.layout_version || 'v1.0'}</span>.
+                Selecione o grupo de acesso para este usuário. Ele herdará todas as permissões configuradas para o grupo na versão <span className="font-semibold">{selectedUser.versao || selectedUser.layout_version || 'Dash 1.0'}</span>.
               </p>
 
               <div>

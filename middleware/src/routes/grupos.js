@@ -15,21 +15,26 @@ const requireAdmin = (req, res, next) => {
 
 /**
  * GET /api/grupos
- * Lista todos os grupos de acesso do tenant e layout_version correspondente.
+ * Lista todos os grupos de acesso do tenant e versao correspondente.
  */
 router.get('/', requireAdmin, async (req, res) => {
     try {
         const tenantId = req.tenant.id;
-        const layoutVersion = req.query.layout_version || 'v1.0';
+        const layoutVersion = req.query.versao || req.query.layout_version || 'Dash 1.0';
 
         const { rows } = await db.query(
-            `SELECT id, nome, layout_version 
+            `SELECT id, nome, versao 
              FROM dash_grupos_acesso 
-             WHERE tenant_id = $1 AND layout_version = $2 
+             WHERE tenant_id = $1 AND versao = $2 
              ORDER BY nome ASC`,
             [tenantId, layoutVersion]
         );
-        res.json(rows);
+        res.json(rows.map(r => ({
+            id: r.id,
+            nome: r.nome,
+            versao: r.versao,
+            layout_version: r.versao
+        })));
     } catch (err) {
         logger.error('[Grupos] Erro ao listar grupos', err);
         res.status(500).json({ error: 'Erro ao listar grupos de acesso' });
@@ -69,23 +74,24 @@ router.get('/:id/permissions', requireAdmin, async (req, res) => {
 
 /**
  * POST /api/grupos
- * Cria um novo grupo para o tenant/layout.
+ * Cria um novo grupo para o tenant/versao.
  */
 router.post('/', requireAdmin, async (req, res) => {
     try {
         const tenantId = req.tenant.id;
-        const { nome, layout_version, permissions } = req.body;
+        const { nome, versao, layout_version, permissions } = req.body;
+        const targetVersion = versao || layout_version;
 
-        if (!nome || !layout_version) {
-            return res.status(400).json({ error: 'Nome e layout_version são obrigatórios' });
+        if (!nome || !targetVersion) {
+            return res.status(400).json({ error: 'Nome e versao são obrigatórios' });
         }
 
         // Criar o grupo
         const groupRes = await db.query(
-            `INSERT INTO dash_grupos_acesso (tenant_id, layout_version, nome)
+            `INSERT INTO dash_grupos_acesso (tenant_id, versao, nome)
              VALUES ($1, $2, $3)
-             RETURNING id, nome, layout_version`,
-            [tenantId, layout_version, nome]
+             RETURNING id, nome, versao`,
+            [tenantId, targetVersion, nome]
         );
 
         const groupId = groupRes.rows[0].id;
@@ -102,7 +108,12 @@ router.post('/', requireAdmin, async (req, res) => {
             }
         }
 
-        res.status(201).json(groupRes.rows[0]);
+        res.status(201).json({
+            id: groupRes.rows[0].id,
+            nome: groupRes.rows[0].nome,
+            versao: groupRes.rows[0].versao,
+            layout_version: groupRes.rows[0].versao
+        });
     } catch (err) {
         logger.error('[Grupos] Erro ao criar grupo', err);
         if (err.code === '23505') {

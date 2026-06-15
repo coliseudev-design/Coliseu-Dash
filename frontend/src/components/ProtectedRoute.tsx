@@ -18,6 +18,12 @@ export default function ProtectedRoute({ permission, children }: ProtectedRouteP
     return children
   }
 
-  // Usuários nos layouts 1, 2 e 3 têm acesso liberado no frontend
-  return children
+  // Verificar se o usuário possui a permissão requerida
+  const userPermissions = user.permissions || [];
+  if (userPermissions.includes(permission)) {
+    return children;
+  }
+
+  // Se não tiver permissão, redireciona para acesso negado
+  return <Navigate to="/acesso-negado" replace />
 }

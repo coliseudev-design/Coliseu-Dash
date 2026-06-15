@@ -10,7 +10,7 @@ const db = require('../db/postgres');
  */
 async function getUserPermissions(userId, tenantId) {
     const userRes = await db.query(
-        'SELECT role, grupo_id, layout_version, permissions FROM dash_usuarios WHERE id = $1 AND tenant_id = $2',
+        'SELECT role, grupo_id, versao, permissions FROM dash_usuarios WHERE id = $1 AND tenant_id = $2',
         [userId, tenantId]
     );
 

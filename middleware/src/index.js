@@ -129,10 +129,10 @@ async function initializeRbac(db) {
             CREATE TABLE IF NOT EXISTS dash_grupos_acesso (
                 id SERIAL PRIMARY KEY,
                 tenant_id UUID NOT NULL,
-                layout_version VARCHAR(10) NOT NULL DEFAULT 'v1.0',
+                versao VARCHAR(50) NOT NULL DEFAULT 'Dash 1.0',
                 nome VARCHAR(255) NOT NULL,
                 created_at TIMESTAMPTZ DEFAULT NOW(),
-                UNIQUE(tenant_id, layout_version, nome)
+                UNIQUE(tenant_id, versao, nome)
             );
         `);
 
@@ -150,26 +150,29 @@ async function initializeRbac(db) {
             ALTER TABLE dash_usuarios ADD COLUMN IF NOT EXISTS grupo_id INTEGER REFERENCES dash_grupos_acesso(id) ON DELETE SET NULL;
         `);
 
-        // 2. Buscar combinações únicas de tenant_id e layout_version dos usuários existentes
+        // 2. Buscar combinações únicas de tenant_id e versao dos usuários existentes
         const { rows: userCombos } = await db.query(`
-            SELECT DISTINCT tenant_id, layout_version FROM dash_usuarios
+            SELECT DISTINCT tenant_id, versao FROM dash_usuarios
         `);
 
         const coliseuModules = [
             'inicio', 'financeiro', 'fluxo-caixa', 'estoque', 'comissoes', 
             'ranking', 'estatisticas', 'inteligencia', 'produtos', 
-            'clientes', 'vendas', 'usuarios', 'layout_1', 'layout_2', 'layout_3'
+            'clientes', 'vendas', 'usuarios', 'layout_1', 'layout_2', 'layout_3',
+            'bi_seller_hub', 'bi_sales', 'bi_supplier', 'bi_abc', 'bi_finance', 
+            'bi_customer', 'bi_comparative', 'bi_customer_analytics', 'bi_goals', 
+            'bi_heatmap', 'bi_ai_insights', 'bi_hub'
         ];
 
         for (const combo of userCombos) {
-            const { tenant_id, layout_version } = combo;
-            const layout = layout_version || 'v1.0';
+            const { tenant_id, versao } = combo;
+            const layout = versao || 'Dash 1.0';
 
             // Criar ou obter o grupo 'Administrador'
             const groupRes = await db.query(`
-                INSERT INTO dash_grupos_acesso (tenant_id, layout_version, nome)
+                INSERT INTO dash_grupos_acesso (tenant_id, versao, nome)
                 VALUES ($1, $2, 'Administrador')
-                ON CONFLICT (tenant_id, layout_version, nome) 
+                ON CONFLICT (tenant_id, versao, nome) 
                 DO UPDATE SET nome = EXCLUDED.nome
                 RETURNING id
             `, [tenant_id, layout]);
@@ -193,7 +196,7 @@ async function initializeRbac(db) {
             await db.query(`
                 UPDATE dash_usuarios 
                 SET grupo_id = $1 
-                WHERE tenant_id = $2 AND layout_version = $3 AND grupo_id IS NULL
+                WHERE tenant_id = $2 AND versao = $3 AND grupo_id IS NULL
             `, [groupId, tenant_id, layout]);
         }
         logger.info('[RBAC] Sistema RBAC inicializado e semeado com sucesso.');

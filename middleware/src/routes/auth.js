@@ -22,7 +22,7 @@ router.post('/login', async (req, res) => {
         }
 
         // Buscar usuário localmente
-        const query = `SELECT id, tenant_id, email, nome, role, ativo, senha_hash, permissions, layout_version FROM dash_usuarios WHERE LOWER(TRIM(email)) = LOWER(TRIM($1))`;
+        const query = `SELECT id, tenant_id, email, nome, role, ativo, senha_hash, permissions, versao FROM dash_usuarios WHERE LOWER(TRIM(email)) = LOWER(TRIM($1))`;
         const result = await db.query(query, [email]);
 
         if (result.rowCount === 0) {
@@ -53,7 +53,7 @@ router.post('/login', async (req, res) => {
                 module: config.security.expectedModuleSlug,
                 companyName: user.tenant_id === '00000000-0000-0000-0000-000000000000' ? 'Coliseu Sistemas (Master)' : 'Empresa Cliente',
                 role: user.role,
-                layoutVersion: user.layout_version
+                layoutVersion: user.versao
             },
             config.security.jwtDeviceKey,
             { expiresIn: '12h' }
@@ -72,7 +72,8 @@ router.post('/login', async (req, res) => {
                 role: user.role,
                 tenant_id: user.tenant_id,
                 permissions,
-                layout_version: user.layout_version
+                versao: user.versao,
+                layout_version: user.versao
             }
         });
 
@@ -165,9 +166,9 @@ router.post('/register', async (req, res) => {
 
         // Insere o usuário (default role: admin)
         const insertQuery = `
-            INSERT INTO dash_usuarios (tenant_id, email, nome, role, ativo, senha_hash, permissions, layout_version)
-            VALUES ($1, $2, $3, 'admin', true, $4, NULL, 'v1.0')
-            RETURNING id, tenant_id, email, nome, role, permissions, layout_version
+            INSERT INTO dash_usuarios (tenant_id, email, nome, role, ativo, senha_hash, permissions, versao)
+            VALUES ($1, $2, $3, 'admin', true, $4, NULL, 'Dash 1.0')
+            RETURNING id, tenant_id, email, nome, role, permissions, versao
         `;
         const result = await db.query(insertQuery, [companyKey, email, nome, senhaHash]);
         const user = result.rows[0];
@@ -177,7 +178,16 @@ router.post('/register', async (req, res) => {
         // Retorna sucesso. O front pode fazer auto-login depois.
         res.status(201).json({
             message: 'Usuário cadastrado com sucesso',
-            user
+            user: {
+                id: user.id,
+                tenant_id: user.tenant_id,
+                email: user.email,
+                nome: user.nome,
+                role: user.role,
+                permissions: user.permissions,
+                versao: user.versao,
+                layout_version: user.versao
+            }
         });
     } catch (err) {
         logger.error('[Auth] Erro na rota de cadastro', err);
@@ -199,7 +209,7 @@ router.get('/me', requireWebJwt, async (req, res) => {
         const tenantId = req.tenant.id;
 
         const { rows } = await db.query(
-            'SELECT id, tenant_id, email, nome, role, layout_version, grupo_id FROM dash_usuarios WHERE id = $1 AND tenant_id = $2',
+            'SELECT id, tenant_id, email, nome, role, versao, grupo_id FROM dash_usuarios WHERE id = $1 AND tenant_id = $2',
             [userId, tenantId]
         );
 
@@ -218,7 +228,8 @@ router.get('/me', requireWebJwt, async (req, res) => {
                 role: user.role,
                 tenant_id: user.tenant_id,
                 permissions,
-                layout_version: user.layout_version,
+                versao: user.versao,
+                layout_version: user.versao,
                 grupo_id: user.grupo_id
             }
         });
