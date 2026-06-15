@@ -17,37 +17,47 @@ interface PermissionRow {
   pode_acessar: boolean
 }
 
-const COLISEU_MODULES = [
+const DASH_1_0_MODULES = [
   { id: 'inicio', label: 'Visão Geral (Início)' },
-  { id: 'financeiro', label: 'Financeiro Em Desenvolvimento' },
-  { id: 'fluxo-caixa', label: 'Fluxo de Caixa' },
-  { id: 'estoque', label: 'Estoque' },
-  { id: 'comissoes', label: 'Comissões' },
-  { id: 'ranking', label: 'Ranking' },
-  { id: 'estatisticas', label: 'Estatísticas' },
-  { id: 'inteligencia', label: 'Inteligência' },
-  { id: 'produtos', label: 'Produtos' },
-  { id: 'clientes', label: 'Clientes' },
-  { id: 'vendas', label: 'Vendas' },
-  { id: 'usuarios', label: 'Usuários (Configurações)' },
-  { id: 'layout_1', label: 'Acesso Versão Dash 1.0' },
-  { id: 'layout_2', label: 'Acesso Versão B.I 1.0' },
-  { id: 'layout_3', label: 'Acesso Versão B.I IA.' },
-  // Submenus de BI
-  { id: 'bi_seller_hub', label: 'BI - Hub do Vendedor' },
-  { id: 'bi_sales', label: 'BI - Hub de Vendas' },
-  { id: 'bi_hub', label: 'BI - Dashboard Geral de Vendas' },
-  { id: 'bi_supplier', label: 'BI - Hub do Fornecedor' },
-  { id: 'bi_abc', label: 'BI - Gestão de Inventário' },
-  { id: 'bi_finance', label: 'BI - Financeiro' },
-  { id: 'bi_customer', label: 'BI - Radar 360' },
-  { id: 'bi_comparative', label: 'BI - Lucratividade' },
-  { id: 'bi_customer_analytics', label: 'BI - Análise de Clientes' },
-  { id: 'bi_goals', label: 'BI - Análise de Metas' },
-  { id: 'bi_heatmap', label: 'BI - Mapa de Calor' },
-  { id: 'bi_ai_insights', label: 'BI - Coliseu AI' }
+  { id: 'bi_sales', label: 'Comercial' },
+  { id: 'bi_finance', label: 'Financeiro' },
+  { id: 'usuarios', label: 'Usuários & Configurações' }
 ]
 
+const BI_1_0_MODULES = [
+  { id: 'inicio', label: 'Visão Estratégica' },
+  { id: 'bi_seller_hub', label: 'Hub do Vendedor' },
+  { id: 'bi_sales', label: 'Hub de Vendas' },
+  { id: 'bi_supplier', label: 'Hub do Fornecedor' },
+  { id: 'bi_abc', label: 'Gestão de Inventário' },
+  { id: 'bi_finance', label: 'Financeiro' },
+  { id: 'bi_customer', label: 'Radar 360' },
+  { id: 'bi_comparative', label: 'Lucratividade' },
+  { id: 'bi_customer_analytics', label: 'Análise de Clientes' },
+  { id: 'usuarios', label: 'Usuários & Configurações' }
+]
+
+const BI_IA_MODULES = [
+  { id: 'inicio', label: 'Visão Estratégica' },
+  { id: 'bi_sales', label: 'Inteligência de Vendas' },
+  { id: 'bi_hub', label: 'Hub de Vendas' },
+  { id: 'bi_supplier', label: 'Hub do Fornecedor' },
+  { id: 'bi_abc', label: 'Gestão de Inventário' },
+  { id: 'bi_finance', label: 'Financeiro' },
+  { id: 'bi_customer', label: 'Radar 360' },
+  { id: 'bi_comparative', label: 'Lucratividade' },
+  { id: 'bi_customer_analytics', label: 'Análise de Clientes' },
+  { id: 'bi_goals', label: 'Análise de Metas' },
+  { id: 'bi_heatmap', label: 'Mapa de Calor' },
+  { id: 'bi_ai_insights', label: 'Coliseu AI' },
+  { id: 'usuarios', label: 'Usuários & Configurações' }
+]
+
+function getAvailableModules(version: string) {
+  if (version === 'Dash 1.0') return DASH_1_0_MODULES
+  if (version === 'B.I 1.0') return BI_1_0_MODULES
+  return BI_IA_MODULES
+}
 
 export default function Grupos() {
   const queryClient = useQueryClient()
@@ -70,7 +80,7 @@ export default function Grupos() {
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([])
   const [errorMsg, setErrorMsg] = useState('')
 
-  const availableModules = COLISEU_MODULES
+  const availableModules = getAvailableModules(activeTab)
 
   const { data: groups, isLoading } = useQuery<GroupRow[]>({
     queryKey: ['grupos', activeTab],
@@ -82,10 +92,15 @@ export default function Grupos() {
 
   const createGroup = useMutation({
     mutationFn: async () => {
+      const layoutPerm = activeTab === 'Dash 1.0' ? 'layout_1' : (activeTab === 'B.I 1.0' ? 'layout_2' : 'layout_3')
+      const perms = [...selectedPermissions]
+      if (!perms.includes(layoutPerm)) {
+        perms.push(layoutPerm)
+      }
       const res = await api.post('/grupos', {
         nome,
         versao: activeTab,
-        permissions: selectedPermissions
+        permissions: perms
       })
       return res.data
     },
@@ -115,7 +130,12 @@ export default function Grupos() {
 
   const updatePermissions = useMutation({
     mutationFn: async ({ id, permissions }: { id: number, permissions: string[] }) => {
-      const res = await api.put(`/grupos/${id}/permissions`, { permissions })
+      const layoutPerm = selectedGroup?.versao === 'Dash 1.0' ? 'layout_1' : (selectedGroup?.versao === 'B.I 1.0' ? 'layout_2' : 'layout_3')
+      const perms = [...permissions]
+      if (!perms.includes(layoutPerm)) {
+        perms.push(layoutPerm)
+      }
+      const res = await api.put(`/grupos/${id}/permissions`, { permissions: perms })
       return res.data
     },
     onSuccess: () => {
@@ -135,7 +155,11 @@ export default function Grupos() {
     try {
       const res = await api.get(`/grupos/${group.id}/permissions`)
       const perms: PermissionRow[] = res.data
-      setSelectedPermissions(perms.filter(p => p.pode_acessar).map(p => p.recurso))
+      setSelectedPermissions(
+        perms
+          .filter(p => p.pode_acessar && !['layout_1', 'layout_2', 'layout_3'].includes(p.recurso))
+          .map(p => p.recurso)
+      )
       setPermissionsModalOpen(true)
     } catch {
       alert('Erro ao carregar permissões do grupo.')
