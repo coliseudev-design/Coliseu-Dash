@@ -48,7 +48,8 @@ async function initDbForType(dbType) {
                     { name: '004', file: '004_add_data_vencimento_vendas.sql' },
                     { name: '005', file: '005_increase_varchar_limits.sql' },
                     { name: '006', file: '006_add_data_hora_proc.sql' },
-                    { name: '007', file: '007_rename_layouts_to_versao.sql' }
+                    { name: '007', file: '007_rename_layouts_to_versao.sql' },
+                    { name: '008', file: '008_usuario_multiplos_grupos.sql' }
                 ];
 
                 for (const mig of migrations) {
@@ -194,11 +195,22 @@ async function initializeRbac(db) {
             }
 
             // Vincular os usuários deste tenant/layout que não possuem grupo_id ainda
-            await db.query(`
-                UPDATE dash_usuarios 
-                SET grupo_id = $1 
-                WHERE tenant_id = $2 AND versao = $3 AND grupo_id IS NULL
-            `, [groupId, tenant_id, layout]);
+            const { rows: usersToBind } = await db.query(`
+                SELECT id FROM dash_usuarios 
+                WHERE tenant_id = $1 AND versao = $2 AND grupo_id IS NULL
+            `, [tenant_id, layout]);
+
+            for (const user of usersToBind) {
+                await db.query(`
+                    INSERT INTO dash_usuario_grupo (usuario_id, grupo_id)
+                    VALUES ($1, $2)
+                    ON CONFLICT DO NOTHING
+                `, [user.id, groupId]);
+                
+                await db.query(`
+                    UPDATE dash_usuarios SET grupo_id = $1 WHERE id = $2
+                `, [groupId, user.id]);
+            }
         }
         logger.info('[RBAC] Sistema RBAC inicializado e semeado com sucesso.');
     } catch (err) {

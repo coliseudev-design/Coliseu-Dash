@@ -20,15 +20,24 @@ const requireAdmin = (req, res, next) => {
 router.get('/', requireAdmin, async (req, res) => {
     try {
         const tenantId = req.tenant.id;
-        const layoutVersion = req.query.versao || req.query.layout_version || 'Dash 1.0';
+        const layoutVersion = req.query.versao || req.query.layout_version;
 
-        const { rows } = await db.query(
-            `SELECT id, nome, versao 
-             FROM dash_grupos_acesso 
-             WHERE tenant_id = $1 AND versao = $2 
-             ORDER BY nome ASC`,
-            [tenantId, layoutVersion]
-        );
+        let query = `SELECT id, nome, versao 
+                     FROM dash_grupos_acesso 
+                     WHERE tenant_id = $1`;
+        let params = [tenantId];
+
+        if (layoutVersion && layoutVersion !== 'all') {
+            query += ` AND versao = $2`;
+            params.push(layoutVersion);
+        } else if (!layoutVersion) {
+            query += ` AND versao = $2`;
+            params.push('Dash 1.0');
+        }
+
+        query += ` ORDER BY nome ASC`;
+
+        const { rows } = await db.query(query, params);
         res.json(rows.map(r => ({
             id: r.id,
             nome: r.nome,

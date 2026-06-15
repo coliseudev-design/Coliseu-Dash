@@ -21,6 +21,24 @@ export default function Header({ onMenuClick, title, isCollapsed, onToggleCollap
   const [empresaNome, setEmpresaNome] = useState<string>('')
   const [friendlyTime, setFriendlyTime] = useState('Nunca')
 
+  const updateUserVersion = useAuthStore((s) => s.updateUserVersion)
+  const [switching, setSwitching] = useState(false)
+
+  const handleVersionChange = async (newVersion: string) => {
+    if (!user?.id || switching) return
+    setSwitching(true)
+    try {
+      await api.put(`/usuarios/${user.id}/layout`, { versao: newVersion })
+      updateUserVersion(newVersion)
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Erro ao alternar versão')
+    } finally {
+      setSwitching(false)
+    }
+  }
+
+  const availableVersions = user?.available_versions || [user?.versao || 'Dash 1.0']
+
   useEffect(() => {
     const fetchEmpresa = async () => {
       try {
@@ -141,6 +159,26 @@ export default function Header({ onMenuClick, title, isCollapsed, onToggleCollap
             <span className="text-xs font-black text-brand-600 bg-brand-500/10 border border-brand-500/10 px-2.5 py-1 rounded-full uppercase tracking-wider">
               {empresaNome}
             </span>
+          </div>
+        )}
+
+        {/* Layout Version Switcher */}
+        {availableVersions.length > 1 ? (
+          <select
+            className="bg-bg-secondary text-text-primary border border-divider/60 rounded-lg px-2 py-1 text-xs outline-none focus:border-brand-500 transition-colors cursor-pointer font-semibold"
+            value={user?.versao || 'Dash 1.0'}
+            disabled={switching}
+            onChange={(e) => handleVersionChange(e.target.value)}
+          >
+            {availableVersions.map((v) => (
+              <option key={v} value={v}>
+                {v}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <div className="hidden sm:flex items-center px-1.5 h-6 rounded-md border border-divider bg-bg-tertiary/30 text-[10px] font-mono text-text-muted cursor-default" title="Versão do Layout Ativo">
+            {user?.versao || 'Dash 1.0'}
           </div>
         )}
 

@@ -19,6 +19,7 @@ interface UserRow {
   layout_version?: string
   filial_acesso?: string
   grupo_id?: number | null
+  grupos?: { id: number, nome: string, versao: string }[]
 }
 
 const AVAILABLE_MODULES = [
@@ -39,17 +40,15 @@ export default function Usuarios() {
   const [permissionsModalOpen, setPermissionsModalOpen] = useState(false)
   const [filialModalOpen, setFilialModalOpen] = useState(false)
   const [selectedUser, setSelectedUser] = useState<UserRow | null>(null)
-  const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null)
+  const [selectedGroupIds, setSelectedGroupIds] = useState<number[]>([])
   const [selectedFilialAcesso, setSelectedFilialAcesso] = useState<string>('todas')
 
-  const { data: groups } = useQuery<any[]>({
-    queryKey: ['grupos', selectedUser?.versao || 'Dash 1.0'],
+  const { data: allGroups } = useQuery<any[]>({
+    queryKey: ['grupos', 'all'],
     queryFn: async () => {
-      if (!selectedUser) return []
-      const res = await api.get(`/grupos?versao=${selectedUser.versao || 'Dash 1.0'}`)
+      const res = await api.get('/grupos?versao=all')
       return res.data
-    },
-    enabled: !!selectedUser
+    }
   })
   
   // Admin lock
@@ -109,9 +108,9 @@ export default function Usuarios() {
     createUser.mutate()
   }
 
-  const updateGroupAssignment = useMutation({
-    mutationFn: async ({ id, grupo_id }: { id: number, grupo_id: number | null }) => {
-      const res = await api.put(`/usuarios/${id}/grupo`, { grupo_id })
+  const updateGroupAssignments = useMutation({
+    mutationFn: async ({ id, grupo_ids }: { id: number, grupo_ids: number[] }) => {
+      const res = await api.put(`/usuarios/${id}/grupos`, { grupo_ids })
       return res.data
     },
     onSuccess: () => {
@@ -120,19 +119,19 @@ export default function Usuarios() {
       queryClient.invalidateQueries({ queryKey: ['usuarios'] })
     },
     onError: (err: any) => {
-      alert(err.response?.data?.error || 'Erro ao alterar grupo de acesso')
+      alert(err.response?.data?.error || 'Erro ao alterar grupos de acesso')
     }
   })
 
   const openPermissionsModal = (user: UserRow) => {
     setSelectedUser(user)
-    setSelectedGroupId(user.grupo_id || null)
+    setSelectedGroupIds((user.grupos || []).map(g => g.id))
     setPermissionsModalOpen(true)
   }
 
   const handleSavePermissions = () => {
     if (!selectedUser) return
-    updateGroupAssignment.mutate({ id: selectedUser.id, grupo_id: selectedGroupId })
+    updateGroupAssignments.mutate({ id: selectedUser.id, grupo_ids: selectedGroupIds })
   }
 
   const updateLayout = useMutation({
@@ -244,7 +243,7 @@ export default function Usuarios() {
             },
             {
               key: 'versao',
-              label: 'VERSÃO',
+              label: 'VERSÃO ATIVA',
               render: (r: UserRow) => (
                 <div className="flex items-center">
                   <select
@@ -257,6 +256,22 @@ export default function Usuarios() {
                     <option value="B.I 1.0">B.I 1.0</option>
                     <option value="B.I IA.">B.I IA.</option>
                   </select>
+                </div>
+              )
+            },
+            {
+              key: 'grupos_acesso',
+              label: 'GRUPOS DE ACESSO',
+              render: (r: UserRow) => (
+                <div className="flex flex-col gap-1 text-xs">
+                  {(r.grupos || []).map((g: any) => (
+                    <span key={g.id} className="text-text-secondary">
+                      <strong className="text-text-primary">{g.versao}:</strong> {g.nome}
+                    </span>
+                  ))}
+                  {(r.grupos || []).length === 0 && (
+                    <span className="text-text-muted italic">Sem grupo associado</span>
+                  )}
                 </div>
               )
             },
@@ -400,48 +415,76 @@ export default function Usuarios() {
           <div className="bg-bg-primary rounded-2xl shadow-xl border border-border w-full max-w-md overflow-hidden animate-fade-in">
             <div className="p-5 border-b border-border flex justify-between items-center bg-bg-secondary/50">
               <h3 className="font-semibold text-lg text-text-primary">
-                Grupo de Acesso: <span className="font-bold text-brand-500">{selectedUser.nome}</span>
+                Grupos de Acesso: <span className="font-bold text-brand-500">{selectedUser.nome}</span>
               </h3>
               <button onClick={() => setPermissionsModalOpen(false)} className="text-text-secondary hover:text-text-primary">
                 <XCircle size={24} />
               </button>
             </div>
             
-            <div className="p-6 space-y-4">
-              <p className="text-sm text-text-secondary mb-4">
-                Selecione o grupo de acesso para este usuário. Ele herdará todas as permissões configuradas para o grupo na versão <span className="font-semibold">{selectedUser.versao || selectedUser.layout_version || 'Dash 1.0'}</span>.
+            <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
+              <p className="text-sm text-text-secondary">
+                Associe o usuário a um grupo de acesso em cada uma das versões disponíveis.
               </p>
 
-              <div>
-                <label className="block text-sm font-medium text-text-primary mb-1">Grupo de Acesso</label>
-                <select
-                  className="w-full px-4 py-3 rounded-xl border border-border outline-none bg-bg-primary text-text-primary focus:border-brand-500 transition-colors"
-                  value={selectedGroupId || ''}
-                  onChange={(e) => setSelectedGroupId(e.target.value ? Number(e.target.value) : null)}
-                >
-                  <option value="">Sem grupo (Sem permissões)</option>
-                  {(groups || []).map((g) => (
-                    <option key={g.id} value={g.id}>
-                      {g.nome}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {['Dash 1.0', 'B.I 1.0', 'B.I IA.'].map((version) => {
+                const versionGroups = (allGroups || []).filter((g: any) => g.versao === version);
+                const currentGroup = (allGroups || []).find(
+                  (g: any) => g.versao === version && selectedGroupIds.includes(g.id)
+                );
+                
+                return (
+                  <div key={version} className="p-4 rounded-xl border border-border bg-bg-secondary/20 space-y-2">
+                    <h4 className="font-semibold text-sm text-text-primary flex items-center justify-between">
+                      <span>{version}</span>
+                      {currentGroup && (
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-brand-50 text-brand-700 border border-brand-100">
+                          Ativo: {currentGroup.nome}
+                        </span>
+                      )}
+                    </h4>
+                    <select
+                      className="w-full px-3 py-2.5 rounded-xl border border-border outline-none bg-bg-primary text-text-primary focus:border-brand-500 transition-colors text-sm"
+                      value={currentGroup?.id || ''}
+                      onChange={(e) => {
+                        const val = e.target.value ? Number(e.target.value) : null;
+                        // Remove previously selected group for this version
+                        const filtered = selectedGroupIds.filter(id => {
+                          const g = (allGroups || []).find((group: any) => group.id === id);
+                          return g ? g.versao !== version : false;
+                        });
+                        if (val) {
+                          setSelectedGroupIds([...filtered, val]);
+                        } else {
+                          setSelectedGroupIds(filtered);
+                        }
+                      }}
+                    >
+                      <option value="">Sem grupo (Sem acesso a esta versão)</option>
+                      {versionGroups.map((g: any) => (
+                        <option key={g.id} value={g.id}>
+                          {g.nome}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                );
+              })}
 
               <div className="pt-4 flex gap-3">
                 <button
                   type="button"
                   onClick={() => setPermissionsModalOpen(false)}
-                  className="flex-1 px-4 py-2.5 rounded-xl border border-border text-text-secondary font-medium hover:bg-bg-secondary transition-colors"
+                  className="flex-1 px-4 py-2.5 rounded-xl border border-border text-text-secondary font-medium hover:bg-bg-secondary transition-colors text-sm"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={handleSavePermissions}
-                  disabled={updateGroupAssignment.isPending}
-                  className="flex-1 px-4 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-medium transition-colors disabled:opacity-50 flex items-center justify-center"
+                  disabled={updateGroupAssignments.isPending}
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 text-white font-medium transition-colors disabled:opacity-50 flex items-center justify-center text-sm"
                 >
-                  {updateGroupAssignment.isPending ? 'Salvando...' : 'Salvar Grupo'}
+                  {updateGroupAssignments.isPending ? 'Salvando...' : 'Salvar Grupos'}
                 </button>
               </div>
             </div>

@@ -24,11 +24,39 @@ router.get('/', async (req, res) => {
         query += ` ORDER BY created_at DESC`;
         
         const result = await db.query(query, params);
-        res.json(result.rows.map(r => ({
-            ...r,
-            versao: r.versao,
-            layout_version: r.versao
-        })));
+        const users = result.rows;
+
+        if (users.length > 0) {
+            const userIds = users.map(u => u.id);
+            const groupsQuery = `
+                SELECT ug.usuario_id, g.id, g.nome, g.versao
+                FROM dash_usuario_grupo ug
+                JOIN dash_grupos_acesso g ON ug.grupo_id = g.id
+                WHERE ug.usuario_id = ANY($1)
+            `;
+            const groupsResult = await db.query(groupsQuery, [userIds]);
+            
+            const groupsByUserId = {};
+            for (const row of groupsResult.rows) {
+                if (!groupsByUserId[row.usuario_id]) {
+                    groupsByUserId[row.usuario_id] = [];
+                }
+                groupsByUserId[row.usuario_id].push({
+                    id: row.id,
+                    nome: row.nome,
+                    versao: row.versao
+                });
+            }
+
+            res.json(users.map(r => ({
+                ...r,
+                versao: r.versao,
+                layout_version: r.versao,
+                grupos: groupsByUserId[r.id] || []
+            })));
+        } else {
+            res.json([]);
+        }
     } catch (err) {
         logger.error('[Usuarios] Erro ao listar', err);
         res.status(500).json({ error: 'Erro ao listar usuários' });
@@ -128,10 +156,20 @@ router.post('/', async (req, res) => {
             RETURNING id, tenant_id, email, nome, role, ativo, created_at, permissions, versao, filial_acesso, grupo_id
         `;
         const result = await db.query(insertQuery, [companyKey, email, nome, senhaHash, grupo_id || null]);
+        const newUser = result.rows[0];
+
+        if (grupo_id) {
+            await db.query(
+                `INSERT INTO dash_usuario_grupo (usuario_id, grupo_id) 
+                 VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+                [newUser.id, grupo_id]
+            );
+        }
+
         const user = {
-            ...result.rows[0],
-            versao: result.rows[0].versao,
-            layout_version: result.rows[0].versao
+            ...newUser,
+            versao: newUser.versao,
+            layout_version: newUser.versao
         };
 
         logger.info('[Usuarios] Novo usuário criado via painel', { email: user.email, by: req.user.email });
@@ -246,15 +284,58 @@ router.put('/:id/layout', async (req, res) => {
             return res.status(400).json({ error: 'Versão de layout inválida. Opções: Dash 1.0, B.I 1.0, B.I IA.' });
         }
 
-        let query = `UPDATE dash_usuarios SET versao = $1 WHERE id = $2`;
-        let params = [targetVersion, targetId];
+        // Buscar usuário para verificar permissão
+        const userRes = await db.query(
+            'SELECT id, role, tenant_id FROM dash_usuarios WHERE id = $1',
+            [targetId]
+        );
+        if (userRes.rowCount === 0) {
+            return res.status(404).json({ error: 'Usuário não encontrado.' });
+        }
+        const targetUser = userRes.rows[0];
+
+        // Segurança de Tenant
+        if (req.tenant.id !== '00000000-0000-0000-0000-000000000000' && targetUser.tenant_id !== req.tenant.id) {
+            return res.status(403).json({ error: 'Você não tem permissão para alterar o layout deste usuário.' });
+        }
+
+        // Se não for master ou admin, ele deve ter acesso à versão através de um grupo
+        if (targetUser.role !== 'master' && targetUser.role !== 'admin') {
+            const hasAccess = await db.query(
+                `SELECT g.id 
+                 FROM dash_usuario_grupo ug
+                 JOIN dash_grupos_acesso g ON ug.grupo_id = g.id
+                 WHERE ug.usuario_id = $1 AND g.versao = $2`,
+                [targetId, targetVersion]
+            );
+            if (hasAccess.rowCount === 0) {
+                return res.status(403).json({ error: `O usuário não possui grupo de acesso associado à versão ${targetVersion}.` });
+            }
+        }
+
+        // Buscar o grupo correspondente à versão solicitada para manter a retrocompatibilidade
+        let legacyGroupId = null;
+        const matchingGroup = await db.query(
+            `SELECT g.id 
+             FROM dash_usuario_grupo ug
+             JOIN dash_grupos_acesso g ON ug.grupo_id = g.id
+             WHERE ug.usuario_id = $1 AND g.versao = $2
+             LIMIT 1`,
+            [targetId, targetVersion]
+        );
+        if (matchingGroup.rowCount > 0) {
+            legacyGroupId = matchingGroup.rows[0].id;
+        }
+
+        let query = `UPDATE dash_usuarios SET versao = $1, grupo_id = $2 WHERE id = $3`;
+        let params = [targetVersion, legacyGroupId, targetId];
 
         if (req.tenant.id !== '00000000-0000-0000-0000-000000000000') {
-            query += ` AND tenant_id = $3`;
+            query += ` AND tenant_id = $4`;
             params.push(req.tenant.id);
         }
 
-        query += ` RETURNING id, versao`;
+        query += ` RETURNING id, versao, grupo_id`;
 
         const result = await db.query(query, params);
 
@@ -266,7 +347,8 @@ router.put('/:id/layout', async (req, res) => {
         const returnedUser = {
             id: result.rows[0].id,
             versao: result.rows[0].versao,
-            layout_version: result.rows[0].versao
+            layout_version: result.rows[0].versao,
+            grupo_id: result.rows[0].grupo_id
         };
         res.json({ message: 'Versão do layout atualizada com sucesso', user: returnedUser });
     } catch (err) {
@@ -317,7 +399,7 @@ router.put('/:id/filial-acesso', async (req, res) => {
 
 /**
  * PUT /api/usuarios/:id/grupo
- * Associa um usuário a um grupo de acesso.
+ * Associa um usuário a um grupo de acesso (legado).
  */
 router.put('/:id/grupo', async (req, res) => {
     try {
@@ -335,6 +417,35 @@ router.put('/:id/grupo', async (req, res) => {
             }
         }
 
+        await db.query('BEGIN');
+
+        if (grupo_id !== null && grupo_id !== undefined) {
+            // Pegar a versão do novo grupo
+            const groupInfo = await db.query(
+                'SELECT versao FROM dash_grupos_acesso WHERE id = $1',
+                [grupo_id]
+            );
+            const groupVersion = groupInfo.rows[0].versao;
+
+            // Remover apenas grupos da mesma versão para este usuário na tabela associativa
+            await db.query(
+                `DELETE FROM dash_usuario_grupo 
+                 WHERE usuario_id = $1 AND grupo_id IN (
+                     SELECT id FROM dash_grupos_acesso WHERE versao = $2
+                 )`,
+                [targetId, groupVersion]
+            );
+
+            // Inserir a nova associação
+            await db.query(
+                'INSERT INTO dash_usuario_grupo (usuario_id, grupo_id) VALUES ($1, $2)',
+                [targetId, grupo_id]
+            );
+        } else {
+            // Se for nulo, remove todas as associações na tabela associativa
+            await db.query('DELETE FROM dash_usuario_grupo WHERE usuario_id = $1', [targetId]);
+        }
+
         let query = `UPDATE dash_usuarios SET grupo_id = $1 WHERE id = $2`;
         let params = [grupo_id !== undefined ? grupo_id : null, targetId];
 
@@ -348,14 +459,113 @@ router.put('/:id/grupo', async (req, res) => {
         const result = await db.query(query, params);
 
         if (result.rowCount === 0) {
+            await db.query('ROLLBACK');
             return res.status(404).json({ error: 'Usuário não encontrado ou sem permissão.' });
         }
+
+        await db.query('COMMIT');
 
         logger.info('[Usuarios] Grupo de acesso alterado', { targetId, grupo_id, by: req.user.email });
         res.json({ message: 'Grupo de acesso do usuário atualizado com sucesso', user: result.rows[0] });
     } catch (err) {
+        await db.query('ROLLBACK');
         logger.error('[Usuarios] Erro ao alterar grupo_id', err);
         res.status(500).json({ error: 'Erro interno ao atualizar grupo de acesso do usuário.' });
+    }
+});
+
+/**
+ * PUT /api/usuarios/:id/grupos
+ * Associa um usuário a múltiplos grupos de acesso.
+ */
+router.put('/:id/grupos', async (req, res) => {
+    try {
+        const { grupo_ids } = req.body;
+        const targetId = req.params.id;
+
+        if (!Array.isArray(grupo_ids)) {
+            return res.status(400).json({ error: 'O campo "grupo_ids" deve ser um array.' });
+        }
+
+        // Se for passado grupo_ids, verificar se todos os grupos existem e pertencem ao mesmo tenant (se não for master)
+        if (grupo_ids.length > 0) {
+            let groupCheckQuery = 'SELECT id, versao FROM dash_grupos_acesso WHERE id = ANY($1)';
+            let groupCheckParams = [grupo_ids];
+            
+            if (req.tenant.id !== '00000000-0000-0000-0000-000000000000') {
+                groupCheckQuery += ' AND tenant_id = $2';
+                groupCheckParams.push(req.tenant.id);
+            }
+            
+            const groupCheck = await db.query(groupCheckQuery, groupCheckParams);
+            if (groupCheck.rowCount !== grupo_ids.length) {
+                return res.status(400).json({ error: 'Um ou mais grupos de acesso são inválidos ou pertencem a outra empresa.' });
+            }
+        }
+
+        // Buscar usuário para saber a versão atual ativa
+        const userRes = await db.query(
+            'SELECT id, versao, tenant_id FROM dash_usuarios WHERE id = $1',
+            [targetId]
+        );
+        if (userRes.rowCount === 0) {
+            return res.status(404).json({ error: 'Usuário não encontrado.' });
+        }
+        const targetUser = userRes.rows[0];
+
+        // Segurança de Tenant
+        if (req.tenant.id !== '00000000-0000-0000-0000-000000000000' && targetUser.tenant_id !== req.tenant.id) {
+            return res.status(403).json({ error: 'Você não tem permissão para alterar os grupos deste usuário.' });
+        }
+
+        await db.query('BEGIN');
+
+        // Deletar associações anteriores
+        await db.query('DELETE FROM dash_usuario_grupo WHERE usuario_id = $1', [targetId]);
+
+        // Inserir as novas associações
+        if (grupo_ids.length > 0) {
+            for (const gId of grupo_ids) {
+                await db.query(
+                    'INSERT INTO dash_usuario_grupo (usuario_id, grupo_id) VALUES ($1, $2)',
+                    [targetId, gId]
+                );
+            }
+        }
+
+        // Determinar o legacy grupo_id
+        let legacyGroupId = null;
+        if (grupo_ids.length > 0) {
+            // Verificar se há algum grupo associado à versão ativa do usuário
+            const activeVersionGroup = await db.query(
+                `SELECT g.id 
+                 FROM dash_usuario_grupo ug
+                 JOIN dash_grupos_acesso g ON ug.grupo_id = g.id
+                 WHERE ug.usuario_id = $1 AND g.versao = $2
+                 LIMIT 1`,
+                [targetId, targetUser.versao]
+            );
+            if (activeVersionGroup.rowCount > 0) {
+                legacyGroupId = activeVersionGroup.rows[0].id;
+            } else {
+                legacyGroupId = grupo_ids[0]; // Fallback para o primeiro grupo
+            }
+        }
+
+        // Atualizar o legacy grupo_id na tabela dash_usuarios
+        await db.query(
+            'UPDATE dash_usuarios SET grupo_id = $1 WHERE id = $2',
+            [legacyGroupId, targetId]
+        );
+
+        await db.query('COMMIT');
+
+        logger.info('[Usuarios] Grupos de acesso alterados em lote', { targetId, grupo_ids, by: req.user.email });
+        res.json({ message: 'Grupos de acesso do usuário atualizados com sucesso' });
+    } catch (err) {
+        await db.query('ROLLBACK');
+        logger.error('[Usuarios] Erro ao alterar grupo_ids', err);
+        res.status(500).json({ error: 'Erro interno ao atualizar grupos de acesso do usuário.' });
     }
 });
 

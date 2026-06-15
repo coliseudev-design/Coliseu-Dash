@@ -10,6 +10,7 @@ export interface User {
   permissions?: string[] | null
   versao?: string
   layout_version?: string
+  available_versions?: string[]
 }
 
 interface AuthState {
@@ -21,6 +22,7 @@ interface AuthState {
   register: (nome: string, email: string, senha: string, companyKey: string) => Promise<boolean>
   logout: () => Promise<void>
   init: () => void
+  updateUserVersion: (versao: string) => void
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -52,6 +54,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       const user = data.user || data.profile || { email, nome: data.companyName || email }
       user.versao = data.user?.versao || data.profile?.versao || data.user?.layout_version || data.profile?.layout_version || 'Dash 1.0';
       user.layout_version = user.versao;
+      user.available_versions = data.user?.available_versions || data.profile?.available_versions || [user.versao];
 
       localStorage.setItem('coliseu_token', token)
       localStorage.setItem('coliseu_user', JSON.stringify(user))
@@ -101,4 +104,18 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
     set({ user: null, token: null })
   },
+  updateUserVersion: (versao) => {
+    set((state) => {
+      if (state.user) {
+        const updatedUser = { 
+          ...state.user, 
+          versao, 
+          layout_version: versao 
+        }
+        localStorage.setItem('coliseu_user', JSON.stringify(updatedUser))
+        return { user: updatedUser }
+      }
+      return {}
+    })
+  }
 }))

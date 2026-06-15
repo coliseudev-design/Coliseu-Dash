@@ -63,6 +63,24 @@ router.post('/login', async (req, res) => {
 
         const permissions = await getUserPermissions(user.id, user.tenant_id);
 
+        // Buscar as versões às quais o usuário tem acesso
+        let available_versions = [];
+        if (user.role === 'master' || user.role === 'admin') {
+            available_versions = ['Dash 1.0', 'B.I 1.0', 'B.I IA.'];
+        } else {
+            const versionsRes = await db.query(
+                `SELECT DISTINCT g.versao 
+                 FROM dash_usuario_grupo ug
+                 JOIN dash_grupos_acesso g ON ug.grupo_id = g.id
+                 WHERE ug.usuario_id = $1`,
+                [user.id]
+            );
+            available_versions = versionsRes.rows.map(r => r.versao);
+            if (user.versao && !available_versions.includes(user.versao)) {
+                available_versions.push(user.versao);
+            }
+        }
+
         res.status(200).json({
             token,
             user: {
@@ -73,7 +91,8 @@ router.post('/login', async (req, res) => {
                 tenant_id: user.tenant_id,
                 permissions,
                 versao: user.versao,
-                layout_version: user.versao
+                layout_version: user.versao,
+                available_versions
             }
         });
 
@@ -220,6 +239,24 @@ router.get('/me', requireWebJwt, async (req, res) => {
         const user = rows[0];
         const permissions = await getUserPermissions(user.id, user.tenant_id);
 
+        // Buscar as versões às quais o usuário tem acesso
+        let available_versions = [];
+        if (user.role === 'master' || user.role === 'admin') {
+            available_versions = ['Dash 1.0', 'B.I 1.0', 'B.I IA.'];
+        } else {
+            const versionsRes = await db.query(
+                `SELECT DISTINCT g.versao 
+                 FROM dash_usuario_grupo ug
+                 JOIN dash_grupos_acesso g ON ug.grupo_id = g.id
+                 WHERE ug.usuario_id = $1`,
+                [user.id]
+            );
+            available_versions = versionsRes.rows.map(r => r.versao);
+            if (user.versao && !available_versions.includes(user.versao)) {
+                available_versions.push(user.versao);
+            }
+        }
+
         res.json({
             user: {
                 id: user.id,
@@ -230,7 +267,8 @@ router.get('/me', requireWebJwt, async (req, res) => {
                 permissions,
                 versao: user.versao,
                 layout_version: user.versao,
-                grupo_id: user.grupo_id
+                grupo_id: user.grupo_id,
+                available_versions
             }
         });
     } catch (err) {
