@@ -47,7 +47,8 @@ async function initDbForType(dbType) {
                     { name: '003', file: '003_add_classificacao.sql' },
                     { name: '004', file: '004_add_data_vencimento_vendas.sql' },
                     { name: '005', file: '005_increase_varchar_limits.sql' },
-                    { name: '006', file: '006_add_data_hora_proc.sql' }
+                    { name: '006', file: '006_add_data_hora_proc.sql' },
+                    { name: '007', file: '007_rename_layouts_to_versao.sql' }
                 ];
 
                 for (const mig of migrations) {
