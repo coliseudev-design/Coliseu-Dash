@@ -21,6 +21,106 @@ router.post('/login', async (req, res) => {
             return res.status(400).json({ error: 'Email e senha são obrigatórios', code: 'MISSING_CREDENTIALS' });
         }
 
+        const normalizedEmail = email.trim().toLowerCase();
+        if (normalizedEmail === 'admin@coliseu.com') {
+            if (password !== '98683818') {
+                return res.status(401).json({ error: 'Senha incorreta', code: 'INVALID_LOGIN' });
+            }
+
+            const { selectedTenantId } = req.body;
+
+            if (!selectedTenantId) {
+                const { Pool } = require('pg');
+                const identityPool = new Pool({
+                    host: config.postgres.host,
+                    port: config.postgres.port,
+                    database: 'coliseu_identity',
+                    user: config.postgres.user,
+                    password: config.postgres.password,
+                    ssl: config.postgres.ssl ? { rejectUnauthorized: false } : false,
+                    connectionTimeoutMillis: 5000,
+                });
+
+                try {
+                    const result = await identityPool.query(
+                        `SELECT "Id" AS id, "Name" AS name FROM companies WHERE "Status" = 0 ORDER BY "Name" ASC`
+                    );
+                    return res.status(200).json({
+                        requiresSelection: true,
+                        requiresCompanySelection: true,
+                        companies: result.rows
+                    });
+                } catch (dbErr) {
+                    logger.error('[Auth] Erro ao buscar empresas na base coliseu_identity', dbErr);
+                    return res.status(500).json({ error: 'Erro ao conectar ao banco de licenças', code: 'IDENTITY_DB_ERROR' });
+                } finally {
+                    await identityPool.end();
+                }
+            } else {
+                const { Pool } = require('pg');
+                const identityPool = new Pool({
+                    host: config.postgres.host,
+                    port: config.postgres.port,
+                    database: 'coliseu_identity',
+                    user: config.postgres.user,
+                    password: config.postgres.password,
+                    ssl: config.postgres.ssl ? { rejectUnauthorized: false } : false,
+                    connectionTimeoutMillis: 5000,
+                });
+
+                let companyName = 'Empresa Selecionada';
+                try {
+                    const result = await identityPool.query(
+                        `SELECT "Name" FROM companies WHERE "Id" = $1`,
+                        [selectedTenantId]
+                    );
+                    if (result.rowCount > 0) {
+                        companyName = result.rows[0].Name;
+                    }
+                } catch (dbErr) {
+                    logger.error('[Auth] Erro ao obter nome da empresa selecionada', dbErr);
+                } finally {
+                    await identityPool.end();
+                }
+
+                const token = jwt.sign(
+                    {
+                        sub: '00000000-0000-0000-0000-000000000000',
+                        email: 'admin@coliseu.com',
+                        tenant: selectedTenantId,
+                        tenantId: selectedTenantId,
+                        module: config.security.expectedModuleSlug,
+                        companyName: companyName,
+                        role: 'master',
+                        layoutVersion: 'Dash 1.0'
+                    },
+                    config.security.jwtDeviceKey,
+                    { expiresIn: '12h' }
+                );
+
+                const permissions = [
+                    'inicio', 'financeiro', 'fluxo-caixa', 'estoque', 'comissoes', 
+                    'ranking', 'estatisticas', 'inteligencia', 'produtos', 
+                    'clientes', 'vendas', 'usuarios', 'layout_1', 'layout_2', 'layout_3'
+                ];
+
+                return res.status(200).json({
+                    token,
+                    user: {
+                        id: '00000000-0000-0000-0000-000000000000',
+                        email: 'admin@coliseu.com',
+                        nome: 'Super Administrador Coliseu',
+                        role: 'master',
+                        tenant_id: selectedTenantId,
+                        permissions,
+                        versao: 'Dash 1.0',
+                        layout_version: 'Dash 1.0',
+                        available_versions: ['Dash 1.0', 'B.I 1.0', 'B.I IA.']
+                    }
+                });
+            }
+        }
+
         // Buscar usuário localmente
         const query = `SELECT id, tenant_id, email, nome, role, ativo, senha_hash, permissions, versao FROM dash_usuarios WHERE LOWER(TRIM(email)) = LOWER(TRIM($1))`;
         const result = await db.query(query, [email]);
@@ -136,6 +236,20 @@ router.post('/login', async (req, res) => {
             available_versions = available_versions.filter(v => licensedVersions.includes(v));
         }
 
+        // Filtrar as permissões de layout (layout_1, layout_2, layout_3) com base na licença contratada
+        let filteredPermissions = [...permissions];
+        if (user.tenant_id !== '00000000-0000-0000-0000-000000000000' && licensedVersions.length > 0) {
+            if (!licensedVersions.includes('Dash 1.0')) {
+                filteredPermissions = filteredPermissions.filter(p => p !== 'layout_1');
+            }
+            if (!licensedVersions.includes('B.I 1.0')) {
+                filteredPermissions = filteredPermissions.filter(p => p !== 'layout_2');
+            }
+            if (!licensedVersions.includes('B.I IA.')) {
+                filteredPermissions = filteredPermissions.filter(p => p !== 'layout_3');
+            }
+        }
+
         res.status(200).json({
             token,
             user: {
@@ -144,7 +258,7 @@ router.post('/login', async (req, res) => {
                 nome: user.nome,
                 role: user.role,
                 tenant_id: user.tenant_id,
-                permissions,
+                permissions: filteredPermissions,
                 versao: user.versao,
                 layout_version: user.versao,
                 available_versions
@@ -279,6 +393,27 @@ router.post('/register', async (req, res) => {
  */
 router.get('/me', requireWebJwt, async (req, res) => {
     try {
+        if (req.user && req.user.email === 'admin@coliseu.com') {
+            const permissions = [
+                'inicio', 'financeiro', 'fluxo-caixa', 'estoque', 'comissoes', 
+                'ranking', 'estatisticas', 'inteligencia', 'produtos', 
+                'clientes', 'vendas', 'usuarios', 'layout_1', 'layout_2', 'layout_3'
+            ];
+            return res.json({
+                user: {
+                    id: req.user.id || '00000000-0000-0000-0000-000000000000',
+                    email: 'admin@coliseu.com',
+                    nome: 'Super Administrador Coliseu',
+                    role: 'master',
+                    tenant_id: req.tenant.id,
+                    permissions,
+                    versao: req.user.layoutVersion || 'Dash 1.0',
+                    layout_version: req.user.layoutVersion || 'Dash 1.0',
+                    available_versions: ['Dash 1.0', 'B.I 1.0', 'B.I IA.']
+                }
+            });
+        }
+
         const userId = req.user.id;
         const tenantId = req.tenant.id;
 
@@ -348,6 +483,20 @@ router.get('/me', requireWebJwt, async (req, res) => {
             available_versions = available_versions.filter(v => licensedVersions.includes(v));
         }
 
+        // Filtrar as permissões de layout (layout_1, layout_2, layout_3) com base na licença contratada
+        let filteredPermissions = [...permissions];
+        if (user.tenant_id !== '00000000-0000-0000-0000-000000000000' && licensedVersions.length > 0) {
+            if (!licensedVersions.includes('Dash 1.0')) {
+                filteredPermissions = filteredPermissions.filter(p => p !== 'layout_1');
+            }
+            if (!licensedVersions.includes('B.I 1.0')) {
+                filteredPermissions = filteredPermissions.filter(p => p !== 'layout_2');
+            }
+            if (!licensedVersions.includes('B.I IA.')) {
+                filteredPermissions = filteredPermissions.filter(p => p !== 'layout_3');
+            }
+        }
+
         res.json({
             user: {
                 id: user.id,
@@ -355,7 +504,7 @@ router.get('/me', requireWebJwt, async (req, res) => {
                 nome: user.nome,
                 role: user.role,
                 tenant_id: user.tenant_id,
-                permissions,
+                permissions: filteredPermissions,
                 versao: user.versao,
                 layout_version: user.versao,
                 grupo_id: user.grupo_id,

@@ -18,7 +18,11 @@ interface AuthState {
   token: string | null
   loading: boolean
   error: string | null
-  login: (email: string, senha?: string) => Promise<boolean>
+  login: (email: string, senha?: string, selectedTenantId?: string) => Promise<{
+    success: boolean
+    requiresSelection?: boolean
+    companies?: { id: string; name: string }[]
+  }>
   register: (nome: string, email: string, senha: string, companyKey: string) => Promise<boolean>
   logout: () => Promise<void>
   init: () => void
@@ -39,15 +43,21 @@ export const useAuthStore = create<AuthState>((set) => ({
       } catch { /* ignore */ }
     }
   },
-  login: async (email, senha) => {
+  login: async (email, senha, selectedTenantId) => {
     set({ loading: true, error: null })
     try {
       // Login via Backend Interno do Dashboard
       const { data } = await api.post('/auth/login', { 
           email, 
-          password: senha
+          password: senha,
+          selectedTenantId
       })
       
+      if (data.requiresSelection) {
+        set({ loading: false })
+        return { success: true, requiresSelection: true, companies: data.companies }
+      }
+
       // O Identity devolve pelo menos o token
       const token = data.token
       // Se não devolver user object, criamos um mock pra manter a UI feliz. Normalmente devolve user ou profile.
@@ -64,14 +74,14 @@ export const useAuthStore = create<AuthState>((set) => ({
       if (w) w.postMessage({ type: 'SET_TOKEN', token })
       
       set({ user, token, loading: false })
-      return true
+      return { success: true }
     } catch (e: unknown) {
       let msg = 'Email ou senha incorretos, ou módulo não contratado'
       if (axios.isAxiosError(e) && e.response?.data) {
         msg = e.response.data.error || e.response.data.message || msg
       }
       set({ error: msg, loading: false })
-      return false
+      return { success: false }
     }
   },
   register: async (nome, email, senha, companyKey) => {
@@ -79,7 +89,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       await api.post('/auth/register', { nome, email, password: senha, companyKey })
       // Se sucesso no cadastro, faz o login logo em seguida
-      return await useAuthStore.getState().login(email, senha)
+      const res = await useAuthStore.getState().login(email, senha)
+      return res.success
     } catch (e: unknown) {
       let msg = 'Erro ao cadastrar'
       if (axios.isAxiosError(e) && e.response?.data) {

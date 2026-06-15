@@ -163,7 +163,7 @@ export default function Header({ onMenuClick, title, isCollapsed, onToggleCollap
         )}
 
         {/* Layout Version Switcher */}
-        {availableVersions.length > 1 ? (
+        {availableVersions.length > 1 && (
           <select
             className="bg-bg-secondary text-text-primary border border-divider/60 rounded-lg px-2 py-1 text-xs outline-none focus:border-brand-500 transition-colors cursor-pointer font-semibold"
             value={user?.versao || 'Dash 1.0'}
@@ -176,10 +176,6 @@ export default function Header({ onMenuClick, title, isCollapsed, onToggleCollap
               </option>
             ))}
           </select>
-        ) : (
-          <div className="hidden sm:flex items-center px-1.5 h-6 rounded-md border border-divider bg-bg-tertiary/30 text-[10px] font-mono text-text-muted cursor-default" title="Versão do Layout Ativo">
-            {user?.versao || 'Dash 1.0'}
-          </div>
         )}
 
         <BranchSelector />

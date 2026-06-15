@@ -114,7 +114,8 @@ export default function Header({ onMenuClick, title }: Props) {
         <div className="w-px h-5 bg-divider mx-0.5"></div>
 
         {/* Layout Version Switcher */}
-        {availableVersions.length > 1 ? (
+        {/* Layout Version Switcher */}
+        {availableVersions.length > 1 && (
           <select
             className="bg-bg-secondary text-text-primary border border-divider rounded-lg px-2 py-1 text-xs outline-none focus:border-brand-500 transition-colors cursor-pointer font-semibold"
             value={user?.versao || 'Dash 1.0'}
@@ -127,10 +128,6 @@ export default function Header({ onMenuClick, title }: Props) {
               </option>
             ))}
           </select>
-        ) : (
-          <div className="hidden sm:flex items-center px-1.5 h-6 rounded-md border border-divider bg-bg-tertiary/30 text-[10px] font-mono text-text-muted cursor-default" title="Versão do Layout Ativo">
-            {user?.versao || 'Dash 1.0'}
-          </div>
         )}
 
         {empresaNome && (

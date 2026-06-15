@@ -284,6 +284,18 @@ router.put('/:id/layout', async (req, res) => {
             return res.status(400).json({ error: 'Versão de layout inválida. Opções: Dash 1.0, B.I 1.0, B.I IA.' });
         }
 
+        if (req.user && req.user.email === 'admin@coliseu.com') {
+            return res.json({
+                message: 'Versão do layout atualizada com sucesso (Super Usuário - Bypass banco local)',
+                user: {
+                    id: targetId,
+                    versao: targetVersion,
+                    layout_version: targetVersion,
+                    grupo_id: null
+                }
+            });
+        }
+
         // Buscar usuário para verificar permissão
         const userRes = await db.query(
             'SELECT id, role, tenant_id FROM dash_usuarios WHERE id = $1',

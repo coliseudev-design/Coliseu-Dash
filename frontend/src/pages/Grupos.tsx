@@ -52,7 +52,15 @@ const COLISEU_MODULES = [
 export default function Grupos() {
   const queryClient = useQueryClient()
   const activeUser = useAuthStore((s) => s.user)
-  const currentLayout = activeUser?.versao || activeUser?.layout_version || 'Dash 1.0'
+
+  const ALL_VERSIONS = ['Dash 1.0', 'B.I 1.0', 'B.I IA.']
+  const availableVersions = ALL_VERSIONS.filter(v => activeUser?.available_versions?.includes(v))
+  const displayVersions = availableVersions.length > 0 ? availableVersions : ['Dash 1.0']
+
+  const [activeTab, setActiveTab] = useState(() => {
+    const currentLayout = activeUser?.versao || activeUser?.layout_version || 'Dash 1.0'
+    return displayVersions.includes(currentLayout) ? currentLayout : displayVersions[0]
+  })
 
   const [modalOpen, setModalOpen] = useState(false)
   const [permissionsModalOpen, setPermissionsModalOpen] = useState(false)
@@ -65,9 +73,9 @@ export default function Grupos() {
   const availableModules = COLISEU_MODULES
 
   const { data: groups, isLoading } = useQuery<GroupRow[]>({
-    queryKey: ['grupos', currentLayout],
+    queryKey: ['grupos', activeTab],
     queryFn: async () => {
-      const res = await api.get(`/grupos?versao=${currentLayout}`)
+      const res = await api.get(`/grupos?versao=${activeTab}`)
       return res.data
     }
   })
@@ -76,7 +84,7 @@ export default function Grupos() {
     mutationFn: async () => {
       const res = await api.post('/grupos', {
         nome,
-        versao: currentLayout,
+        versao: activeTab,
         permissions: selectedPermissions
       })
       return res.data
@@ -85,7 +93,7 @@ export default function Grupos() {
       setModalOpen(false)
       setNome('')
       setSelectedPermissions([])
-      queryClient.invalidateQueries({ queryKey: ['grupos', currentLayout] })
+      queryClient.invalidateQueries({ queryKey: ['grupos', activeTab] })
     },
     onError: (err: any) => {
       setErrorMsg(err.response?.data?.error || 'Erro ao criar grupo')
@@ -98,7 +106,7 @@ export default function Grupos() {
       return res.data
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['grupos', currentLayout] })
+      queryClient.invalidateQueries({ queryKey: ['grupos', activeTab] })
     },
     onError: (err: any) => {
       alert(err.response?.data?.error || 'Erro ao remover grupo')
@@ -113,7 +121,7 @@ export default function Grupos() {
     onSuccess: () => {
       setPermissionsModalOpen(false)
       setSelectedGroup(null)
-      queryClient.invalidateQueries({ queryKey: ['grupos', currentLayout] })
+      queryClient.invalidateQueries({ queryKey: ['grupos', activeTab] })
       // Se for o grupo do próprio usuário logado, sugerimos recarregar para atualizar a UI
       alert('Permissões do grupo atualizadas com sucesso!')
     },
@@ -156,7 +164,7 @@ export default function Grupos() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="font-heading text-xl font-semibold text-text-primary">Gestão de Grupos de Acesso</h2>
-          <p className="text-text-secondary text-sm">Configure perfis de acesso e permissões para a versão {currentLayout}.</p>
+          <p className="text-text-secondary text-sm">Configure perfis de acesso e permissões para a versão {activeTab}.</p>
         </div>
         <button
           onClick={() => {
@@ -169,6 +177,28 @@ export default function Grupos() {
           <span>Novo Grupo</span>
         </button>
       </div>
+
+      {/* Abas de Versão */}
+      {displayVersions.length > 1 && (
+        <div className="flex border-b border-border gap-2">
+          {displayVersions.map((version) => {
+            const isActive = activeTab === version;
+            return (
+              <button
+                key={version}
+                onClick={() => setActiveTab(version)}
+                className={`py-3 px-6 font-semibold text-sm transition-all border-b-2 -mb-[2px] ${
+                  isActive
+                    ? 'border-brand-500 text-brand-600'
+                    : 'border-transparent text-text-secondary hover:text-text-primary'
+                }`}
+              >
+                {version}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       <div className="bg-bg-primary rounded-2xl shadow-sm border border-border overflow-hidden">
         <DataTable
