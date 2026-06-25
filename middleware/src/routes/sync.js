@@ -132,6 +132,14 @@ router.post('/:tabela', async (req, res) => {
                     row[key.toLowerCase()] = rawRow[key];
                 }
 
+                // Mapeia os campos de natureza vindos do worker (.NET/C#) para as colunas do banco (es, processo)
+                if (row['natureza_tipo'] !== undefined && row['es'] === undefined) {
+                    row['es'] = row['natureza_tipo'];
+                }
+                if (row['natureza_processo'] !== undefined && row['processo'] === undefined) {
+                    row['processo'] = row['natureza_processo'];
+                }
+
 
                 // Guarda: valida chave primária obrigatória
                 const conflictKeyCheck = tabela === 'dash_filiais' ? 'depto_id' : 'id_firebird';
