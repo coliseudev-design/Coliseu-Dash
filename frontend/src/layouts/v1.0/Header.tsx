@@ -88,22 +88,7 @@ export default function Header({ onMenuClick, title }: Props) {
         {/* Separador */}
         <div className="w-px h-5 bg-divider mx-0.5"></div>
 
-        {/* Layout Version Switcher */}
-        {/* Layout Version Switcher */}
-        {availableVersions.length > 1 && (
-          <select
-            className="bg-bg-secondary text-text-primary border border-divider rounded-lg px-2 py-1 text-xs outline-none focus:border-brand-500 transition-colors cursor-pointer font-semibold"
-            value={user?.versao || 'Dash 1.0'}
-            disabled={switching}
-            onChange={(e) => handleVersionChange(e.target.value)}
-          >
-            {availableVersions.map((v) => (
-              <option key={v} value={v}>
-                {v}
-              </option>
-            ))}
-          </select>
-        )}
+        {/* Layout Version Switcher is removed */}
 
         {empresaNome && (
           <div className="hidden sm:flex items-center px-2 border-r border-[#E0E0E0] mr-1 pr-3">

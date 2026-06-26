@@ -16,6 +16,7 @@ FILES_TO_DEPLOY = [
     ('middleware/src/utils/cfop.js', '/usr/src/app/src/utils/cfop.js'),
     ('middleware/src/routes/financeiro.js', '/usr/src/app/src/routes/financeiro.js'),
     ('middleware/src/routes/grupos.js', '/usr/src/app/src/routes/grupos.js'),
+    ('middleware/src/db/cleanup_non_faturados.js', '/usr/src/app/src/db/cleanup_non_faturados.js'),
 ]
 
 def run(client, cmd, label=""):

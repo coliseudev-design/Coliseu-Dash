@@ -19,18 +19,27 @@ async function runCleanup() {
         // (Status faturados aceitos: FATURADO, FINALIZADO, PROCESSADO)
         console.log('Purga de itens de vendas inválidas, canceladas ou órfãs...');
         const deleteItensRes = await client.query(`
-            DELETE FROM dash_vendas_itens 
-            WHERE (tenant_id, venda_id_firebird) IN (
-                SELECT tenant_id, id_firebird 
-                FROM dash_vendas 
-                WHERE (data_vencimento IS NULL AND data_hora_proc IS NULL)
-                   OR UPPER(TRIM(status)) NOT IN ('FATURADO', 'FINALIZADO', 'PROCESSADO')
-            ) OR (tenant_id, venda_id_firebird) NOT IN (
-                SELECT tenant_id, id_firebird 
-                FROM dash_vendas
+            DELETE FROM dash_vendas_itens vi
+            USING dash_vendas v
+            WHERE vi.tenant_id = v.tenant_id
+              AND vi.venda_id_firebird = v.id_firebird
+              AND (
+                (v.data_vencimento IS NULL AND v.data_hora_proc IS NULL)
+                OR UPPER(TRIM(v.status)) NOT IN ('FATURADO', 'FINALIZADO', 'PROCESSADO')
+              )
+        `);
+        console.log(`Itens de venda inválida deletados: ${deleteItensRes.rowCount}`);
+
+        const deleteOrphansRes = await client.query(`
+            DELETE FROM dash_vendas_itens vi
+            WHERE NOT EXISTS (
+                SELECT 1 
+                FROM dash_vendas v 
+                WHERE v.tenant_id = vi.tenant_id 
+                  AND v.id_firebird = vi.venda_id_firebird
             )
         `);
-        console.log(`Itens de venda deletados: ${deleteItensRes.rowCount}`);
+        console.log(`Itens de venda órfãos deletados: ${deleteOrphansRes.rowCount}`);
 
         // 3. Deletar vendas inválidas ou canceladas
         console.log('Purga de vendas inválidas, canceladas ou sem data de faturamento...');

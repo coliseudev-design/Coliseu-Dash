@@ -202,12 +202,11 @@ router.get('/caixa', async (req, res, next) => {
         // Entradas em espécie (DINHEIRO) do caixa (por junção com vendas)
         const totDinP = await db.query(`
             SELECT
-                COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'RECEBER' AND TRIM(f.status_pagamento) = 'PAGO' AND COALESCE(f.data_pagamento, f.data_vencimento) >= $2 AND COALESCE(f.data_pagamento, f.data_vencimento) <= $3 AND TRIM(UPPER(COALESCE(v.especie, ''))) = 'DINHEIRO' THEN (CASE WHEN f.valor_pago = 0 THEN f.valor ELSE f.valor_pago END) ELSE 0 END), 0) AS entradas_dinheiro
+                COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'RECEBER' AND TRIM(f.status_pagamento) = 'PAGO' AND COALESCE(f.data_pagamento, f.data_vencimento) >= $2 AND COALESCE(f.data_pagamento, f.data_vencimento) <= $3 AND TRIM(UPPER(COALESCE(v.especie, 'DINHEIRO'))) = 'DINHEIRO' THEN (CASE WHEN f.valor_pago = 0 THEN f.valor ELSE f.valor_pago END) ELSE 0 END), 0) AS entradas_dinheiro
             FROM dash_financeiro f
             LEFT JOIN dash_vendas v ON v.tenant_id = f.tenant_id
               AND v.cliente_id_firebird = f.cliente_id_firebird
               AND ABS(v.valor_total - COALESCE(v.valor_desconto, 0) - f.valor) < 0.01
-              AND DATE(v.data_venda AT TIME ZONE 'UTC') = DATE(f.data_pagamento AT TIME ZONE 'UTC')
             WHERE f.tenant_id = $1
               ${filterCaixa}
         `, [tenantId, start, end]);
@@ -231,36 +230,21 @@ router.get('/caixa', async (req, res, next) => {
 
         let especieP = { rows: [] };
         if (showEspecies) {
-            if (caixaId) {
-                // Se o caixa for selecionado, faz a junção para trazer a composição de espécie daquele caixa
-                especieP = await db.query(`
-                    SELECT TRIM(UPPER(v.especie)) as nome_especie, COALESCE(SUM(v.valor_total - COALESCE(v.valor_desconto, 0)), 0) AS total_especie
-                    FROM dash_vendas v
-                    JOIN dash_financeiro f ON f.tenant_id = v.tenant_id
-                      AND f.cliente_id_firebird = v.cliente_id_firebird
-                      AND ABS(v.valor_total - COALESCE(v.valor_desconto, 0) - f.valor) < 0.01
-                      AND DATE(v.data_venda AT TIME ZONE 'UTC') = DATE(f.data_pagamento AT TIME ZONE 'UTC')
-                    WHERE v.tenant_id = $1
-                      AND COALESCE(v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_vencimento, v.data_venda) <= $3
-                      ${cfopUtil.getSalesFilterClause('v')}
-                      AND v.especie IS NOT NULL AND TRIM(v.especie) != ''
-                      ${filterCaixa}
-                    GROUP BY TRIM(UPPER(v.especie))
-                    ORDER BY total_especie DESC
-                `, [tenantId, start, end]);
-            } else {
-                // Mapeamento original global se nenhum caixa for selecionado
-                especieP = await db.query(`
-                    SELECT TRIM(UPPER(especie)) as nome_especie, COALESCE(SUM(valor_total - COALESCE(valor_desconto, 0)), 0) AS total_especie
-                    FROM dash_vendas v
-                    WHERE tenant_id = $1
-                      AND COALESCE(data_vencimento, data_venda) >= $2 AND COALESCE(data_vencimento, data_venda) <= $3
-                      ${cfopUtil.getSalesFilterClause('v')}
-                      AND especie IS NOT NULL AND TRIM(especie) != ''
-                    GROUP BY TRIM(UPPER(especie))
-                    ORDER BY total_especie DESC
-                `, [tenantId, start, end]);
-            }
+            especieP = await db.query(`
+                SELECT TRIM(UPPER(COALESCE(v.especie, 'DINHEIRO'))) as nome_especie, 
+                       COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'RECEBER' THEN COALESCE(f.valor_pago, f.valor) ELSE -COALESCE(f.valor_pago, f.valor) END), 0) AS total_especie
+                FROM dash_financeiro f
+                LEFT JOIN dash_vendas v ON v.tenant_id = f.tenant_id
+                  AND f.cliente_id_firebird = v.cliente_id_firebird
+                  AND ABS(v.valor_total - COALESCE(v.valor_desconto, 0) - f.valor) < 0.01
+                WHERE f.tenant_id = $1
+                  AND TRIM(f.status_pagamento) = 'PAGO'
+                  AND COALESCE(f.data_pagamento, f.data_vencimento) >= $2 
+                  AND COALESCE(f.data_pagamento, f.data_vencimento) <= $3
+                  ${filterCaixa}
+                GROUP BY TRIM(UPPER(COALESCE(v.especie, 'DINHEIRO')))
+                ORDER BY total_especie DESC
+            `, [tenantId, start, end]);
         }
 
         let acc = 0;
@@ -402,6 +386,15 @@ router.get('/contas', async (req, res, next) => {
             binds.push(statusPg.trim());
         }
 
+        if (req.query.start_date) {
+            where.push(`COALESCE(f.data_pagamento, f.data_vencimento) >= $${pIndex++}`);
+            binds.push(req.query.start_date);
+        }
+        if (req.query.end_date) {
+            where.push(`COALESCE(f.data_pagamento, f.data_vencimento) <= $${pIndex++}`);
+            binds.push(req.query.end_date);
+        }
+
         binds.push(limit);
         const limitIdx = pIndex;
 
@@ -409,11 +402,15 @@ router.get('/contas', async (req, res, next) => {
             SELECT 
                 f.id_firebird AS id, f.tipo, f.descricao, f.data_emissao, f.data_vencimento, f.data_pagamento,
                 f.valor, f.valor_pago, f.status_pagamento,
-                c.nome AS cliente
+                c.nome AS cliente,
+                TRIM(UPPER(COALESCE(v.especie, 'DINHEIRO'))) AS especie
             FROM dash_financeiro f
             LEFT JOIN dash_clientes c ON c.id_firebird = f.cliente_id_firebird AND c.tenant_id = f.tenant_id
+            LEFT JOIN dash_vendas v ON v.tenant_id = f.tenant_id
+              AND v.cliente_id_firebird = f.cliente_id_firebird
+              AND ABS(v.valor_total - COALESCE(v.valor_desconto, 0) - f.valor) < 0.01
             WHERE ${where.join(' AND ')}
-            ORDER BY f.data_vencimento DESC
+            ORDER BY COALESCE(f.data_pagamento, f.data_vencimento) DESC, f.id_firebird DESC
             LIMIT $${limitIdx}
         `;
 

@@ -3,17 +3,11 @@ import { usePeriodQuery, useApiQuery } from '../hooks/useApi'
 import { useBranchParam } from '../contexts/BranchContext'
 import { useLocation } from 'react-router-dom'
 import KPICard from '../components/KPICard'
-import ChartCard from '../components/ChartCard'
 import PeriodFilter from '../components/PeriodFilter'
 import {
   Wallet, Receipt, Scale, ArrowDownCircle, ArrowUpCircle, Banknote, Filter
 } from 'lucide-react'
-import {
-  AreaChart, Area,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
-} from 'recharts'
 import { formatBRL, formatBRLCompact } from '../utils/format'
-import { CHART_COLORS } from '../utils/chartColors'
 
 export default function Financeiro() {
   const location = useLocation()
@@ -38,6 +32,51 @@ export default function Financeiro() {
     ...branchParam
   }
   const caixa = usePeriodQuery<any>('/financeiro/caixa', extraParams)
+
+  // Últimas 10 contas pagas
+  const contasPagas = usePeriodQuery<any>('/financeiro/contas', {
+    tipo: 'PAGAR',
+    status: 'PAGO',
+    limit: 10,
+    ...(selectedCaixa !== 'todos' ? { caixa_id: selectedCaixa } : {}),
+  })
+
+  // Últimas 10 contas recebidas
+  const contasRecebidas = usePeriodQuery<any>('/financeiro/contas', {
+    tipo: 'RECEBER',
+    status: 'PAGO',
+    limit: 10,
+    ...(selectedCaixa !== 'todos' ? { caixa_id: selectedCaixa } : {}),
+  })
+
+  // Movimentações do caixa (Vendas e Lançamentos) no período
+  const caixasMovimentos = usePeriodQuery<any>('/financeiro/contas', {
+    status: 'PAGO',
+    limit: 50,
+    ...(selectedCaixa !== 'todos' ? { caixa_id: selectedCaixa } : {}),
+  })
+  const movimentos = caixasMovimentos.data?.data || []
+
+  // Constrói lista de espécies garantindo que as principais sempre apareçam (para evitar confusão de R$ 0,00)
+  const especiesList = caixa.data?.kpis?.especies || []
+  const displayEspecies: Array<{ nome: string, total: number }> = [
+    { nome: 'DINHEIRO', total: 0 },
+    { nome: 'CARTAO DEBITO', total: 0 },
+    { nome: 'CARTAO CREDITO', total: 0 },
+    { nome: 'PIX', total: 0 }
+  ].map(item => {
+    const found = especiesList.find((e: any) => e.nome === item.nome)
+    return {
+      nome: item.nome,
+      total: found ? found.total : 0
+    }
+  })
+  // Adiciona outras espécies que existam no banco e não estejam na lista padrão
+  especiesList.forEach((e: any) => {
+    if (!['DINHEIRO', 'CARTAO DEBITO', 'CARTAO CREDITO', 'PIX'].includes(e.nome)) {
+      displayEspecies.push({ nome: e.nome, total: e.total })
+    }
+  })
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -73,7 +112,7 @@ export default function Financeiro() {
           </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 mb-6">
           <KPICard
             label="Entradas"
             value={formatBRL(caixa.data?.kpis?.entradas || 0)}
@@ -102,60 +141,133 @@ export default function Financeiro() {
           />
         </div>
 
-        {caixa.data?.kpis?.especies && caixa.data.kpis.especies.length > 0 && (
-          <div className="bg-bg-primary rounded-xl border border-border p-4 mb-6 shadow-sm">
-            <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-tight sm:tracking-wider mb-4 flex items-center gap-2">
-              <Banknote size={16} className="text-brand-500" />
-              Composição por Espécie
-            </h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-              {caixa.data.kpis.especies.map((esp: any) => (
-                <div key={esp.nome} className="flex flex-col p-3 rounded-lg bg-bg-secondary border border-transparent hover:border-brand-200 transition-colors">
-                  <span className="text-[10px] sm:text-xs font-medium text-text-secondary mb-1 truncate capitalize">
-                    {esp.nome.toLowerCase()}
-                  </span>
-                  <span className="font-bold text-text-primary text-sm sm:text-base truncate" title={formatBRL(esp.total || 0)}>
-                    {formatBRL(esp.total || 0)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="bg-bg-primary rounded-2xl border border-border p-6 shadow-sm">
+        {/* Saldos por Espécie */}
+        <div className="bg-bg-primary rounded-xl border border-border p-6 mb-6 shadow-sm">
           <h3 className="font-heading font-semibold text-base sm:text-lg mb-4 text-text-primary flex items-center gap-2">
             <Wallet className="text-brand-500" size={20} />
-            Resumo de Movimentações em Espécie (Caixa)
+            Saldos do Caixa por Espécie
           </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Card Entradas em Espécie */}
-            <div className="bg-bg-secondary p-4 rounded-xl border border-divider flex items-center justify-between">
-              <div>
-                <span className="text-[10px] sm:text-xs text-text-secondary uppercase tracking-wider font-extrabold">Entradas em Espécie do Caixa</span>
-                <div className="font-black text-text-primary text-xl sm:text-2xl mt-1 font-mono">
-                  {formatBRL(caixa.data?.kpis?.entradas_dinheiro || 0)}
-                </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {displayEspecies.map((esp) => (
+              <div key={esp.nome} className="flex flex-col p-4 rounded-xl bg-bg-secondary border border-divider hover:border-brand-200 transition-colors">
+                <span className="text-xs font-extrabold text-text-secondary mb-1 truncate capitalize">
+                  Saldo em {esp.nome.toLowerCase().replace('cartao ', '')}
+                </span>
+                <span className="font-black text-text-primary text-base sm:text-lg font-mono truncate" title={formatBRL(esp.total)}>
+                  {formatBRL(esp.total)}
+                </span>
               </div>
-              <div className="p-3 bg-brand-50 text-brand-500 rounded-xl">
-                <ArrowDownCircle size={24} />
-              </div>
-            </div>
-            
-            {/* Card Vendas em Espécie */}
-            <div className="bg-bg-secondary p-4 rounded-xl border border-divider flex items-center justify-between">
-              <div>
-                <span className="text-[10px] sm:text-xs text-text-secondary uppercase tracking-wider font-extrabold">Vendas em Espécie (Dinheiro)</span>
-                <div className="font-black text-text-primary text-xl sm:text-2xl mt-1 font-mono">
-                  {formatBRL(caixa.data?.kpis?.especies?.find((e: any) => e.nome === 'DINHEIRO')?.total || 0)}
-                </div>
-              </div>
-              <div className="p-3 bg-brand-50 text-brand-500 rounded-xl">
-                <Banknote size={24} />
-              </div>
-            </div>
+            ))}
           </div>
         </div>
+
+        {/* Lista de Movimentações */}
+        <div className="bg-bg-primary rounded-xl border border-border p-6 shadow-sm">
+          <h3 className="font-heading font-semibold text-base sm:text-lg mb-4 text-text-primary flex items-center gap-2">
+            <Receipt className="text-brand-500" size={20} />
+            Últimas Movimentações (Vendas e Lançamentos)
+          </h3>
+          {caixasMovimentos.isLoading ? (
+            <div className="text-sm text-text-secondary">Carregando movimentações...</div>
+          ) : !movimentos || movimentos.length === 0 ? (
+            <div className="text-sm text-text-secondary">Nenhuma movimentação registrada para este caixa no período.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-divider text-xs font-bold text-text-secondary uppercase">
+                    <th className="py-3 px-4">Descrição / Cliente</th>
+                    <th className="py-3 px-4">Tipo</th>
+                    <th className="py-3 px-4">Espécie</th>
+                    <th className="py-3 px-4">Valor</th>
+                    <th className="py-3 px-4">Data Pagamento</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-divider text-sm text-text-primary">
+                  {movimentos.map((mov: any) => (
+                    <tr key={mov.id} className="hover:bg-bg-secondary">
+                      <td className="py-3 px-4 font-medium">{mov.descricao || mov.cliente || 'Lançamento'}</td>
+                      <td className="py-3 px-4">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${mov.tipo === 'RECEBER' ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'}`}>
+                          {mov.tipo}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 font-semibold capitalize text-xs">{mov.especie?.toLowerCase() || 'Outro'}</td>
+                      <td className="py-3 px-4 font-mono font-bold">{formatBRL(mov.valor_pago || mov.valor)}</td>
+                      <td className="py-3 px-4 text-text-secondary text-xs">
+                        {mov.data_pagamento ? new Date(mov.data_pagamento).toLocaleDateString('pt-BR') : ''}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Últimas 10 Contas Pagas / Recebidas */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+          {/* Contas Recebidas */}
+          <div className="bg-bg-primary rounded-xl border border-border p-6 shadow-sm">
+            <h3 className="font-heading font-semibold text-base sm:text-lg mb-4 text-text-primary flex items-center gap-2">
+              <ArrowDownCircle className="text-success" size={20} />
+              Últimas 10 Contas Recebidas (Pagas pelo Cliente)
+            </h3>
+            {contasRecebidas.isLoading ? (
+              <div className="text-sm text-text-secondary">Carregando...</div>
+            ) : !contasRecebidas.data?.data || contasRecebidas.data.data.length === 0 ? (
+              <div className="text-sm text-text-secondary">Nenhuma conta recebida recente.</div>
+            ) : (
+              <div className="space-y-3">
+                {contasRecebidas.data.data.map((c: any) => (
+                  <div key={c.id} className="flex justify-between items-center p-3 rounded-lg bg-bg-secondary border border-divider hover:border-brand-200 transition-colors">
+                    <div className="min-w-0 flex-1 pr-3">
+                      <div className="text-sm font-semibold truncate text-text-primary">{c.descricao || c.cliente || 'Recebimento'}</div>
+                      <div className="text-xs text-text-secondary mt-0.5">
+                        {c.data_pagamento ? new Date(c.data_pagamento).toLocaleDateString('pt-BR') : ''}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-sm font-bold text-success">{formatBRL(c.valor_pago || c.valor)}</span>
+                      <div className="text-[10px] text-text-secondary uppercase mt-0.5 font-bold tracking-wider">{c.especie || 'Outro'}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Contas Pagas */}
+          <div className="bg-bg-primary rounded-xl border border-border p-6 shadow-sm">
+            <h3 className="font-heading font-semibold text-base sm:text-lg mb-4 text-text-primary flex items-center gap-2">
+              <ArrowUpCircle className="text-danger" size={20} />
+              Últimas 10 Contas Pagas (Despesas da Empresa)
+            </h3>
+            {contasPagas.isLoading ? (
+              <div className="text-sm text-text-secondary">Carregando...</div>
+            ) : !contasPagas.data?.data || contasPagas.data.data.length === 0 ? (
+              <div className="text-sm text-text-secondary">Nenhuma conta paga recente.</div>
+            ) : (
+              <div className="space-y-3">
+                {contasPagas.data.data.map((c: any) => (
+                  <div key={c.id} className="flex justify-between items-center p-3 rounded-lg bg-bg-secondary border border-divider hover:border-brand-200 transition-colors">
+                    <div className="min-w-0 flex-1 pr-3">
+                      <div className="text-sm font-semibold truncate text-text-primary">{c.descricao || 'Despesa'}</div>
+                      <div className="text-xs text-text-secondary mt-0.5">
+                        {c.data_pagamento ? new Date(c.data_pagamento).toLocaleDateString('pt-BR') : ''}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-sm font-bold text-danger">{formatBRL(c.valor_pago || c.valor)}</span>
+                      <div className="text-[10px] text-text-secondary uppercase mt-0.5 font-bold tracking-wider">{c.especie || 'Outro'}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
       </div>
     </div>
   )
