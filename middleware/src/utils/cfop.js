@@ -38,7 +38,7 @@ function getCfopFilterClause(tableAlias = 'v') {
  */
 function getStatusFilterClause(tableAlias = 'v') {
     const prefix = tableAlias ? `${tableAlias}.` : '';
-    return `AND UPPER(TRIM(${prefix}status)) IN ('FATURADO', 'FINALIZADO', 'PROCESSADO')`;
+    return `AND UPPER(TRIM(${prefix}status)) IN ('FATURADO', 'FINALIZADO', 'PROCESSADO') AND UPPER(TRIM(COALESCE(${prefix}especie, ''))) != 'GARANTIA'`;
 }
 
 /**

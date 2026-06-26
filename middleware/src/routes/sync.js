@@ -181,6 +181,7 @@ router.post('/:tabela', async (req, res) => {
                     
                     // Alinhamento de Faturamento: usa data_hora_proc ou data_vencimento como data_venda principal
                     row['data_venda'] = faturamentoDate;
+                    row['data_vencimento'] = faturamentoDate;
 
                     // Ajustar valor_total no Postgres para ser bruto (total + desconto)
                     // para manter a consistência com as consultas do dashboard que subtraem valor_desconto.
@@ -253,10 +254,10 @@ router.post('/:tabela', async (req, res) => {
                         .filter(c => c !== conflictKey)
                         .map(c => {
                             if (c === 'data_vencimento') {
-                                return `data_vencimento = COALESCE(EXCLUDED.data_vencimento, dash_vendas.data_vencimento)`;
+                                return `data_vencimento = EXCLUDED.data_vencimento`;
                             }
                             if (c === 'data_venda') {
-                                return `data_venda = COALESCE(EXCLUDED.data_vencimento, dash_vendas.data_vencimento, EXCLUDED.data_venda, dash_vendas.data_venda)`;
+                                return `data_venda = EXCLUDED.data_venda`;
                             }
                             return `${c} = EXCLUDED.${c}`;
                         })
