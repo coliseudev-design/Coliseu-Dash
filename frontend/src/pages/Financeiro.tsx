@@ -134,7 +134,7 @@ export default function Financeiro() {
               <div>
                 <span className="text-[10px] sm:text-xs text-text-secondary uppercase tracking-wider font-extrabold">Entradas em Espécie do Caixa</span>
                 <div className="font-black text-text-primary text-xl sm:text-2xl mt-1 font-mono">
-                  {formatBRL(caixa.data?.kpis?.entradas || 0)}
+                  {formatBRL(caixa.data?.kpis?.entradas_dinheiro || 0)}
                 </div>
               </div>
               <div className="p-3 bg-brand-50 text-brand-500 rounded-xl">

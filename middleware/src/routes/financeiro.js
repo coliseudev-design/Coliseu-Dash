@@ -184,33 +184,46 @@ router.get('/caixa', async (req, res, next) => {
     try {
         const tenantId = req.tenant.id;
         const caixaId = req.query.caixa_id;
-        const filterCaixa = caixaId ? ` AND caixa_id_firebird = ${parseInt(caixaId)}` : '';
+        const filterCaixa = caixaId ? ` AND f.caixa_id_firebird = ${parseInt(caixaId)}` : '';
         const period = req.query.period || 'last12m';
         const { start, end } = await getFinanceiroAnchor(tenantId, period, req.query.start_date, req.query.end_date);
 
         const totP = await db.query(`
             SELECT
-                COALESCE(SUM(CASE WHEN TRIM(tipo) = 'RECEBER' AND TRIM(status_pagamento) = 'PAGO' AND COALESCE(data_pagamento, data_vencimento) >= $2 AND COALESCE(data_pagamento, data_vencimento) <= $3 THEN (CASE WHEN valor_pago = 0 THEN valor ELSE valor_pago END) ELSE 0 END), 0) AS entradas,
-                COALESCE(SUM(CASE WHEN TRIM(tipo) = 'PAGAR' AND TRIM(status_pagamento) = 'PAGO' AND COALESCE(data_pagamento, data_vencimento) >= $2 AND COALESCE(data_pagamento, data_vencimento) <= $3 THEN (CASE WHEN valor_pago = 0 THEN valor ELSE valor_pago END) ELSE 0 END), 0) AS saidas,
-                COUNT(DISTINCT CASE WHEN TRIM(tipo) = 'RECEBER' AND TRIM(status_pagamento) = 'PAGO' AND COALESCE(data_pagamento, data_vencimento) >= $2 AND COALESCE(data_pagamento, data_vencimento) <= $3 THEN id END) AS qtd_entradas,
-                COUNT(DISTINCT CASE WHEN TRIM(tipo) = 'PAGAR' AND TRIM(status_pagamento) = 'PAGO' AND COALESCE(data_pagamento, data_vencimento) >= $2 AND COALESCE(data_pagamento, data_vencimento) <= $3 THEN id END) AS qtd_saidas
-            FROM dash_financeiro
-            WHERE tenant_id = $1
+                COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'RECEBER' AND TRIM(f.status_pagamento) = 'PAGO' AND COALESCE(f.data_pagamento, f.data_vencimento) >= $2 AND COALESCE(f.data_pagamento, f.data_vencimento) <= $3 THEN (CASE WHEN f.valor_pago = 0 THEN f.valor ELSE f.valor_pago END) ELSE 0 END), 0) AS entradas,
+                COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'PAGAR' AND TRIM(f.status_pagamento) = 'PAGO' AND COALESCE(f.data_pagamento, f.data_vencimento) >= $2 AND COALESCE(f.data_pagamento, f.data_vencimento) <= $3 THEN (CASE WHEN f.valor_pago = 0 THEN f.valor ELSE f.valor_pago END) ELSE 0 END), 0) AS saidas,
+                COUNT(DISTINCT CASE WHEN TRIM(f.tipo) = 'RECEBER' AND TRIM(f.status_pagamento) = 'PAGO' AND COALESCE(f.data_pagamento, f.data_vencimento) >= $2 AND COALESCE(f.data_pagamento, f.data_vencimento) <= $3 THEN f.id END) AS qtd_entradas,
+                COUNT(DISTINCT CASE WHEN TRIM(f.tipo) = 'PAGAR' AND TRIM(f.status_pagamento) = 'PAGO' AND COALESCE(f.data_pagamento, f.data_vencimento) >= $2 AND COALESCE(f.data_pagamento, f.data_vencimento) <= $3 THEN f.id END) AS qtd_saidas
+            FROM dash_financeiro f
+            WHERE f.tenant_id = $1
+              ${filterCaixa}
+        `, [tenantId, start, end]);
+
+        // Entradas em espécie (DINHEIRO) do caixa (por junção com vendas)
+        const totDinP = await db.query(`
+            SELECT
+                COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'RECEBER' AND TRIM(f.status_pagamento) = 'PAGO' AND COALESCE(f.data_pagamento, f.data_vencimento) >= $2 AND COALESCE(f.data_pagamento, f.data_vencimento) <= $3 AND TRIM(UPPER(COALESCE(v.especie, ''))) = 'DINHEIRO' THEN (CASE WHEN f.valor_pago = 0 THEN f.valor ELSE f.valor_pago END) ELSE 0 END), 0) AS entradas_dinheiro
+            FROM dash_financeiro f
+            LEFT JOIN dash_vendas v ON v.tenant_id = f.tenant_id
+              AND v.cliente_id_firebird = f.cliente_id_firebird
+              AND ABS(v.valor_total - COALESCE(v.valor_desconto, 0) - f.valor) < 0.01
+              AND DATE(v.data_venda AT TIME ZONE 'UTC') = DATE(f.data_pagamento AT TIME ZONE 'UTC')
+            WHERE f.tenant_id = $1
               ${filterCaixa}
         `, [tenantId, start, end]);
 
         const movP = await db.query(`
             SELECT 
-                TO_CHAR(COALESCE(data_pagamento, data_vencimento), 'YYYY-MM-DD') AS data,
-                SUM(CASE WHEN TRIM(tipo) = 'RECEBER' THEN (CASE WHEN valor_pago = 0 THEN valor ELSE valor_pago END) ELSE 0 END) AS entradas,
-                SUM(CASE WHEN TRIM(tipo) = 'PAGAR' THEN (CASE WHEN valor_pago = 0 THEN valor ELSE valor_pago END) ELSE 0 END) AS saidas
-            FROM dash_financeiro
-            WHERE tenant_id = $1 
-              AND TRIM(status_pagamento) = 'PAGO'
-              AND COALESCE(data_pagamento, data_vencimento) >= $2 
-              AND COALESCE(data_pagamento, data_vencimento) <= $3
+                TO_CHAR(COALESCE(f.data_pagamento, f.data_vencimento), 'YYYY-MM-DD') AS data,
+                SUM(CASE WHEN TRIM(f.tipo) = 'RECEBER' THEN (CASE WHEN f.valor_pago = 0 THEN f.valor ELSE f.valor_pago END) ELSE 0 END) AS entradas,
+                SUM(CASE WHEN TRIM(f.tipo) = 'PAGAR' THEN (CASE WHEN f.valor_pago = 0 THEN f.valor ELSE f.valor_pago END) ELSE 0 END) AS saidas
+            FROM dash_financeiro f
+            WHERE f.tenant_id = $1 
+              AND TRIM(f.status_pagamento) = 'PAGO'
+              AND COALESCE(f.data_pagamento, f.data_vencimento) >= $2 
+              AND COALESCE(f.data_pagamento, f.data_vencimento) <= $3
               ${filterCaixa}
-            GROUP BY TO_CHAR(COALESCE(data_pagamento, data_vencimento), 'YYYY-MM-DD')
+            GROUP BY TO_CHAR(COALESCE(f.data_pagamento, f.data_vencimento), 'YYYY-MM-DD')
             ORDER BY data
         `, [tenantId, start, end]);
 
@@ -218,16 +231,36 @@ router.get('/caixa', async (req, res, next) => {
 
         let especieP = { rows: [] };
         if (showEspecies) {
-            especieP = await db.query(`
-                SELECT TRIM(UPPER(especie)) as nome_especie, COALESCE(SUM(valor_total), 0) AS total_especie
-                FROM dash_vendas
-                WHERE tenant_id = $1
-                  AND COALESCE(data_vencimento, data_venda) >= $2 AND COALESCE(data_vencimento, data_venda) <= $3
-                  ${cfopUtil.getSalesFilterClause('')}
-                  AND especie IS NOT NULL AND TRIM(especie) != ''
-                GROUP BY TRIM(UPPER(especie))
-                ORDER BY total_especie DESC
-            `, [tenantId, start, end]);
+            if (caixaId) {
+                // Se o caixa for selecionado, faz a junção para trazer a composição de espécie daquele caixa
+                especieP = await db.query(`
+                    SELECT TRIM(UPPER(v.especie)) as nome_especie, COALESCE(SUM(v.valor_total - COALESCE(v.valor_desconto, 0)), 0) AS total_especie
+                    FROM dash_vendas v
+                    JOIN dash_financeiro f ON f.tenant_id = v.tenant_id
+                      AND f.cliente_id_firebird = v.cliente_id_firebird
+                      AND ABS(v.valor_total - COALESCE(v.valor_desconto, 0) - f.valor) < 0.01
+                      AND DATE(v.data_venda AT TIME ZONE 'UTC') = DATE(f.data_pagamento AT TIME ZONE 'UTC')
+                    WHERE v.tenant_id = $1
+                      AND COALESCE(v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_vencimento, v.data_venda) <= $3
+                      ${cfopUtil.getSalesFilterClause('v')}
+                      AND v.especie IS NOT NULL AND TRIM(v.especie) != ''
+                      ${filterCaixa}
+                    GROUP BY TRIM(UPPER(v.especie))
+                    ORDER BY total_especie DESC
+                `, [tenantId, start, end]);
+            } else {
+                // Mapeamento original global se nenhum caixa for selecionado
+                especieP = await db.query(`
+                    SELECT TRIM(UPPER(especie)) as nome_especie, COALESCE(SUM(valor_total - COALESCE(valor_desconto, 0)), 0) AS total_especie
+                    FROM dash_vendas v
+                    WHERE tenant_id = $1
+                      AND COALESCE(data_vencimento, data_venda) >= $2 AND COALESCE(data_vencimento, data_venda) <= $3
+                      ${cfopUtil.getSalesFilterClause('v')}
+                      AND especie IS NOT NULL AND TRIM(especie) != ''
+                    GROUP BY TRIM(UPPER(especie))
+                    ORDER BY total_especie DESC
+                `, [tenantId, start, end]);
+            }
         }
 
         let acc = 0;
@@ -245,6 +278,7 @@ router.get('/caixa', async (req, res, next) => {
 
         const entradas = parseFloat(totP.rows[0].entradas || 0);
         const saidas = parseFloat(totP.rows[0].saidas || 0);
+        const entradas_dinheiro = parseFloat(totDinP.rows[0].entradas_dinheiro || 0);
         const qtd_entradas = parseInt(totP.rows[0].qtd_entradas || 0, 10);
         const qtd_saidas = parseInt(totP.rows[0].qtd_saidas || 0, 10);
         const especies = especieP.rows.map(r => ({
@@ -258,6 +292,7 @@ router.get('/caixa', async (req, res, next) => {
                 entradas,
                 saidas,
                 saldo: entradas - saidas,
+                entradas_dinheiro,
                 qtd_entradas,
                 qtd_saidas,
                 especies,
