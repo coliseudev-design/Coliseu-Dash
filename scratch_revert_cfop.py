@@ -1,4 +1,17 @@
-'use strict';
+"""
+REVERSÃO URGENTE - Restaurar o filtro original do cfop.js
+O filtro de DEVOLUCAO DE CLIENTE estava CORRETO no original.
+As devoluções devem entrar como negativo para descontar do faturamento.
+"""
+import paramiko, time
+
+HOST = '2.24.82.19'
+USER = 'root'
+PASS = 'Col@13894645'
+MW_CONTAINER = 'dashboard-middleware-g115wwb76cltjli9wew0cgfi-184215157942'
+CFOP_PATH = '/usr/src/app/src/utils/cfop.js'
+
+CFOP_ORIGINAL = """'use strict';
 
 const db = require('../db/postgres');
 
@@ -61,3 +74,49 @@ module.exports = {
     getStatusFilterClause,
     getSalesFilterClause
 };
+"""
+
+# Escrever o arquivo original localmente primeiro
+with open('/Users/kleber/Documents/GitHub/Coliseu-Dash/middleware/src/utils/cfop.js', 'w') as f:
+    f.write(CFOP_ORIGINAL)
+print("✅ cfop.js local restaurado ao original")
+
+client = paramiko.SSHClient()
+client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+client.connect(HOST, username=USER, password=PASS, timeout=20)
+
+def run(client, cmd, desc=""):
+    if desc: print(f"\n→ {desc}")
+    _, stdout, stderr = client.exec_command(cmd)
+    out = stdout.read().decode('utf-8')
+    err = stderr.read().decode('utf-8')
+    if out: print(out)
+    if err and 'WARN' not in err and 'level' not in err: print("ERR:", err)
+    return out
+
+# Enviar via SFTP
+print("📁 Enviando cfop.js original via SFTP...")
+sftp = client.open_sftp()
+sftp.put('/Users/kleber/Documents/GitHub/Coliseu-Dash/middleware/src/utils/cfop.js', '/tmp/cfop_revert.js')
+sftp.close()
+print("✅ Arquivo enviado!")
+
+# Verificar que NÃO tem mais DEVOLUCAO na exclusão
+run(client, "grep 'NOT IN' /tmp/cfop_revert.js || echo 'OK - sem NOT IN'", "Verificando reversão")
+
+# Copiar para o container
+run(client, f"docker cp /tmp/cfop_revert.js {MW_CONTAINER}:{CFOP_PATH}", "Copiando para o container")
+
+# Verificar no container
+run(client, f"docker exec {MW_CONTAINER} grep 'getStatusFilter' -A2 {CFOP_PATH}", "Verificando filtro no container")
+
+# Reiniciar
+run(client, f"docker restart {MW_CONTAINER}", "Reiniciando middleware")
+
+print("⏳ Aguardando 12s...")
+time.sleep(12)
+
+run(client, f"docker logs --tail 5 {MW_CONTAINER}", "Logs do middleware")
+
+client.close()
+print("\n✅ REVERSÃO CONCLUÍDA!")
