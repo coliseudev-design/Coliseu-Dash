@@ -40,6 +40,23 @@ export default function Comercial() {
   // Identifica se estamos na visão de drill-down do vendedor
   const isVendedorView = location.pathname.includes('/comercial/vendedor');
 
+  const currentTab = tabs.find(t => 
+    t.path === '/comercial'
+      ? location.pathname === '/comercial' || location.pathname === '/comercial/vendas'
+      : location.pathname.startsWith(t.path)
+  );
+
+  const title = currentTab ? currentTab.label : 'Módulo Comercial';
+  const description = currentTab
+    ? (currentTab.label === 'Visão Consolidada' ? 'Acompanhamento consolidado de faturamento, vendas e KPIs'
+      : currentTab.label === 'Hub de Pedidos' ? 'Central de monitoramento de pedidos, status de faturamento e performance'
+      : currentTab.label === 'Equipes' ? 'Acompanhamento de comissões, metas e faturamento das equipes de venda'
+      : currentTab.label === 'Hub do Vendedor' ? 'Painel detalhado de performance individual de vendas do vendedor'
+      : 'Classificação de vendedores, marcas, produtos e cidades por faturamento')
+    : 'Acompanhamento de vendas, metas, vendedores e rankings';
+
+  const HeaderIcon = currentTab ? currentTab.icon : BarChart3;
+
   return (
     <div className={clsx("flex flex-col h-full space-y-4 md:space-y-6 animate-in fade-in duration-300", isMobile ? "pb-28" : "")} aria-label="Módulo Comercial">
       
@@ -47,11 +64,11 @@ export default function Comercial() {
       <div className="bg-bg-primary border border-divider rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row items-start md:items-center justify-between shadow-card gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-text-primary tracking-tight flex items-center gap-2">
-            <BarChart3 className="text-brand-500" size={24} />
-            Módulo Comercial
+            <HeaderIcon className="text-brand-500" size={24} />
+            {title}
           </h1>
           <p className="text-xs sm:text-sm text-text-secondary mt-0.5">
-            Acompanhamento de vendas, metas, vendedores e rankings
+            {description}
           </p>
         </div>
 
@@ -62,34 +79,6 @@ export default function Comercial() {
           </div>
         </div>
       </div>
-
-      {/* Tabs de Navegação Comercial (apenas se não estiver no Hub de Vendedor individual) */}
-      {!isVendedorView && !isMobile && (
-        <div className="flex bg-bg-primary/80 backdrop-blur-md p-1 rounded-2xl border border-divider shadow-sm max-w-2xl w-full">
-          {tabs.map((tab) => {
-            const isActive = 
-              tab.path === '/comercial'
-                ? location.pathname === '/comercial' || location.pathname === '/comercial/vendas'
-                : location.pathname.startsWith(tab.path);
-                
-            return (
-              <button
-                key={tab.path}
-                onClick={() => navigate(tab.path)}
-                className={clsx(
-                  "flex-1 flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer truncate",
-                  isActive
-                    ? "bg-brand-500 text-white shadow-md"
-                    : "text-text-secondary hover:bg-bg-secondary hover:text-text-primary"
-                )}
-              >
-                <tab.icon size={13} className="shrink-0" />
-                <span className="truncate">{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
 
       {/* Mobile Bottom Sheet Filter Modal */}
       {showMobileFilters && (
