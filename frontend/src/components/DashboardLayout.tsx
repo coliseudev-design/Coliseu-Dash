@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react';
 
 // Importações dinâmicas para os layouts
 const LayoutV1 = import('../layouts/v1.0/DashboardLayout');
-const LayoutV2 = import('../layouts/v2.0/DashboardLayout');
 const LayoutV3 = import('../layouts/v3.0/DashboardLayout');
 
 

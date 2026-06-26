@@ -293,38 +293,69 @@ export default function FinancialIntelligenceDashboard() {
         </div>
       </div>
 
-      {/* TOP DESPESAS & RECEITAS */}
+      {/* ÚLTIMAS CONTAS PAGAS & RECEBIDAS */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Top Despesas */}
+        {/* Últimas Contas Pagas */}
         <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5">
-          <h3 className="font-bold text-text-primary text-sm flex items-center gap-2 mb-8">
-            <TrendingDown size={16} className="text-danger"/> Top 10 Despesas (Categoria)
+          <h3 className="font-bold text-text-primary text-sm flex items-center gap-2 mb-4">
+            <TrendingDown size={16} className="text-danger"/> Últimas 10 Contas Pagas
           </h3>
-          <div className="flex items-center justify-center h-32 text-xs text-text-muted italic">
-            Sem dados de despesa no período
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-left">
+              <thead>
+                <tr className="border-b border-divider text-text-secondary font-semibold uppercase tracking-wider">
+                  <th className="py-2.5">Descrição</th>
+                  <th className="py-2.5">Pagamento</th>
+                  <th className="py-2.5 text-right">Valor</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-divider font-medium">
+                {(data?.ultimas_pagas || []).map((item: any, i: number) => (
+                  <tr key={i} className="hover:bg-bg-secondary/40 transition-colors">
+                    <td className="py-2.5 max-w-[200px] truncate text-text-primary font-bold">{item.descricao}</td>
+                    <td className="py-2.5 text-text-secondary">{item.data_pagamento ? item.data_pagamento.substring(0, 10) : '-'}</td>
+                    <td className="py-2.5 text-right font-mono text-danger font-bold">{formatBRL(item.valor)}</td>
+                  </tr>
+                ))}
+                {(!data?.ultimas_pagas || data.ultimas_pagas.length === 0) && (
+                  <tr>
+                    <td colSpan={3} className="py-8 text-center text-text-muted italic">Nenhuma conta paga no período</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
         
-        {/* Top Receitas */}
+        {/* Últimas Contas Recebidas */}
         <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5">
-          <h3 className="font-bold text-text-primary text-sm flex items-center gap-2 mb-6">
-            <TrendingUp size={16} className="text-success"/> Top 10 Receitas (Categoria)
+          <h3 className="font-bold text-text-primary text-sm flex items-center gap-2 mb-4">
+            <TrendingUp size={16} className="text-success"/> Últimas 10 Contas Recebidas
           </h3>
-          <div className="space-y-4">
-            {topReceitas.map((item, i) => (
-              <div key={i}>
-                <div className="flex justify-between items-center mb-1 text-xs font-bold">
-                  <div className="flex gap-2">
-                    <span className="text-text-muted">{i+1}</span>
-                    <span className="text-text-primary uppercase tracking-wider">{item.nome}</span>
-                  </div>
-                  <span className="text-success font-mono">{formatBRLCompact(item.valor)}</span>
-                </div>
-                <div className="w-full bg-bg-secondary h-1.5 rounded-full overflow-hidden">
-                  <div className="bg-success h-full" style={{ width: `${item.pct}%` }}></div>
-                </div>
-              </div>
-            ))}
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-left">
+              <thead>
+                <tr className="border-b border-divider text-text-secondary font-semibold uppercase tracking-wider">
+                  <th className="py-2.5">Descrição</th>
+                  <th className="py-2.5">Recebimento</th>
+                  <th className="py-2.5 text-right">Valor</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-divider font-medium">
+                {(data?.ultimas_recebidas || []).map((item: any, i: number) => (
+                  <tr key={i} className="hover:bg-bg-secondary/40 transition-colors">
+                    <td className="py-2.5 max-w-[200px] truncate text-text-primary font-bold">{item.descricao}</td>
+                    <td className="py-2.5 text-text-secondary">{item.data_pagamento ? item.data_pagamento.substring(0, 10) : '-'}</td>
+                    <td className="py-2.5 text-right font-mono text-success font-bold">{formatBRL(item.valor)}</td>
+                  </tr>
+                ))}
+                {(!data?.ultimas_recebidas || data.ultimas_recebidas.length === 0) && (
+                  <tr>
+                    <td colSpan={3} className="py-8 text-center text-text-muted italic">Nenhuma conta recebida no período</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>

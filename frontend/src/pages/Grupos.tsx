@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '../services/api'
 import DataTable from '../components/DataTable'
-import { Shield, Plus, Check, X, ShieldAlert, Edit } from 'lucide-react'
+import { Shield, Plus, Check, X, ShieldAlert, Edit, Banknote } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 
 interface GroupRow {
@@ -21,19 +21,6 @@ const DASH_1_0_MODULES = [
   { id: 'inicio', label: 'Visão Geral (Início)' },
   { id: 'bi_sales', label: 'Comercial' },
   { id: 'bi_finance', label: 'Financeiro' },
-  { id: 'usuarios', label: 'Usuários & Configurações' }
-]
-
-const BI_1_0_MODULES = [
-  { id: 'inicio', label: 'Visão Estratégica' },
-  { id: 'bi_seller_hub', label: 'Hub do Vendedor' },
-  { id: 'bi_sales', label: 'Hub de Vendas' },
-  { id: 'bi_supplier', label: 'Hub do Fornecedor' },
-  { id: 'bi_abc', label: 'Gestão de Inventário' },
-  { id: 'bi_finance', label: 'Financeiro' },
-  { id: 'bi_customer', label: 'Radar 360' },
-  { id: 'bi_comparative', label: 'Lucratividade' },
-  { id: 'bi_customer_analytics', label: 'Análise de Clientes' },
   { id: 'usuarios', label: 'Usuários & Configurações' }
 ]
 
@@ -78,6 +65,18 @@ export default function Grupos() {
   const [nome, setNome] = useState('')
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([])
   const [errorMsg, setErrorMsg] = useState('')
+
+  const [vendedoresTodos, setVendedoresTodos] = useState(true)
+  const [selectedVendedores, setSelectedVendedores] = useState<number[]>([])
+  const [allVendedores, setAllVendedores] = useState<{ id: number; nome: string }[]>([])
+
+  useEffect(() => {
+    if (permissionsModalOpen) {
+      api.get('/grupos/vendedores')
+        .then(res => setAllVendedores(res.data || []))
+        .catch(err => console.error('Erro ao buscar vendedores', err))
+    }
+  }, [permissionsModalOpen])
 
   const availableModules = getAvailableModules(activeTab)
 
@@ -128,20 +127,23 @@ export default function Grupos() {
   })
 
   const updatePermissions = useMutation({
-    mutationFn: async ({ id, permissions }: { id: number, permissions: string[] }) => {
+    mutationFn: async ({ id, permissions, vendedores_todos, vendedores }: { id: number, permissions: string[], vendedores_todos: boolean, vendedores: number[] }) => {
       const layoutPerm = selectedGroup?.versao === 'Dash 1.0' ? 'layout_1' : 'layout_3'
       const perms = [...permissions]
       if (!perms.includes(layoutPerm)) {
         perms.push(layoutPerm)
       }
-      const res = await api.put(`/grupos/${id}/permissions`, { permissions: perms })
+      const res = await api.put(`/grupos/${id}/permissions`, { 
+        permissions: perms,
+        vendedores_todos,
+        vendedores
+      })
       return res.data
     },
     onSuccess: () => {
       setPermissionsModalOpen(false)
       setSelectedGroup(null)
       queryClient.invalidateQueries({ queryKey: ['grupos', activeTab] })
-      // Se for o grupo do próprio usuário logado, sugerimos recarregar para atualizar a UI
       alert('Permissões do grupo atualizadas com sucesso!')
     },
     onError: (err: any) => {
@@ -153,12 +155,15 @@ export default function Grupos() {
     setSelectedGroup(group)
     try {
       const res = await api.get(`/grupos/${group.id}/permissions`)
-      const perms: PermissionRow[] = res.data
+      const data = res.data
+      const perms: PermissionRow[] = data.permissions || []
       setSelectedPermissions(
         perms
           .filter(p => p.pode_acessar && !['layout_1', 'layout_2', 'layout_3'].includes(p.recurso))
           .map(p => p.recurso)
       )
+      setVendedoresTodos(data.vendedores_todos !== false)
+      setSelectedVendedores(data.vendedores || [])
       setPermissionsModalOpen(true)
     } catch {
       alert('Erro ao carregar permissões do grupo.')
@@ -173,7 +178,12 @@ export default function Grupos() {
 
   const handleSavePermissions = () => {
     if (!selectedGroup) return
-    updatePermissions.mutate({ id: selectedGroup.id, permissions: selectedPermissions })
+    updatePermissions.mutate({ 
+      id: selectedGroup.id, 
+      permissions: selectedPermissions,
+      vendedores_todos: vendedoresTodos,
+      vendedores: selectedVendedores
+    })
   }
 
   const togglePermission = (id: string) => {
@@ -385,6 +395,45 @@ export default function Grupos() {
                     <span className="text-sm font-medium text-text-primary">{mod.label}</span>
                   </label>
                 ))}
+              </div>
+
+              <div className="border-t border-border pt-4">
+                <h4 className="font-semibold text-sm text-text-primary mb-2">Controle de Acesso de Vendedores</h4>
+                <label className="flex items-center gap-2 cursor-pointer py-1.5">
+                  <input
+                    type="checkbox"
+                    checked={vendedoresTodos}
+                    onChange={(e) => setVendedoresTodos(e.target.checked)}
+                    className="rounded border-gray-300 text-brand-500 focus:ring-brand-500 w-4.5 h-4.5"
+                  />
+                  <span className="text-sm font-semibold text-text-primary">Todos os Vendedores</span>
+                </label>
+                
+                {!vendedoresTodos && (
+                  <div className="mt-2 space-y-1.5 max-h-48 overflow-y-auto border border-divider rounded-xl p-3 bg-bg-secondary/20">
+                    {allVendedores.map(v => {
+                      const isChecked = selectedVendedores.includes(v.id);
+                      return (
+                        <label key={v.id} className="flex items-center gap-2 cursor-pointer py-1">
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => {
+                              setSelectedVendedores(prev =>
+                                isChecked ? prev.filter(id => id !== v.id) : [...prev, v.id]
+                              );
+                            }}
+                            className="rounded border-gray-300 text-brand-500 focus:ring-brand-500 w-4 h-4"
+                          />
+                          <span className="text-xs text-text-secondary">{v.nome}</span>
+                        </label>
+                      );
+                    })}
+                    {allVendedores.length === 0 && (
+                      <span className="text-xs text-text-muted italic">Nenhum vendedor cadastrado</span>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="pt-4 flex gap-3">

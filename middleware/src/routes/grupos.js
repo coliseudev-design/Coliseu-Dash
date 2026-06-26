@@ -14,6 +14,21 @@ const requireAdmin = (req, res, next) => {
 };
 
 /**
+ * GET /api/grupos/vendedores
+ * Lista todos os vendedores do tenant.
+ */
+router.get('/vendedores', requireAdmin, async (req, res, next) => {
+    try {
+        const tenantId = req.tenant.id;
+        const { rows } = await db.query(
+            'SELECT id_firebird AS id, nome FROM dash_vendedores WHERE tenant_id = $1 ORDER BY nome',
+            [tenantId]
+        );
+        res.json(rows);
+    } catch (err) { next(err); }
+});
+
+/**
  * GET /api/grupos
  * Lista todos os grupos de acesso do tenant e versao correspondente.
  */

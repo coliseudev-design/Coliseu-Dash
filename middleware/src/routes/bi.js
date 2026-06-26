@@ -906,6 +906,41 @@ router.get('/financial/summary', async (req, res, next) => {
         const pagos = parseFloat(f[0].pagamentos_realizados);
         const inadimplencia_pct = a_receber > 0 ? (receber_vencido / a_receber) * 100 : 0;
 
+        let cfList = { clause: '', params: [] };
+        if (centroCusto && centroCusto !== 'todas') {
+            cfList = buildCentroCustoFilter(centroCusto, 2, 'f');
+        } else if (deptoId && deptoId !== 'todas') {
+            cfList = buildDeptoFilter(deptoId, 2, 'f');
+        }
+
+        const { rows: ultimasPagas } = await db.query(`
+            SELECT 
+                f.descricao,
+                COALESCE(f.data_pagamento, f.data_vencimento)::text AS data_pagamento,
+                (CASE WHEN f.valor_pago = 0 THEN f.valor ELSE f.valor_pago END) AS valor
+            FROM dash_financeiro f
+            WHERE f.tenant_id = $1 
+              AND TRIM(f.tipo) = 'PAGAR' 
+              AND TRIM(f.status_pagamento) = 'PAGO'
+              ${cfList.clause}
+            ORDER BY COALESCE(f.data_pagamento, f.data_vencimento) DESC, f.id DESC
+            LIMIT 10
+        `, [tenantId, ...cfList.params]);
+
+        const { rows: ultimasRecebidas } = await db.query(`
+            SELECT 
+                f.descricao,
+                COALESCE(f.data_pagamento, f.data_vencimento)::text AS data_pagamento,
+                (CASE WHEN f.valor_pago = 0 THEN f.valor ELSE f.valor_pago END) AS valor
+            FROM dash_financeiro f
+            WHERE f.tenant_id = $1 
+              AND TRIM(f.tipo) = 'RECEBER' 
+              AND TRIM(f.status_pagamento) = 'PAGO'
+              ${cfList.clause}
+            ORDER BY COALESCE(f.data_pagamento, f.data_vencimento) DESC, f.id DESC
+            LIMIT 10
+        `, [tenantId, ...cfList.params]);
+
         res.json({
             saldo_atual: recebidos - pagos,
             contas_receber: a_receber,
@@ -914,7 +949,9 @@ router.get('/financial/summary', async (req, res, next) => {
             pagar_vencido: pagar_vencido,
             recebimentos_realizados: recebidos,
             pagamentos_realizados: pagos,
-            inadimplencia_pct: Number(inadimplencia_pct.toFixed(1))
+            inadimplencia_pct: Number(inadimplencia_pct.toFixed(1)),
+            ultimas_pagas: ultimasPagas,
+            ultimas_recebidas: ultimasRecebidas
         });
     } catch (err) { next(err); }
 });

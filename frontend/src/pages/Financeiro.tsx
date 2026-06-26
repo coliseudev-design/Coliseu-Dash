@@ -123,36 +123,39 @@ export default function Financeiro() {
           </div>
         )}
 
-        <ChartCard
-          title="Fluxo de Movimentações"
-          subtitle="Acompanhamento diário das entradas e saídas de capital"
-          loading={caixa.isLoading}
-          empty={!caixa.data?.kpis?.movimentacoes?.length}
-        >
-          <div className="h-64 sm:h-80 -mx-1 sm:mx-0">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={caixa.data?.kpis?.movimentacoes || []}>
-                <defs>
-                  <linearGradient id="colorEntrCaixa" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={CHART_COLORS.success} stopOpacity={0.5} />
-                    <stop offset="95%" stopColor={CHART_COLORS.success} stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="colorSaiCaixa" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={CHART_COLORS.danger} stopOpacity={0.5} />
-                    <stop offset="95%" stopColor={CHART_COLORS.danger} stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                <XAxis dataKey="data" tick={{ fontSize: 10, fill: '#6B7280' }} tickFormatter={(d) => d?.slice(5) || d} />
-                <YAxis tick={{ fontSize: 10, fill: '#6B7280' }} tickFormatter={formatBRLCompact} width={55} />
-                <Tooltip formatter={(v: any) => formatBRL(v)} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Area type="monotone" dataKey="entradas" stroke={CHART_COLORS.success} fill="url(#colorEntrCaixa)" name="Entradas" />
-                <Area type="monotone" dataKey="saidas" stroke={CHART_COLORS.danger} fill="url(#colorSaiCaixa)" name="Saídas" />
-              </AreaChart>
-            </ResponsiveContainer>
+        <div className="bg-bg-primary rounded-2xl border border-border p-6 shadow-sm">
+          <h3 className="font-heading font-semibold text-base sm:text-lg mb-4 text-text-primary flex items-center gap-2">
+            <Wallet className="text-brand-500" size={20} />
+            Resumo de Movimentações em Espécie (Caixa)
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Card Entradas em Espécie */}
+            <div className="bg-bg-secondary p-4 rounded-xl border border-divider flex items-center justify-between">
+              <div>
+                <span className="text-[10px] sm:text-xs text-text-secondary uppercase tracking-wider font-extrabold">Entradas em Espécie do Caixa</span>
+                <div className="font-black text-text-primary text-xl sm:text-2xl mt-1 font-mono">
+                  {formatBRL(caixa.data?.kpis?.entradas || 0)}
+                </div>
+              </div>
+              <div className="p-3 bg-brand-50 text-brand-500 rounded-xl">
+                <ArrowDownCircle size={24} />
+              </div>
+            </div>
+            
+            {/* Card Vendas em Espécie */}
+            <div className="bg-bg-secondary p-4 rounded-xl border border-divider flex items-center justify-between">
+              <div>
+                <span className="text-[10px] sm:text-xs text-text-secondary uppercase tracking-wider font-extrabold">Vendas em Espécie (Dinheiro)</span>
+                <div className="font-black text-text-primary text-xl sm:text-2xl mt-1 font-mono">
+                  {formatBRL(caixa.data?.kpis?.especies?.find((e: any) => e.nome === 'DINHEIRO')?.total || 0)}
+                </div>
+              </div>
+              <div className="p-3 bg-brand-50 text-brand-500 rounded-xl">
+                <Banknote size={24} />
+              </div>
+            </div>
           </div>
-        </ChartCard>
+        </div>
       </div>
     </div>
   )
