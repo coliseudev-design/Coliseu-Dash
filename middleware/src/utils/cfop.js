@@ -35,10 +35,17 @@ function getCfopFilterClause(tableAlias = 'v') {
  * STATUS_FILTER para Sistema Coliseu (Layouts 1, 2 e 3):
  * Allowlist: inclui apenas FATURADO e FINALIZADO (status de venda concluída no ERP Coliseu).
  * Usa UPPER(TRIM()) para tolerância a espaços e variações de case.
+ * 
+ * EXCLUSÕES DE ESPÉCIE:
+ * - GARANTIA: pedidos de garantia com valor negativo (trocas/serviços sem faturamento)
+ * - DEVOLUCAO DE CLIENTE: o ERP Coliseu gera pedidos com valor negativo e status FATURADO
+ *   para registrar devoluções. O relatório de faturamento do ERP NÃO inclui esses registros.
+ *   A tabela dash_devolucoes não recebe esses dados do sincronizador — eles chegam como
+ *   vendas negativas em dash_vendas e devem ser excluídos do cálculo de faturamento.
  */
 function getStatusFilterClause(tableAlias = 'v') {
     const prefix = tableAlias ? `${tableAlias}.` : '';
-    return `AND UPPER(TRIM(${prefix}status)) IN ('FATURADO', 'FINALIZADO', 'PROCESSADO') AND (UPPER(TRIM(COALESCE(${prefix}especie, ''))) != 'GARANTIA' OR (COALESCE(${prefix}valor_total, 0) - COALESCE(${prefix}valor_desconto, 0)) >= 0)`;
+    return `AND UPPER(TRIM(${prefix}status)) IN ('FATURADO', 'FINALIZADO', 'PROCESSADO') AND UPPER(TRIM(COALESCE(${prefix}especie, ''))) NOT IN ('GARANTIA', 'DEVOLUCAO DE CLIENTE')`;
 }
 
 /**
