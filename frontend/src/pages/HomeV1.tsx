@@ -930,32 +930,3 @@ export default function HomeV1() {
     </div>
   )
 }
-        </ResponsiveContainer>
-            </div>
-          )}
-        </div>
-
-        {/* Saúde Financeira */}
-        <div className="lg:col-span-4 card !p-4 sm:!p-5 flex flex-col">
-          <div className="flex items-center gap-2 mb-4">
-            <DollarSign size={16} className="text-emerald-600" />
-            <h3 className="text-sm font-bold text-text-primary uppercase tracking-wider">Saúde Financeira</h3>
-          </div>
-          <div className="flex-1 flex flex-col justify-center">
-            <FinanceRow label="A Receber"   value={ov.data?.total_receber  || 0} color="bg-amber-400"  loading={ov.isLoading} />
-            <FinanceRow label="Recebido"    value={ov.data?.total_recebido || 0} color="bg-emerald-400" loading={ov.isLoading} />
-            <FinanceRow label="A Pagar"     value={ov.data?.total_pagar    || 0} color="bg-red-400"    loading={ov.isLoading} />
-            <FinanceRow label="Pago"        value={ov.data?.total_pago     || 0} color="bg-blue-400"   loading={ov.isLoading} />
-          </div>
-          <Link
-            to="/financeiro-consolidado/fluxo-caixa"
-            className="mt-4 flex items-center justify-center gap-1.5 text-xs font-semibold text-brand-500 hover:text-brand-600 border border-brand-500/20 hover:border-brand-500/40 rounded-lg py-2 transition-all duration-200"
-          >
-            <Wallet size={13} /> Ver Fluxo de Caixa
-          </Link>
-        </div>
-      </div>
-
-    </div>
-  )
-}
