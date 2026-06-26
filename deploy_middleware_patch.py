@@ -13,6 +13,7 @@ FILES_TO_DEPLOY = [
     ('middleware/src/routes/ranking.js', '/usr/src/app/src/routes/ranking.js'),
     ('middleware/src/routes/sync.js', '/usr/src/app/src/routes/sync.js'),
     ('middleware/src/db/postgres.js', '/usr/src/app/src/db/postgres.js'),
+    ('middleware/src/utils/cfop.js', '/usr/src/app/src/utils/cfop.js'),
 ]
 
 def run(client, cmd, label=""):

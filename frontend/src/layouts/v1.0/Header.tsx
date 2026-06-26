@@ -65,40 +65,15 @@ export default function Header({ onMenuClick, title }: Props) {
 
       <div className="ml-auto flex items-center gap-1.5 sm:gap-3">
         
-        {/* Indicador de Status com Tooltip (Consolidado) */}
-        <div className="group relative flex items-center justify-center p-1.5 rounded-lg bg-bg-secondary/60 hover:bg-bg-secondary border border-divider/30 cursor-help transition-all duration-200">
-          <div className="relative">
-            <div className={`w-3 h-3 rounded-full flex items-center justify-center`}>
-              <div className={`w-2 h-2 rounded-full ${agentStatus === 'ONLINE' ? (status === 'ok' ? 'bg-success' : 'bg-warning') : 'bg-danger animate-pulse'}`} />
-            </div>
-            {agentStatus !== 'ONLINE' && (
-              <div className="absolute inset-0 bg-danger/30 rounded-full animate-ping" />
-            )}
-          </div>
-          
-          {/* Tooltip Content */}
-          <div className="absolute top-full mt-2 right-0 hidden group-hover:flex flex-col bg-bg-primary border border-divider shadow-card p-3 rounded-2xl min-w-[240px] text-xs space-y-2 z-50 animate-in fade-in duration-200">
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-text-secondary font-bold">Agente ERP:</span>
-              <span className={`font-black ${agentStatus === 'ONLINE' ? 'text-success' : 'text-danger'}`}>
-                {agentStatus === 'ONLINE' ? 'ONLINE' : 'OFFLINE'}
-              </span>
-            </div>
-            
-            <div className="flex items-center justify-between gap-3 border-t border-divider/30 pt-2">
-              <span className="text-text-secondary font-bold">Última Sync:</span>
-              <span className="mono font-bold text-text-primary">
-                {lastSync ? formatDateTime(lastSync) : 'nunca'}
-              </span>
-            </div>
+        {/* Agente Status Badge */}
+        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50/50 border border-emerald-100 text-xs font-semibold">
+           <div className={`w-1.5 h-1.5 rounded-full ${agentStatus === 'ONLINE' ? 'bg-success animate-pulse' : 'bg-danger animate-pulse'}`} />
+           <span className="text-emerald-800 font-bold">Agente: {agentStatus === 'ONLINE' ? 'OK' : 'OFFLINE'}</span>
+        </div>
 
-            <div className="flex items-center justify-between gap-3 border-t border-divider/30 pt-2 text-[10px]">
-              <span className="text-text-secondary font-bold">Status dos Dados:</span>
-              <span className={status === 'ok' ? 'text-success font-black' : 'text-warning font-black'}>
-                {status === 'ok' ? 'Sincronizado' : 'Pendente'}
-              </span>
-            </div>
-          </div>
+        {/* Última Sinc Badge */}
+        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-50 border border-slate-200 text-xs text-text-secondary">
+          <span className="font-semibold">Última Sinc: {lastSync ? formatDateTime(lastSync) : 'nunca'}</span>
         </div>
 
         <button

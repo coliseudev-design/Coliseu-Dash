@@ -14,7 +14,7 @@ interface Props {
 }
 
 const MODULES = [
-  { to: '/',                         label: 'Visão Geral', icon: LayoutDashboard, exact: true,  id: 'inicio' },
+  { to: '/',                         label: 'Visão Estratégica', icon: LayoutDashboard, exact: true,  id: 'inicio' },
   { to: '/comercial',                label: 'Comercial',   icon: BarChart3,       exact: false, id: 'bi_sales' },
   { to: '/financeiro-consolidado',   label: 'Financeiro',  icon: Wallet,          exact: false, id: 'bi_finance' }
 ]
