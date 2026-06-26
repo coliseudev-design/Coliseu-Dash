@@ -186,9 +186,8 @@ export default function Comissoes() {
                   </div>
                 </div>
               ))}
-            </div>        </div>
+            </div>
           </div>
-
         </div>
       )}
 
