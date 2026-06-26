@@ -99,7 +99,9 @@ export default function App() {
         <Route path="comercial" element={<Comercial />}>
           <Route index element={<SalesIntelligenceDashboard />} />
           <Route path="vendas" element={<SalesIntelligenceDashboard />} />
+          <Route path="pedidos" element={<SalesHubDashboard />} />
           <Route path="equipe" element={<Comissoes />} />
+          <Route path="vendedor" element={<SellerHubDashboard />} />
           <Route path="vendedor/:sellerId" element={<SellerHubDashboard />} />
           <Route path="rankings" element={<Ranking />} />
         </Route>

@@ -4,11 +4,11 @@ import {
   TrendingUp, TrendingDown, DollarSign, ShoppingBag,
   Calculator, Wallet, Trophy, Medal, ChevronRight, BarChart2,
   AlertTriangle, Crown, Target, Users, Tag, Box, ArrowUpRight,
-  ChevronDown
+  ChevronDown, Sliders, X, LayoutDashboard
 } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, Cell, LineChart, Line
+  ResponsiveContainer, Cell, LineChart, Line, PieChart, Pie
 } from 'recharts'
 import { formatBRL, formatBRLCompact, formatNum } from '../utils/format'
 import { usePeriodStore, PERIOD_OPTIONS, type PeriodKey } from '../store/periodStore'
@@ -71,6 +71,53 @@ const formatDateBRL = (dateStr: string) => {
   return `${parts[2]}/${parts[1]}/${parts[0]}`
 }
 
+// Gauge Chart Component using PieChart for HomeV1
+const GaugeChart = ({ realizado, meta }: { realizado: number, meta: number }) => {
+  const atingimento = meta > 0 ? (realizado / meta) * 100 : 0
+  const value = Math.min(atingimento, 100)
+  const data = [
+    { name: 'Atingido', value: value, color: '#00a896' },
+    { name: 'Restante', value: 100 - value, color: '#f1f5f9' }
+  ]
+  
+  return (
+    <div className="w-full flex flex-col items-center">
+      <div className="relative h-32 w-full mt-2">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={data}
+              cx="50%"
+              cy="100%"
+              startAngle={180}
+              endAngle={0}
+              innerRadius={60}
+              outerRadius={80}
+              paddingAngle={0}
+              dataKey="value"
+              stroke="none"
+              cornerRadius={4}
+            >
+              {data.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={entry.color} />
+              ))}
+            </Pie>
+          </PieChart>
+        </ResponsiveContainer>
+        <div className="absolute inset-0 flex flex-col items-center justify-end pb-1">
+          <span className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">{atingimento.toFixed(1)}%</span>
+        </div>
+      </div>
+      <div className="text-center mt-3">
+        <div className="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Realizado vs Meta</div>
+        <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 mt-0.5">
+          {formatBRLCompact(realizado)} / <span className="text-slate-400">{formatBRLCompact(meta)}</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function HomeV1() {
   const period = usePeriodStore((s) => s.period)
   const setPeriod = usePeriodStore((s) => s.setPeriod)
@@ -82,6 +129,18 @@ export default function HomeV1() {
   const [selectedVendedor, setSelectedVendedor] = useState('todas')
   const [selectedMarca, setSelectedMarca] = useState('todas')
   const [selectedCidade, setSelectedCidade] = useState('todas')
+
+  // ─── Mobile Layout States ──────────────────────────────────────────────────
+  const [isMobile, setIsMobile] = useState(false)
+  const [activeTab, setActiveTab] = useState<'estatisticas' | 'receitas' | 'vendedores' | 'metas'>('estatisticas')
+  const [showFiltersSheet, setShowFiltersSheet] = useState(false)
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768)
+    handleResize()
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   // ─── Custom Date Selector States ────────────────────────────────────────────
   const [startMonth, setStartMonth] = useState(() => {
@@ -224,7 +283,7 @@ export default function HomeV1() {
   }, [fatMes.data])
 
   return (
-    <div className="space-y-6 pb-12" aria-label="Visão Estratégica Dashboard">
+    <div className={clsx("space-y-6 pb-12", isMobile ? "pb-28" : "pb-12")} aria-label="Visão Estratégica Dashboard">
 
       {/* ── HEADER & PERIOD FILTER ROW ────────────────────────────────────── */}
       <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
@@ -236,7 +295,7 @@ export default function HomeV1() {
         </div>
 
         {/* Custom Period Button Group */}
-        <div className="flex flex-col items-end gap-2.5">
+        <div className="hidden md:flex flex-col items-end gap-2.5">
           <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1.5 shadow-sm border border-slate-200/50">
             {PERIOD_OPTIONS.map((opt) => (
               <button
@@ -314,7 +373,7 @@ export default function HomeV1() {
       </div>
 
       {/* ── SELECTOR FILTERS ROW ─────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="hidden md:grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Vendedor Dropdown */}
         <div className="flex flex-col gap-1.5">
           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1">Vendedor</label>
@@ -371,7 +430,9 @@ export default function HomeV1() {
       </div>
 
       {/* ── HERO KPI: FATURAMENTO PRINCIPAL COMPARATIVO ──────────────────── */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-6 shadow-sm relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6 transition-all duration-300 hover:shadow-md">
+      {(!isMobile || activeTab === 'estatisticas') && (
+        <>
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-6 shadow-sm relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6 transition-all duration-300 hover:shadow-md">
         {/* Left vertical border stripe */}
         <div className="absolute left-0 top-0 h-full w-1.5 bg-[#00a896] rounded-l-2xl" />
 
@@ -576,13 +637,13 @@ export default function HomeV1() {
             </div>
             <span className="text-[9px] text-slate-400 font-bold">Clientes ativos no período</span>
           </div>
-          <div className="p-2.5 bg-teal-50 text-teal-600 rounded-xl shrink-0 ml-3">
-            <Users size={18} />
           </div>
         </div>
-      </div>
+      </>)}
 
       {/* ── MIDDLE ROW: SELLERS CHART + RANKING LIST ─────────────────────── */}
+      {(!isMobile || activeTab === 'vendedores') && (
+        <>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Sellers Horizontal Bar Chart */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm">
@@ -817,12 +878,12 @@ export default function HomeV1() {
                   </div>
                 </div>
               )
-            })}
-          </div>
         </div>
-      </div>
+      </>)}
 
       {/* ── ROW 6: BOTTOM CHART WITH MODE TOGGLE ─────────────────────────── */}
+      {(!isMobile || activeTab === 'receitas') && (
+        <>
       <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm">
         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6">
           <div>
@@ -896,36 +957,273 @@ export default function HomeV1() {
                   />
                 </LineChart>
               ) : (
-                <BarChart
-                  data={chartMode === 'diario' ? dailyChartData : monthlyChartData}
-                  margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" opacity={0.4} />
-                  <XAxis
-                    dataKey={chartMode === 'diario' ? 'data' : 'label'}
-                    tick={{ fontSize: 9, fill: 'var(--color-text-muted)', fontWeight: 700 }}
-                    tickFormatter={(d: string) => chartMode === 'diario' ? (d?.slice(5) || d) : d}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    tick={{ fontSize: 9, fill: 'var(--color-text-muted)', fontWeight: 700 }}
-                    tickFormatter={formatBRLCompact}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.3 }} />
-                  <Bar dataKey="total" radius={[4, 4, 0, 0]} maxBarSize={38} fill="#00a896">
-                    {(chartMode === 'diario' ? dailyChartData : monthlyChartData).map((_: any, i: number) => (
-                      <Cell key={`cell-${i}`} fill={BAR_COLORS[i % BAR_COLORS.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              )}
-            </ResponsiveContainer>
-          )}
         </div>
-      </div>
+      </>)}
+
+      {/* ── METAS SECTION (MOBILE ONLY) ──────────────────────────────────── */}
+      {isMobile && activeTab === 'metas' && (
+        <div className="space-y-6 animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-6 shadow-sm">
+            <h3 className="font-extrabold text-slate-800 dark:text-white text-xs uppercase tracking-widest mb-4">
+              Atingimento de Meta
+            </h3>
+            <GaugeChart realizado={totalPeriodo} meta={ov.data?.meta_total || totalPeriodo * 1.2} />
+          </div>
+        </div>
+      )}
+
+      {/* ── MOBILE STICKY BOTTOM NAVIGATION ──────────────────────────────── */}
+      {isMobile && (
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/80 dark:border-slate-800/80 py-2 px-4 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] select-none">
+          <div className="flex items-center justify-around w-full max-w-md mx-auto">
+            {/* Tab Estatísticas */}
+            <button
+              onClick={() => setActiveTab('estatisticas')}
+              className={clsx(
+                "flex flex-col items-center justify-center py-1 flex-1 cursor-pointer transition-all",
+                activeTab === 'estatisticas' ? "text-[#00a896]" : "text-slate-400 dark:text-slate-500"
+              )}
+            >
+              <LayoutDashboard size={18} />
+              <span className="text-[8px] md:text-[9px] font-bold uppercase tracking-wider mt-1">Estatísticas</span>
+            </button>
+
+            {/* Tab Receitas */}
+            <button
+              onClick={() => setActiveTab('receitas')}
+              className={clsx(
+                "flex flex-col items-center justify-center py-1 flex-1 cursor-pointer transition-all",
+                activeTab === 'receitas' ? "text-[#00a896]" : "text-slate-400 dark:text-slate-500"
+              )}
+            >
+              <TrendingUp size={18} />
+              <span className="text-[8px] md:text-[9px] font-bold uppercase tracking-wider mt-1">Receitas</span>
+            </button>
+
+            {/* Tab Vendedores */}
+            <button
+              onClick={() => setActiveTab('vendedores')}
+              className={clsx(
+                "flex flex-col items-center justify-center py-1 flex-1 cursor-pointer transition-all",
+                activeTab === 'vendedores' ? "text-[#00a896]" : "text-slate-400 dark:text-slate-500"
+              )}
+            >
+              <Trophy size={18} />
+              <span className="text-[8px] md:text-[9px] font-bold uppercase tracking-wider mt-1">Vendedores</span>
+            </button>
+
+            {/* Tab Metas */}
+            <button
+              onClick={() => setActiveTab('metas')}
+              className={clsx(
+                "flex flex-col items-center justify-center py-1 flex-1 cursor-pointer transition-all",
+                activeTab === 'metas' ? "text-[#00a896]" : "text-slate-400 dark:text-slate-500"
+              )}
+            >
+              <Target size={18} />
+              <span className="text-[8px] md:text-[9px] font-bold uppercase tracking-wider mt-1">Metas</span>
+            </button>
+
+            {/* Tab Filtros (Trigger Bottom Sheet) */}
+            <button
+              onClick={() => setShowFiltersSheet(true)}
+              className="flex flex-col items-center justify-center py-1 flex-1 cursor-pointer transition-all text-slate-400 dark:text-slate-500 relative"
+            >
+              {(selectedVendedor !== 'todas' || selectedMarca !== 'todas' || selectedCidade !== 'todas' || period !== 'thisMonth') && (
+                <span className="absolute top-1 right-6 w-2 h-2 rounded-full bg-emerald-500 border border-white" />
+              )}
+              <Sliders size={18} />
+              <span className="text-[8px] md:text-[9px] font-bold uppercase tracking-wider mt-1">Filtros</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── MOBILE FILTERS BOTTOM SHEET ──────────────────────────────────── */}
+      {isMobile && showFiltersSheet && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center select-none animate-in fade-in duration-200">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity duration-300"
+            onClick={() => setShowFiltersSheet(false)}
+          />
+          {/* Bottom Sheet Drawer */}
+          <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-t-3xl p-6 shadow-2xl z-10 animate-in slide-in-from-bottom duration-300 max-h-[85vh] overflow-y-auto flex flex-col pb-8">
+            {/* Handle bar */}
+            <div className="w-12 h-1 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-5 shrink-0" />
+
+            <div className="flex justify-between items-center mb-6 shrink-0">
+              <h3 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-widest">
+                Filtrar Relatórios
+              </h3>
+              <button
+                onClick={() => setShowFiltersSheet(false)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-6 flex-1">
+              {/* Seletor de Período */}
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-2.5 pl-1">
+                  Período
+                </span>
+                <div className="grid grid-cols-2 gap-2">
+                  {PERIOD_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.key}
+                      onClick={() => {
+                        if (opt.key === 'custom') {
+                          if (!globalStartDate || !globalEndDate) {
+                            const today = new Date().toISOString().slice(0, 10)
+                            const monthAgo = new Date()
+                            monthAgo.setDate(monthAgo.getDate() - 30)
+                            setCustomRange(monthAgo.toISOString().slice(0, 10), today)
+                          }
+                          setPeriod('custom')
+                        } else {
+                          setPeriod(opt.key)
+                        }
+                      }}
+                      className={clsx(
+                        "py-2 px-3 rounded-xl text-xs font-bold text-center border transition-all cursor-pointer",
+                        period === opt.key
+                          ? "bg-[#00a896] text-white border-transparent shadow-sm"
+                          : "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-100 dark:border-slate-800/80 hover:bg-slate-100"
+                      )}
+                    >
+                      {opt.label === 'Mês anterior' ? 'Mês Anterior' : opt.label === 'Mês atual' ? 'Mês Atual' : opt.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Custom Month/Year Dropdown selectors */}
+                {period === 'custom' && (
+                  <div className="mt-3 grid grid-cols-2 gap-2 bg-slate-50 dark:bg-slate-800/40 p-3 rounded-2xl border border-slate-100 dark:border-slate-800/60 animate-in slide-in-from-top-1 duration-200">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest pl-1">De:</span>
+                      <div className="flex gap-1">
+                        <select
+                          value={startMonth}
+                          onChange={(e) => handleCustomDateChange(parseInt(e.target.value), startYear, endMonth, endYear)}
+                          className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs outline-none focus:border-[#00a896] transition-colors cursor-pointer font-bold text-slate-800 dark:text-white w-full"
+                        >
+                          {['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'].map((m, idx) => (
+                            <option key={m} value={idx + 1}>{m}</option>
+                          ))}
+                        </select>
+                        <select
+                          value={startYear}
+                          onChange={(e) => handleCustomDateChange(startMonth, parseInt(e.target.value), endMonth, endYear)}
+                          className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs outline-none focus:border-[#00a896] transition-colors cursor-pointer font-bold text-slate-800 dark:text-white w-full"
+                        >
+                          {[2020, 2021, 2022, 2023, 2024, 2025, 2026].map((y) => (
+                            <option key={y} value={y}>{y}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest pl-1">Até:</span>
+                      <div className="flex gap-1">
+                        <select
+                          value={endMonth}
+                          onChange={(e) => handleCustomDateChange(startMonth, startYear, parseInt(e.target.value), endYear)}
+                          className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs outline-none focus:border-[#00a896] transition-colors cursor-pointer font-bold text-slate-800 dark:text-white w-full"
+                        >
+                          {['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'].map((m, idx) => (
+                            <option key={m} value={idx + 1}>{m}</option>
+                          ))}
+                        </select>
+                        <select
+                          value={endYear}
+                          onChange={(e) => handleCustomDateChange(startMonth, startYear, endMonth, parseInt(e.target.value))}
+                          className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs outline-none focus:border-[#00a896] transition-colors cursor-pointer font-bold text-slate-800 dark:text-white w-full"
+                        >
+                          {[2020, 2021, 2022, 2023, 2024, 2025, 2026].map((y) => (
+                            <option key={y} value={y}>{y}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Vendedor Dropdown */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">
+                  Vendedor
+                </label>
+                <div className="relative">
+                  <select
+                    value={selectedVendedor}
+                    onChange={(e) => setSelectedVendedor(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-xs font-semibold text-slate-800 dark:text-white outline-none appearance-none focus:border-[#00a896] transition-colors cursor-pointer"
+                  >
+                    <option value="todas">Todos os Vendedores</option>
+                    {sellersDropdown.data?.data?.map((s: any) => (
+                      <option key={s.id} value={s.id}>{s.nome}</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                </div>
+              </div>
+
+              {/* Marca Dropdown */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">
+                  Marca
+                </label>
+                <div className="relative">
+                  <select
+                    value={selectedMarca}
+                    onChange={(e) => setSelectedMarca(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-xs font-semibold text-slate-800 dark:text-white outline-none appearance-none focus:border-[#00a896] transition-colors cursor-pointer"
+                  >
+                    <option value="todas">Todas as Marcas</option>
+                    {brandsDropdown.data?.data?.map((b: any) => (
+                      <option key={b.nome} value={b.nome}>{b.nome}</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                </div>
+              </div>
+
+              {/* Cidade Dropdown */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">
+                  Cidade
+                </label>
+                <div className="relative">
+                  <select
+                    value={selectedCidade}
+                    onChange={(e) => setSelectedCidade(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-xs font-semibold text-slate-800 dark:text-white outline-none appearance-none focus:border-[#00a896] transition-colors cursor-pointer"
+                  >
+                    <option value="todas">Todas as Cidades</option>
+                    {citiesDropdown.data?.data?.map((c: any) => (
+                      <option key={c.nome} value={c.nome}>{c.nome}</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-8 shrink-0">
+              <button
+                onClick={() => setShowFiltersSheet(false)}
+                className="w-full py-3.5 bg-[#00a896] hover:bg-[#008f80] text-white font-bold rounded-2xl text-xs shadow-md transition-all active:scale-[0.98] cursor-pointer"
+              >
+                Aplicar Filtros
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   )
