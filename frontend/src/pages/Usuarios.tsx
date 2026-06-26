@@ -253,7 +253,6 @@ export default function Usuarios() {
                     disabled={updateLayout.isPending}
                   >
                     <option value="Dash 1.0">Dash 1.0</option>
-                    <option value="B.I 1.0">B.I 1.0</option>
                     <option value="B.I IA.">B.I IA.</option>
                   </select>
                 </div>
@@ -427,7 +426,7 @@ export default function Usuarios() {
                 Associe o usuário a um grupo de acesso em cada uma das versões disponíveis.
               </p>
 
-              {['Dash 1.0', 'B.I 1.0', 'B.I IA.'].map((version) => {
+              {['Dash 1.0', 'B.I IA.'].map((version) => {
                 const versionGroups = (allGroups || []).filter((g: any) => g.versao === version);
                 const currentGroup = (allGroups || []).find(
                   (g: any) => g.versao === version && selectedGroupIds.includes(g.id)

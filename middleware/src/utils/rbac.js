@@ -71,6 +71,73 @@ async function getUserPermissions(userId, tenantId) {
     return [];
 }
 
+/**
+ * Recupera os IDs dos vendedores permitidos para o usuário do tenant correspondente.
+ * Se retornar null, o usuário pode ver todos os vendedores (sem restrição).
+ * @param {number|string} userId
+ * @param {string} tenantId
+ * @returns {Promise<number[]|null>}
+ */
+async function getUserAllowedSellers(userId, tenantId) {
+    const userRes = await db.query(
+        'SELECT id, role, grupo_id, versao FROM dash_usuarios WHERE id = $1 AND tenant_id = $2',
+        [userId, tenantId]
+    );
+
+    if (userRes.rowCount === 0) return [];
+
+    const user = userRes.rows[0];
+
+    // Se for master, tem acesso a todos os vendedores
+    if (user.role === 'master') {
+        return null;
+    }
+
+    // Buscar no grupo associado do usuário
+    const groupsRes = await db.query(
+        `SELECT g.id, g.vendedores_todos 
+         FROM dash_grupos_acesso g
+         JOIN dash_usuario_grupo ug ON ug.grupo_id = g.id
+         WHERE ug.usuario_id = $1 AND g.versao = $2`,
+        [userId, user.versao]
+    );
+
+    let checkGroups = groupsRes.rows;
+
+    // Fallback legado: se não houver registros em dash_usuario_grupo, tenta o grupo_id direto no usuário
+    if (checkGroups.length === 0 && user.grupo_id) {
+        const legacyGroupRes = await db.query(
+            'SELECT id, vendedores_todos FROM dash_grupos_acesso WHERE id = $1',
+            [user.grupo_id]
+        );
+        checkGroups = legacyGroupRes.rows;
+    }
+
+    // Se o usuário não tiver grupo cadastrado, e for admin, vê todos
+    if (checkGroups.length === 0) {
+        if (user.role === 'admin') {
+            return null;
+        }
+        return []; // Se não for admin e não tiver grupo, restringe tudo
+    }
+
+    // Se qualquer um dos grupos permitir todos os vendedores, retorna null
+    const permitAll = checkGroups.some(g => g.vendedores_todos === true || g.vendedores_todos === null);
+    if (permitAll) {
+        return null;
+    }
+
+    // Caso contrário, busca os vendedores associados a cada um dos grupos do usuário
+    const groupIds = checkGroups.map(g => g.id);
+    const sellersRes = await db.query(
+        `SELECT DISTINCT vendedor_id FROM dash_grupo_vendedores WHERE grupo_id = ANY($1)`,
+        [groupIds]
+    );
+
+    return sellersRes.rows.map(r => r.vendedor_id);
+}
+
 module.exports = {
-    getUserPermissions
+    getUserPermissions,
+    getUserAllowedSellers
 };

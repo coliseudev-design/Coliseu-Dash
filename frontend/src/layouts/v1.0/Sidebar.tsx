@@ -16,9 +16,7 @@ interface Props {
 const MODULES = [
   { to: '/',                         label: 'Visão Estratégica', icon: LayoutDashboard, exact: true,  id: 'inicio' },
   { to: '/comercial',                label: 'Visão Consolidada', icon: BarChart3,       exact: true,  id: 'bi_sales' },
-  { to: '/comercial/pedidos',        label: 'Hub de Pedidos',    icon: ShoppingCart,    exact: true,  id: 'bi_sales' },
   { to: '/comercial/equipe',         label: 'Equipes',           icon: Users,           exact: true,  id: 'bi_sales' },
-  { to: '/comercial/vendedor',       label: 'Hub do Vendedor',   icon: Award,           exact: false, id: 'bi_sales' },
   { to: '/comercial/rankings',       label: 'Rankings',          icon: Trophy,          exact: true,  id: 'bi_sales' },
   { to: '/financeiro-consolidado',   label: 'Financeiro',        icon: Wallet,          exact: false, id: 'bi_finance' }
 ]

@@ -9,10 +9,8 @@ const LayoutV3 = import('../layouts/v3.0/DashboardLayout');
 
 const LayoutMap: Record<string, Promise<any>> = {
   'Dash 1.0': LayoutV1,
-  'B.I 1.0': LayoutV2,
   'B.I IA.': LayoutV3,
   'v1.0': LayoutV1,
-  'v2.0': LayoutV2,
   'v3.0': LayoutV3,
 };
 
@@ -25,10 +23,8 @@ export default function DynamicDashboardLayout() {
     // Aplicar a classe do layout no body para que as variáveis CSS se propaguem por todo o app
     const classMap: Record<string, string> = {
       'Dash 1.0': 'layout-v1-0',
-      'B.I 1.0': 'layout-v2-0',
       'B.I IA.': 'layout-v3-0',
       'v1.0': 'layout-v1-0',
-      'v2.0': 'layout-v2-0',
       'v3.0': 'layout-v3-0',
     };
     const bodyClass = classMap[versao] || 'layout-v1-0';

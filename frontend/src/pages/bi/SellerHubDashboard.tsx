@@ -117,6 +117,12 @@ export default function SellerHubDashboard() {
     vendedor_id: selectedVendedor || undefined
   }), [globalFilter, selectedVendedor]);
 
+  const selectedSellerName = useMemo(() => {
+    if (!selectedVendedor || !vdFull.data?.data) return '';
+    const seller = vdFull.data.data.find((v: any) => String(v.id) === String(selectedVendedor));
+    return seller ? seller.nome : '';
+  }, [selectedVendedor, vdFull.data]);
+
   const { data, isLoading, isError } = useBiPeriodQuery<any>(
     ['bi', 'seller-summary', activeFilter],
     async (f) => {
@@ -281,7 +287,7 @@ export default function SellerHubDashboard() {
         <div>
           <h2 className="text-xl md:text-2xl font-black text-text-primary flex flex-wrap items-center gap-x-2 gap-y-1">
             <Activity className="text-brand-500" size={24} />
-            <span>Hub do Vendedor</span>
+            <span>{selectedSellerName || 'Hub do Vendedor'}</span>
             {data?.start_date && (
               <span className="text-xs md:text-sm font-bold text-text-secondary whitespace-nowrap">
                 ({dateRangeLabel})

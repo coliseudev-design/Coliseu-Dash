@@ -69,12 +69,28 @@ router.get('/:id/permissions', requireAdmin, async (req, res) => {
             return res.status(404).json({ error: 'Grupo não encontrado', code: 'NOT_FOUND' });
         }
 
-        const { rows } = await db.query(
+        const { rows: permissionRows } = await db.query(
             'SELECT recurso, pode_acessar FROM dash_permissoes WHERE grupo_id = $1',
             [groupId]
         );
 
-        res.json(rows);
+        const { rows: groupRows } = await db.query(
+            'SELECT vendedores_todos FROM dash_grupos_acesso WHERE id = $1',
+            [groupId]
+        );
+        const vendedores_todos = groupRows.length > 0 ? (groupRows[0].vendedores_todos !== false) : true;
+
+        const { rows: sellerRows } = await db.query(
+            'SELECT vendedor_id FROM dash_grupo_vendedores WHERE grupo_id = $1',
+            [groupId]
+        );
+        const vendedores = sellerRows.map(r => r.vendedor_id);
+
+        res.json({
+            permissions: permissionRows,
+            vendedores_todos,
+            vendedores
+        });
     } catch (err) {
         logger.error('[Grupos] Erro ao buscar permissões', err);
         res.status(500).json({ error: 'Erro ao buscar permissões do grupo' });
@@ -88,7 +104,7 @@ router.get('/:id/permissions', requireAdmin, async (req, res) => {
 router.post('/', requireAdmin, async (req, res) => {
     try {
         const tenantId = req.tenant.id;
-        const { nome, versao, layout_version, permissions } = req.body;
+        const { nome, versao, layout_version, permissions, vendedores_todos, vendedores } = req.body;
         const targetVersion = versao || layout_version;
 
         if (!nome || !targetVersion) {
@@ -97,10 +113,10 @@ router.post('/', requireAdmin, async (req, res) => {
 
         // Criar o grupo
         const groupRes = await db.query(
-            `INSERT INTO dash_grupos_acesso (tenant_id, versao, nome)
-             VALUES ($1, $2, $3)
+            `INSERT INTO dash_grupos_acesso (tenant_id, versao, nome, vendedores_todos)
+             VALUES ($1, $2, $3, $4)
              RETURNING id, nome, versao`,
-            [tenantId, targetVersion, nome]
+            [tenantId, targetVersion, nome, vendedores_todos !== false]
         );
 
         const groupId = groupRes.rows[0].id;
@@ -113,6 +129,17 @@ router.post('/', requireAdmin, async (req, res) => {
                      VALUES ($1, $2, true)
                      ON CONFLICT (grupo_id, recurso) DO UPDATE SET pode_acessar = true`,
                     [groupId, recurso]
+                );
+            }
+        }
+
+        // Se passados vendedores, insere
+        if (Array.isArray(vendedores)) {
+            for (const vendedorId of vendedores) {
+                await db.query(
+                    `INSERT INTO dash_grupo_vendedores (grupo_id, vendedor_id)
+                     VALUES ($1, $2)`,
+                    [groupId, vendedorId]
                 );
             }
         }
@@ -140,7 +167,7 @@ router.put('/:id/permissions', requireAdmin, async (req, res) => {
     try {
         const tenantId = req.tenant.id;
         const groupId = req.params.id;
-        const { permissions } = req.body; // Array de strings com recursos permitidos
+        const { permissions, vendedores_todos, vendedores } = req.body;
 
         if (!Array.isArray(permissions)) {
             return res.status(400).json({ error: 'Permissions deve ser um array de strings contendo os recursos autorizados.' });
@@ -165,6 +192,25 @@ router.put('/:id/permissions', requireAdmin, async (req, res) => {
                  VALUES ($1, $2, true)`,
                 [groupId, recurso]
             );
+        }
+
+        // Atualizar vendedores_todos se enviado
+        if (vendedores_todos !== undefined) {
+            await db.query(
+                'UPDATE dash_grupos_acesso SET vendedores_todos = $1 WHERE id = $2 AND tenant_id = $3',
+                [vendedores_todos === true, groupId, tenantId]
+            );
+        }
+
+        // Atualizar lista de vendedores se enviada
+        if (Array.isArray(vendedores)) {
+            await db.query('DELETE FROM dash_grupo_vendedores WHERE grupo_id = $1', [groupId]);
+            for (const vendedorId of vendedores) {
+                await db.query(
+                    'INSERT INTO dash_grupo_vendedores (grupo_id, vendedor_id) VALUES ($1, $2)',
+                    [groupId, vendedorId]
+                );
+            }
         }
 
         res.json({ message: 'Permissões atualizadas com sucesso' });

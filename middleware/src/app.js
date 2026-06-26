@@ -51,6 +51,20 @@ app.use('/api', requireWebJwt);
 app.use('/api', defaultLimit);
 app.use('/api', bindDbContext);
 
+const rbac = require('./utils/rbac');
+const logger = require('./config/logger');
+app.use('/api', async (req, res, next) => {
+    try {
+        if (req.user && req.tenant) {
+            req.user.allowedSellers = await rbac.getUserAllowedSellers(req.user.id, req.tenant.id);
+        }
+        next();
+    } catch (err) {
+        logger.error('[RBAC Middleware] Erro ao carregar allowedSellers', err);
+        next();
+    }
+});
+
 app.use('/api/vendas', vendasRouter);
 app.use('/api/produtos', produtosRouter);
 app.use('/api/clientes', clientesRouter);

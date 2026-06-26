@@ -42,7 +42,7 @@ router.get('/overview', async (req, res, next) => {
         const dfFin = buildDeptoFilter(deptoId, 4, 'f');
 
         // Filtro de vendedor
-        const vf = buildVendedorFilter(vendedorId, 4 + df.params.length, 'v');
+        const vf = buildVendedorFilter(vendedorId, 4 + df.params.length, 'v', req.user?.allowedSellers);
 
 
         const salesFilter = cfopUtil.getSalesFilterClause('v');
@@ -52,13 +52,13 @@ router.get('/overview', async (req, res, next) => {
 
         // Queries de devoluções parametrizadas por período
         const getDevQuery = (startStr, endStr) => {
-            const needsJoin = (vendedorId && vendedorId !== 'todas' && vendedorId !== 'all' && vendedorId !== 'TODOS');
+            const needsJoin = (vendedorId && vendedorId !== 'todas' && vendedorId !== 'all' && vendedorId !== 'TODOS') || (req.user?.allowedSellers !== null && req.user?.allowedSellers !== undefined);
             // Sistema Coliseu unificado: sem branches VET
             let sql = `SELECT COALESCE(SUM(d.valor),0) AS total FROM dash_devolucoes d LEFT JOIN dash_vendas v2 ON v2.id_firebird = d.venda_id_firebird AND v2.tenant_id = d.tenant_id WHERE d.tenant_id = $1 AND d.data_devolucao >= $2 AND d.data_devolucao <= $3 ${df.clause.replace(/v\./g, 'v2.')}`;
             let params = [tenantId, startStr, endStr, ...df.params];
             let nextIdx = 4 + df.params.length;
             if (needsJoin) {
-                const vfDev = buildVendedorFilter(vendedorId, nextIdx, 'v2');
+                const vfDev = buildVendedorFilter(vendedorId, nextIdx, 'v2', req.user?.allowedSellers);
                 sql += vfDev.clause;
                 params.push(...vfDev.params);
             }
@@ -165,19 +165,19 @@ router.get('/kpis', async (req, res, next) => {
         const dfFin = buildDeptoFilter(deptoId, 4, 'f');
         const dfVi = buildDeptoFilter(deptoId, 4, 'vi');
 
-        const vf = buildVendedorFilter(vendedorId, 4 + df.params.length, 'v');
-        const vfVi = buildVendedorFilter(vendedorId, 4 + dfVi.params.length, 'v');
+        const vf = buildVendedorFilter(vendedorId, 4 + df.params.length, 'v', req.user?.allowedSellers);
+        const vfVi = buildVendedorFilter(vendedorId, 4 + dfVi.params.length, 'v', req.user?.allowedSellers);
 
         const salesFilter = cfopUtil.getSalesFilterClause('v');
 
         const getDevQuery = (startStr, endStr) => {
-            const needsJoin = (vendedorId && vendedorId !== 'todas' && vendedorId !== 'all' && vendedorId !== 'TODOS');
+            const needsJoin = (vendedorId && vendedorId !== 'todas' && vendedorId !== 'all' && vendedorId !== 'TODOS') || (req.user?.allowedSellers !== null && req.user?.allowedSellers !== undefined);
             // Sistema Coliseu unificado: sem branches VET
             let sql = `SELECT COALESCE(SUM(d.valor),0) AS total FROM dash_devolucoes d LEFT JOIN dash_vendas v2 ON v2.id_firebird = d.venda_id_firebird AND v2.tenant_id = d.tenant_id WHERE d.tenant_id = $1 AND d.data_devolucao >= $2 AND d.data_devolucao <= $3 ${df.clause.replace(/v\./g, 'v2.')}`;
             let params = [tenantId, startStr, endStr, ...df.params];
             let nextIdx = 4 + df.params.length;
             if (needsJoin) {
-                const vfDev = buildVendedorFilter(vendedorId, nextIdx, 'v2');
+                const vfDev = buildVendedorFilter(vendedorId, nextIdx, 'v2', req.user?.allowedSellers);
                 sql += vfDev.clause;
                 params.push(...vfDev.params);
             }

@@ -55,7 +55,6 @@ const BI_IA_MODULES = [
 
 function getAvailableModules(version: string) {
   if (version === 'Dash 1.0') return DASH_1_0_MODULES
-  if (version === 'B.I 1.0') return BI_1_0_MODULES
   return BI_IA_MODULES
 }
 
@@ -63,7 +62,7 @@ export default function Grupos() {
   const queryClient = useQueryClient()
   const activeUser = useAuthStore((s) => s.user)
 
-  const ALL_VERSIONS = ['Dash 1.0', 'B.I 1.0', 'B.I IA.']
+  const ALL_VERSIONS = ['Dash 1.0', 'B.I IA.']
   const availableVersions = ALL_VERSIONS.filter(v => activeUser?.available_versions?.includes(v))
   const displayVersions = availableVersions.length > 0 ? availableVersions : ['Dash 1.0']
 
@@ -92,7 +91,7 @@ export default function Grupos() {
 
   const createGroup = useMutation({
     mutationFn: async () => {
-      const layoutPerm = activeTab === 'Dash 1.0' ? 'layout_1' : (activeTab === 'B.I 1.0' ? 'layout_2' : 'layout_3')
+      const layoutPerm = activeTab === 'Dash 1.0' ? 'layout_1' : 'layout_3'
       const perms = [...selectedPermissions]
       if (!perms.includes(layoutPerm)) {
         perms.push(layoutPerm)
@@ -130,7 +129,7 @@ export default function Grupos() {
 
   const updatePermissions = useMutation({
     mutationFn: async ({ id, permissions }: { id: number, permissions: string[] }) => {
-      const layoutPerm = selectedGroup?.versao === 'Dash 1.0' ? 'layout_1' : (selectedGroup?.versao === 'B.I 1.0' ? 'layout_2' : 'layout_3')
+      const layoutPerm = selectedGroup?.versao === 'Dash 1.0' ? 'layout_1' : 'layout_3'
       const perms = [...permissions]
       if (!perms.includes(layoutPerm)) {
         perms.push(layoutPerm)

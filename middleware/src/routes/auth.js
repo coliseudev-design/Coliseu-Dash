@@ -115,7 +115,7 @@ router.post('/login', async (req, res) => {
                         permissions,
                         versao: 'Dash 1.0',
                         layout_version: 'Dash 1.0',
-                        available_versions: ['Dash 1.0', 'B.I 1.0', 'B.I IA.']
+                        available_versions: ['Dash 1.0', 'B.I IA.']
                     }
                 });
             }
@@ -216,7 +216,7 @@ router.post('/login', async (req, res) => {
         // Buscar as versões às quais o usuário tem acesso
         let available_versions = [];
         if (user.role === 'master' || user.role === 'admin') {
-            available_versions = ['Dash 1.0', 'B.I 1.0', 'B.I IA.'];
+            available_versions = ['Dash 1.0', 'B.I IA.'];
         } else {
             const versionsRes = await db.query(
                 `SELECT DISTINCT g.versao 
@@ -241,9 +241,6 @@ router.post('/login', async (req, res) => {
         if (user.tenant_id !== '00000000-0000-0000-0000-000000000000' && licensedVersions.length > 0) {
             if (!licensedVersions.includes('Dash 1.0')) {
                 filteredPermissions = filteredPermissions.filter(p => p !== 'layout_1');
-            }
-            if (!licensedVersions.includes('B.I 1.0')) {
-                filteredPermissions = filteredPermissions.filter(p => p !== 'layout_2');
             }
             if (!licensedVersions.includes('B.I IA.')) {
                 filteredPermissions = filteredPermissions.filter(p => p !== 'layout_3');
@@ -406,10 +403,9 @@ router.get('/me', requireWebJwt, async (req, res) => {
                     nome: 'Super Administrador Coliseu',
                     role: 'master',
                     tenant_id: req.tenant.id,
-                    permissions,
                     versao: req.user.layoutVersion || 'Dash 1.0',
                     layout_version: req.user.layoutVersion || 'Dash 1.0',
-                    available_versions: ['Dash 1.0', 'B.I 1.0', 'B.I IA.']
+                    available_versions: ['Dash 1.0', 'B.I IA.']
                 }
             });
         }
@@ -463,7 +459,7 @@ router.get('/me', requireWebJwt, async (req, res) => {
         // Buscar as versões às quais o usuário tem acesso
         let available_versions = [];
         if (user.role === 'master' || user.role === 'admin') {
-            available_versions = ['Dash 1.0', 'B.I 1.0', 'B.I IA.'];
+            available_versions = ['Dash 1.0', 'B.I IA.'];
         } else {
             const versionsRes = await db.query(
                 `SELECT DISTINCT g.versao 
@@ -488,9 +484,6 @@ router.get('/me', requireWebJwt, async (req, res) => {
         if (user.tenant_id !== '00000000-0000-0000-0000-000000000000' && licensedVersions.length > 0) {
             if (!licensedVersions.includes('Dash 1.0')) {
                 filteredPermissions = filteredPermissions.filter(p => p !== 'layout_1');
-            }
-            if (!licensedVersions.includes('B.I 1.0')) {
-                filteredPermissions = filteredPermissions.filter(p => p !== 'layout_2');
             }
             if (!licensedVersions.includes('B.I IA.')) {
                 filteredPermissions = filteredPermissions.filter(p => p !== 'layout_3');

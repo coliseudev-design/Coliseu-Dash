@@ -21,7 +21,7 @@ router.get('/faturadas', async (req, res, next) => {
         const { start, end } = getPeriodRange(period, start_date, end_date, anchorDate);
 
         const salesFilter = cfopUtil.getSalesFilterClause('v');
-        const vf = buildVendedorFilter(vendedorId, 4, 'v');
+        const vf = buildVendedorFilter(vendedorId, 4, 'v', req.user?.allowedSellers);
 
         const { rows } = await db.query(`
             SELECT 
@@ -183,7 +183,7 @@ router.get('/recentes', async (req, res, next) => {
         const tenantId = req.tenant.id;
         const vendedorId = req.query.vendedor_id;
 
-        const vf = buildVendedorFilter(vendedorId, 3, 'v');
+        const vf = buildVendedorFilter(vendedorId, 3, 'v', req.user?.allowedSellers);
 
         // join com tabelas sincronizadas usa id_firebird pq é ele quem vem nos FKs da tabela de vendas
         const salesFilter = cfopUtil.getSalesFilterClause('v');

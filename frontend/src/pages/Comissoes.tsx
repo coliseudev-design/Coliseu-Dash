@@ -70,13 +70,11 @@ export default function Comissoes() {
               <Trophy size={18} className="text-warning" />
               <h2 className="font-heading font-semibold text-text-primary">Desempenho Consolidado</h2>
             </div>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {sortedData.map((v: any, i: number) => (
                 <div 
                   key={v.vendedor_id} 
-                  onClick={() => navigate(`/comercial/vendedor/${v.vendedor_id}`)}
-                  className="border border-divider rounded-2xl p-5 bg-bg-primary hover:shadow-card-hover hover:border-brand-500/40 transition-all duration-300 relative shadow-card flex flex-col justify-between h-full hover:scale-[1.01] cursor-pointer group"
+                  className="border border-divider rounded-2xl p-5 bg-bg-primary hover:shadow-card-hover hover:border-brand-500/40 transition-all duration-300 relative shadow-card flex flex-col justify-between h-full hover:scale-[1.01] group"
                 >
                   {/* Badge Rank / Medal */}
                   {i < 3 ? (
@@ -174,10 +172,21 @@ export default function Comissoes() {
                         )}
                       </div>
                     </div>
+
+                    {/* Botão Detalhes */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/comercial/vendedor/${v.vendedor_id}`);
+                      }}
+                      className="w-full flex items-center justify-center gap-1.5 py-2.5 px-4 bg-brand-500 hover:bg-brand-600 active:scale-[0.98] text-white rounded-xl text-xs font-black transition-all cursor-pointer shadow-sm hover:shadow-md mt-2"
+                    >
+                      Detalhes
+                    </button>
                   </div>
                 </div>
               ))}
-            </div>
+            </div>        </div>
           </div>
 
         </div>

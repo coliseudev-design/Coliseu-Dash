@@ -280,8 +280,8 @@ router.put('/:id/layout', async (req, res) => {
         const targetVersion = versao || layout_version;
         const targetId = req.params.id;
 
-        if (!['Dash 1.0', 'B.I 1.0', 'B.I IA.'].includes(targetVersion)) {
-            return res.status(400).json({ error: 'Versão de layout inválida. Opções: Dash 1.0, B.I 1.0, B.I IA.' });
+        if (!['Dash 1.0', 'B.I IA.'].includes(targetVersion)) {
+            return res.status(400).json({ error: 'Versão de layout inválida. Opções: Dash 1.0, B.I IA.' });
         }
 
         if (req.user && req.user.email === 'admin@coliseu.com') {

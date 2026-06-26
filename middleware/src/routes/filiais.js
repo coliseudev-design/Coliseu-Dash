@@ -38,16 +38,34 @@ function buildCentroCustoFilter(centroCustoId, nextParamIndex, alias = 'f') {
     };
 }
 
-function buildVendedorFilter(vendedorId, nextParamIndex, alias = 'v') {
-    if (!vendedorId || vendedorId === 'todas' || vendedorId === 'all' || vendedorId === 'TODOS') {
-        return { clause: '', params: [] };
+function buildVendedorFilter(vendedorId, nextParamIndex, alias = 'v', allowedSellers = null) {
+    if (vendedorId && vendedorId !== 'todas' && vendedorId !== 'all' && vendedorId !== 'TODOS') {
+        const num = parseInt(vendedorId, 10);
+        if (isNaN(num)) return { clause: ' AND 1=0', params: [] };
+
+        if (allowedSellers !== null && allowedSellers !== undefined) {
+            const isAllowed = allowedSellers.map(id => Number(id)).includes(num);
+            if (!isAllowed) {
+                return { clause: ' AND 1=0', params: [] };
+            }
+        }
+        return {
+            clause: ` AND ${alias}.vendedor_id_firebird = $${nextParamIndex}`,
+            params: [num]
+        };
     }
-    const num = parseInt(vendedorId, 10);
-    if (isNaN(num)) return { clause: '', params: [] };
-    return {
-        clause: ` AND ${alias}.vendedor_id_firebird = $${nextParamIndex}`,
-        params: [num]
-    };
+
+    if (allowedSellers !== null && allowedSellers !== undefined) {
+        if (allowedSellers.length === 0) {
+            return { clause: ' AND 1=0', params: [] };
+        }
+        return {
+            clause: ` AND ${alias}.vendedor_id_firebird = ANY($${nextParamIndex})`,
+            params: [allowedSellers]
+        };
+    }
+
+    return { clause: '', params: [] };
 }
 
 function buildCidadeFilter(cidade, nextParamIndex, alias = 'c') {
