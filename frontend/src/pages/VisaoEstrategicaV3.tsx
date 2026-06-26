@@ -307,49 +307,49 @@ export default function VisaoEstrategicaV3() {
       {/* ROW 5: VENDEDORES */}
       {(!isMobile || activeTab === 'vendedores') && (
         <div className="space-y-6 animate-in fade-in duration-300">
-          <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="font-bold text-text-primary text-sm uppercase tracking-wider">Vendedores (Top 10)</h3>
-          </div>
-          <div className="h-[260px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={mockTopSellers} layout="vertical" margin={{ top: 0, right: 30, left: 10, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--color-border)" opacity={0.5} />
-                <XAxis type="number" hide />
-                <YAxis 
-                  dataKey="name" 
-                  type="category" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tickFormatter={(v) => String(v).length > 12 ? String(v).substring(0, 12) + '...' : v}
-                  tick={{ fontSize: 11, fill: 'var(--color-text-primary)', fontWeight: 600 }} 
-                  width={80} 
-                />
-                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.4 }} />
-                <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={20}>
-                  {mockTopSellers.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={barColors[index % barColors.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+            <div className="lg:col-span-3 bg-bg-primary border border-border shadow-card rounded-xl p-5">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="font-bold text-text-primary text-sm uppercase tracking-wider">Vendedores (Top 10)</h3>
+              </div>
+              <div className="h-[260px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={mockTopSellers} layout="vertical" margin={{ top: 0, right: 30, left: 10, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--color-border)" opacity={0.5} />
+                    <XAxis type="number" hide />
+                    <YAxis 
+                      dataKey="name" 
+                      type="category" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tickFormatter={(v) => String(v).length > 12 ? String(v).substring(0, 12) + '...' : v}
+                      tick={{ fontSize: 11, fill: 'var(--color-text-primary)', fontWeight: 600 }} 
+                      width={80} 
+                    />
+                    <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.4 }} />
+                    <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={20}>
+                      {mockTopSellers.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={barColors[index % barColors.length]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+            <div className="lg:col-span-1 bg-bg-primary border border-border shadow-card rounded-xl p-5 flex flex-col justify-center space-y-4">
+              <div className="p-4 bg-bg-secondary rounded-xl border border-divider h-full flex flex-col justify-center">
+                <div className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2">Vendedor Destaque</div>
+                <div className="text-brand-500 font-extrabold text-lg mb-1">{mockTopSellers.length > 0 ? mockTopSellers[0].name : '-'}</div>
+                <div className="text-2xl font-extrabold text-text-primary mb-2">{formatBRL(mockTopSellers.length > 0 ? mockTopSellers[0].value : 0)}</div>
+                <div className="text-sm text-text-secondary">
+                  Participação: <span className="font-bold text-text-primary">{faturamentoAtual > 0 && mockTopSellers.length > 0 ? ((mockTopSellers[0].value / faturamentoAtual) * 100).toFixed(1) : 0}%</span>
+                </div>
+                <div className="text-sm text-text-secondary mt-1">
+                  Ticket Médio: <span className="font-bold text-text-primary">-</span>
+                </div>
+              </div>
             </div>
           </div>
-          <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex flex-col justify-center space-y-4">
-          <div className="p-4 bg-bg-secondary rounded-xl border border-divider h-full flex flex-col justify-center">
-            <div className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-2">Vendedor Destaque</div>
-            <div className="text-brand-500 font-extrabold text-lg mb-1">{mockTopSellers.length > 0 ? mockTopSellers[0].name : '-'}</div>
-            <div className="text-2xl font-extrabold text-text-primary mb-2">{formatBRL(mockTopSellers.length > 0 ? mockTopSellers[0].value : 0)}</div>
-            <div className="text-sm text-text-secondary">
-              Participação: <span className="font-bold text-text-primary">{faturamentoAtual > 0 && mockTopSellers.length > 0 ? ((mockTopSellers[0].value / faturamentoAtual) * 100).toFixed(1) : 0}%</span>
-            </div>
-            <div className="text-sm text-text-secondary mt-1">
-              Ticket Médio: <span className="font-bold text-text-primary">-</span>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* ROW 6: MARCAS */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">

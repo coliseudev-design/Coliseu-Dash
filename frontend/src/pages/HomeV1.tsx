@@ -878,8 +878,11 @@ export default function HomeV1() {
                   </div>
                 </div>
               )
+            })}
+          </div>
         </div>
-      </>)}
+      </div>
+    </>)}
 
       {/* ── ROW 6: BOTTOM CHART WITH MODE TOGGLE ─────────────────────────── */}
       {(!isMobile || activeTab === 'receitas') && (
@@ -957,8 +960,37 @@ export default function HomeV1() {
                   />
                 </LineChart>
               ) : (
+                <BarChart
+                  data={chartMode === 'diario' ? dailyChartData : monthlyChartData}
+                  margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" opacity={0.4} />
+                  <XAxis
+                    dataKey={chartMode === 'diario' ? 'data' : 'label'}
+                    tick={{ fontSize: 9, fill: 'var(--color-text-muted)', fontWeight: 700 }}
+                    tickFormatter={(d: string) => chartMode === 'diario' ? (d?.slice(5) || d) : d}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 9, fill: 'var(--color-text-muted)', fontWeight: 700 }}
+                    tickFormatter={formatBRLCompact}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.3 }} />
+                  <Bar dataKey="total" radius={[4, 4, 0, 0]} maxBarSize={38} fill="#00a896">
+                    {(chartMode === 'diario' ? dailyChartData : monthlyChartData).map((_: any, i: number) => (
+                      <Cell key={`cell-${i}`} fill={BAR_COLORS[i % BAR_COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              )}
+            </ResponsiveContainer>
+          )}
         </div>
-      </>)}
+      </div>
+    </>)}
 
       {/* ── METAS SECTION (MOBILE ONLY) ──────────────────────────────────── */}
       {isMobile && activeTab === 'metas' && (
