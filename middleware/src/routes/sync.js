@@ -108,7 +108,7 @@ router.post('/:tabela', async (req, res) => {
     }
 
     const { id: tenantId } = req.tenant;
-    if (tabela === 'dash_vendas' || tabela === 'dash_vendas_itens') {
+    if (tabela === 'dash_vendas' || tabela === 'dash_vendas_itens' || tabela === 'dash_financeiro') {
         logger.info(`[SyncDebug] Recebido sync para tabela ${tabela} com ${rows.length} linhas. Tenant: ${tenantId}`);
         if (rows.length > 0) {
             logger.info(`[SyncDebug] Primeira linha: ${JSON.stringify(rows[0])}`);
