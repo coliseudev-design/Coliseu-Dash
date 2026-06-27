@@ -5,7 +5,7 @@ import { useLocation } from 'react-router-dom'
 import KPICard from '../components/KPICard'
 import PeriodFilter from '../components/PeriodFilter'
 import {
-  Wallet, Receipt, Scale, ArrowDownCircle, ArrowUpCircle, Banknote, Filter
+  Wallet, Receipt, Scale, Banknote, Filter
 } from 'lucide-react'
 import { formatBRL, formatBRLCompact } from '../utils/format'
 
@@ -33,26 +33,10 @@ export default function Financeiro() {
   }
   const caixa = usePeriodQuery<any>('/financeiro/caixa', extraParams)
 
-  // Últimas 10 contas pagas
-  const contasPagas = usePeriodQuery<any>('/financeiro/contas', {
-    tipo: 'PAGAR',
-    status: 'PAGO',
-    limit: 10,
-    ...(selectedCaixa !== 'todos' ? { caixa_id: selectedCaixa } : {}),
-  })
-
-  // Últimas 10 contas recebidas
-  const contasRecebidas = usePeriodQuery<any>('/financeiro/contas', {
-    tipo: 'RECEBER',
-    status: 'PAGO',
-    limit: 10,
-    ...(selectedCaixa !== 'todos' ? { caixa_id: selectedCaixa } : {}),
-  })
-
   // Movimentações do caixa (Vendas e Lançamentos) no período
   const caixasMovimentos = usePeriodQuery<any>('/financeiro/contas', {
     status: 'PAGO',
-    limit: 50,
+    limit: 100,
     ...(selectedCaixa !== 'todos' ? { caixa_id: selectedCaixa } : {}),
   })
   const movimentos = caixasMovimentos.data?.data || []
@@ -205,68 +189,6 @@ export default function Financeiro() {
           )}
         </div>
 
-        {/* Últimas 10 Contas Pagas / Recebidas */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-          {/* Contas Recebidas */}
-          <div className="bg-bg-primary rounded-xl border border-border p-6 shadow-sm">
-            <h3 className="font-heading font-semibold text-base sm:text-lg mb-4 text-text-primary flex items-center gap-2">
-              <ArrowDownCircle className="text-success" size={20} />
-              Últimas 10 Contas Recebidas (Pagas pelo Cliente)
-            </h3>
-            {contasRecebidas.isLoading ? (
-              <div className="text-sm text-text-secondary">Carregando...</div>
-            ) : !contasRecebidas.data?.data || contasRecebidas.data.data.length === 0 ? (
-              <div className="text-sm text-text-secondary">Nenhuma conta recebida recente.</div>
-            ) : (
-              <div className="space-y-3">
-                {contasRecebidas.data.data.map((c: any) => (
-                  <div key={c.id} className="flex justify-between items-center p-3 rounded-lg bg-bg-secondary border border-divider hover:border-brand-200 transition-colors">
-                    <div className="min-w-0 flex-1 pr-3">
-                      <div className="text-sm font-semibold truncate text-text-primary">{c.descricao || c.cliente || 'Recebimento'}</div>
-                      <div className="text-xs text-text-secondary mt-0.5">
-                        {c.data_pagamento ? new Date(c.data_pagamento).toLocaleDateString('pt-BR') : ''}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-sm font-bold text-success">{formatBRL(c.valor_pago || c.valor)}</span>
-                      <div className="text-[10px] text-text-secondary uppercase mt-0.5 font-bold tracking-wider">{c.especie || 'Outro'}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Contas Pagas */}
-          <div className="bg-bg-primary rounded-xl border border-border p-6 shadow-sm">
-            <h3 className="font-heading font-semibold text-base sm:text-lg mb-4 text-text-primary flex items-center gap-2">
-              <ArrowUpCircle className="text-danger" size={20} />
-              Últimas 10 Contas Pagas (Despesas da Empresa)
-            </h3>
-            {contasPagas.isLoading ? (
-              <div className="text-sm text-text-secondary">Carregando...</div>
-            ) : !contasPagas.data?.data || contasPagas.data.data.length === 0 ? (
-              <div className="text-sm text-text-secondary">Nenhuma conta paga recente.</div>
-            ) : (
-              <div className="space-y-3">
-                {contasPagas.data.data.map((c: any) => (
-                  <div key={c.id} className="flex justify-between items-center p-3 rounded-lg bg-bg-secondary border border-divider hover:border-brand-200 transition-colors">
-                    <div className="min-w-0 flex-1 pr-3">
-                      <div className="text-sm font-semibold truncate text-text-primary">{c.descricao || 'Despesa'}</div>
-                      <div className="text-xs text-text-secondary mt-0.5">
-                        {c.data_pagamento ? new Date(c.data_pagamento).toLocaleDateString('pt-BR') : ''}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-sm font-bold text-danger">{formatBRL(c.valor_pago || c.valor)}</span>
-                      <div className="text-[10px] text-text-secondary uppercase mt-0.5 font-bold tracking-wider">{c.especie || 'Outro'}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
 
       </div>
     </div>

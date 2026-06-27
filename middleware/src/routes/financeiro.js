@@ -365,6 +365,14 @@ router.get('/contas', async (req, res, next) => {
         const limit = parseInt(req.query.limit, 10) || 100;
         const tenantId = req.tenant.id;
 
+        // Resolve período (period=hoje/semana/mes/custom + start_date/end_date)
+        const { start, end } = await getFinanceiroAnchor(
+            tenantId,
+            req.query.period,
+            req.query.start_date,
+            req.query.end_date
+        );
+
         const where = ['f.tenant_id = $1'];
         const binds = [tenantId];
         let pIndex = 2;
@@ -373,7 +381,7 @@ router.get('/contas', async (req, res, next) => {
             where.push(`TRIM(f.tipo) = $${pIndex++}`);
             binds.push(tipo.trim());
         }
-        
+
         if (req.query.caixa_id) {
             where.push(`f.caixa_id_firebird = $${pIndex++}`);
             binds.push(parseInt(req.query.caixa_id));
@@ -386,14 +394,11 @@ router.get('/contas', async (req, res, next) => {
             binds.push(statusPg.trim());
         }
 
-        if (req.query.start_date) {
-            where.push(`COALESCE(f.data_pagamento, f.data_vencimento) >= $${pIndex++}`);
-            binds.push(req.query.start_date);
-        }
-        if (req.query.end_date) {
-            where.push(`COALESCE(f.data_pagamento, f.data_vencimento) <= $${pIndex++}`);
-            binds.push(req.query.end_date);
-        }
+        // Filtro de período resolvido (sempre aplicado)
+        where.push(`COALESCE(f.data_pagamento, f.data_vencimento) >= $${pIndex++}`);
+        binds.push(start);
+        where.push(`COALESCE(f.data_pagamento, f.data_vencimento) <= $${pIndex++}`);
+        binds.push(end);
 
         binds.push(limit);
         const limitIdx = pIndex;
@@ -415,7 +420,7 @@ router.get('/contas', async (req, res, next) => {
         `;
 
         const { rows } = await db.query(sql, binds);
-        
+
         const formatted = rows.map(r => ({
             ...r,
             valor: parseFloat(r.valor),
