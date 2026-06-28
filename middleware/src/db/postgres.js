@@ -19,7 +19,7 @@ const pool = new Pool({
     max: 20,
     idleTimeoutMillis: 15000,      // libera conexões idle mais rápido
     connectionTimeoutMillis: 5000, // timeout ao aguardar conexão do pool
-    statement_timeout: 25000,      // mata queries > 25s para proteger o pool
+    statement_timeout: 60000,      // mata queries > 60s para proteger o pool
 });
 
 pool.on('error', (err) => {

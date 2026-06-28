@@ -114,7 +114,7 @@ router.get('/produtos', async (req, res, next) => {
 
         // CTE pré-filtra vendas pelo período e depto usando índice, depois faz JOIN com itens
         const { rows } = await db.query(`
-            WITH vendas_filtradas AS (
+            WITH vendas_filtradas AS MATERIALIZED (
                 SELECT v.id_firebird, v.tenant_id
                 FROM dash_vendas v
                 WHERE v.tenant_id = $1
@@ -191,9 +191,9 @@ router.get('/marcas', async (req, res, next) => {
         const vf = buildVendedorFilter(vendedorId, 4 + df.params.length, 'v', req.user?.allowedSellers);
         const salesFilter = cfopUtil.getSalesFilterClause('v');
 
-        // CTE pré-filtra vendas usando índice idx_dash_vendas_depto_data_status
+        // CTE MATERIALIZED: força PG a executar a subquery de vendas ANTES do JOIN com itens
         const { rows } = await db.query(`
-            WITH vendas_filtradas AS (
+            WITH vendas_filtradas AS MATERIALIZED (
                 SELECT v.id_firebird, v.tenant_id, v.marca
                 FROM dash_vendas v
                 WHERE v.tenant_id = $1
@@ -350,7 +350,7 @@ router.get('/categorias', async (req, res, next) => {
 
         // CTE pré-filtra vendas usando índice, depois agrega itens
         const { rows } = await db.query(`
-            WITH vendas_filtradas AS (
+            WITH vendas_filtradas AS MATERIALIZED (
                 SELECT v.id_firebird, v.tenant_id, v.categoria
                 FROM dash_vendas v
                 WHERE v.tenant_id = $1
