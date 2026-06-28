@@ -16,9 +16,10 @@ const pool = new Pool({
     user: config.postgres.user,
     password: config.postgres.password,
     ssl: config.postgres.ssl ? { rejectUnauthorized: false } : false,
-    max: 20, // Max number of clients
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 5000,
+    max: 20,
+    idleTimeoutMillis: 15000,      // libera conexões idle mais rápido
+    connectionTimeoutMillis: 5000, // timeout ao aguardar conexão do pool
+    statement_timeout: 25000,      // mata queries > 25s para proteger o pool
 });
 
 pool.on('error', (err) => {
