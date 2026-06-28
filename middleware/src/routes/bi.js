@@ -63,6 +63,9 @@ router.get('/sales/executive-summary', async (req, res, next) => {
         const vf = buildVendedorFilter(vendedorId, nextParamIndex, 'v');
         nextParamIndex += vf.params.length;
 
+        // DEBUG TEMPORÁRIO - rastrear filtro de vendedor
+        logger.info(`[DEBUG executive-summary] vendedorId=${JSON.stringify(vendedorId)} vf.clause=${JSON.stringify(vf.clause)} vf.params=${JSON.stringify(vf.params)} query=${JSON.stringify(req.query)}`);
+
         const cf = buildCidadeFilter(cidade, nextParamIndex, 'c');
         nextParamIndex += cf.params.length;
         
