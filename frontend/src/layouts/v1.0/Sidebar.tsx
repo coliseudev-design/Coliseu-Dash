@@ -18,7 +18,8 @@ const MODULES = [
   { to: '/comercial',                label: 'Visão Consolidada', icon: BarChart3,       exact: true,  id: 'bi_sales' },
   { to: '/comercial/equipe',         label: 'Equipes',           icon: Users,           exact: true,  id: 'bi_sales' },
   { to: '/comercial/rankings',       label: 'Rankings',          icon: Trophy,          exact: true,  id: 'bi_sales' },
-  { to: '/financeiro-consolidado',   label: 'Financeiro',        icon: Wallet,          exact: false, id: 'bi_finance' }
+  { to: '/financeiro-consolidado',   label: 'Financeiro',        icon: Wallet,          exact: false, id: 'bi_finance' },
+  { to: '/bi/abc',                  label: 'Gestão de Inventário', icon: Package,         exact: true,  id: 'bi_abc' }
 ]
 
 const CONFIG_MODULES = [

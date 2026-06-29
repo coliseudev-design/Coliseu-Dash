@@ -168,7 +168,7 @@ export default function HomeV1() {
   const citiesDropdown = useBranchPeriodQuery<any>('/ranking/cidades', { limit: 100 })
 
   // ─── Chart Toggle State ──────────────────────────────────────────────────────
-  const [chartMode, setChartMode] = useState<'diario' | 'mensal'>('diario')
+  const [chartMode, setChartMode] = useState<'diario' | 'mensal' | 'anual'>('diario')
   const [selectedYearChart, setSelectedYearChart] = useState<string>('all')
 
   // ─── Calculations ───────────────────────────────────────────────────────────
@@ -260,6 +260,18 @@ export default function HomeV1() {
         return { label, total }
       })
   }, [rawDailyData, selectedYearChart])
+
+  const yearlyChartData = useMemo(() => {
+    const groups: Record<string, number> = {}
+    rawDailyData.forEach((d: any) => {
+      if (!d.data) return
+      const year = d.data.substring(0, 4) // "YYYY"
+      groups[year] = (groups[year] || 0) + (d.total || 0)
+    })
+    return Object.entries(groups)
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([year, total]) => ({ label: year, total }))
+  }, [rawDailyData])
 
   return (
     <div className={clsx("space-y-6 pb-12", isMobile ? "pb-28" : "pb-12")} aria-label="Visão Estratégica Dashboard">
@@ -544,9 +556,161 @@ export default function HomeV1() {
             </div>
             <span className="text-[9px] text-slate-400 font-bold">Clientes ativos no período</span>
           </div>
+        </div>
+      </div>
+      </>)}
+
+      {/* ── ROW 4: PERIOD EVOLUTION CHART (MOVED BETWEEN CARDS & SELLERS) ── */}
+      {(!isMobile || activeTab === 'receitas') && (
+        <>
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm">
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6">
+          <div>
+            <h3 className="font-extrabold text-slate-800 dark:text-white text-xs uppercase tracking-widest">
+              Faturamento no Período
+            </h3>
+            <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest block mt-0.5">
+              Valores Excluindo Departamento Equipamentos
+            </span>
+          </div>
+
+          {/* Filtro de Ano */}
+          <div className="flex items-center gap-2 flex-wrap shrink-0 self-start sm:self-auto">
+            {availableChartYears.length > 1 && (
+              <div className="bg-slate-100 p-0.5 rounded-lg flex items-center gap-0.5 border border-slate-200/50">
+                <button
+                  onClick={() => setSelectedYearChart('all')}
+                  className={clsx(
+                    'px-3 py-1 text-[10px] font-bold rounded-md uppercase tracking-wider transition-all duration-200 cursor-pointer',
+                    selectedYearChart === 'all'
+                      ? 'bg-white text-slate-800 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-700'
+                  )}
+                >
+                  Todos
+                </button>
+                {availableChartYears.map(year => (
+                  <button
+                    key={year}
+                    onClick={() => setSelectedYearChart(year)}
+                    className={clsx(
+                      'px-3 py-1 text-[10px] font-bold rounded-md uppercase tracking-wider transition-all duration-200 cursor-pointer',
+                      selectedYearChart === year
+                        ? 'bg-white text-slate-800 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-700'
+                    )}
+                  >
+                    {year}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Toggle buttons for chart mode */}
+            <div className="bg-slate-100 p-0.5 rounded-lg flex items-center border border-slate-200/50">
+              <button
+                onClick={() => setChartMode('diario')}
+                className={clsx(
+                  'px-3.5 py-1 text-[10px] font-bold rounded-md uppercase tracking-wider transition-all duration-200 cursor-pointer',
+                  chartMode === 'diario'
+                    ? 'bg-white text-slate-800 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                )}
+              >
+                Diário
+              </button>
+              <button
+                onClick={() => setChartMode('mensal')}
+                className={clsx(
+                  'px-3.5 py-1 text-[10px] font-bold rounded-md uppercase tracking-wider transition-all duration-200 cursor-pointer',
+                  chartMode === 'mensal'
+                    ? 'bg-white text-slate-800 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                )}
+              >
+                Mensal
+              </button>
+              <button
+                onClick={() => setChartMode('anual')}
+                className={clsx(
+                  'px-3.5 py-1 text-[10px] font-bold rounded-md uppercase tracking-wider transition-all duration-200 cursor-pointer',
+                  chartMode === 'anual'
+                    ? 'bg-white text-slate-800 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                )}
+              >
+                Ano
+              </button>
+            </div>
           </div>
         </div>
-      </>)}
+
+        {/* Recharts Container */}
+        <div className="h-64 sm:h-72">
+          {fatMes.isLoading ? (
+            <div className="h-full flex items-center justify-center text-xs text-slate-400">Carregando dados do faturamento...</div>
+          ) : (chartMode === 'diario' ? dailyChartData : chartMode === 'mensal' ? monthlyChartData : yearlyChartData).length === 0 ? (
+            <div className="h-full flex items-center justify-center text-xs text-slate-400">Sem faturamento registrado no período</div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              {chartMode === 'diario' && dailyChartData.length > 20 ? (
+                <LineChart data={dailyChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" opacity={0.4} />
+                  <XAxis
+                    dataKey="data"
+                    tick={{ fontSize: 9, fill: 'var(--color-text-muted)', fontWeight: 700 }}
+                    tickFormatter={(d: string) => d?.slice(8) || d} // Show day only
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 9, fill: 'var(--color-text-muted)', fontWeight: 700 }}
+                    tickFormatter={formatBRLCompact}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Line
+                    type="monotone"
+                    dataKey="total"
+                    stroke="#00a896"
+                    strokeWidth={2.5}
+                    dot={false}
+                    activeDot={{ r: 4, strokeWidth: 0 }}
+                  />
+                </LineChart>
+              ) : (
+                <BarChart
+                  data={chartMode === 'diario' ? dailyChartData : chartMode === 'mensal' ? monthlyChartData : yearlyChartData}
+                  margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" opacity={0.4} />
+                  <XAxis
+                    dataKey={chartMode === 'diario' ? 'data' : 'label'}
+                    tick={{ fontSize: 9, fill: 'var(--color-text-muted)', fontWeight: 700 }}
+                    tickFormatter={(d: string) => chartMode === 'diario' ? (d?.slice(5) || d) : d}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 9, fill: 'var(--color-text-muted)', fontWeight: 700 }}
+                    tickFormatter={formatBRLCompact}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.3 }} />
+                  <Bar dataKey="total" radius={[4, 4, 0, 0]} maxBarSize={38} fill="#00a896">
+                    {(chartMode === 'diario' ? dailyChartData : chartMode === 'mensal' ? monthlyChartData : yearlyChartData).map((_: any, i: number) => (
+                      <Cell key={`cell-${i}`} fill={BAR_COLORS[i % BAR_COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              )}
+            </ResponsiveContainer>
+          )}
+        </div>
+      </div>
+    </>)}
 
       {/* ── MIDDLE ROW: SELLERS CHART + RANKING LIST ─────────────────────── */}
       {(!isMobile || activeTab === 'vendedores') && (
@@ -730,146 +894,7 @@ export default function HomeV1() {
       </div>
     </>)}
 
-      {/* ── ROW 6: BOTTOM CHART WITH MODE TOGGLE ─────────────────────────── */}
-      {(!isMobile || activeTab === 'receitas') && (
-        <>
-      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm">
-        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6">
-          <div>
-            <h3 className="font-extrabold text-slate-800 dark:text-white text-xs uppercase tracking-widest">
-              Faturamento no Período
-            </h3>
-            <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest block mt-0.5">
-              Valores Excluindo Departamento Equipamentos
-            </span>
-          </div>
 
-          {/* Filtro de Ano */}
-          <div className="flex items-center gap-2 flex-wrap shrink-0 self-start sm:self-auto">
-            {availableChartYears.length > 1 && (
-              <div className="bg-slate-100 p-0.5 rounded-lg flex items-center gap-0.5 border border-slate-200/50">
-                <button
-                  onClick={() => setSelectedYearChart('all')}
-                  className={clsx(
-                    'px-3 py-1 text-[10px] font-bold rounded-md uppercase tracking-wider transition-all duration-200 cursor-pointer',
-                    selectedYearChart === 'all'
-                      ? 'bg-white text-slate-800 shadow-sm'
-                      : 'text-slate-500 hover:text-slate-700'
-                  )}
-                >
-                  Todos
-                </button>
-                {availableChartYears.map(year => (
-                  <button
-                    key={year}
-                    onClick={() => setSelectedYearChart(year)}
-                    className={clsx(
-                      'px-3 py-1 text-[10px] font-bold rounded-md uppercase tracking-wider transition-all duration-200 cursor-pointer',
-                      selectedYearChart === year
-                        ? 'bg-white text-slate-800 shadow-sm'
-                        : 'text-slate-500 hover:text-slate-700'
-                    )}
-                  >
-                    {year}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Toggle buttons for chart mode */}
-            <div className="bg-slate-100 p-0.5 rounded-lg flex items-center border border-slate-200/50">
-              <button
-                onClick={() => setChartMode('diario')}
-                className={clsx(
-                  'px-3.5 py-1 text-[10px] font-bold rounded-md uppercase tracking-wider transition-all duration-200 cursor-pointer',
-                  chartMode === 'diario'
-                    ? 'bg-white text-slate-800 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-700'
-                )}
-              >
-                Diário
-              </button>
-              <button
-                onClick={() => setChartMode('mensal')}
-                className={clsx(
-                  'px-3.5 py-1 text-[10px] font-bold rounded-md uppercase tracking-wider transition-all duration-200 cursor-pointer',
-                  chartMode === 'mensal'
-                    ? 'bg-white text-slate-800 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-700'
-                )}
-              >
-                Mensal
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Recharts Container */}
-        <div className="h-64 sm:h-72">
-          {fatMes.isLoading ? (
-            <div className="h-full flex items-center justify-center text-xs text-slate-400">Carregando dados do faturamento...</div>
-          ) : (chartMode === 'diario' ? dailyChartData : monthlyChartData).length === 0 ? (
-            <div className="h-full flex items-center justify-center text-xs text-slate-400">Sem faturamento registrado no período</div>
-          ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              {chartMode === 'diario' && dailyChartData.length > 20 ? (
-                <LineChart data={dailyChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" opacity={0.4} />
-                  <XAxis
-                    dataKey="data"
-                    tick={{ fontSize: 9, fill: 'var(--color-text-muted)', fontWeight: 700 }}
-                    tickFormatter={(d: string) => d?.slice(8) || d} // Show day only
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    tick={{ fontSize: 9, fill: 'var(--color-text-muted)', fontWeight: 700 }}
-                    tickFormatter={formatBRLCompact}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Line
-                    type="monotone"
-                    dataKey="total"
-                    stroke="#00a896"
-                    strokeWidth={2.5}
-                    dot={false}
-                    activeDot={{ r: 4, strokeWidth: 0 }}
-                  />
-                </LineChart>
-              ) : (
-                <BarChart
-                  data={chartMode === 'diario' ? dailyChartData : monthlyChartData}
-                  margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" opacity={0.4} />
-                  <XAxis
-                    dataKey={chartMode === 'diario' ? 'data' : 'label'}
-                    tick={{ fontSize: 9, fill: 'var(--color-text-muted)', fontWeight: 700 }}
-                    tickFormatter={(d: string) => chartMode === 'diario' ? (d?.slice(5) || d) : d}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    tick={{ fontSize: 9, fill: 'var(--color-text-muted)', fontWeight: 700 }}
-                    tickFormatter={formatBRLCompact}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.3 }} />
-                  <Bar dataKey="total" radius={[4, 4, 0, 0]} maxBarSize={38} fill="#00a896">
-                    {(chartMode === 'diario' ? dailyChartData : monthlyChartData).map((_: any, i: number) => (
-                      <Cell key={`cell-${i}`} fill={BAR_COLORS[i % BAR_COLORS.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              )}
-            </ResponsiveContainer>
-          )}
-        </div>
-      </div>
-    </>)}
 
       {/* ── METAS SECTION (MOBILE ONLY) ──────────────────────────────────── */}
       {isMobile && activeTab === 'metas' && (

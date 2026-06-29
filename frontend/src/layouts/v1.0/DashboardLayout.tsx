@@ -12,6 +12,7 @@ const TITLES: Record<string, string> = {
   '/financeiro-consolidado': 'Financeiro - Gestão',
   '/financeiro-consolidado/gestao': 'Financeiro - Gestão',
   '/financeiro-consolidado/fluxo-caixa': 'Financeiro - Fluxo de Caixa',
+  '/bi/abc': 'Gestão de Inventário',
   '/vendas': 'Vendas',
   '/comissoes': 'Vendedores',
   '/ranking': 'Ranking',

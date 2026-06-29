@@ -115,7 +115,7 @@ export default function App() {
         </Route>
 
         {/* Novas Rotas de BI */}
-        <Route path="bi" element={<ProtectedRoute permission="layout_4"><BiDashboard /></ProtectedRoute>}>
+        <Route path="bi" element={<BiDashboard />}>
           <Route index element={<ProtectedRoute permission="bi_sales"><SalesIntelligenceDashboard /></ProtectedRoute>} />
           <Route path="sales" element={<ProtectedRoute permission="bi_sales"><SalesIntelligenceDashboard /></ProtectedRoute>} />
           <Route path="vendedor" element={<ProtectedRoute permission="bi_seller_hub"><SellerHubDashboard /></ProtectedRoute>} />
