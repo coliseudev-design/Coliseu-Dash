@@ -31,9 +31,7 @@ export default function Comercial() {
 
   const tabs = [
     { path: '/comercial', label: 'Visão Consolidada', shortLabel: 'Consolidada', icon: LayoutDashboard },
-    { path: '/comercial/pedidos', label: 'Hub de Pedidos', shortLabel: 'Pedidos', icon: ShoppingCart },
     { path: '/comercial/equipe', label: 'Equipes', shortLabel: 'Equipes', icon: Users },
-    { path: '/comercial/vendedor', label: 'Hub do Vendedor', shortLabel: 'Vendedor', icon: Award },
     { path: '/comercial/rankings', label: 'Rankings', shortLabel: 'Rankings', icon: Trophy }
   ];
 
