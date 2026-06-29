@@ -10,6 +10,14 @@ import {
 import { formatBRL, formatBRLCompact } from '../utils/format'
 
 export default function Financeiro() {
+  const [isMobile, setIsMobile] = useState(false)
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768)
+    handleResize()
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
   const location = useLocation()
   const isConsolidated = location.pathname.includes('/financeiro-consolidado')
 
@@ -160,26 +168,28 @@ export default function Financeiro() {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-divider text-xs font-bold text-text-secondary uppercase">
-                    <th className="py-3 px-4">Descrição / Cliente</th>
-                    <th className="py-3 px-4">Tipo</th>
-                    <th className="py-3 px-4">Espécie</th>
-                    <th className="py-3 px-4">Valor</th>
-                    <th className="py-3 px-4">Data Pagamento</th>
+                    <th className="py-2.5 px-2 md:px-4">Descrição / Cliente</th>
+                    <th className="py-2.5 px-2 md:px-4">Tipo</th>
+                    <th className="py-2.5 px-2 md:px-4">Espécie</th>
+                    <th className="py-2.5 px-2 md:px-4">Valor</th>
+                    <th className="py-2.5 px-2 md:px-4">Data Pagamento</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-divider text-sm text-text-primary">
                   {movimentos.map((mov: any) => (
                     <tr key={mov.id} className="hover:bg-bg-secondary">
-                      <td className="py-3 px-4 font-medium">{mov.descricao || mov.cliente || 'Lançamento'}</td>
-                      <td className="py-3 px-4">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${mov.tipo === 'RECEBER' ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'}`}>
+                      <td className="py-2.5 px-2 md:px-4 max-w-[100px] sm:max-w-none truncate font-medium text-xs sm:text-sm" title={mov.descricao || mov.cliente || 'Lançamento'}>
+                        {mov.descricao || mov.cliente || 'Lançamento'}
+                      </td>
+                      <td className="py-2.5 px-2 md:px-4">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${mov.tipo === 'RECEBER' ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'}`}>
                           {mov.tipo}
                         </span>
                       </td>
-                      <td className="py-3 px-4 font-semibold capitalize text-xs">{mov.especie?.toLowerCase() || 'Outro'}</td>
-                      <td className="py-3 px-4 font-mono font-bold">{formatBRL(mov.valor_pago || mov.valor)}</td>
-                      <td className="py-3 px-4 text-text-secondary text-xs">
-                        {mov.data_pagamento ? new Date(mov.data_pagamento).toLocaleDateString('pt-BR') : ''}
+                      <td className="py-2.5 px-2 md:px-4 font-semibold capitalize text-xs">{mov.especie?.toLowerCase() || 'Outro'}</td>
+                      <td className="py-2.5 px-2 md:px-4 font-mono font-bold text-xs sm:text-sm whitespace-nowrap">{formatBRL(mov.valor_pago || mov.valor)}</td>
+                      <td className="py-2.5 px-2 md:px-4 text-text-secondary text-xs">
+                        {mov.data_pagamento ? (isMobile ? mov.data_pagamento.substring(5, 10).split('-').reverse().join('/') : new Date(mov.data_pagamento).toLocaleDateString('pt-BR')) : ''}
                       </td>
                     </tr>
                   ))}

@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
+import { useAuthStore } from '../../store/authStore';
 import { useBiPeriodQuery } from '../../hooks/useBiPeriodQuery';
 import { BIService } from '../../services/biApi';
 import { BiPeriodFilter } from '../../types/bi.types';
@@ -33,6 +34,8 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 export default function InventoryManagementDashboard() {
   const { filter } = useOutletContext<{ filter: BiPeriodFilter }>();
+  const layoutVersion = useAuthStore((s) => s.user?.versao || s.user?.layout_version || 'Dash 1.0');
+  const isDash1 = layoutVersion === 'Dash 1.0';
 
   const { data, isLoading, isError } = useBiPeriodQuery(
     ['bi', 'abc'],
@@ -167,30 +170,34 @@ export default function InventoryManagementDashboard() {
           <div className="text-[10px] text-text-muted mt-1">Renovação anual do Inventário</div>
         </div>
 
-        <div className="bg-bg-primary border border-danger shadow-card rounded-xl p-4 flex flex-col justify-between relative overflow-hidden">
-          <div className="absolute top-2 right-2"><AlertTriangle size={16} className="text-warning opacity-50" /></div>
-          <div className="flex items-center gap-2 text-[10px] font-bold text-danger uppercase tracking-wider mb-2">
-            <div className="p-1.5 bg-danger/10 rounded-lg"><AlertTriangle size={14} className="text-danger" /></div> RUPTURA (ZERADO)
-          </div>
-          <div className="text-2xl font-extrabold text-danger mt-2">4544</div>
-          <div className="text-[10px] font-bold text-danger mt-1">Produtos sem estoque — AÇÃO URGENTE</div>
-        </div>
+        {!isDash1 && (
+          <>
+            <div className="bg-bg-primary border border-danger shadow-card rounded-xl p-4 flex flex-col justify-between relative overflow-hidden">
+              <div className="absolute top-2 right-2"><AlertTriangle size={16} className="text-warning opacity-50" /></div>
+              <div className="flex items-center gap-2 text-[10px] font-bold text-danger uppercase tracking-wider mb-2">
+                <div className="p-1.5 bg-danger/10 rounded-lg"><AlertTriangle size={14} className="text-danger" /></div> RUPTURA (ZERADO)
+              </div>
+              <div className="text-2xl font-extrabold text-danger mt-2">4544</div>
+              <div className="text-[10px] font-bold text-danger mt-1">Produtos sem estoque — AÇÃO URGENTE</div>
+            </div>
 
-        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between">
-          <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">
-            <div className="p-1.5 bg-warning/10 rounded-lg"><AlertTriangle size={14} className="text-warning" /></div> ESTOQUE CRÍTICO
-          </div>
-          <div className="text-2xl font-extrabold text-text-primary mt-2">0</div>
-          <div className="text-[10px] text-text-muted mt-1">Abaixo do mínimo</div>
-        </div>
+            <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between">
+              <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">
+                <div className="p-1.5 bg-warning/10 rounded-lg"><AlertTriangle size={14} className="text-warning" /></div> ESTOQUE CRÍTICO
+              </div>
+              <div className="text-2xl font-extrabold text-text-primary mt-2">0</div>
+              <div className="text-[10px] text-text-muted mt-1">Abaixo do mínimo</div>
+            </div>
 
-        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between">
-          <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">
-            <div className="p-1.5 bg-pink-500/10 rounded-lg"><Box size={14} className="text-pink-500" /></div> OBSOLETO (90D)
-          </div>
-          <div className="text-2xl font-extrabold text-text-primary mt-2">-</div>
-          <div className="text-[10px] text-text-muted mt-1">Sem vendas há 3 meses</div>
-        </div>
+            <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between">
+              <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">
+                <div className="p-1.5 bg-pink-500/10 rounded-lg"><Box size={14} className="text-pink-500" /></div> OBSOLETO (90D)
+              </div>
+              <div className="text-2xl font-extrabold text-text-primary mt-2">-</div>
+              <div className="text-[10px] text-text-muted mt-1">Sem vendas há 3 meses</div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* EFICIÊNCIA DE CAPITAL (Gráfico de Barras) */}
@@ -256,37 +263,39 @@ export default function InventoryManagementDashboard() {
       </div>
 
       {/* DISTRIBUIÇÃO GRUPO E MARCA */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Grupo */}
-        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5">
-          <h3 className="font-bold text-text-primary text-sm mb-6">Distribuição por Grupo (Top 10)</h3>
-          <div className="space-y-3">
-            {distGrupo.map((item, i) => (
-              <div key={i} className="flex items-center gap-3">
-                <div className="w-32 text-[10px] font-bold text-text-secondary text-right truncate">{item.name}</div>
-                <div className="flex-1 bg-bg-secondary h-4 rounded-sm overflow-hidden">
-                  <div className="bg-blue-500 h-full rounded-sm" style={{ width: `${item.value}%` }}></div>
+      {!isDash1 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Grupo */}
+          <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5">
+            <h3 className="font-bold text-text-primary text-sm mb-6">Distribuição por Grupo (Top 10)</h3>
+            <div className="space-y-3">
+              {distGrupo.map((item, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <div className="w-32 text-[10px] font-bold text-text-secondary text-right truncate">{item.name}</div>
+                  <div className="flex-1 bg-bg-secondary h-4 rounded-sm overflow-hidden">
+                    <div className="bg-blue-500 h-full rounded-sm" style={{ width: `${item.value}%` }}></div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
 
-        {/* Marca */}
-        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 relative">
-          <h3 className="font-bold text-text-primary text-sm mb-6">Distribuição por Marca (Top 10)</h3>
-          <div className="space-y-3">
-            {distMarca.map((item, i) => (
-              <div key={i} className="flex items-center gap-3">
-                <div className="w-32 text-[10px] font-bold text-text-secondary text-right truncate">{item.name}</div>
-                <div className="flex-1 bg-bg-secondary h-4 rounded-sm overflow-hidden group relative">
-                  <div className="bg-success h-full rounded-sm hover:brightness-110 cursor-pointer" style={{ width: `${item.value}%` }}></div>
+          {/* Marca */}
+          <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 relative">
+            <h3 className="font-bold text-text-primary text-sm mb-6">Distribuição por Marca (Top 10)</h3>
+            <div className="space-y-3">
+              {distMarca.map((item, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <div className="w-32 text-[10px] font-bold text-text-secondary text-right truncate">{item.name}</div>
+                  <div className="flex-1 bg-bg-secondary h-4 rounded-sm overflow-hidden group relative">
+                    <div className="bg-success h-full rounded-sm hover:brightness-110 cursor-pointer" style={{ width: `${item.value}%` }}></div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* DETAILED TABLE SECTION */}
       <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex flex-col">
@@ -363,8 +372,8 @@ export default function InventoryManagementDashboard() {
                 <th className="pb-3 px-2">EMB.</th>
                 <th className="pb-3 px-2">MARCA</th>
                 <th className="pb-3 px-2">GRUPO</th>
-                <th className="pb-3 px-2 text-center">ABC</th>
-                <th className="pb-3 px-2">STATUS</th>
+                {!isDash1 && <th className="pb-3 px-2 text-center">ABC</th>}
+                {!isDash1 && <th className="pb-3 px-2">STATUS</th>}
                 <th className="pb-3 px-2 text-right">ESTOQUE</th>
                 <th className="pb-3 px-2 text-right">CUSTO</th>
                 <th className="pb-3 px-2 text-right">PREÇO</th>
@@ -379,16 +388,18 @@ export default function InventoryManagementDashboard() {
                   <td className="py-3 px-2 text-text-secondary">{row.emb}</td>
                   <td className="py-3 px-2 text-text-secondary">{row.marca}</td>
                   <td className="py-3 px-2 text-text-secondary">{row.grupo}</td>
-                  <td className="py-3 px-2 text-center font-black">{row.abc}</td>
-                  <td className="py-3 px-2">
-                    <span className={clsx(
-                      "text-[10px] font-bold px-2 py-0.5 rounded-full",
-                      row.status === 'Crítico' ? "bg-danger/10 text-danger" : 
-                      row.status === 'Atenção' ? "bg-warning/10 text-warning" : 
-                      row.status === 'Ideal' ? "bg-success/10 text-success" : 
-                      "bg-cyan-500/10 text-cyan-500"
-                    )}>{row.status}</span>
-                  </td>
+                  {!isDash1 && <td className="py-3 px-2 text-center font-black">{row.abc}</td>}
+                  {!isDash1 && (
+                    <td className="py-3 px-2">
+                      <span className={clsx(
+                        "text-[10px] font-bold px-2 py-0.5 rounded-full",
+                        row.status === 'Crítico' ? "bg-danger/10 text-danger" : 
+                        row.status === 'Atenção' ? "bg-warning/10 text-warning" : 
+                        row.status === 'Ideal' ? "bg-success/10 text-success" : 
+                        "bg-cyan-500/10 text-cyan-500"
+                      )}>{row.status}</span>
+                    </td>
+                  )}
                   <td className="py-3 px-2 text-right font-mono font-bold flex justify-end items-center gap-1">
                     {row.alert && <AlertTriangle size={12} className="text-danger" />}
                     <span className={row.alert ? "text-danger" : "text-text-primary"}>{row.estoque.toFixed(2)}</span>
