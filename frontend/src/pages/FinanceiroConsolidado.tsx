@@ -34,7 +34,7 @@ export default function FinanceiroConsolidado() {
   ];
 
   return (
-    <div className={clsx("flex flex-col h-full space-y-4 md:space-y-6 animate-in fade-in duration-300", isMobile ? "pb-28" : "")} aria-label="Módulo Financeiro">
+    <div className="flex flex-col h-full space-y-4 md:space-y-6 animate-in fade-in duration-300" aria-label="Módulo Financeiro">
       
       {/* Header do Módulo Financeiro */}
       <div className="bg-bg-primary border border-divider rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row items-start md:items-center justify-between shadow-card gap-4">
@@ -143,7 +143,7 @@ export default function FinanceiroConsolidado() {
                   onClick={() => navigate(tab.path)}
                   className={clsx(
                     "flex flex-col items-center justify-center py-1 flex-1 cursor-pointer transition-all",
-                    isActive ? "text-brand-500" : "text-slate-400 dark:text-slate-500"
+                    isActive ? "text-[#00a896]" : "text-slate-400 dark:text-slate-500"
                   )}
                 >
                   <tab.icon size={18} />
@@ -167,7 +167,7 @@ export default function FinanceiroConsolidado() {
       )}
 
       {/* Conteúdo Dinâmico */}
-      <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+      <div className={clsx("flex-1 min-h-0 overflow-y-auto pr-1", isMobile ? "pb-28" : "")}>
         <Outlet context={{ filter }} />
       </div>
     </div>
