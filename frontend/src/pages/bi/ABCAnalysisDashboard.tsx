@@ -201,66 +201,70 @@ export default function InventoryManagementDashboard() {
       </div>
 
       {/* EFICIÊNCIA DE CAPITAL (Gráfico de Barras) */}
-      <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5">
-        <div className="mb-6">
-          <h3 className="font-bold text-text-primary text-sm flex items-center gap-2">
-            <Layers size={16} className="text-blue-400"/> Eficiência de Capital (Top 15 Marcas com Maior Estoque)
-          </h3>
-          <p className="text-[10px] text-text-muted mt-1 font-medium">
-            Altura da Barra: <span className="text-text-secondary">Valor em Estoque</span> | <span className="text-success font-bold">Cor Verde:</span> Giro Rápido | <span className="text-danger font-bold">Cor Vermelha:</span> Giro Lento (Cash Trap)
-          </p>
-        </div>
-        
-        <div className="h-[250px] w-full bg-bg-secondary/30 rounded-lg p-4 border border-divider">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={barChartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" opacity={0.3} />
-              <YAxis tickFormatter={(v) => `R$ ${v/1000}K`} tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} tickLine={false} axisLine={false} />
-              <Tooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
-              <Bar dataKey="estoque" name="Estoque" fill="#EF4444" radius={[4, 4, 0, 0]} maxBarSize={120}>
-                {barChartData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill="#EF4444" />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+      {!isDash1 && (
+        <>
+          <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5">
+            <div className="mb-6">
+              <h3 className="font-bold text-text-primary text-sm flex items-center gap-2">
+                <Layers size={16} className="text-blue-400"/> Eficiência de Capital (Top 15 Marcas com Maior Estoque)
+              </h3>
+              <p className="text-[10px] text-text-muted mt-1 font-medium">
+                Altura da Barra: <span className="text-text-secondary">Valor em Estoque</span> | <span className="text-success font-bold">Cor Verde:</span> Giro Rápido | <span className="text-danger font-bold">Cor Vermelha:</span> Giro Lento (Cash Trap)
+              </p>
+            </div>
+            
+            <div className="h-[250px] w-full bg-bg-secondary/30 rounded-lg p-4 border border-divider">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={barChartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" opacity={0.3} />
+                  <YAxis tickFormatter={(v) => `R$ ${v/1000}K`} tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} tickLine={false} axisLine={false} />
+                  <Tooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
+                  <Bar dataKey="estoque" name="Estoque" fill="#EF4444" radius={[4, 4, 0, 0]} maxBarSize={120}>
+                    {barChartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill="#EF4444" />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
 
-      {/* LISTAGEM DE MARCAS - ESTOQUE POR MARCA */}
-      <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5">
-        <h3 className="font-bold text-text-primary text-sm flex items-center gap-2">
-          <Layers size={16} className="text-blue-400"/> Listagem de Marcas — Estoque por Marca
-        </h3>
-        <p className="text-[10px] text-text-muted mt-1 mb-4 font-medium">Quantidade de itens e valor de estoque de cada marca</p>
-        
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm whitespace-nowrap">
-            <thead>
-              <tr className="border-b border-divider text-[10px] text-text-muted uppercase font-bold tracking-wider">
-                <th className="pb-3 px-2">MARCA</th>
-                <th className="pb-3 px-2">QTD ITENS</th>
-                <th className="pb-3 px-2 text-right">VALOR DE ESTOQUE (R$)</th>
-                <th className="pb-3 px-2 text-right">% DO TOTAL</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-divider/30 text-xs">
-              <tr className="hover:bg-bg-secondary/50 transition-colors">
-                <td className="py-3 px-2 font-bold text-text-primary">N/D</td>
-                <td className="py-3 px-2 text-text-secondary">2493</td>
-                <td className="py-3 px-2 text-right font-mono font-bold text-success">{formatBRL(670331015.95)}</td>
-                <td className="py-3 px-2 text-right font-bold text-blue-500">100.0%</td>
-              </tr>
-              <tr className="hover:bg-bg-secondary/50 transition-colors bg-blue-500/5">
-                <td className="py-3 px-2 font-bold text-blue-500">TOTAL (1 marcas)</td>
-                <td className="py-3 px-2 font-bold text-text-primary">2493</td>
-                <td className="py-3 px-2 text-right font-mono font-bold text-success">{formatBRL(670331015.95)}</td>
-                <td className="py-3 px-2 text-right font-bold text-blue-500">100%</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
+          {/* LISTAGEM DE MARCAS - ESTOQUE POR MARCA */}
+          <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5">
+            <h3 className="font-bold text-text-primary text-sm flex items-center gap-2">
+              <Layers size={16} className="text-blue-400"/> Listagem de Marcas — Estoque por Marca
+            </h3>
+            <p className="text-[10px] text-text-muted mt-1 mb-4 font-medium">Quantidade de itens e valor de estoque de cada marca</p>
+            
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm whitespace-nowrap">
+                <thead>
+                  <tr className="border-b border-divider text-[10px] text-text-muted uppercase font-bold tracking-wider">
+                    <th className="pb-3 px-2">MARCA</th>
+                    <th className="pb-3 px-2">QTD ITENS</th>
+                    <th className="pb-3 px-2 text-right">VALOR DE ESTOQUE (R$)</th>
+                    <th className="pb-3 px-2 text-right">% DO TOTAL</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-divider/30 text-xs">
+                  <tr className="hover:bg-bg-secondary/50 transition-colors">
+                    <td className="py-3 px-2 font-bold text-text-primary">N/D</td>
+                    <td className="py-3 px-2 text-text-secondary">2493</td>
+                    <td className="py-3 px-2 text-right font-mono font-bold text-success">{formatBRL(670331015.95)}</td>
+                    <td className="py-3 px-2 text-right font-bold text-blue-500">100.0%</td>
+                  </tr>
+                  <tr className="hover:bg-bg-secondary/50 transition-colors bg-blue-500/5">
+                    <td className="py-3 px-2 font-bold text-blue-500">TOTAL (1 marcas)</td>
+                    <td className="py-3 px-2 font-bold text-text-primary">2493</td>
+                    <td className="py-3 px-2 text-right font-mono font-bold text-success">{formatBRL(670331015.95)}</td>
+                    <td className="py-3 px-2 text-right font-bold text-blue-500">100%</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* DISTRIBUIÇÃO GRUPO E MARCA */}
       {!isDash1 && (
