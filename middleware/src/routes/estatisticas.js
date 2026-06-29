@@ -192,9 +192,11 @@ router.get('/kpis', async (req, res, next) => {
         const df = buildDeptoFilter(deptoId, 4, 'v');
         const dfFin = buildDeptoFilter(deptoId, 4, 'f');
         const dfVi = buildDeptoFilter(deptoId, 4, 'vi');
+        const dfV = buildDeptoFilter(deptoId, 4, 'v');  // para uso em CTEs com alias 'v'
 
         const vf = buildVendedorFilter(vendedorId, 4 + df.params.length, 'v', req.user?.allowedSellers);
         const vfVi = buildVendedorFilter(vendedorId, 4 + dfVi.params.length, 'v', req.user?.allowedSellers);
+        const vfV = buildVendedorFilter(vendedorId, 4 + dfV.params.length, 'v', req.user?.allowedSellers);  // para CTEs com alias 'v'
 
         const salesFilter = cfopUtil.getSalesFilterClause('v');
 
@@ -254,8 +256,8 @@ router.get('/kpis', async (req, res, next) => {
             WITH vf AS MATERIALIZED (
                 SELECT v.id_firebird, v.tenant_id
                 FROM dash_vendas v
-                WHERE v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3
-                  ${salesFilter} ${dfVi.clause} ${vfVi.clause}
+                WHERE v.tenant_id = $1 AND COALESCE(v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_vencimento, v.data_venda) <= $3
+                  ${salesFilter} ${dfV.clause} ${vfV.clause}
             )
             SELECT COALESCE(vi.categoria, p.categoria, 'S/ GRUPO') as categoria, SUM(vi.valor_total) AS total
             FROM dash_vendas_itens vi
@@ -264,7 +266,7 @@ router.get('/kpis', async (req, res, next) => {
             WHERE vi.tenant_id = $1
               AND COALESCE(vi.categoria, p.categoria) IS NOT NULL AND COALESCE(vi.categoria, p.categoria) != ''
             GROUP BY 1 ORDER BY total DESC LIMIT 5
-        `, [tenantId, start, end, ...dfVi.params, ...vfVi.params]);
+        `, [tenantId, start, end, ...dfV.params, ...vfV.params]);
 
         const { rows: rCli } = await db.query(`SELECT COUNT(DISTINCT v.cliente_id_firebird) AS ativos FROM dash_vendas v WHERE v.tenant_id = $1 AND COALESCE(v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_vencimento, v.data_venda) <= $3 ${salesFilter} ${df.clause} ${vf.clause}`, [tenantId, start, end, ...df.params, ...vf.params]);
         const { rows: rTotCli } = await db.query(`SELECT COUNT(*) AS total FROM dash_clientes WHERE tenant_id = $1 AND ativo = true`, [tenantId]);

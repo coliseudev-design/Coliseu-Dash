@@ -5,7 +5,7 @@ import { useLocation } from 'react-router-dom'
 import KPICard from '../components/KPICard'
 import PeriodFilter from '../components/PeriodFilter'
 import {
-  Wallet, Receipt, Scale, Banknote, Filter
+  Wallet, Receipt, Scale, Banknote, Filter, ArrowDownCircle, ArrowUpCircle
 } from 'lucide-react'
 import { formatBRL, formatBRLCompact } from '../utils/format'
 
