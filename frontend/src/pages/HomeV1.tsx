@@ -647,36 +647,80 @@ export default function HomeV1() {
         </div>
       </div>
 
-      {/* ── ROW 5: TOP 10 CIDADES ──────────────────────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Top 10 Cidades */}
+      {/* ── ROW 5: CIDADES CHART + RANKING LIST ─────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Cities Horizontal Bar Chart */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm">
+          <div className="flex justify-between items-center mb-5">
+            <h3 className="font-extrabold text-slate-800 dark:text-white text-xs uppercase tracking-widest flex items-center gap-1.5">
+              <Target size={14} className="text-emerald-600" /> Desempenho das Cidades (Gráfico)
+            </h3>
+          </div>
+          <div className="h-[280px]">
+            {cidadesQuery.isLoading ? (
+              <div className="h-full flex items-center justify-center text-xs text-slate-400">Carregando gráfico...</div>
+            ) : top10Cidades.length === 0 ? (
+              <div className="h-full flex items-center justify-center text-xs text-slate-400">Sem dados de cidades</div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={top10Cidades} layout="vertical" margin={{ left: 10, right: 30, top: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--color-border)" opacity={0.4} />
+                  <XAxis type="number" hide />
+                  <YAxis
+                    dataKey="nome"
+                    type="category"
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={(v) => String(v).length > 12 ? String(v).substring(0, 12) + '...' : v}
+                    tick={{ fontSize: 9, fill: 'var(--color-text-primary)', fontWeight: 700 }}
+                    width={90}
+                  />
+                  <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.3 }} />
+                  <Bar dataKey="total" radius={[0, 4, 4, 0]} maxBarSize={16}>
+                    {top10Cidades.map((_: any, index: number) => (
+                      <Cell key={`cell-${index}`} fill={BAR_COLORS[index % BAR_COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+
+        {/* Top 10 Cidades Ranking */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm flex flex-col">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="font-extrabold text-emerald-600 text-xs uppercase tracking-widest flex items-center gap-1.5">
-              <Target size={14} /> Top 10 Cidades
+            <h3 className="font-extrabold text-slate-800 dark:text-white text-xs uppercase tracking-widest flex items-center gap-1.5">
+              <Target size={14} className="text-emerald-600" /> Top Cidades (Ranking)
             </h3>
-            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">
-              Valor
-            </span>
           </div>
-          <div className="space-y-1.5 overflow-y-auto max-h-[300px] pr-1">
+          <div className="flex-1 overflow-y-auto space-y-2 pr-1 max-h-[280px]">
             {cidadesQuery.isLoading ? (
-              <div className="text-center py-8 text-xs text-slate-400">Carregando cidades...</div>
+              <div className="h-full flex items-center justify-center text-xs text-slate-400">Carregando ranking...</div>
             ) : top10Cidades.map((item: any, i: number) => {
               const pct = totalPeriodo > 0 ? (item.total / totalPeriodo) * 100 : 0
               return (
-                <div key={i} className="flex items-center justify-between p-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/30 rounded-xl transition-colors border border-transparent hover:border-slate-100/50">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="text-xs font-bold text-slate-400 mono w-5">#{i + 1}</span>
-                    <span className="text-xs font-extrabold text-slate-700 dark:text-slate-200 uppercase truncate">
-                      {item.nome}
-                    </span>
+                <div key={i} className="flex items-center gap-3.5 p-2 hover:bg-slate-50 dark:hover:bg-slate-800/30 rounded-xl transition-all duration-200 border border-transparent hover:border-slate-100">
+                  {/* Position */}
+                  <div className="w-8 shrink-0 flex items-center justify-center">
+                    <span className="text-xs font-black text-slate-400 mono">#{i + 1}</span>
                   </div>
+
+                  {/* City Name */}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-extrabold text-slate-700 dark:text-slate-200 uppercase truncate">
+                      {item.nome}
+                    </div>
+                  </div>
+
+                  {/* Value */}
                   <div className="text-right shrink-0 pl-2">
                     <div className="text-xs font-black text-slate-800 dark:text-white mono">
                       {formatBRL(item.total)}
                     </div>
-                    <span className="text-[9px] text-[#00a896] font-bold block">{pct.toFixed(1)}% share</span>
+                    <div className="text-[9px] text-[#00a896] font-bold mt-0.5">
+                      {pct.toFixed(1)}% share
+                    </div>
                   </div>
                 </div>
               )
