@@ -128,8 +128,11 @@ export default function FinancialIntelligenceDashboard() {
             <Wallet size={16} className="text-brand-500 stroke-[2.5]" /> Saldo Real
           </div>
           <div className="relative z-10">
-            <div className="text-2xl font-black text-brand-600 dark:text-brand-400 mb-1 tracking-tight">
-              {formatBRL(data?.saldo_atual || 0)}
+            <div
+              className="text-2xl font-black text-brand-600 dark:text-brand-400 mb-1 tracking-tight truncate"
+              title={formatBRL(data?.saldo_atual || 0)}
+            >
+              {formatBRLCompact(data?.saldo_atual || 0)}
             </div>
             <div className="text-[10px] text-success font-extrabold flex items-center gap-1">
               <ArrowUpRight size={13} className="stroke-[2.5]" /> Recebido: {formatBRLCompact(data?.recebimentos_realizados || 0)}
@@ -143,7 +146,10 @@ export default function FinancialIntelligenceDashboard() {
             <ArrowUpRight size={14} className="text-blue-500"/> Total Recebido
           </div>
           <div>
-            <div className="text-2xl font-extrabold text-text-primary mb-1 tracking-tight">{formatBRL(data?.recebimentos_realizados || 0)}</div>
+            <div
+              className="text-2xl font-extrabold text-text-primary mb-1 tracking-tight truncate"
+              title={formatBRL(data?.recebimentos_realizados || 0)}
+            >{formatBRLCompact(data?.recebimentos_realizados || 0)}</div>
             <div className="text-[10px] text-text-muted font-medium">No período selecionado</div>
           </div>
         </div>
@@ -154,7 +160,10 @@ export default function FinancialIntelligenceDashboard() {
             <ArrowDownRight size={14} className="text-warning"/> Total Pago
           </div>
           <div>
-            <div className="text-2xl font-extrabold text-text-primary mb-1 tracking-tight">{formatBRL(data?.pagamentos_realizados || 0)}</div>
+            <div
+              className="text-2xl font-extrabold text-text-primary mb-1 tracking-tight truncate"
+              title={formatBRL(data?.pagamentos_realizados || 0)}
+            >{formatBRLCompact(data?.pagamentos_realizados || 0)}</div>
             <div className="text-[10px] text-text-muted font-medium">No período selecionado</div>
           </div>
         </div>
@@ -165,7 +174,10 @@ export default function FinancialIntelligenceDashboard() {
             <DollarSign size={14} className="text-brand-500"/> A Receber
           </div>
           <div>
-            <div className="text-2xl font-extrabold text-text-primary mb-1 tracking-tight">{formatBRL(data?.contas_receber || 0)}</div>
+            <div
+              className="text-2xl font-extrabold text-text-primary mb-1 tracking-tight truncate"
+              title={formatBRL(data?.contas_receber || 0)}
+            >{formatBRLCompact(data?.contas_receber || 0)}</div>
             <div className="text-[10px] text-danger font-bold flex items-center gap-1">
               <ArrowDownRight size={12}/> Títulos em aberto
             </div>
@@ -178,7 +190,10 @@ export default function FinancialIntelligenceDashboard() {
             <CreditCard size={14} className="text-danger"/> A Pagar
           </div>
           <div>
-            <div className="text-2xl font-extrabold text-text-primary mb-1 tracking-tight">{formatBRL(data?.contas_pagar || 0)}</div>
+            <div
+              className="text-2xl font-extrabold text-text-primary mb-1 tracking-tight truncate"
+              title={formatBRL(data?.contas_pagar || 0)}
+            >{formatBRLCompact(data?.contas_pagar || 0)}</div>
             <div className="text-[10px] text-danger font-bold flex items-center gap-1">
               <ArrowDownRight size={12}/> Títulos em aberto
             </div>

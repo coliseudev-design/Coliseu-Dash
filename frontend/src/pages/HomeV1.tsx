@@ -12,6 +12,7 @@ import {
 } from 'recharts'
 import { formatBRL, formatBRLCompact, formatNum } from '../utils/format'
 import { usePeriodStore, PERIOD_OPTIONS, type PeriodKey } from '../store/periodStore'
+import PeriodFilter from '../components/PeriodFilter'
 import clsx from 'clsx'
 
 // ─── Sparkline Component ──────────────────────────────────────────────────────
@@ -142,45 +143,6 @@ export default function HomeV1() {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  // ─── Custom Date Selector States ────────────────────────────────────────────
-  const [startMonth, setStartMonth] = useState(() => {
-    return globalStartDate ? parseInt(globalStartDate.split('-')[1]) : new Date().getMonth() + 1
-  })
-  const [startYear, setStartYear] = useState(() => {
-    return globalStartDate ? parseInt(globalStartDate.split('-')[0]) : new Date().getFullYear()
-  })
-  const [endMonth, setEndMonth] = useState(() => {
-    return globalEndDate ? parseInt(globalEndDate.split('-')[1]) : new Date().getMonth() + 1
-  })
-  const [endYear, setEndYear] = useState(() => {
-    return globalEndDate ? parseInt(globalEndDate.split('-')[0]) : new Date().getFullYear()
-  })
-
-  // Sync state if store updates from elsewhere
-  useEffect(() => {
-    if (globalStartDate) {
-      const parts = globalStartDate.split('-')
-      setStartYear(parseInt(parts[0]))
-      setStartMonth(parseInt(parts[1]))
-    }
-    if (globalEndDate) {
-      const parts = globalEndDate.split('-')
-      setEndYear(parseInt(parts[0]))
-      setEndMonth(parseInt(parts[1]))
-    }
-  }, [globalStartDate, globalEndDate])
-
-  const handleCustomDateChange = (sM: number, sY: number, eM: number, eY: number) => {
-    setStartMonth(sM)
-    setStartYear(sY)
-    setEndMonth(eM)
-    setEndYear(eY)
-    const startStr = `${sY}-${String(sM).padStart(2, '0')}-01`
-    const lastDay = new Date(eY, eM, 0).getDate()
-    const endStr = `${eY}-${String(eM).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
-    setCustomRange(startStr, endStr)
-  }
-
   // ─── Query Filters ──────────────────────────────────────────────────────────
   const queryParams = useMemo(() => {
     const p: Record<string, any> = {}
@@ -207,6 +169,7 @@ export default function HomeV1() {
 
   // ─── Chart Toggle State ──────────────────────────────────────────────────────
   const [chartMode, setChartMode] = useState<'diario' | 'mensal'>('diario')
+  const [selectedYearChart, setSelectedYearChart] = useState<string>('all')
 
   // ─── Calculations ───────────────────────────────────────────────────────────
   const totalPeriodo = ov.data?.mes?.total || 0
@@ -256,16 +219,32 @@ export default function HomeV1() {
   }, [clientesQuery.data])
 
   // ─── Chart Data ─────────────────────────────────────────────────────────────
-  const dailyChartData = useMemo(() => {
+  const rawDailyData = useMemo(() => {
     return fatMes.data?.data || []
   }, [fatMes.data])
+
+  // Available years from chart data
+  const availableChartYears = useMemo(() => {
+    const years = new Set<string>()
+    rawDailyData.forEach((d: any) => {
+      if (d.data && d.data.length >= 4) years.add(d.data.substring(0, 4))
+    })
+    return Array.from(years).sort()
+  }, [rawDailyData])
+
+  const dailyChartData = useMemo(() => {
+    if (selectedYearChart === 'all') return rawDailyData
+    return rawDailyData.filter((d: any) => d.data && d.data.startsWith(selectedYearChart))
+  }, [rawDailyData, selectedYearChart])
 
   const sparklineData = useMemo(() => {
     return dailyChartData.map((d: any) => d.total || 0).slice(-20)
   }, [dailyChartData])
 
   const monthlyChartData = useMemo(() => {
-    const raw = fatMes.data?.data || []
+    const raw = selectedYearChart === 'all'
+      ? rawDailyData
+      : rawDailyData.filter((d: any) => d.data && d.data.startsWith(selectedYearChart))
     const groups: Record<string, number> = {}
     raw.forEach((d: any) => {
       if (!d.data) return
@@ -280,7 +259,7 @@ export default function HomeV1() {
         const label = `${monthNames[parseInt(m) - 1]}/${y.substring(2)}`
         return { label, total }
       })
-  }, [fatMes.data])
+  }, [rawDailyData, selectedYearChart])
 
   return (
     <div className={clsx("space-y-6 pb-12", isMobile ? "pb-28" : "pb-12")} aria-label="Visão Estratégica Dashboard">
@@ -296,79 +275,7 @@ export default function HomeV1() {
 
         {/* Custom Period Button Group */}
         <div className="hidden md:flex flex-col items-end gap-2.5">
-          <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1.5 shadow-sm border border-slate-200/50">
-            {PERIOD_OPTIONS.map((opt) => (
-              <button
-                key={opt.key}
-                onClick={() => {
-                  if (opt.key === 'custom') {
-                    if (!globalStartDate || !globalEndDate) {
-                      const today = new Date().toISOString().slice(0, 10)
-                      const monthAgo = new Date()
-                      monthAgo.setDate(monthAgo.getDate() - 30)
-                      setCustomRange(monthAgo.toISOString().slice(0, 10), today)
-                    }
-                    setPeriod('custom')
-                  } else {
-                    setPeriod(opt.key)
-                  }
-                }}
-                className={clsx(
-                  'px-3 py-1.5 text-[10px] md:text-xs font-bold rounded-lg uppercase tracking-wide transition-all duration-200 cursor-pointer',
-                  period === opt.key
-                    ? 'bg-[#00a896] text-white shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50 active:scale-[0.98]'
-                )}
-              >
-                {opt.label === 'Mês anterior' ? 'Mês Anterior' : opt.label === 'Mês atual' ? 'Mês Atual' : opt.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Month/Year Dropdown Custom Range Selector (Triggered when Personalizado is Active) */}
-          {period === 'custom' && (
-            <div className="flex items-center gap-2.5 bg-slate-50 border border-slate-200/70 p-2 rounded-xl text-xs animate-in slide-in-from-top-1 duration-200">
-              <span className="font-bold text-slate-500 uppercase text-[10px]">De:</span>
-              <select
-                value={startMonth}
-                onChange={(e) => handleCustomDateChange(parseInt(e.target.value), startYear, endMonth, endYear)}
-                className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs outline-none focus:border-[#00a896] transition-colors cursor-pointer font-bold text-slate-800"
-              >
-                {['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'].map((m, idx) => (
-                  <option key={m} value={idx + 1}>{m}</option>
-                ))}
-              </select>
-              <select
-                value={startYear}
-                onChange={(e) => handleCustomDateChange(startMonth, parseInt(e.target.value), endMonth, endYear)}
-                className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs outline-none focus:border-[#00a896] transition-colors cursor-pointer font-bold text-slate-800"
-              >
-                {[2020, 2021, 2022, 2023, 2024, 2025, 2026].map((y) => (
-                  <option key={y} value={y}>{y}</option>
-                ))}
-              </select>
-
-              <span className="font-bold text-slate-500 uppercase text-[10px]">Até:</span>
-              <select
-                value={endMonth}
-                onChange={(e) => handleCustomDateChange(startMonth, startYear, parseInt(e.target.value), endYear)}
-                className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs outline-none focus:border-[#00a896] transition-colors cursor-pointer font-bold text-slate-800"
-              >
-                {['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'].map((m, idx) => (
-                  <option key={m} value={idx + 1}>{m}</option>
-                ))}
-              </select>
-              <select
-                value={endYear}
-                onChange={(e) => handleCustomDateChange(startMonth, startYear, endMonth, parseInt(e.target.value))}
-                className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs outline-none focus:border-[#00a896] transition-colors cursor-pointer font-bold text-slate-800"
-              >
-                {[2020, 2021, 2022, 2023, 2024, 2025, 2026].map((y) => (
-                  <option key={y} value={y}>{y}</option>
-                ))}
-              </select>
-            </div>
-          )}
+          <PeriodFilter excludePeriods={['yesterday']} />
         </div>
       </div>
 
@@ -740,78 +647,8 @@ export default function HomeV1() {
         </div>
       </div>
 
-      {/* ── ROW 5: 2X2 GRID OF TOP 10 LISTS ──────────────────────────────── */}
+      {/* ── ROW 5: TOP 10 CIDADES ──────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Top 10 Marcas */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm flex flex-col">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="font-extrabold text-[#00a896] text-xs uppercase tracking-widest flex items-center gap-1.5">
-              <Tag size={14} /> Top 10 Marcas
-            </h3>
-            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">
-              Valor
-            </span>
-          </div>
-          <div className="space-y-1.5 overflow-y-auto max-h-[300px] pr-1">
-            {marcasQuery.isLoading ? (
-              <div className="text-center py-8 text-xs text-slate-400">Carregando marcas...</div>
-            ) : top10Marcas.map((item: any, i: number) => {
-              const pct = totalPeriodo > 0 ? (item.total / totalPeriodo) * 100 : 0
-              return (
-                <div key={i} className="flex items-center justify-between p-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/30 rounded-xl transition-colors border border-transparent hover:border-slate-100/50">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="text-xs font-bold text-slate-400 mono w-5">#{i + 1}</span>
-                    <span className="text-xs font-extrabold text-slate-700 dark:text-slate-200 uppercase truncate">
-                      {item.nome || item.marca}
-                    </span>
-                  </div>
-                  <div className="text-right shrink-0 pl-2">
-                    <div className="text-xs font-black text-slate-800 dark:text-white mono">
-                      {formatBRL(item.total)}
-                    </div>
-                    <span className="text-[9px] text-[#00a896] font-bold block">{pct.toFixed(1)}% share</span>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* Top 10 Grupos */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm flex flex-col">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="font-extrabold text-sky-500 text-xs uppercase tracking-widest flex items-center gap-1.5">
-              <Box size={14} /> Top 10 Grupos
-            </h3>
-            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">
-              Valor
-            </span>
-          </div>
-          <div className="space-y-1.5 overflow-y-auto max-h-[300px] pr-1">
-            {categoriasQuery.isLoading ? (
-              <div className="text-center py-8 text-xs text-slate-400">Carregando grupos...</div>
-            ) : top10Grupos.map((item: any, i: number) => {
-              const pct = totalPeriodo > 0 ? (item.total / totalPeriodo) * 100 : 0
-              return (
-                <div key={i} className="flex items-center justify-between p-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/30 rounded-xl transition-colors border border-transparent hover:border-slate-100/50">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="text-xs font-bold text-slate-400 mono w-5">#{i + 1}</span>
-                    <span className="text-xs font-extrabold text-slate-700 dark:text-slate-200 uppercase truncate">
-                      {item.nome || item.categoria}
-                    </span>
-                  </div>
-                  <div className="text-right shrink-0 pl-2">
-                    <div className="text-xs font-black text-slate-800 dark:text-white mono">
-                      {formatBRL(item.total)}
-                    </div>
-                    <span className="text-[9px] text-[#00a896] font-bold block">{pct.toFixed(1)}% share</span>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-
         {/* Top 10 Cidades */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm flex flex-col">
           <div className="flex justify-between items-center mb-4">
@@ -826,41 +663,6 @@ export default function HomeV1() {
             {cidadesQuery.isLoading ? (
               <div className="text-center py-8 text-xs text-slate-400">Carregando cidades...</div>
             ) : top10Cidades.map((item: any, i: number) => {
-              const pct = totalPeriodo > 0 ? (item.total / totalPeriodo) * 100 : 0
-              return (
-                <div key={i} className="flex items-center justify-between p-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/30 rounded-xl transition-colors border border-transparent hover:border-slate-100/50">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="text-xs font-bold text-slate-400 mono w-5">#{i + 1}</span>
-                    <span className="text-xs font-extrabold text-slate-700 dark:text-slate-200 uppercase truncate">
-                      {item.nome}
-                    </span>
-                  </div>
-                  <div className="text-right shrink-0 pl-2">
-                    <div className="text-xs font-black text-slate-800 dark:text-white mono">
-                      {formatBRL(item.total)}
-                    </div>
-                    <span className="text-[9px] text-[#00a896] font-bold block">{pct.toFixed(1)}% share</span>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* Top 10 Clientes */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm flex flex-col">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="font-extrabold text-[#00a896] text-xs uppercase tracking-widest flex items-center gap-1.5">
-              <Users size={14} /> Top 10 Clientes
-            </h3>
-            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">
-              Valor
-            </span>
-          </div>
-          <div className="space-y-1.5 overflow-y-auto max-h-[300px] pr-1">
-            {clientesQuery.isLoading ? (
-              <div className="text-center py-8 text-xs text-slate-400">Carregando clientes...</div>
-            ) : top10Clientes.map((item: any, i: number) => {
               const pct = totalPeriodo > 0 ? (item.total / totalPeriodo) * 100 : 0
               return (
                 <div key={i} className="flex items-center justify-between p-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/30 rounded-xl transition-colors border border-transparent hover:border-slate-100/50">
@@ -898,30 +700,63 @@ export default function HomeV1() {
             </span>
           </div>
 
-          {/* Toggle buttons for chart mode */}
-          <div className="bg-slate-100 p-0.5 rounded-lg flex items-center border border-slate-200/50 shrink-0 self-start sm:self-auto">
-            <button
-              onClick={() => setChartMode('diario')}
-              className={clsx(
-                'px-3.5 py-1 text-[10px] font-bold rounded-md uppercase tracking-wider transition-all duration-200 cursor-pointer',
-                chartMode === 'diario'
-                  ? 'bg-white text-slate-800 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
-              )}
-            >
-              Diário
-            </button>
-            <button
-              onClick={() => setChartMode('mensal')}
-              className={clsx(
-                'px-3.5 py-1 text-[10px] font-bold rounded-md uppercase tracking-wider transition-all duration-200 cursor-pointer',
-                chartMode === 'mensal'
-                  ? 'bg-white text-slate-800 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
-              )}
-            >
-              Mensal
-            </button>
+          {/* Filtro de Ano */}
+          <div className="flex items-center gap-2 flex-wrap shrink-0 self-start sm:self-auto">
+            {availableChartYears.length > 1 && (
+              <div className="bg-slate-100 p-0.5 rounded-lg flex items-center gap-0.5 border border-slate-200/50">
+                <button
+                  onClick={() => setSelectedYearChart('all')}
+                  className={clsx(
+                    'px-3 py-1 text-[10px] font-bold rounded-md uppercase tracking-wider transition-all duration-200 cursor-pointer',
+                    selectedYearChart === 'all'
+                      ? 'bg-white text-slate-800 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-700'
+                  )}
+                >
+                  Todos
+                </button>
+                {availableChartYears.map(year => (
+                  <button
+                    key={year}
+                    onClick={() => setSelectedYearChart(year)}
+                    className={clsx(
+                      'px-3 py-1 text-[10px] font-bold rounded-md uppercase tracking-wider transition-all duration-200 cursor-pointer',
+                      selectedYearChart === year
+                        ? 'bg-white text-slate-800 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-700'
+                    )}
+                  >
+                    {year}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Toggle buttons for chart mode */}
+            <div className="bg-slate-100 p-0.5 rounded-lg flex items-center border border-slate-200/50">
+              <button
+                onClick={() => setChartMode('diario')}
+                className={clsx(
+                  'px-3.5 py-1 text-[10px] font-bold rounded-md uppercase tracking-wider transition-all duration-200 cursor-pointer',
+                  chartMode === 'diario'
+                    ? 'bg-white text-slate-800 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                )}
+              >
+                Diário
+              </button>
+              <button
+                onClick={() => setChartMode('mensal')}
+                className={clsx(
+                  'px-3.5 py-1 text-[10px] font-bold rounded-md uppercase tracking-wider transition-all duration-200 cursor-pointer',
+                  chartMode === 'mensal'
+                    ? 'bg-white text-slate-800 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                )}
+              >
+                Mensal
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1017,7 +852,7 @@ export default function HomeV1() {
               )}
             >
               <LayoutDashboard size={18} />
-              <span className="text-[8px] md:text-[9px] font-bold uppercase tracking-wider mt-1">Estatísticas</span>
+              <span className="text-[8px] font-bold uppercase tracking-wider mt-1">ESTATÍSTICAS</span>
             </button>
 
             {/* Tab Receitas */}
@@ -1029,7 +864,7 @@ export default function HomeV1() {
               )}
             >
               <TrendingUp size={18} />
-              <span className="text-[8px] md:text-[9px] font-bold uppercase tracking-wider mt-1">Receitas</span>
+              <span className="text-[8px] font-bold uppercase tracking-wider mt-1">RECEITAS</span>
             </button>
 
             {/* Tab Vendedores */}
@@ -1041,7 +876,7 @@ export default function HomeV1() {
               )}
             >
               <Trophy size={18} />
-              <span className="text-[8px] md:text-[9px] font-bold uppercase tracking-wider mt-1">Vendedores</span>
+              <span className="text-[8px] font-bold uppercase tracking-wider mt-1">VENDEDORES</span>
             </button>
 
             {/* Tab Metas */}
@@ -1053,7 +888,7 @@ export default function HomeV1() {
               )}
             >
               <Target size={18} />
-              <span className="text-[8px] md:text-[9px] font-bold uppercase tracking-wider mt-1">Metas</span>
+              <span className="text-[8px] font-bold uppercase tracking-wider mt-1">METAS</span>
             </button>
 
             {/* Tab Filtros (Trigger Bottom Sheet) */}
@@ -1065,7 +900,7 @@ export default function HomeV1() {
                 <span className="absolute top-1 right-6 w-2 h-2 rounded-full bg-emerald-500 border border-white" />
               )}
               <Sliders size={18} />
-              <span className="text-[8px] md:text-[9px] font-bold uppercase tracking-wider mt-1">Filtros</span>
+              <span className="text-[8px] font-bold uppercase tracking-wider mt-1">FILTROS</span>
             </button>
           </div>
         </div>
@@ -1102,86 +937,7 @@ export default function HomeV1() {
                 <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-2.5 pl-1">
                   Período
                 </span>
-                <div className="grid grid-cols-2 gap-2">
-                  {PERIOD_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.key}
-                      onClick={() => {
-                        if (opt.key === 'custom') {
-                          if (!globalStartDate || !globalEndDate) {
-                            const today = new Date().toISOString().slice(0, 10)
-                            const monthAgo = new Date()
-                            monthAgo.setDate(monthAgo.getDate() - 30)
-                            setCustomRange(monthAgo.toISOString().slice(0, 10), today)
-                          }
-                          setPeriod('custom')
-                        } else {
-                          setPeriod(opt.key)
-                        }
-                      }}
-                      className={clsx(
-                        "py-2 px-3 rounded-xl text-xs font-bold text-center border transition-all cursor-pointer",
-                        period === opt.key
-                          ? "bg-[#00a896] text-white border-transparent shadow-sm"
-                          : "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-100 dark:border-slate-800/80 hover:bg-slate-100"
-                      )}
-                    >
-                      {opt.label === 'Mês anterior' ? 'Mês Anterior' : opt.label === 'Mês atual' ? 'Mês Atual' : opt.label}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Custom Month/Year Dropdown selectors */}
-                {period === 'custom' && (
-                  <div className="mt-3 grid grid-cols-2 gap-2 bg-slate-50 dark:bg-slate-800/40 p-3 rounded-2xl border border-slate-100 dark:border-slate-800/60 animate-in slide-in-from-top-1 duration-200">
-                    <div className="flex flex-col gap-1">
-                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest pl-1">De:</span>
-                      <div className="flex gap-1">
-                        <select
-                          value={startMonth}
-                          onChange={(e) => handleCustomDateChange(parseInt(e.target.value), startYear, endMonth, endYear)}
-                          className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs outline-none focus:border-[#00a896] transition-colors cursor-pointer font-bold text-slate-800 dark:text-white w-full"
-                        >
-                          {['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'].map((m, idx) => (
-                            <option key={m} value={idx + 1}>{m}</option>
-                          ))}
-                        </select>
-                        <select
-                          value={startYear}
-                          onChange={(e) => handleCustomDateChange(startMonth, parseInt(e.target.value), endMonth, endYear)}
-                          className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs outline-none focus:border-[#00a896] transition-colors cursor-pointer font-bold text-slate-800 dark:text-white w-full"
-                        >
-                          {[2020, 2021, 2022, 2023, 2024, 2025, 2026].map((y) => (
-                            <option key={y} value={y}>{y}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest pl-1">Até:</span>
-                      <div className="flex gap-1">
-                        <select
-                          value={endMonth}
-                          onChange={(e) => handleCustomDateChange(startMonth, startYear, parseInt(e.target.value), endYear)}
-                          className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs outline-none focus:border-[#00a896] transition-colors cursor-pointer font-bold text-slate-800 dark:text-white w-full"
-                        >
-                          {['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'].map((m, idx) => (
-                            <option key={m} value={idx + 1}>{m}</option>
-                          ))}
-                        </select>
-                        <select
-                          value={endYear}
-                          onChange={(e) => handleCustomDateChange(startMonth, startYear, endMonth, parseInt(e.target.value))}
-                          className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs outline-none focus:border-[#00a896] transition-colors cursor-pointer font-bold text-slate-800 dark:text-white w-full"
-                        >
-                          {[2020, 2021, 2022, 2023, 2024, 2025, 2026].map((y) => (
-                            <option key={y} value={y}>{y}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                <PeriodFilter excludePeriods={['yesterday']} compact={true} />
               </div>
 
               {/* Vendedor Dropdown */}

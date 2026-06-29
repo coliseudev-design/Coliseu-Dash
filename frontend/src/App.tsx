@@ -46,6 +46,7 @@ function Protected({ children }: { children: JSX.Element }) {
 
 import Comercial from './pages/Comercial'
 import FinanceiroConsolidado from './pages/FinanceiroConsolidado'
+import Titulos from './pages/Titulos'
 
 
 export default function App() {
@@ -110,6 +111,7 @@ export default function App() {
           <Route index element={<FinancialIntelligenceDashboard />} />
           <Route path="gestao" element={<FinancialIntelligenceDashboard />} />
           <Route path="fluxo-caixa" element={<FluxoCaixa />} />
+          <Route path="titulos" element={<Titulos />} />
         </Route>
 
         {/* Novas Rotas de BI */}
