@@ -46,6 +46,7 @@ function Protected({ children }: { children: JSX.Element }) {
 
 import Comercial from './pages/Comercial'
 import FinanceiroConsolidado from './pages/FinanceiroConsolidado'
+import Titulos from './pages/Titulos'
 
 
 export default function App() {
@@ -110,10 +111,11 @@ export default function App() {
           <Route index element={<FinancialIntelligenceDashboard />} />
           <Route path="gestao" element={<FinancialIntelligenceDashboard />} />
           <Route path="fluxo-caixa" element={<FluxoCaixa />} />
+          <Route path="titulos" element={<Titulos />} />
         </Route>
 
         {/* Novas Rotas de BI */}
-        <Route path="bi" element={<ProtectedRoute permission="layout_4"><BiDashboard /></ProtectedRoute>}>
+        <Route path="bi" element={<BiDashboard />}>
           <Route index element={<ProtectedRoute permission="bi_sales"><SalesIntelligenceDashboard /></ProtectedRoute>} />
           <Route path="sales" element={<ProtectedRoute permission="bi_sales"><SalesIntelligenceDashboard /></ProtectedRoute>} />
           <Route path="vendedor" element={<ProtectedRoute permission="bi_seller_hub"><SellerHubDashboard /></ProtectedRoute>} />

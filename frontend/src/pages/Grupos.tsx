@@ -21,6 +21,7 @@ const DASH_1_0_MODULES = [
   { id: 'inicio', label: 'Visão Geral (Início)' },
   { id: 'bi_sales', label: 'Comercial' },
   { id: 'bi_finance', label: 'Financeiro' },
+  { id: 'bi_abc', label: 'Gestão de Inventário' },
   { id: 'usuarios', label: 'Usuários & Configurações' }
 ]
 

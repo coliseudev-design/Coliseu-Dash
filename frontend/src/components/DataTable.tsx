@@ -40,6 +40,7 @@ export default function DataTable<T>({
                     c.align === 'right' && 'text-right',
                     c.align === 'center' && 'text-center',
                     !c.align && 'text-left',
+                    c.className,
                   )}
                 >
                   {c.label}

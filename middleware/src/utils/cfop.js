@@ -35,6 +35,9 @@ function getCfopFilterClause(tableAlias = 'v') {
  * STATUS_FILTER para Sistema Coliseu (Layouts 1, 2 e 3):
  * Allowlist: inclui apenas FATURADO e FINALIZADO (status de venda concluída no ERP Coliseu).
  * Usa UPPER(TRIM()) para tolerância a espaços e variações de case.
+ * Devoluções de cliente (espécie DEVOLUCAO DE CLIENTE) entram como valor negativo,
+ * descontando do faturamento — comportamento idêntico ao ERP.
+ * Apenas GARANTIA com valor negativo é excluída (são trocas sem efeito financeiro).
  */
 function getStatusFilterClause(tableAlias = 'v') {
     const prefix = tableAlias ? `${tableAlias}.` : '';

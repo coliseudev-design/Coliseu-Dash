@@ -559,7 +559,7 @@ export default function VisaoEstrategicaV3() {
               )}
             >
               <LayoutDashboard size={18} />
-              <span className="text-[8px] md:text-[9px] font-bold uppercase tracking-wider mt-1">Estatísticas</span>
+              <span className="text-[8px] font-bold uppercase tracking-wider mt-1">ESTATÍSTICAS</span>
             </button>
 
             {/* Tab Receitas */}
@@ -571,7 +571,7 @@ export default function VisaoEstrategicaV3() {
               )}
             >
               <TrendingUp size={18} />
-              <span className="text-[8px] md:text-[9px] font-bold uppercase tracking-wider mt-1">Receitas</span>
+              <span className="text-[8px] font-bold uppercase tracking-wider mt-1">RECEITAS</span>
             </button>
 
             {/* Tab Vendedores */}
@@ -583,7 +583,7 @@ export default function VisaoEstrategicaV3() {
               )}
             >
               <Trophy size={18} />
-              <span className="text-[8px] md:text-[9px] font-bold uppercase tracking-wider mt-1">Vendedores</span>
+              <span className="text-[8px] font-bold uppercase tracking-wider mt-1">VENDEDORES</span>
             </button>
 
             {/* Tab Metas */}
@@ -595,7 +595,7 @@ export default function VisaoEstrategicaV3() {
               )}
             >
               <Target size={18} />
-              <span className="text-[8px] md:text-[9px] font-bold uppercase tracking-wider mt-1">Metas</span>
+              <span className="text-[8px] font-bold uppercase tracking-wider mt-1">METAS</span>
             </button>
 
             {/* Tab Filtros (Trigger Bottom Sheet) */}
@@ -607,7 +607,7 @@ export default function VisaoEstrategicaV3() {
                 <span className="absolute top-1 right-6 w-2 h-2 rounded-full bg-emerald-500 border border-white" />
               )}
               <Sliders size={18} />
-              <span className="text-[8px] md:text-[9px] font-bold uppercase tracking-wider mt-1">Filtros</span>
+              <span className="text-[8px] font-bold uppercase tracking-wider mt-1">FILTROS</span>
             </button>
           </div>
         </div>

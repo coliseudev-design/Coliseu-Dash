@@ -157,7 +157,10 @@ export default function ProfitabilityDashboard() {
           <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-wider mb-3">
             <div className="p-1.5 bg-success/10 rounded-lg"><DollarSign size={14} className="text-success" /></div> FATURAMENTO TOTAL
           </div>
-          <div className="text-3xl font-extrabold text-text-primary mb-1">{formatBRL(overview.faturamento)}</div>
+          <div
+            className="text-3xl font-extrabold text-text-primary mb-1 truncate"
+            title={formatBRL(overview.faturamento)}
+          >{formatBRLCompact(overview.faturamento)}</div>
           <div className="text-[10px] text-text-muted">Receita bruta do período</div>
         </div>
 
@@ -166,7 +169,10 @@ export default function ProfitabilityDashboard() {
           <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-wider mb-3">
             <div className="p-1.5 bg-pink-500/10 rounded-lg"><ArrowDown size={14} className="text-pink-500" /></div> CUSTO TOTAL
           </div>
-          <div className="text-3xl font-extrabold text-text-primary mb-1">{formatBRL(overview.custo)}</div>
+          <div
+            className="text-3xl font-extrabold text-text-primary mb-1 truncate"
+            title={formatBRL(overview.custo)}
+          >{formatBRLCompact(overview.custo)}</div>
           <div className="text-[10px] text-text-muted">Custo dos produtos vendidos</div>
         </div>
 
@@ -175,7 +181,10 @@ export default function ProfitabilityDashboard() {
           <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-wider mb-3">
             <div className="p-1.5 bg-warning/10 rounded-lg"><TrendingUp size={14} className="text-warning" /></div> LUCRO BRUTO (R$)
           </div>
-          <div className="text-3xl font-extrabold text-text-primary mb-1">{formatBRL(overview.lucro)}</div>
+          <div
+            className="text-3xl font-extrabold text-text-primary mb-1 truncate"
+            title={formatBRL(overview.lucro)}
+          >{formatBRLCompact(overview.lucro)}</div>
           <div className="text-[10px] text-text-muted">Lucro após custos diretos</div>
         </div>
 

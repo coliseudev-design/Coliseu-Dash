@@ -128,8 +128,11 @@ export default function FinancialIntelligenceDashboard() {
             <Wallet size={16} className="text-brand-500 stroke-[2.5]" /> Saldo Real
           </div>
           <div className="relative z-10">
-            <div className="text-2xl font-black text-brand-600 dark:text-brand-400 mb-1 tracking-tight">
-              {formatBRL(data?.saldo_atual || 0)}
+            <div
+              className="text-2xl font-black text-brand-600 dark:text-brand-400 mb-1 tracking-tight truncate"
+              title={formatBRL(data?.saldo_atual || 0)}
+            >
+              {formatBRLCompact(data?.saldo_atual || 0)}
             </div>
             <div className="text-[10px] text-success font-extrabold flex items-center gap-1">
               <ArrowUpRight size={13} className="stroke-[2.5]" /> Recebido: {formatBRLCompact(data?.recebimentos_realizados || 0)}
@@ -143,7 +146,10 @@ export default function FinancialIntelligenceDashboard() {
             <ArrowUpRight size={14} className="text-blue-500"/> Total Recebido
           </div>
           <div>
-            <div className="text-2xl font-extrabold text-text-primary mb-1 tracking-tight">{formatBRL(data?.recebimentos_realizados || 0)}</div>
+            <div
+              className="text-2xl font-extrabold text-text-primary mb-1 tracking-tight truncate"
+              title={formatBRL(data?.recebimentos_realizados || 0)}
+            >{formatBRLCompact(data?.recebimentos_realizados || 0)}</div>
             <div className="text-[10px] text-text-muted font-medium">No período selecionado</div>
           </div>
         </div>
@@ -154,7 +160,10 @@ export default function FinancialIntelligenceDashboard() {
             <ArrowDownRight size={14} className="text-warning"/> Total Pago
           </div>
           <div>
-            <div className="text-2xl font-extrabold text-text-primary mb-1 tracking-tight">{formatBRL(data?.pagamentos_realizados || 0)}</div>
+            <div
+              className="text-2xl font-extrabold text-text-primary mb-1 tracking-tight truncate"
+              title={formatBRL(data?.pagamentos_realizados || 0)}
+            >{formatBRLCompact(data?.pagamentos_realizados || 0)}</div>
             <div className="text-[10px] text-text-muted font-medium">No período selecionado</div>
           </div>
         </div>
@@ -165,7 +174,10 @@ export default function FinancialIntelligenceDashboard() {
             <DollarSign size={14} className="text-brand-500"/> A Receber
           </div>
           <div>
-            <div className="text-2xl font-extrabold text-text-primary mb-1 tracking-tight">{formatBRL(data?.contas_receber || 0)}</div>
+            <div
+              className="text-2xl font-extrabold text-text-primary mb-1 tracking-tight truncate"
+              title={formatBRL(data?.contas_receber || 0)}
+            >{formatBRLCompact(data?.contas_receber || 0)}</div>
             <div className="text-[10px] text-danger font-bold flex items-center gap-1">
               <ArrowDownRight size={12}/> Títulos em aberto
             </div>
@@ -178,7 +190,10 @@ export default function FinancialIntelligenceDashboard() {
             <CreditCard size={14} className="text-danger"/> A Pagar
           </div>
           <div>
-            <div className="text-2xl font-extrabold text-text-primary mb-1 tracking-tight">{formatBRL(data?.contas_pagar || 0)}</div>
+            <div
+              className="text-2xl font-extrabold text-text-primary mb-1 tracking-tight truncate"
+              title={formatBRL(data?.contas_pagar || 0)}
+            >{formatBRLCompact(data?.contas_pagar || 0)}</div>
             <div className="text-[10px] text-danger font-bold flex items-center gap-1">
               <ArrowDownRight size={12}/> Títulos em aberto
             </div>
@@ -305,16 +320,16 @@ export default function FinancialIntelligenceDashboard() {
               <thead>
                 <tr className="border-b border-divider text-text-secondary font-semibold uppercase tracking-wider">
                   <th className="py-2.5">Descrição</th>
-                  <th className="py-2.5">Pagamento</th>
+                  <th className="py-2.5 text-center sm:text-left">Pagamento</th>
                   <th className="py-2.5 text-right">Valor</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-divider font-medium">
                 {(data?.ultimas_pagas || []).map((item: any, i: number) => (
                   <tr key={i} className="hover:bg-bg-secondary/40 transition-colors">
-                    <td className="py-2.5 max-w-[200px] truncate text-text-primary font-bold">{item.descricao}</td>
-                    <td className="py-2.5 text-text-secondary">{item.data_pagamento ? item.data_pagamento.substring(0, 10) : '-'}</td>
-                    <td className="py-2.5 text-right font-mono text-danger font-bold">{formatBRL(item.valor)}</td>
+                    <td className="py-2.5 max-w-[100px] sm:max-w-[200px] truncate text-text-primary font-bold" title={item.descricao}>{item.descricao}</td>
+                    <td className="py-2.5 text-text-secondary text-center sm:text-left">{item.data_pagamento ? item.data_pagamento.substring(5, 10).split('-').reverse().join('/') : '-'}</td>
+                    <td className="py-2.5 text-right font-mono text-danger font-bold whitespace-nowrap">{formatBRL(item.valor)}</td>
                   </tr>
                 ))}
                 {(!data?.ultimas_pagas || data.ultimas_pagas.length === 0) && (
@@ -337,16 +352,16 @@ export default function FinancialIntelligenceDashboard() {
               <thead>
                 <tr className="border-b border-divider text-text-secondary font-semibold uppercase tracking-wider">
                   <th className="py-2.5">Descrição</th>
-                  <th className="py-2.5">Recebimento</th>
+                  <th className="py-2.5 text-center sm:text-left">Recebimento</th>
                   <th className="py-2.5 text-right">Valor</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-divider font-medium">
                 {(data?.ultimas_recebidas || []).map((item: any, i: number) => (
                   <tr key={i} className="hover:bg-bg-secondary/40 transition-colors">
-                    <td className="py-2.5 max-w-[200px] truncate text-text-primary font-bold">{item.descricao}</td>
-                    <td className="py-2.5 text-text-secondary">{item.data_pagamento ? item.data_pagamento.substring(0, 10) : '-'}</td>
-                    <td className="py-2.5 text-right font-mono text-success font-bold">{formatBRL(item.valor)}</td>
+                    <td className="py-2.5 max-w-[100px] sm:max-w-[200px] truncate text-text-primary font-bold" title={item.descricao}>{item.descricao}</td>
+                    <td className="py-2.5 text-text-secondary text-center sm:text-left">{item.data_pagamento ? item.data_pagamento.substring(5, 10).split('-').reverse().join('/') : '-'}</td>
+                    <td className="py-2.5 text-right font-mono text-success font-bold whitespace-nowrap">{formatBRL(item.valor)}</td>
                   </tr>
                 ))}
                 {(!data?.ultimas_recebidas || data.ultimas_recebidas.length === 0) && (

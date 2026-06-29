@@ -12,6 +12,7 @@ import {
 } from 'recharts'
 import { formatBRL, formatBRLCompact, formatNum } from '../utils/format'
 import { usePeriodStore, PERIOD_OPTIONS, type PeriodKey } from '../store/periodStore'
+import PeriodFilter from '../components/PeriodFilter'
 import clsx from 'clsx'
 
 // ─── Sparkline Component ──────────────────────────────────────────────────────
@@ -142,45 +143,6 @@ export default function HomeV1() {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  // ─── Custom Date Selector States ────────────────────────────────────────────
-  const [startMonth, setStartMonth] = useState(() => {
-    return globalStartDate ? parseInt(globalStartDate.split('-')[1]) : new Date().getMonth() + 1
-  })
-  const [startYear, setStartYear] = useState(() => {
-    return globalStartDate ? parseInt(globalStartDate.split('-')[0]) : new Date().getFullYear()
-  })
-  const [endMonth, setEndMonth] = useState(() => {
-    return globalEndDate ? parseInt(globalEndDate.split('-')[1]) : new Date().getMonth() + 1
-  })
-  const [endYear, setEndYear] = useState(() => {
-    return globalEndDate ? parseInt(globalEndDate.split('-')[0]) : new Date().getFullYear()
-  })
-
-  // Sync state if store updates from elsewhere
-  useEffect(() => {
-    if (globalStartDate) {
-      const parts = globalStartDate.split('-')
-      setStartYear(parseInt(parts[0]))
-      setStartMonth(parseInt(parts[1]))
-    }
-    if (globalEndDate) {
-      const parts = globalEndDate.split('-')
-      setEndYear(parseInt(parts[0]))
-      setEndMonth(parseInt(parts[1]))
-    }
-  }, [globalStartDate, globalEndDate])
-
-  const handleCustomDateChange = (sM: number, sY: number, eM: number, eY: number) => {
-    setStartMonth(sM)
-    setStartYear(sY)
-    setEndMonth(eM)
-    setEndYear(eY)
-    const startStr = `${sY}-${String(sM).padStart(2, '0')}-01`
-    const lastDay = new Date(eY, eM, 0).getDate()
-    const endStr = `${eY}-${String(eM).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
-    setCustomRange(startStr, endStr)
-  }
-
   // ─── Query Filters ──────────────────────────────────────────────────────────
   const queryParams = useMemo(() => {
     const p: Record<string, any> = {}
@@ -206,7 +168,8 @@ export default function HomeV1() {
   const citiesDropdown = useBranchPeriodQuery<any>('/ranking/cidades', { limit: 100 })
 
   // ─── Chart Toggle State ──────────────────────────────────────────────────────
-  const [chartMode, setChartMode] = useState<'diario' | 'mensal'>('diario')
+  const [chartMode, setChartMode] = useState<'diario' | 'mensal' | 'anual'>('diario')
+  const [selectedYearChart, setSelectedYearChart] = useState<string>('all')
 
   // ─── Calculations ───────────────────────────────────────────────────────────
   const totalPeriodo = ov.data?.mes?.total || 0
@@ -256,16 +219,32 @@ export default function HomeV1() {
   }, [clientesQuery.data])
 
   // ─── Chart Data ─────────────────────────────────────────────────────────────
-  const dailyChartData = useMemo(() => {
+  const rawDailyData = useMemo(() => {
     return fatMes.data?.data || []
   }, [fatMes.data])
+
+  // Available years from chart data
+  const availableChartYears = useMemo(() => {
+    const years = new Set<string>()
+    rawDailyData.forEach((d: any) => {
+      if (d.data && d.data.length >= 4) years.add(d.data.substring(0, 4))
+    })
+    return Array.from(years).sort()
+  }, [rawDailyData])
+
+  const dailyChartData = useMemo(() => {
+    if (selectedYearChart === 'all') return rawDailyData
+    return rawDailyData.filter((d: any) => d.data && d.data.startsWith(selectedYearChart))
+  }, [rawDailyData, selectedYearChart])
 
   const sparklineData = useMemo(() => {
     return dailyChartData.map((d: any) => d.total || 0).slice(-20)
   }, [dailyChartData])
 
   const monthlyChartData = useMemo(() => {
-    const raw = fatMes.data?.data || []
+    const raw = selectedYearChart === 'all'
+      ? rawDailyData
+      : rawDailyData.filter((d: any) => d.data && d.data.startsWith(selectedYearChart))
     const groups: Record<string, number> = {}
     raw.forEach((d: any) => {
       if (!d.data) return
@@ -280,7 +259,19 @@ export default function HomeV1() {
         const label = `${monthNames[parseInt(m) - 1]}/${y.substring(2)}`
         return { label, total }
       })
-  }, [fatMes.data])
+  }, [rawDailyData, selectedYearChart])
+
+  const yearlyChartData = useMemo(() => {
+    const groups: Record<string, number> = {}
+    rawDailyData.forEach((d: any) => {
+      if (!d.data) return
+      const year = d.data.substring(0, 4) // "YYYY"
+      groups[year] = (groups[year] || 0) + (d.total || 0)
+    })
+    return Object.entries(groups)
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([year, total]) => ({ label: year, total }))
+  }, [rawDailyData])
 
   return (
     <div className={clsx("space-y-6 pb-12", isMobile ? "pb-28" : "pb-12")} aria-label="Visão Estratégica Dashboard">
@@ -296,79 +287,7 @@ export default function HomeV1() {
 
         {/* Custom Period Button Group */}
         <div className="hidden md:flex flex-col items-end gap-2.5">
-          <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1.5 shadow-sm border border-slate-200/50">
-            {PERIOD_OPTIONS.map((opt) => (
-              <button
-                key={opt.key}
-                onClick={() => {
-                  if (opt.key === 'custom') {
-                    if (!globalStartDate || !globalEndDate) {
-                      const today = new Date().toISOString().slice(0, 10)
-                      const monthAgo = new Date()
-                      monthAgo.setDate(monthAgo.getDate() - 30)
-                      setCustomRange(monthAgo.toISOString().slice(0, 10), today)
-                    }
-                    setPeriod('custom')
-                  } else {
-                    setPeriod(opt.key)
-                  }
-                }}
-                className={clsx(
-                  'px-3 py-1.5 text-[10px] md:text-xs font-bold rounded-lg uppercase tracking-wide transition-all duration-200 cursor-pointer',
-                  period === opt.key
-                    ? 'bg-[#00a896] text-white shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50 active:scale-[0.98]'
-                )}
-              >
-                {opt.label === 'Mês anterior' ? 'Mês Anterior' : opt.label === 'Mês atual' ? 'Mês Atual' : opt.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Month/Year Dropdown Custom Range Selector (Triggered when Personalizado is Active) */}
-          {period === 'custom' && (
-            <div className="flex items-center gap-2.5 bg-slate-50 border border-slate-200/70 p-2 rounded-xl text-xs animate-in slide-in-from-top-1 duration-200">
-              <span className="font-bold text-slate-500 uppercase text-[10px]">De:</span>
-              <select
-                value={startMonth}
-                onChange={(e) => handleCustomDateChange(parseInt(e.target.value), startYear, endMonth, endYear)}
-                className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs outline-none focus:border-[#00a896] transition-colors cursor-pointer font-bold text-slate-800"
-              >
-                {['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'].map((m, idx) => (
-                  <option key={m} value={idx + 1}>{m}</option>
-                ))}
-              </select>
-              <select
-                value={startYear}
-                onChange={(e) => handleCustomDateChange(startMonth, parseInt(e.target.value), endMonth, endYear)}
-                className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs outline-none focus:border-[#00a896] transition-colors cursor-pointer font-bold text-slate-800"
-              >
-                {[2020, 2021, 2022, 2023, 2024, 2025, 2026].map((y) => (
-                  <option key={y} value={y}>{y}</option>
-                ))}
-              </select>
-
-              <span className="font-bold text-slate-500 uppercase text-[10px]">Até:</span>
-              <select
-                value={endMonth}
-                onChange={(e) => handleCustomDateChange(startMonth, startYear, parseInt(e.target.value), endYear)}
-                className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs outline-none focus:border-[#00a896] transition-colors cursor-pointer font-bold text-slate-800"
-              >
-                {['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'].map((m, idx) => (
-                  <option key={m} value={idx + 1}>{m}</option>
-                ))}
-              </select>
-              <select
-                value={endYear}
-                onChange={(e) => handleCustomDateChange(startMonth, startYear, endMonth, parseInt(e.target.value))}
-                className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs outline-none focus:border-[#00a896] transition-colors cursor-pointer font-bold text-slate-800"
-              >
-                {[2020, 2021, 2022, 2023, 2024, 2025, 2026].map((y) => (
-                  <option key={y} value={y}>{y}</option>
-                ))}
-              </select>
-            </div>
-          )}
+          <PeriodFilter excludePeriods={['yesterday']} />
         </div>
       </div>
 
@@ -637,9 +556,161 @@ export default function HomeV1() {
             </div>
             <span className="text-[9px] text-slate-400 font-bold">Clientes ativos no período</span>
           </div>
+        </div>
+      </div>
+      </>)}
+
+      {/* ── ROW 4: PERIOD EVOLUTION CHART (MOVED BETWEEN CARDS & SELLERS) ── */}
+      {(!isMobile || activeTab === 'receitas') && (
+        <>
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm">
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6">
+          <div>
+            <h3 className="font-extrabold text-slate-800 dark:text-white text-xs uppercase tracking-widest">
+              Faturamento no Período
+            </h3>
+            <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest block mt-0.5">
+              Valores Excluindo Departamento Equipamentos
+            </span>
+          </div>
+
+          {/* Filtro de Ano */}
+          <div className="flex items-center gap-2 flex-wrap shrink-0 self-start sm:self-auto">
+            {availableChartYears.length > 1 && (
+              <div className="bg-slate-100 p-0.5 rounded-lg flex items-center gap-0.5 border border-slate-200/50">
+                <button
+                  onClick={() => setSelectedYearChart('all')}
+                  className={clsx(
+                    'px-3 py-1 text-[10px] font-bold rounded-md uppercase tracking-wider transition-all duration-200 cursor-pointer',
+                    selectedYearChart === 'all'
+                      ? 'bg-white text-slate-800 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-700'
+                  )}
+                >
+                  Todos
+                </button>
+                {availableChartYears.map(year => (
+                  <button
+                    key={year}
+                    onClick={() => setSelectedYearChart(year)}
+                    className={clsx(
+                      'px-3 py-1 text-[10px] font-bold rounded-md uppercase tracking-wider transition-all duration-200 cursor-pointer',
+                      selectedYearChart === year
+                        ? 'bg-white text-slate-800 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-700'
+                    )}
+                  >
+                    {year}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Toggle buttons for chart mode */}
+            <div className="bg-slate-100 p-0.5 rounded-lg flex items-center border border-slate-200/50">
+              <button
+                onClick={() => setChartMode('diario')}
+                className={clsx(
+                  'px-3.5 py-1 text-[10px] font-bold rounded-md uppercase tracking-wider transition-all duration-200 cursor-pointer',
+                  chartMode === 'diario'
+                    ? 'bg-white text-slate-800 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                )}
+              >
+                Diário
+              </button>
+              <button
+                onClick={() => setChartMode('mensal')}
+                className={clsx(
+                  'px-3.5 py-1 text-[10px] font-bold rounded-md uppercase tracking-wider transition-all duration-200 cursor-pointer',
+                  chartMode === 'mensal'
+                    ? 'bg-white text-slate-800 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                )}
+              >
+                Mensal
+              </button>
+              <button
+                onClick={() => setChartMode('anual')}
+                className={clsx(
+                  'px-3.5 py-1 text-[10px] font-bold rounded-md uppercase tracking-wider transition-all duration-200 cursor-pointer',
+                  chartMode === 'anual'
+                    ? 'bg-white text-slate-800 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                )}
+              >
+                Ano
+              </button>
+            </div>
           </div>
         </div>
-      </>)}
+
+        {/* Recharts Container */}
+        <div className="h-64 sm:h-72">
+          {fatMes.isLoading ? (
+            <div className="h-full flex items-center justify-center text-xs text-slate-400">Carregando dados do faturamento...</div>
+          ) : (chartMode === 'diario' ? dailyChartData : chartMode === 'mensal' ? monthlyChartData : yearlyChartData).length === 0 ? (
+            <div className="h-full flex items-center justify-center text-xs text-slate-400">Sem faturamento registrado no período</div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              {chartMode === 'diario' && dailyChartData.length > 20 ? (
+                <LineChart data={dailyChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" opacity={0.4} />
+                  <XAxis
+                    dataKey="data"
+                    tick={{ fontSize: 9, fill: 'var(--color-text-muted)', fontWeight: 700 }}
+                    tickFormatter={(d: string) => d?.slice(8) || d} // Show day only
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 9, fill: 'var(--color-text-muted)', fontWeight: 700 }}
+                    tickFormatter={formatBRLCompact}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Line
+                    type="monotone"
+                    dataKey="total"
+                    stroke="#00a896"
+                    strokeWidth={2.5}
+                    dot={false}
+                    activeDot={{ r: 4, strokeWidth: 0 }}
+                  />
+                </LineChart>
+              ) : (
+                <BarChart
+                  data={chartMode === 'diario' ? dailyChartData : chartMode === 'mensal' ? monthlyChartData : yearlyChartData}
+                  margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" opacity={0.4} />
+                  <XAxis
+                    dataKey={chartMode === 'diario' ? 'data' : 'label'}
+                    tick={{ fontSize: 9, fill: 'var(--color-text-muted)', fontWeight: 700 }}
+                    tickFormatter={(d: string) => chartMode === 'diario' ? (d?.slice(5) || d) : d}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 9, fill: 'var(--color-text-muted)', fontWeight: 700 }}
+                    tickFormatter={formatBRLCompact}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.3 }} />
+                  <Bar dataKey="total" radius={[4, 4, 0, 0]} maxBarSize={38} fill="#00a896">
+                    {(chartMode === 'diario' ? dailyChartData : chartMode === 'mensal' ? monthlyChartData : yearlyChartData).map((_: any, i: number) => (
+                      <Cell key={`cell-${i}`} fill={BAR_COLORS[i % BAR_COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              )}
+            </ResponsiveContainer>
+          )}
+        </div>
+      </div>
+    </>)}
 
       {/* ── MIDDLE ROW: SELLERS CHART + RANKING LIST ─────────────────────── */}
       {(!isMobile || activeTab === 'vendedores') && (
@@ -740,257 +811,90 @@ export default function HomeV1() {
         </div>
       </div>
 
-      {/* ── ROW 5: 2X2 GRID OF TOP 10 LISTS ──────────────────────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Top 10 Marcas */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm flex flex-col">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="font-extrabold text-[#00a896] text-xs uppercase tracking-widest flex items-center gap-1.5">
-              <Tag size={14} /> Top 10 Marcas
+      {/* ── ROW 5: CIDADES CHART + RANKING LIST ─────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Cities Horizontal Bar Chart */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm">
+          <div className="flex justify-between items-center mb-5">
+            <h3 className="font-extrabold text-slate-800 dark:text-white text-xs uppercase tracking-widest flex items-center gap-1.5">
+              <Target size={14} className="text-emerald-600" /> Desempenho das Cidades (Gráfico)
             </h3>
-            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">
-              Valor
-            </span>
           </div>
-          <div className="space-y-1.5 overflow-y-auto max-h-[300px] pr-1">
-            {marcasQuery.isLoading ? (
-              <div className="text-center py-8 text-xs text-slate-400">Carregando marcas...</div>
-            ) : top10Marcas.map((item: any, i: number) => {
-              const pct = totalPeriodo > 0 ? (item.total / totalPeriodo) * 100 : 0
-              return (
-                <div key={i} className="flex items-center justify-between p-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/30 rounded-xl transition-colors border border-transparent hover:border-slate-100/50">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="text-xs font-bold text-slate-400 mono w-5">#{i + 1}</span>
-                    <span className="text-xs font-extrabold text-slate-700 dark:text-slate-200 uppercase truncate">
-                      {item.nome || item.marca}
-                    </span>
-                  </div>
-                  <div className="text-right shrink-0 pl-2">
-                    <div className="text-xs font-black text-slate-800 dark:text-white mono">
-                      {formatBRL(item.total)}
-                    </div>
-                    <span className="text-[9px] text-[#00a896] font-bold block">{pct.toFixed(1)}% share</span>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* Top 10 Grupos */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm flex flex-col">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="font-extrabold text-sky-500 text-xs uppercase tracking-widest flex items-center gap-1.5">
-              <Box size={14} /> Top 10 Grupos
-            </h3>
-            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">
-              Valor
-            </span>
-          </div>
-          <div className="space-y-1.5 overflow-y-auto max-h-[300px] pr-1">
-            {categoriasQuery.isLoading ? (
-              <div className="text-center py-8 text-xs text-slate-400">Carregando grupos...</div>
-            ) : top10Grupos.map((item: any, i: number) => {
-              const pct = totalPeriodo > 0 ? (item.total / totalPeriodo) * 100 : 0
-              return (
-                <div key={i} className="flex items-center justify-between p-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/30 rounded-xl transition-colors border border-transparent hover:border-slate-100/50">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="text-xs font-bold text-slate-400 mono w-5">#{i + 1}</span>
-                    <span className="text-xs font-extrabold text-slate-700 dark:text-slate-200 uppercase truncate">
-                      {item.nome || item.categoria}
-                    </span>
-                  </div>
-                  <div className="text-right shrink-0 pl-2">
-                    <div className="text-xs font-black text-slate-800 dark:text-white mono">
-                      {formatBRL(item.total)}
-                    </div>
-                    <span className="text-[9px] text-[#00a896] font-bold block">{pct.toFixed(1)}% share</span>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* Top 10 Cidades */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm flex flex-col">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="font-extrabold text-emerald-600 text-xs uppercase tracking-widest flex items-center gap-1.5">
-              <Target size={14} /> Top 10 Cidades
-            </h3>
-            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">
-              Valor
-            </span>
-          </div>
-          <div className="space-y-1.5 overflow-y-auto max-h-[300px] pr-1">
+          <div className="h-[280px]">
             {cidadesQuery.isLoading ? (
-              <div className="text-center py-8 text-xs text-slate-400">Carregando cidades...</div>
-            ) : top10Cidades.map((item: any, i: number) => {
-              const pct = totalPeriodo > 0 ? (item.total / totalPeriodo) * 100 : 0
-              return (
-                <div key={i} className="flex items-center justify-between p-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/30 rounded-xl transition-colors border border-transparent hover:border-slate-100/50">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="text-xs font-bold text-slate-400 mono w-5">#{i + 1}</span>
-                    <span className="text-xs font-extrabold text-slate-700 dark:text-slate-200 uppercase truncate">
-                      {item.nome}
-                    </span>
-                  </div>
-                  <div className="text-right shrink-0 pl-2">
-                    <div className="text-xs font-black text-slate-800 dark:text-white mono">
-                      {formatBRL(item.total)}
-                    </div>
-                    <span className="text-[9px] text-[#00a896] font-bold block">{pct.toFixed(1)}% share</span>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* Top 10 Clientes */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm flex flex-col">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="font-extrabold text-[#00a896] text-xs uppercase tracking-widest flex items-center gap-1.5">
-              <Users size={14} /> Top 10 Clientes
-            </h3>
-            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">
-              Valor
-            </span>
-          </div>
-          <div className="space-y-1.5 overflow-y-auto max-h-[300px] pr-1">
-            {clientesQuery.isLoading ? (
-              <div className="text-center py-8 text-xs text-slate-400">Carregando clientes...</div>
-            ) : top10Clientes.map((item: any, i: number) => {
-              const pct = totalPeriodo > 0 ? (item.total / totalPeriodo) * 100 : 0
-              return (
-                <div key={i} className="flex items-center justify-between p-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/30 rounded-xl transition-colors border border-transparent hover:border-slate-100/50">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="text-xs font-bold text-slate-400 mono w-5">#{i + 1}</span>
-                    <span className="text-xs font-extrabold text-slate-700 dark:text-slate-200 uppercase truncate">
-                      {item.nome}
-                    </span>
-                  </div>
-                  <div className="text-right shrink-0 pl-2">
-                    <div className="text-xs font-black text-slate-800 dark:text-white mono">
-                      {formatBRL(item.total)}
-                    </div>
-                    <span className="text-[9px] text-[#00a896] font-bold block">{pct.toFixed(1)}% share</span>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </div>
-    </>)}
-
-      {/* ── ROW 6: BOTTOM CHART WITH MODE TOGGLE ─────────────────────────── */}
-      {(!isMobile || activeTab === 'receitas') && (
-        <>
-      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm">
-        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6">
-          <div>
-            <h3 className="font-extrabold text-slate-800 dark:text-white text-xs uppercase tracking-widest">
-              Faturamento no Período
-            </h3>
-            <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest block mt-0.5">
-              Valores Excluindo Departamento Equipamentos
-            </span>
-          </div>
-
-          {/* Toggle buttons for chart mode */}
-          <div className="bg-slate-100 p-0.5 rounded-lg flex items-center border border-slate-200/50 shrink-0 self-start sm:self-auto">
-            <button
-              onClick={() => setChartMode('diario')}
-              className={clsx(
-                'px-3.5 py-1 text-[10px] font-bold rounded-md uppercase tracking-wider transition-all duration-200 cursor-pointer',
-                chartMode === 'diario'
-                  ? 'bg-white text-slate-800 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
-              )}
-            >
-              Diário
-            </button>
-            <button
-              onClick={() => setChartMode('mensal')}
-              className={clsx(
-                'px-3.5 py-1 text-[10px] font-bold rounded-md uppercase tracking-wider transition-all duration-200 cursor-pointer',
-                chartMode === 'mensal'
-                  ? 'bg-white text-slate-800 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
-              )}
-            >
-              Mensal
-            </button>
-          </div>
-        </div>
-
-        {/* Recharts Container */}
-        <div className="h-64 sm:h-72">
-          {fatMes.isLoading ? (
-            <div className="h-full flex items-center justify-center text-xs text-slate-400">Carregando dados do faturamento...</div>
-          ) : (chartMode === 'diario' ? dailyChartData : monthlyChartData).length === 0 ? (
-            <div className="h-full flex items-center justify-center text-xs text-slate-400">Sem faturamento registrado no período</div>
-          ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              {chartMode === 'diario' && dailyChartData.length > 20 ? (
-                <LineChart data={dailyChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" opacity={0.4} />
-                  <XAxis
-                    dataKey="data"
-                    tick={{ fontSize: 9, fill: 'var(--color-text-muted)', fontWeight: 700 }}
-                    tickFormatter={(d: string) => d?.slice(8) || d} // Show day only
-                    axisLine={false}
-                    tickLine={false}
-                  />
+              <div className="h-full flex items-center justify-center text-xs text-slate-400">Carregando gráfico...</div>
+            ) : top10Cidades.length === 0 ? (
+              <div className="h-full flex items-center justify-center text-xs text-slate-400">Sem dados de cidades</div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={top10Cidades} layout="vertical" margin={{ left: 10, right: 30, top: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--color-border)" opacity={0.4} />
+                  <XAxis type="number" hide />
                   <YAxis
-                    tick={{ fontSize: 9, fill: 'var(--color-text-muted)', fontWeight: 700 }}
-                    tickFormatter={formatBRLCompact}
+                    dataKey="nome"
+                    type="category"
                     axisLine={false}
                     tickLine={false}
-                  />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Line
-                    type="monotone"
-                    dataKey="total"
-                    stroke="#00a896"
-                    strokeWidth={2.5}
-                    dot={false}
-                    activeDot={{ r: 4, strokeWidth: 0 }}
-                  />
-                </LineChart>
-              ) : (
-                <BarChart
-                  data={chartMode === 'diario' ? dailyChartData : monthlyChartData}
-                  margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" opacity={0.4} />
-                  <XAxis
-                    dataKey={chartMode === 'diario' ? 'data' : 'label'}
-                    tick={{ fontSize: 9, fill: 'var(--color-text-muted)', fontWeight: 700 }}
-                    tickFormatter={(d: string) => chartMode === 'diario' ? (d?.slice(5) || d) : d}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    tick={{ fontSize: 9, fill: 'var(--color-text-muted)', fontWeight: 700 }}
-                    tickFormatter={formatBRLCompact}
-                    axisLine={false}
-                    tickLine={false}
+                    tickFormatter={(v) => String(v).length > 12 ? String(v).substring(0, 12) + '...' : v}
+                    tick={{ fontSize: 9, fill: 'var(--color-text-primary)', fontWeight: 700 }}
+                    width={90}
                   />
                   <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.3 }} />
-                  <Bar dataKey="total" radius={[4, 4, 0, 0]} maxBarSize={38} fill="#00a896">
-                    {(chartMode === 'diario' ? dailyChartData : monthlyChartData).map((_: any, i: number) => (
-                      <Cell key={`cell-${i}`} fill={BAR_COLORS[i % BAR_COLORS.length]} />
+                  <Bar dataKey="total" radius={[0, 4, 4, 0]} maxBarSize={16}>
+                    {top10Cidades.map((_: any, index: number) => (
+                      <Cell key={`cell-${index}`} fill={BAR_COLORS[index % BAR_COLORS.length]} />
                     ))}
                   </Bar>
                 </BarChart>
-              )}
-            </ResponsiveContainer>
-          )}
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+
+        {/* Top 10 Cidades Ranking */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm flex flex-col">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="font-extrabold text-slate-800 dark:text-white text-xs uppercase tracking-widest flex items-center gap-1.5">
+              <Target size={14} className="text-emerald-600" /> Top Cidades (Ranking)
+            </h3>
+          </div>
+          <div className="flex-1 overflow-y-auto space-y-2 pr-1 max-h-[280px]">
+            {cidadesQuery.isLoading ? (
+              <div className="h-full flex items-center justify-center text-xs text-slate-400">Carregando ranking...</div>
+            ) : top10Cidades.map((item: any, i: number) => {
+              const pct = totalPeriodo > 0 ? (item.total / totalPeriodo) * 100 : 0
+              return (
+                <div key={i} className="flex items-center gap-3.5 p-2 hover:bg-slate-50 dark:hover:bg-slate-800/30 rounded-xl transition-all duration-200 border border-transparent hover:border-slate-100">
+                  {/* Position */}
+                  <div className="w-8 shrink-0 flex items-center justify-center">
+                    <span className="text-xs font-black text-slate-400 mono">#{i + 1}</span>
+                  </div>
+
+                  {/* City Name */}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-extrabold text-slate-700 dark:text-slate-200 uppercase truncate">
+                      {item.nome}
+                    </div>
+                  </div>
+
+                  {/* Value */}
+                  <div className="text-right shrink-0 pl-2">
+                    <div className="text-xs font-black text-slate-800 dark:text-white mono">
+                      {formatBRL(item.total)}
+                    </div>
+                    <div className="text-[9px] text-[#00a896] font-bold mt-0.5">
+                      {pct.toFixed(1)}% share
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </div>
       </div>
     </>)}
+
+
 
       {/* ── METAS SECTION (MOBILE ONLY) ──────────────────────────────────── */}
       {isMobile && activeTab === 'metas' && (
@@ -1017,7 +921,7 @@ export default function HomeV1() {
               )}
             >
               <LayoutDashboard size={18} />
-              <span className="text-[8px] md:text-[9px] font-bold uppercase tracking-wider mt-1">Estatísticas</span>
+              <span className="text-[8px] font-bold uppercase tracking-wider mt-1">ESTATÍSTICAS</span>
             </button>
 
             {/* Tab Receitas */}
@@ -1029,7 +933,7 @@ export default function HomeV1() {
               )}
             >
               <TrendingUp size={18} />
-              <span className="text-[8px] md:text-[9px] font-bold uppercase tracking-wider mt-1">Receitas</span>
+              <span className="text-[8px] font-bold uppercase tracking-wider mt-1">RECEITAS</span>
             </button>
 
             {/* Tab Vendedores */}
@@ -1041,7 +945,7 @@ export default function HomeV1() {
               )}
             >
               <Trophy size={18} />
-              <span className="text-[8px] md:text-[9px] font-bold uppercase tracking-wider mt-1">Vendedores</span>
+              <span className="text-[8px] font-bold uppercase tracking-wider mt-1">VENDEDORES</span>
             </button>
 
             {/* Tab Metas */}
@@ -1053,7 +957,7 @@ export default function HomeV1() {
               )}
             >
               <Target size={18} />
-              <span className="text-[8px] md:text-[9px] font-bold uppercase tracking-wider mt-1">Metas</span>
+              <span className="text-[8px] font-bold uppercase tracking-wider mt-1">METAS</span>
             </button>
 
             {/* Tab Filtros (Trigger Bottom Sheet) */}
@@ -1065,7 +969,7 @@ export default function HomeV1() {
                 <span className="absolute top-1 right-6 w-2 h-2 rounded-full bg-emerald-500 border border-white" />
               )}
               <Sliders size={18} />
-              <span className="text-[8px] md:text-[9px] font-bold uppercase tracking-wider mt-1">Filtros</span>
+              <span className="text-[8px] font-bold uppercase tracking-wider mt-1">FILTROS</span>
             </button>
           </div>
         </div>
@@ -1102,86 +1006,7 @@ export default function HomeV1() {
                 <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-2.5 pl-1">
                   Período
                 </span>
-                <div className="grid grid-cols-2 gap-2">
-                  {PERIOD_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.key}
-                      onClick={() => {
-                        if (opt.key === 'custom') {
-                          if (!globalStartDate || !globalEndDate) {
-                            const today = new Date().toISOString().slice(0, 10)
-                            const monthAgo = new Date()
-                            monthAgo.setDate(monthAgo.getDate() - 30)
-                            setCustomRange(monthAgo.toISOString().slice(0, 10), today)
-                          }
-                          setPeriod('custom')
-                        } else {
-                          setPeriod(opt.key)
-                        }
-                      }}
-                      className={clsx(
-                        "py-2 px-3 rounded-xl text-xs font-bold text-center border transition-all cursor-pointer",
-                        period === opt.key
-                          ? "bg-[#00a896] text-white border-transparent shadow-sm"
-                          : "bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-100 dark:border-slate-800/80 hover:bg-slate-100"
-                      )}
-                    >
-                      {opt.label === 'Mês anterior' ? 'Mês Anterior' : opt.label === 'Mês atual' ? 'Mês Atual' : opt.label}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Custom Month/Year Dropdown selectors */}
-                {period === 'custom' && (
-                  <div className="mt-3 grid grid-cols-2 gap-2 bg-slate-50 dark:bg-slate-800/40 p-3 rounded-2xl border border-slate-100 dark:border-slate-800/60 animate-in slide-in-from-top-1 duration-200">
-                    <div className="flex flex-col gap-1">
-                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest pl-1">De:</span>
-                      <div className="flex gap-1">
-                        <select
-                          value={startMonth}
-                          onChange={(e) => handleCustomDateChange(parseInt(e.target.value), startYear, endMonth, endYear)}
-                          className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs outline-none focus:border-[#00a896] transition-colors cursor-pointer font-bold text-slate-800 dark:text-white w-full"
-                        >
-                          {['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'].map((m, idx) => (
-                            <option key={m} value={idx + 1}>{m}</option>
-                          ))}
-                        </select>
-                        <select
-                          value={startYear}
-                          onChange={(e) => handleCustomDateChange(startMonth, parseInt(e.target.value), endMonth, endYear)}
-                          className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs outline-none focus:border-[#00a896] transition-colors cursor-pointer font-bold text-slate-800 dark:text-white w-full"
-                        >
-                          {[2020, 2021, 2022, 2023, 2024, 2025, 2026].map((y) => (
-                            <option key={y} value={y}>{y}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest pl-1">Até:</span>
-                      <div className="flex gap-1">
-                        <select
-                          value={endMonth}
-                          onChange={(e) => handleCustomDateChange(startMonth, startYear, parseInt(e.target.value), endYear)}
-                          className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs outline-none focus:border-[#00a896] transition-colors cursor-pointer font-bold text-slate-800 dark:text-white w-full"
-                        >
-                          {['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'].map((m, idx) => (
-                            <option key={m} value={idx + 1}>{m}</option>
-                          ))}
-                        </select>
-                        <select
-                          value={endYear}
-                          onChange={(e) => handleCustomDateChange(startMonth, startYear, endMonth, parseInt(e.target.value))}
-                          className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs outline-none focus:border-[#00a896] transition-colors cursor-pointer font-bold text-slate-800 dark:text-white w-full"
-                        >
-                          {[2020, 2021, 2022, 2023, 2024, 2025, 2026].map((y) => (
-                            <option key={y} value={y}>{y}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                <PeriodFilter excludePeriods={['yesterday']} compact={true} />
               </div>
 
               {/* Vendedor Dropdown */}

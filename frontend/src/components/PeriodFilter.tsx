@@ -100,30 +100,68 @@ export default function PeriodFilter({ excludePeriods = [], compact = false }: P
           </button>
         ))}
       </div>
-      {showCustom && period === 'custom' && (
-        <div className="mt-3 pt-3 border-t border-divider/40 flex items-center gap-3 flex-wrap animate-in slide-in-from-top-1 duration-200">
-          <div className="flex items-center gap-1.5 flex-1 min-w-[120px]">
-            <label htmlFor="start-date" className="text-[10px] font-bold text-text-secondary uppercase">De:</label>
-            <input
-              id="start-date"
-              type="date"
-              className="px-2.5 py-1.5 bg-bg-secondary border border-divider text-text-primary rounded-lg text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300 w-full cursor-pointer"
-              value={startDate || ''}
-              onChange={(e) => setCustomRange(e.target.value, endDate || e.target.value)}
-            />
+      {showCustom && period === 'custom' && (() => {
+        const startMonth = startDate ? parseInt(startDate.split('-')[1], 10) : new Date().getMonth() + 1;
+        const startYear = startDate ? parseInt(startDate.split('-')[0], 10) : new Date().getFullYear();
+        const endMonth = endDate ? parseInt(endDate.split('-')[1], 10) : new Date().getMonth() + 1;
+        const endYear = endDate ? parseInt(endDate.split('-')[0], 10) : new Date().getFullYear();
+        const years = Array.from({ length: 10 }, (_, i) => 2020 + i);
+
+        const handleCustomDateChange = (sM: number, sY: number, eM: number, eY: number) => {
+          const startStr = `${sY}-${String(sM).padStart(2, '0')}-01`;
+          const lastDay = new Date(eY, eM, 0).getDate();
+          const endStr = `${eY}-${String(eM).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+          setCustomRange(startStr, endStr);
+        };
+
+        return (
+          <div className="mt-3 pt-3 border-t border-divider/40 flex items-center gap-2.5 flex-wrap animate-in slide-in-from-top-1 duration-200 text-xs">
+            <span className="font-bold text-text-secondary uppercase text-[10px]">De:</span>
+            <select
+              value={startMonth}
+              onChange={(e) => handleCustomDateChange(parseInt(e.target.value), startYear, endMonth, endYear)}
+              className="bg-bg-primary border border-divider text-text-primary rounded-lg px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300 cursor-pointer font-bold"
+              aria-label="Mês de Início"
+            >
+              {['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'].map((m, idx) => (
+                <option key={m} value={idx + 1}>{m}</option>
+              ))}
+            </select>
+            <select
+              value={startYear}
+              onChange={(e) => handleCustomDateChange(startMonth, parseInt(e.target.value), endMonth, endYear)}
+              className="bg-bg-primary border border-divider text-text-primary rounded-lg px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300 cursor-pointer font-bold"
+              aria-label="Ano de Início"
+            >
+              {years.map((y) => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+
+            <span className="font-bold text-text-secondary uppercase text-[10px]">Até:</span>
+            <select
+              value={endMonth}
+              onChange={(e) => handleCustomDateChange(startMonth, startYear, parseInt(e.target.value), endYear)}
+              className="bg-bg-primary border border-divider text-text-primary rounded-lg px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300 cursor-pointer font-bold"
+              aria-label="Mês de Término"
+            >
+              {['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'].map((m, idx) => (
+                <option key={m} value={idx + 1}>{m}</option>
+              ))}
+            </select>
+            <select
+              value={endYear}
+              onChange={(e) => handleCustomDateChange(startMonth, startYear, endMonth, parseInt(e.target.value))}
+              className="bg-bg-primary border border-divider text-text-primary rounded-lg px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300 cursor-pointer font-bold"
+              aria-label="Ano de Término"
+            >
+              {years.map((y) => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
           </div>
-          <div className="flex items-center gap-1.5 flex-1 min-w-[120px]">
-            <label htmlFor="end-date" className="text-[10px] font-bold text-text-secondary uppercase">Até:</label>
-            <input
-              id="end-date"
-              type="date"
-              className="px-2.5 py-1.5 bg-bg-secondary border border-divider text-text-primary rounded-lg text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300 w-full cursor-pointer"
-              value={endDate || ''}
-              onChange={(e) => setCustomRange(startDate || e.target.value, e.target.value)}
-            />
-          </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   )
 }

@@ -68,8 +68,19 @@ export default function Titulos() {
               )
             }
           },
-          { key: 'descricao', label: 'DESCRIÇÃO', render: (r: any) => <span className="font-medium">{r.descricao || '—'}</span> },
-          { key: 'cliente', label: 'CLIENTE/FORNECEDOR', render: (r: any) => <span className="text-sm text-text-secondary">{r.cliente || '—'}</span> },
+          { 
+            key: 'descricao', 
+            label: 'DESCRIÇÃO', 
+            render: (r: any) => (
+              <div className="flex flex-col min-w-0">
+                <span className="font-semibold text-xs sm:text-sm text-text-primary leading-tight truncate">{r.descricao || '—'}</span>
+                <span className="text-[10px] text-text-muted mt-0.5 sm:hidden truncate max-w-[150px]">
+                  {r.cliente || '—'}
+                </span>
+              </div>
+            )
+          },
+          { key: 'cliente', label: 'CLIENTE/FORNECEDOR', className: 'hidden sm:table-cell', render: (r: any) => <span className="text-sm text-text-secondary">{r.cliente || '—'}</span> },
           { key: 'data_vencimento', label: 'VENCIMENTO', render: (r: any) => <span className="mono text-xs">{formatDate(r.data_vencimento)}</span> },
           {
             key: 'valor',

@@ -31,9 +31,7 @@ export default function Comercial() {
 
   const tabs = [
     { path: '/comercial', label: 'Visão Consolidada', shortLabel: 'Consolidada', icon: LayoutDashboard },
-    { path: '/comercial/pedidos', label: 'Hub de Pedidos', shortLabel: 'Pedidos', icon: ShoppingCart },
     { path: '/comercial/equipe', label: 'Equipes', shortLabel: 'Equipes', icon: Users },
-    { path: '/comercial/vendedor', label: 'Hub do Vendedor', shortLabel: 'Vendedor', icon: Award },
     { path: '/comercial/rankings', label: 'Rankings', shortLabel: 'Rankings', icon: Trophy }
   ];
 
@@ -58,7 +56,7 @@ export default function Comercial() {
   const HeaderIcon = currentTab ? currentTab.icon : BarChart3;
 
   return (
-    <div className={clsx("flex flex-col h-full space-y-4 md:space-y-6 animate-in fade-in duration-300", isMobile ? "pb-28" : "")} aria-label="Módulo Comercial">
+    <div className="flex flex-col h-full space-y-4 md:space-y-6 animate-in fade-in duration-300" aria-label="Módulo Comercial">
       
       {/* Header unificado do Módulo Comercial */}
       <div className="bg-bg-primary border border-divider rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row items-start md:items-center justify-between shadow-card gap-4">
@@ -165,7 +163,7 @@ export default function Comercial() {
       )}
 
       {/* Área de Renderização das Visões */}
-      <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+      <div className={clsx("flex-1 min-h-0 overflow-y-auto pr-1", isMobile ? "pb-28" : "")}>
         <Outlet context={{ filter }} />
       </div>
     </div>
