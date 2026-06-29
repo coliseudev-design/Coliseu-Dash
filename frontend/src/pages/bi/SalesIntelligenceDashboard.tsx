@@ -63,6 +63,7 @@ export default function SalesIntelligenceDashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 50;
   const [evolutionGroupBy, setEvolutionGroupBy] = useState<'dia' | 'mes'>('dia');
+  const [selectedYear, setSelectedYear] = useState<string>('all');
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 640);
@@ -116,10 +117,29 @@ export default function SalesIntelligenceDashboard() {
     }));
   }, [salesIntData?.revenue_trajectory]);
 
+  // Available years from trajectory data
+  const availableYears = useMemo(() => {
+    const years = new Set<string>();
+    revenueTrajectory.forEach((item: any) => {
+      if (item.dia && item.dia.includes('-')) {
+        years.add(item.dia.split('-')[0]);
+      }
+    });
+    return Array.from(years).sort();
+  }, [revenueTrajectory]);
+
+  // Filtered trajectory by selected year
+  const filteredTrajectory = useMemo(() => {
+    if (selectedYear === 'all') return revenueTrajectory;
+    return revenueTrajectory.filter((item: any) =>
+      item.dia && item.dia.startsWith(selectedYear)
+    );
+  }, [revenueTrajectory, selectedYear]);
+
   // Grouped Evolution Data (Daily or Monthly)
   const groupedEvolutionData = useMemo(() => {
     if (evolutionGroupBy === 'dia') {
-      return revenueTrajectory.map((item: any) => {
+      return filteredTrajectory.map((item: any) => {
         let label = item.dia;
         if (label && label.includes('-')) {
           const parts = label.split('-');
@@ -134,7 +154,7 @@ export default function SalesIntelligenceDashboard() {
       });
     } else {
       const groups: Record<string, { key: string; label: string; value: number }> = {};
-      revenueTrajectory.forEach((item: any) => {
+      filteredTrajectory.forEach((item: any) => {
         let monthKey = '';
         let monthLabel = '';
         if (item.dia && item.dia.includes('-')) {
@@ -167,7 +187,7 @@ export default function SalesIntelligenceDashboard() {
           value: g.value
         }));
     }
-  }, [revenueTrajectory, evolutionGroupBy]);
+  }, [filteredTrajectory, evolutionGroupBy]);
 
   const isPeriodOver30Days = useMemo(() => {
     if (filter.period === 'last12m') return true;
@@ -433,7 +453,38 @@ export default function SalesIntelligenceDashboard() {
             <h3 className="font-bold text-text-primary text-xs uppercase tracking-wider">Evolução Comercial</h3>
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            {/* Filtro de Ano */}
+            {availableYears.length > 1 && (
+              <div className="flex items-center gap-1 bg-bg-secondary p-0.5 rounded-lg border border-divider">
+                <button
+                  onClick={() => setSelectedYear('all')}
+                  className={clsx(
+                    "px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer",
+                    selectedYear === 'all'
+                      ? "bg-bg-primary text-brand-500 shadow-sm"
+                      : "text-text-secondary hover:text-text-primary"
+                  )}
+                >
+                  Todos
+                </button>
+                {availableYears.map(year => (
+                  <button
+                    key={year}
+                    onClick={() => setSelectedYear(year)}
+                    className={clsx(
+                      "px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer",
+                      selectedYear === year
+                        ? "bg-bg-primary text-brand-500 shadow-sm"
+                        : "text-text-secondary hover:text-text-primary"
+                    )}
+                  >
+                    {year}
+                  </button>
+                ))}
+              </div>
+            )}
+
             {/* Agrupamento: Diário / Mensal */}
             <div className="flex items-center gap-1 bg-bg-secondary p-0.5 rounded-lg border border-divider">
               <button
