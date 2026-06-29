@@ -121,23 +121,27 @@ export default function InventoryManagementDashboard() {
           </h2>
           <p className="text-sm text-text-secondary mt-1">Controle de estoque, curva ABC e saúde do mix de produtos</p>
         </div>
-        <div className="flex items-center gap-4">
-          <button className="bg-cyan-500/10 text-cyan-500 hover:bg-cyan-500/20 px-4 py-2 rounded-lg font-bold text-xs flex items-center gap-2 transition-colors border border-cyan-500/20">
-            <Sparkles size={14} /> Analisar com IA
-          </button>
-          <span className="text-xs font-extrabold text-text-muted uppercase tracking-wider">COMPENSADOS DOURADOS</span>
-        </div>
+        {!isDash1 && (
+          <div className="flex items-center gap-4">
+            <button className="bg-cyan-500/10 text-cyan-500 hover:bg-cyan-500/20 px-4 py-2 rounded-lg font-bold text-xs flex items-center gap-2 transition-colors border border-cyan-500/20">
+              <Sparkles size={14} /> Analisar com IA
+            </button>
+            <span className="text-xs font-extrabold text-text-muted uppercase tracking-wider">COMPENSADOS DOURADOS</span>
+          </div>
+        )}
       </div>
       
       {/* FILTROS SUPERIORES */}
-      <div className="flex justify-end gap-3 mb-2">
-        <select className="bg-bg-secondary border border-border rounded-lg px-3 py-1.5 text-xs text-text-primary outline-none">
-          <option>Status: Todos</option>
-        </select>
-        <select className="bg-bg-secondary border border-border rounded-lg px-3 py-1.5 text-xs text-text-primary outline-none">
-          <option>Marca: Todas (292)</option>
-        </select>
-      </div>
+      {!isDash1 && (
+        <div className="flex justify-end gap-3 mb-2">
+          <select className="bg-bg-secondary border border-border rounded-lg px-3 py-1.5 text-xs text-text-primary outline-none">
+            <option>Status: Todos</option>
+          </select>
+          <select className="bg-bg-secondary border border-border rounded-lg px-3 py-1.5 text-xs text-text-primary outline-none">
+            <option>Marca: Todas (292)</option>
+          </select>
+        </div>
+      )}
 
       {/* KPIs (2 ROWS) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -162,13 +166,15 @@ export default function InventoryManagementDashboard() {
           <div className="text-2xl font-extrabold text-text-primary mt-2">{formatNum(kpis.total_volume)}</div>
         </div>
 
-        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between">
-          <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">
-            <div className="p-1.5 bg-cyan-500/10 rounded-lg"><RefreshCcw size={14} className="text-cyan-500" /></div> GIRO (TURNOVER)
+        {!isDash1 && (
+          <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between">
+            <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">
+              <div className="p-1.5 bg-cyan-500/10 rounded-lg"><RefreshCcw size={14} className="text-cyan-500" /></div> GIRO (TURNOVER)
+            </div>
+            <div className="text-2xl font-extrabold text-text-primary mt-2">-</div>
+            <div className="text-[10px] text-text-muted mt-1">Renovação anual do Inventário</div>
           </div>
-          <div className="text-2xl font-extrabold text-text-primary mt-2">-</div>
-          <div className="text-[10px] text-text-muted mt-1">Renovação anual do Inventário</div>
-        </div>
+        )}
 
         {!isDash1 && (
           <>
@@ -331,16 +337,18 @@ export default function InventoryManagementDashboard() {
             <option value="">Todos Grupos ({gruposDisponiveis.length})</option>
             {gruposDisponiveis.map((g: any) => <option key={g} value={g}>{g}</option>)}
           </select>
-          <select 
-            value={abcFilter}
-            onChange={(e) => setAbcFilter(e.target.value)}
-            className="bg-bg-secondary border border-border rounded-lg px-3 py-1.5 text-xs outline-none"
-          >
-            <option value="">Classe ABC: Todas</option>
-            <option value="A">Curva A</option>
-            <option value="B">Curva B</option>
-            <option value="C">Curva C</option>
-          </select>
+          {!isDash1 && (
+            <select 
+              value={abcFilter}
+              onChange={(e) => setAbcFilter(e.target.value)}
+              className="bg-bg-secondary border border-border rounded-lg px-3 py-1.5 text-xs outline-none"
+            >
+              <option value="">Classe ABC: Todas</option>
+              <option value="A">Curva A</option>
+              <option value="B">Curva B</option>
+              <option value="C">Curva C</option>
+            </select>
+          )}
           <button 
             onClick={() => setComEstoque(!comEstoque)}
             className={clsx(
@@ -356,15 +364,21 @@ export default function InventoryManagementDashboard() {
         </div>
 
         {/* Legend */}
-        <div className="flex items-center gap-4 text-[10px] font-medium text-text-muted mb-4 px-2 border-b border-divider pb-4">
-          <Filter size={12} />
-          <div className="flex items-center gap-1 bg-brand-500/20 text-brand-500 px-2 py-0.5 rounded-full border border-brand-500/30">Todos</div>
-          <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-danger"></span> Crítico</div>
-          <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-warning"></span> Atenção</div>
-          <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-success"></span> Ideal</div>
-          <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-cyan-500"></span> Sem Giro</div>
-          <div className="ml-auto">{filteredData.length} itens encontrados</div>
-        </div>
+        {!isDash1 ? (
+          <div className="flex items-center gap-4 text-[10px] font-medium text-text-muted mb-4 px-2 border-b border-divider pb-4">
+            <Filter size={12} />
+            <div className="flex items-center gap-1 bg-brand-500/20 text-brand-500 px-2 py-0.5 rounded-full border border-brand-500/30">Todos</div>
+            <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-danger"></span> Crítico</div>
+            <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-warning"></span> Atenção</div>
+            <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-success"></span> Ideal</div>
+            <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-cyan-500"></span> Sem Giro</div>
+            <div className="ml-auto">{filteredData.length} itens encontrados</div>
+          </div>
+        ) : (
+          <div className="flex justify-end text-[10px] font-medium text-text-muted mb-4 px-2 border-b border-divider pb-4">
+            <div>{filteredData.length} itens encontrados</div>
+          </div>
+        )}
 
         {/* Data Table */}
         <div className="overflow-x-auto">
@@ -381,7 +395,7 @@ export default function InventoryManagementDashboard() {
                 <th className="pb-3 px-2 text-right">ESTOQUE</th>
                 <th className="pb-3 px-2 text-right">CUSTO</th>
                 <th className="pb-3 px-2 text-right">PREÇO</th>
-                <th className="pb-3 px-2 text-center">DIAS</th>
+                {!isDash1 && <th className="pb-3 px-2 text-center">DIAS</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-divider/30 text-xs">
@@ -410,7 +424,7 @@ export default function InventoryManagementDashboard() {
                   </td>
                   <td className="py-3 px-2 text-right font-mono text-text-muted">{formatBRL(row.custo)}</td>
                   <td className="py-3 px-2 text-right font-mono text-text-primary font-bold">{formatBRL(row.preco)}</td>
-                  <td className="py-3 px-2 text-center font-bold text-success">{row.dias}</td>
+                  {!isDash1 && <td className="py-3 px-2 text-center font-bold text-success">{row.dias}</td>}
                 </tr>
               ))}
             </tbody>
