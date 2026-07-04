@@ -190,7 +190,7 @@ router.post('/:tabela', async (req, res) => {
                         let desc = parseFloat(row['valor_desconto']) || 0;
                         let custo = parseFloat(row['valor_custo']) || 0;
 
-                        const isDevolucao = parseInt(row['es']) === 2 || parseInt(row['processo']) === 2;
+                        const isDevolucao = parseInt(row['es']) === 2 || (parseInt(row['processo']) === 2 && ['DEVOLUCAO DE CLIENTE', 'GARANTIA'].includes(String(row['especie']).toUpperCase().trim()));
                         if (isDevolucao) {
                             total = -Math.abs(total);
                             desc = -Math.abs(desc);

@@ -33,15 +33,21 @@ function getCfopFilterClause(tableAlias = 'v') {
 
 /**
  * STATUS_FILTER para Sistema Coliseu (Layouts 1, 2 e 3):
- * Allowlist: inclui apenas FATURADO e FINALIZADO (status de venda concluída no ERP Coliseu).
- * Usa UPPER(TRIM()) para tolerância a espaços e variações de case.
- * Devoluções de cliente (espécie DEVOLUCAO DE CLIENTE) entram como valor negativo,
- * descontando do faturamento — comportamento idêntico ao ERP.
- * Apenas GARANTIA com valor negativo é excluída (são trocas sem efeito financeiro).
+ * Regra exata do ERP Coliseu para faturamento:
+ *  1. Apenas registros de Saída (es=1)
+ *     OU PIX - BALCAO com es=2 (saídas físicas de caixa registradas como entrada)
+ *  2. Status: FATURADO, FINALIZADO, PROCESSADO
+ * Devoluções de cliente (es=1, processo=2) entram como valor negativo,
+ * descontando o faturamento — comportamento idêntico ao ERP.
+ * Entradas (es=2) de GARANTIA, MECANICO etc. são ignoradas (não são vendas).
  */
 function getStatusFilterClause(tableAlias = 'v') {
     const prefix = tableAlias ? `${tableAlias}.` : '';
-    return `AND UPPER(TRIM(${prefix}status)) IN ('FATURADO', 'FINALIZADO', 'PROCESSADO') AND (UPPER(TRIM(COALESCE(${prefix}especie, ''))) != 'GARANTIA' OR (COALESCE(${prefix}valor_total, 0) - COALESCE(${prefix}valor_desconto, 0)) >= 0)`;
+    return `AND UPPER(TRIM(${prefix}status)) IN ('FATURADO', 'FINALIZADO', 'PROCESSADO')
+            AND (
+                ${prefix}es = 1
+                OR (${prefix}es = 2 AND UPPER(TRIM(COALESCE(${prefix}especie, ''))) = 'PIX - BALCAO')
+            )`;
 }
 
 /**
