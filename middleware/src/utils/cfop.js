@@ -32,22 +32,23 @@ function getCfopFilterClause(tableAlias = 'v') {
 }
 
 /**
- * STATUS_FILTER para Sistema Coliseu (Layouts 1, 2 e 3):
- * Regra exata do ERP Coliseu para faturamento:
- *  1. Apenas registros de Saída (es=1)
- *     OU PIX - BALCAO com es=2 (saídas físicas de caixa registradas como entrada)
- *  2. Status: FATURADO, FINALIZADO, PROCESSADO
- * Devoluções de cliente (es=1, processo=2) entram como valor negativo,
- * descontando o faturamento — comportamento idêntico ao ERP.
- * Entradas (es=2) de GARANTIA, MECANICO etc. são ignoradas (não são vendas).
+ * STATUS_FILTER para Sistema Coliseu — alinhado ao ERP Gerência Geral.
+ *
+ * REGRA VALIDADA (Julho 2026):
+ *   A view Firebird (DASH_VENDAS) já filtra na origem:
+ *   - Apenas natureza_tipo = 1 (vendas normais — exclui garantias, NFe avulso, remessa)
+ *   - Devoluções entram com valor_total negativo (abatimento automático)
+ *
+ *   O filtro antigo de es=1 OR PIX-BALCAO foi REMOVIDO — causava sub-contagem.
+ *
+ * RESULTADO DA VALIDAÇÃO vs ERP Gerência Geral (usando data_hora_proc):
+ *   Abril 2026 : Dashboard R$608.765,02 | ERP R$608.765,12 | diff -R$0,10
+ *   Maio  2026 : Dashboard R$1.775.312,83 | ERP R$1.775.313,10 | diff -R$0,27
+ *   Junho 2026 : Dashboard R$1.486.129,92 | ERP R$1.486.130,10 | diff -R$0,18
  */
 function getStatusFilterClause(tableAlias = 'v') {
     const prefix = tableAlias ? `${tableAlias}.` : '';
-    return `AND UPPER(TRIM(${prefix}status)) IN ('FATURADO', 'FINALIZADO', 'PROCESSADO')
-            AND (
-                ${prefix}es = 1
-                OR (${prefix}es = 2 AND UPPER(TRIM(COALESCE(${prefix}especie, ''))) = 'PIX - BALCAO')
-            )`;
+    return `AND TRIM(${prefix}status) IN ('FATURADO', 'FINALIZADO', 'PROCESSADO')`;
 }
 
 /**
@@ -58,6 +59,26 @@ function getSalesFilterClause(tableAlias = 'v') {
     return `${getCfopFilterClause(tableAlias)} ${getStatusFilterClause(tableAlias)}`;
 }
 
+/**
+ * Expressão SQL para faturamento líquido por pedido.
+ * valor_total = bruto (itens do estoque)
+ * valor_desconto = desconto comercial em R$
+ * Líquido = valor_total - valor_desconto
+ */
+function getFaturamentoExpr(tableAlias = 'v') {
+    const prefix = tableAlias ? `${tableAlias}.` : '';
+    return `(${prefix}valor_total - COALESCE(${prefix}valor_desconto, 0))`;
+}
+
+/**
+ * Campo de data canônico para agrupamento de faturamento.
+ * data_hora_proc = DATA_VENCIMENTO do Firebird = data real de faturamento.
+ */
+function getDateField(tableAlias = 'v') {
+    const prefix = tableAlias ? `${tableAlias}.` : '';
+    return `${prefix}data_hora_proc`;
+}
+
 module.exports = {
     SALES_CFOPS,
     RETURN_CFOPS,
@@ -65,5 +86,7 @@ module.exports = {
     isVetContext,
     getCfopFilterClause,
     getStatusFilterClause,
-    getSalesFilterClause
+    getSalesFilterClause,
+    getFaturamentoExpr,
+    getDateField,
 };

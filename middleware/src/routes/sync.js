@@ -11,7 +11,7 @@ const TABELAS_MAP = {
     'dash_produtos': ['id_firebird', 'codigo', 'nome', 'descricao', 'categoria', 'marca', 'preco', 'custo', 'estoque', 'estoque_minimo', 'ativo', 'referencia', 'codigo_fabrica', 'marca_id', 'grupo_id'],
     'dash_vendedores': ['id_firebird', 'nome', 'email', 'ativo'],
     'dash_fornecedores': ['id_firebird', 'nome', 'documento', 'cidade', 'estado'],
-    'dash_vendas': ['id_firebird', 'numero_pedido', 'data_venda', 'data_vencimento', 'cliente_id_firebird', 'vendedor_id_firebird', 'valor_total', 'valor_custo', 'valor_desconto', 'status', 'marca', 'categoria', 'especie', 'depto_id', 'cfop', 'numero_nota', 'data_hora_proc', 'es', 'processo'],
+    'dash_vendas': ['id_firebird', 'numero_pedido', 'data_venda', 'data_vencimento', 'cliente_id_firebird', 'vendedor_id_firebird', 'valor_total', 'valor_custo', 'valor_desconto', 'status', 'marca', 'categoria', 'especie', 'depto_id', 'cfop', 'numero_nota', 'data_hora_proc', 'data_fat', 'es', 'processo'],
     'dash_vendas_itens': ['id_firebird', 'venda_id_firebird', 'produto_id_firebird', 'quantidade', 'preco_unitario', 'custo_unitario', 'valor_total', 'vendedor', 'produto', 'marca', 'categoria', 'depto_id'],
     'dash_comissoes': ['id_firebird', 'vendedor_id_firebird', 'venda_id_firebird', 'periodo', 'valor_vendas', 'percentual', 'valor_comissao', 'data_referencia'],
     'dash_financeiro': ['id_firebird', 'tipo', 'tipo_documento', 'descricao', 'cliente_id_firebird', 'fornecedor_id_firebird', 'caixa_id_firebird', 'data_emissao', 'data_vencimento', 'data_pagamento', 'valor', 'valor_pago', 'status_pagamento', 'depto_id', 'centro_custo'],
@@ -153,9 +153,17 @@ router.post('/:tabela', async (req, res) => {
                     const status = row['status'] ? String(row['status']).trim().toUpperCase() : '';
                     const dataHoraProc = row['data_hora_proc'];
                     const dataVencimento = row['data_vencimento'];
+                    // data_fat = DT_FAT do Firebird ("Data Faturamento" visível no ERP admin)
+                    // Tem prioridade sobre data_hora_proc que pode ser o timestamp de confirmação
+                    // do sistema no dia seguinte (ex: pedido 3135 entrada 14:19 dia 27,
+                    // confirmado sistema 07:56 dia 28 → data_fat=27, data_hora_proc=28)
+                    const dataFat = row['data_fat'];
                     
                     const isFaturado = ['FATURADO', 'FINALIZADO', 'PROCESSADO'].includes(status);
-                    const faturamentoDate = (dataHoraProc && dataHoraProc !== '') ? dataHoraProc : (dataVencimento && dataVencimento !== '' ? dataVencimento : row['data_venda']);
+                    // Prioridade: data_fat (DT_FAT real) > data_hora_proc > data_vencimento > data_venda
+                    const faturamentoDate = (dataFat && dataFat !== '') ? dataFat :
+                                           (dataHoraProc && dataHoraProc !== '') ? dataHoraProc :
+                                           (dataVencimento && dataVencimento !== '' ? dataVencimento : row['data_venda']);
                     const hasFaturamentoDate = faturamentoDate !== undefined && faturamentoDate !== null && faturamentoDate !== '';
                     
                     if (status === 'CANCELADO' || !isFaturado || !hasFaturamentoDate) {
@@ -179,7 +187,8 @@ router.post('/:tabela', async (req, res) => {
                         continue;
                     }
                     
-                    // Alinhamento de Faturamento: usa data_hora_proc ou data_vencimento como data_venda principal
+                    // Alinhamento de Faturamento: usa data_fat (DT_FAT Firebird) como data_venda principal
+                    // Fallback: data_hora_proc > data_vencimento > data_venda original
                     row['data_venda'] = faturamentoDate;
                     row['data_vencimento'] = faturamentoDate;
 
