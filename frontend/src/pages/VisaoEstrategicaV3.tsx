@@ -170,7 +170,7 @@ export default function VisaoEstrategicaV3() {
   ];
 
   return (
-    <div className={clsx("space-y-6", isMobile ? "pb-28" : "pb-6")} aria-label="Visão Estratégica">
+    <div className={clsx("space-y-4", isMobile ? "pb-28" : "pb-4")} aria-label="Visão Estratégica">
       <div className="flex flex-col gap-3">
         <div>
           <h2 className="text-xl font-bold text-text-primary">Visão Estratégica</h2>

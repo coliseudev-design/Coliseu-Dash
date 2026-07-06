@@ -335,7 +335,7 @@ export default function SalesIntelligenceDashboard() {
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
+    <div className="space-y-4 animate-in fade-in duration-300">
       
       {/* HEADER SECTION */}
       <div className="hidden sm:flex flex-row items-center gap-4 border-b border-divider/40 pb-3 mb-2">

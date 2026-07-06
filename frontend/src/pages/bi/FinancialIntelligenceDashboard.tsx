@@ -97,7 +97,7 @@ export default function FinancialIntelligenceDashboard() {
   ];
 
   return (
-    <div aria-label="Inteligência Financeira Dashboard" className="space-y-6 animate-in fade-in duration-300 pb-10">
+    <div aria-label="Inteligência Financeira Dashboard" className="space-y-4 animate-in fade-in duration-300 pb-6">
       
 
 

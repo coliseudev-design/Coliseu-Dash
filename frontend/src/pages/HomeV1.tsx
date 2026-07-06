@@ -274,7 +274,7 @@ export default function HomeV1() {
   }, [rawDailyData])
 
   return (
-    <div className={clsx("space-y-6 pb-12", isMobile ? "pb-28" : "pb-12")} aria-label="Visão Estratégica Dashboard">
+    <div className={clsx("space-y-4 pb-8", isMobile ? "pb-28" : "pb-8")} aria-label="Visão Estratégica Dashboard">
 
       {/* ── HEADER & PERIOD FILTER ROW ────────────────────────────────────── */}
       <div className="flex flex-col gap-3">

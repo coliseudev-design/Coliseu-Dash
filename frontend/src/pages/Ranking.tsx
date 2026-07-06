@@ -154,7 +154,7 @@ export default function Ranking() {
   const isConsolidated = location.pathname.includes('/comercial')
 
   return (
-    <div className="space-y-6 sm:space-y-8" aria-label="Super Guia de Rankings">
+    <div className="space-y-3 sm:space-y-4" aria-label="Super Guia de Rankings">
       {!isConsolidated && (
         <div>
           <h2 className="font-heading text-xl font-semibold text-text-primary">Super Guia de Rankings</h2>
@@ -187,7 +187,7 @@ export default function Ranking() {
       </div>
 
       {/* Card Unificado com a Tabela e Gráfico */}
-      <div className="pb-10 min-h-[400px] sm:min-h-[500px]">
+      <div className="pb-4 min-h-[400px] sm:min-h-[500px]">
         <RankingSection 
           title={`Top 10 ${currentTab.label}`} 
           subtitle={currentTab.subtitle} 

@@ -34,7 +34,7 @@ export default function FinanceiroConsolidado() {
   ];
 
   return (
-    <div className="flex flex-col h-full space-y-4 md:space-y-6 animate-in fade-in duration-300" aria-label="Módulo Financeiro">
+    <div className="flex flex-col h-full space-y-3 md:space-y-4 animate-in fade-in duration-300" aria-label="Módulo Financeiro">
       
       {/* Header do Módulo Financeiro */}
       <div className="bg-bg-primary border border-divider rounded-2xl p-4 sm:p-5 flex flex-col gap-4 shadow-card">

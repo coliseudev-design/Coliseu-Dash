@@ -56,7 +56,7 @@ export default function Comissoes() {
   const isConsolidated = location.pathname.includes('/comercial')
 
   return (
-    <div className="space-y-4 sm:space-y-6 pb-6" aria-label="Vendedores">
+    <div className="space-y-3 sm:space-y-4 pb-4" aria-label="Vendedores">
       {!isConsolidated && (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <h1 className="text-2xl font-semibold font-heading text-text-primary flex items-center gap-2">
