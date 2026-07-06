@@ -99,25 +99,7 @@ export default function FinancialIntelligenceDashboard() {
   return (
     <div aria-label="Inteligência Financeira Dashboard" className="space-y-6 animate-in fade-in duration-300 pb-10">
       
-      {/* FILTROS HEADER */}
-      <div className="hidden sm:flex flex-row gap-3 mb-2 items-end flex-wrap">
-        <div className="flex flex-wrap items-end gap-3 w-full sm:w-auto">
-          <div className="flex flex-col w-full sm:w-44 md:w-52">
-            <span className="text-[11px] text-text-muted font-bold uppercase mb-1">Mês</span>
-            <div className="bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm w-full flex items-center justify-between cursor-pointer">
-              <span className="text-text-primary">Mês Atual</span>
-              <ChevronDown size={16} className="text-text-muted" />
-            </div>
-          </div>
-          <div className="flex flex-col w-full sm:w-28 md:w-32">
-            <span className="text-[11px] text-text-muted font-bold uppercase mb-1">Ano</span>
-            <div className="bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm w-full flex items-center justify-between cursor-pointer">
-              <span className="text-text-primary">2026</span>
-              <ChevronDown size={16} className="text-text-muted" />
-            </div>
-          </div>
-        </div>
-      </div>
+
 
       {/* TOP KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">

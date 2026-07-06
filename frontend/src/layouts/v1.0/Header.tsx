@@ -61,7 +61,7 @@ export default function Header({ onMenuClick, title }: Props) {
         <Menu size={20} />
       </button>
 
-      <h1 className="font-heading text-sm sm:text-base font-bold ml-1 sm:ml-2 lg:ml-0 truncate">{title}</h1>
+
 
       <div className="ml-auto flex items-center gap-1.5 sm:gap-3">
         

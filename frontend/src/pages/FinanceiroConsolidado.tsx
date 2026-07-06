@@ -4,7 +4,7 @@ import PeriodFilter from '../components/PeriodFilter';
 import { usePeriodStore, PERIOD_OPTIONS, periodToParams } from '../store/periodStore';
 import { BiPeriodFilter } from '../types/bi.types';
 import { useBranchParam } from '../contexts/BranchContext';
-import { Wallet, LineChart, ShieldAlert, X, FileText, Sliders } from 'lucide-react';
+import { Wallet, LineChart, ShieldAlert, X, FileText, Sliders, ChevronDown } from 'lucide-react';
 import clsx from 'clsx';
 
 export default function FinanceiroConsolidado() {
@@ -37,15 +37,15 @@ export default function FinanceiroConsolidado() {
     <div className="flex flex-col h-full space-y-4 md:space-y-6 animate-in fade-in duration-300" aria-label="Módulo Financeiro">
       
       {/* Header do Módulo Financeiro */}
-      <div className="bg-bg-primary border border-divider rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row items-start md:items-center justify-between shadow-card gap-4">
+      <div className="bg-bg-primary border border-divider rounded-2xl p-4 sm:p-5 flex flex-col xl:flex-row items-start xl:items-center justify-between shadow-card gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-black text-text-primary tracking-tight flex items-center gap-2">
+          <h1 className="text-xl sm:text-2xl font-black text-text-primary tracking-tight flex items-center gap-2 whitespace-nowrap">
             <Wallet className="text-brand-500" size={24} />
             Módulo Financeiro
           </h1>
         </div>
 
-        <div className="hidden md:flex items-center gap-3 w-full md:w-auto justify-end">
+        <div className="hidden xl:flex items-center gap-3 w-full xl:w-auto justify-end">
           {/* Desktop Filter */}
           <div>
             <PeriodFilter excludePeriods={['yesterday', 'lastMonth', 'last12m']} />
@@ -53,30 +53,47 @@ export default function FinanceiroConsolidado() {
         </div>
       </div>
 
-      {/* Tabs de Navegação Financeira */}
-      <div className="hidden md:flex bg-bg-primary/80 backdrop-blur-md p-1 rounded-2xl border border-divider shadow-sm max-w-md w-full">
-        {tabs.map((tab) => {
-          const isActive = 
-            tab.path === '/financeiro-consolidado'
-              ? location.pathname === '/financeiro-consolidado' || location.pathname === '/financeiro-consolidado/gestao'
-              : location.pathname.startsWith(tab.path);
-              
-          return (
-            <button
-              key={tab.path}
-              onClick={() => navigate(tab.path)}
-              className={clsx(
-                "flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer",
-                isActive
-                  ? "bg-brand-500 text-white shadow-md"
-                  : "text-text-secondary hover:bg-bg-secondary hover:text-text-primary"
-              )}
-            >
-              <tab.icon size={14} />
-              <span>{tab.label}</span>
-            </button>
-          );
-        })}
+      {/* Tabs de Navegação + Filtros Mês/Ano */}
+      <div className="hidden md:flex items-center justify-between gap-4 w-full">
+        {/* Tabs de Navegação Financeira */}
+        <div className="bg-bg-primary/80 backdrop-blur-md p-1 rounded-2xl border border-divider shadow-sm max-w-md w-full flex">
+          {tabs.map((tab) => {
+            const isActive = 
+              tab.path === '/financeiro-consolidado'
+                ? location.pathname === '/financeiro-consolidado' || location.pathname === '/financeiro-consolidado/gestao'
+                : location.pathname.startsWith(tab.path);
+                
+            return (
+              <button
+                key={tab.path}
+                onClick={() => navigate(tab.path)}
+                className={clsx(
+                  "flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer",
+                  isActive
+                    ? "bg-brand-500 text-white shadow-md"
+                    : "text-text-secondary hover:bg-bg-secondary hover:text-text-primary"
+                )}
+              >
+                <tab.icon size={14} />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Mês / Ano Filters next to tabs */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 bg-bg-primary border border-border rounded-xl px-3 py-1.5 shadow-sm text-xs font-bold text-text-primary">
+            <span className="text-text-muted">Mês:</span>
+            <span>Mês Atual</span>
+            <ChevronDown size={14} className="text-text-muted" />
+          </div>
+          <div className="flex items-center gap-2 bg-bg-primary border border-border rounded-xl px-3 py-1.5 shadow-sm text-xs font-bold text-text-primary">
+            <span className="text-text-muted">Ano:</span>
+            <span>2026</span>
+            <ChevronDown size={14} className="text-text-muted" />
+          </div>
+        </div>
       </div>
 
       {/* Mobile Bottom Sheet Filter Modal */}

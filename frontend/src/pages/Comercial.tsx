@@ -68,15 +68,15 @@ export default function Comercial() {
     <div className="flex flex-col h-full space-y-4 md:space-y-6 animate-in fade-in duration-300" aria-label="Módulo Comercial">
       
       {/* Header unificado do Módulo Comercial */}
-      <div className="bg-bg-primary border border-divider rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row items-start md:items-center justify-between shadow-card gap-4">
+      <div className="bg-bg-primary border border-divider rounded-2xl p-4 sm:p-5 flex flex-col xl:flex-row items-start xl:items-center justify-between shadow-card gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-black text-text-primary tracking-tight flex items-center gap-2">
+          <h1 className="text-xl sm:text-2xl font-black text-text-primary tracking-tight flex items-center gap-2 whitespace-nowrap">
             <HeaderIcon className="text-brand-500" size={24} />
             {title}
           </h1>
         </div>
 
-        <div className="hidden md:flex items-center gap-3 w-full md:w-auto justify-end">
+        <div className="hidden xl:flex items-center gap-3 w-full xl:w-auto justify-end">
           {/* Desktop Filter */}
           <div>
             <PeriodFilter excludePeriods={['yesterday']} />

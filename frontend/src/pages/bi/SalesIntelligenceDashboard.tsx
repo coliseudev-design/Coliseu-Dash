@@ -338,46 +338,39 @@ export default function SalesIntelligenceDashboard() {
     <div className="space-y-6 animate-in fade-in duration-300">
       
       {/* HEADER SECTION */}
-      <div className="hidden sm:flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-divider/40 pb-3 mb-2">
-        <div>
-          <h2 className="text-2xl font-black text-text-primary tracking-tight">Hub de vendas</h2>
+      <div className="hidden sm:flex flex-row items-center gap-4 border-b border-divider/40 pb-3 mb-2">
+        {/* Vendedor Filter */}
+        <div className="flex flex-col gap-1 w-48 lg:w-56 text-left">
+          <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider pl-1">Vendedor</span>
+          <select
+            value={selectedVendedor}
+            onChange={(e) => setSelectedVendedor(e.target.value)}
+            className="h-10 px-3 bg-bg-primary border border-border text-text-primary rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all duration-300 w-full cursor-pointer shadow-sm"
+          >
+            <option value="all">Todos os Vendedores</option>
+            {vdFull.data?.data?.map((seller: any) => (
+              <option key={seller.id} value={seller.id}>
+                {seller.nome || seller.vendedor}
+              </option>
+            ))}
+          </select>
         </div>
-        
-        {/* Dropdown Filters (Vendedor and Cidade) */}
-        <div className="hidden sm:flex flex-row items-center gap-3 w-full lg:w-auto">
-          {/* Vendedor Filter */}
-          <div className="flex flex-col gap-1 w-full sm:w-48 lg:w-56">
-            <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider pl-1">Vendedor</span>
-            <select
-              value={selectedVendedor}
-              onChange={(e) => setSelectedVendedor(e.target.value)}
-              className="h-10 px-3 bg-bg-secondary border border-border text-text-primary rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all duration-300 w-full cursor-pointer shadow-sm"
-            >
-              <option value="all">Todos os Vendedores</option>
-              {vdFull.data?.data?.map((seller: any) => (
-                <option key={seller.id} value={seller.id}>
-                  {seller.nome || seller.vendedor}
-                </option>
-              ))}
-            </select>
-          </div>
 
-          {/* Cidade Filter */}
-          <div className="flex flex-col gap-1 w-full sm:w-48 lg:w-56">
-            <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider pl-1">Cidade</span>
-            <select
-              value={selectedCidade}
-              onChange={(e) => setSelectedCidade(e.target.value)}
-              className="h-10 px-3 bg-bg-secondary border border-border text-text-primary rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all duration-300 w-full cursor-pointer shadow-sm"
-            >
-              <option value="all">Todas as Cidades</option>
-              {cidadesFull.data?.data?.map((c: any, idx: number) => (
-                <option key={idx} value={c.nome}>
-                  {c.nome}
-                </option>
-              ))}
-            </select>
-          </div>
+        {/* Cidade Filter */}
+        <div className="flex flex-col gap-1 w-48 lg:w-56 text-left">
+          <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider pl-1">Cidade</span>
+          <select
+            value={selectedCidade}
+            onChange={(e) => setSelectedCidade(e.target.value)}
+            className="h-10 px-3 bg-bg-primary border border-border text-text-primary rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all duration-300 w-full cursor-pointer shadow-sm"
+          >
+            <option value="all">Todas as Cidades</option>
+            {cidadesFull.data?.data?.map((c: any, idx: number) => (
+              <option key={idx} value={c.nome}>
+                {c.nome}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
