@@ -117,41 +117,42 @@ export default function Comercial() {
                 <PeriodFilter excludePeriods={['yesterday']} compact={true} />
               </div>
 
-              {/* Vendedor and Cidade filters inside parent bottom sheet on mobile */}
-              {(location.pathname === '/comercial' || location.pathname === '/comercial/vendas') && (
-                <>
-                  <div className="space-y-2">
-                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block pl-1">
-                      Vendedor
-                    </span>
-                    <select
-                      value={selectedVendedor}
-                      onChange={(e) => setSelectedVendedor(e.target.value)}
-                      className="h-10 px-3 bg-bg-secondary border border-divider text-text-primary rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 w-full cursor-pointer"
-                    >
-                      <option value="all">Todos os Vendedores</option>
-                      {vdFull.data?.data?.map((v: any) => (
-                        <option key={v.id} value={v.id}>{v.nome}</option>
-                      ))}
-                    </select>
-                  </div>
+              {/* Vendedor filter inside parent bottom sheet on mobile */}
+              {(location.pathname === '/comercial' || location.pathname === '/comercial/vendas' || location.pathname === '/comercial/equipe') && (
+                <div className="space-y-2">
+                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block pl-1">
+                    Vendedor
+                  </span>
+                  <select
+                    value={selectedVendedor}
+                    onChange={(e) => setSelectedVendedor(e.target.value)}
+                    className="h-10 px-3 bg-bg-secondary border border-divider text-text-primary rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 w-full cursor-pointer"
+                  >
+                    <option value="all">Todos os Vendedores</option>
+                    {vdFull.data?.data?.map((v: any) => (
+                      <option key={v.id} value={v.id}>{v.nome}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
-                  <div className="space-y-2">
-                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block pl-1">
-                      Cidade
-                    </span>
-                    <select
-                      value={selectedCidade}
-                      onChange={(e) => setSelectedCidade(e.target.value)}
-                      className="h-10 px-3 bg-bg-secondary border border-divider text-text-primary rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 w-full cursor-pointer"
-                    >
-                      <option value="all">Todas as Cidades</option>
-                      {cidadesFull.data?.data?.map((c: any) => (
-                        <option key={c.nome} value={c.nome}>{c.nome}</option>
-                      ))}
-                    </select>
-                  </div>
-                </>
+              {/* Cidade filter inside parent bottom sheet on mobile */}
+              {(location.pathname === '/comercial' || location.pathname === '/comercial/vendas') && (
+                <div className="space-y-2">
+                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block pl-1">
+                    Cidade
+                  </span>
+                  <select
+                    value={selectedCidade}
+                    onChange={(e) => setSelectedCidade(e.target.value)}
+                    className="h-10 px-3 bg-bg-secondary border border-divider text-text-primary rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 w-full cursor-pointer"
+                  >
+                    <option value="all">Todas as Cidades</option>
+                    {cidadesFull.data?.data?.map((c: any) => (
+                      <option key={c.nome} value={c.nome}>{c.nome}</option>
+                    ))}
+                  </select>
+                </div>
               )}
             </div>
 

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useBranchPeriodQuery } from '../hooks/useApi'
 import PeriodFilter from '../components/PeriodFilter'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, useOutletContext } from 'react-router-dom'
 import clsx from 'clsx'
 import {
   Users, Percent, ArrowDownAZ, Hash, Trophy, BarChart3,
@@ -17,12 +17,22 @@ export default function Comissoes() {
   const location = useLocation()
   const ranking = useBranchPeriodQuery<any>('/comissoes/ranking')
 
+  const context = useOutletContext<any>() || {}
+  const [localVendedor, setLocalVendedor] = useState<string>('all')
+  const selectedVendedor = context.selectedVendedor !== undefined ? context.selectedVendedor : localVendedor
+  const setSelectedVendedor = context.setSelectedVendedor !== undefined ? context.setSelectedVendedor : setLocalVendedor
+
   const dadosVendedores = ranking.data?.data || []
 
   // Ordena os vendedores por Total Vendido do maior para o menor
   const sortedData = useMemo(() => {
     return [...dadosVendedores].sort((a, b) => (b.total_vendas || 0) - (a.total_vendas || 0))
   }, [dadosVendedores])
+
+  const filteredData = useMemo(() => {
+    if (!selectedVendedor || selectedVendedor === 'all') return sortedData
+    return sortedData.filter((v: any) => String(v.vendedor_id) === String(selectedVendedor))
+  }, [sortedData, selectedVendedor])
 
   // Custom Tooltip for the chart
   const CustomTooltip = ({ active, payload }: any) => {
@@ -66,26 +76,47 @@ export default function Comissoes() {
           
           {/* Lista Resumida de Vendedores */}
           <div className="card w-full">
-            <div className="flex items-center gap-2 mb-4 border-b border-divider pb-2">
-              <Trophy size={18} className="text-warning" />
-              <h2 className="font-heading font-semibold text-text-primary">Desempenho Consolidado</h2>
-            </div>
-                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {sortedData.map((v: any, i: number) => (
-                <div 
-                  key={v.vendedor_id} 
-                  className="border border-divider rounded-2xl p-3 sm:p-5 bg-bg-primary hover:shadow-card-hover hover:border-brand-500/40 transition-all duration-300 relative shadow-card flex flex-col justify-between h-full hover:scale-[1.01] group"
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 border-b border-divider pb-3">
+              <div className="flex items-center gap-2">
+                <Trophy size={18} className="text-warning" />
+                <h2 className="font-heading font-semibold text-text-primary">Desempenho Consolidado</h2>
+              </div>
+              
+              {/* Selector de vendedor - desktop only */}
+              <div className="hidden sm:block w-full sm:w-64">
+                <select
+                  value={selectedVendedor}
+                  onChange={(e) => setSelectedVendedor(e.target.value)}
+                  className="h-10 px-3 bg-bg-secondary border border-border text-text-primary rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 w-full cursor-pointer shadow-sm"
                 >
-                  {/* Badge Rank / Medal */}
-                  {i < 3 ? (
-                    <span className="absolute -top-3 -left-3 text-2xl drop-shadow-md select-none">
-                      {i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}
-                    </span>
-                  ) : (
-                    <span className="absolute -top-3 -left-3 w-8 h-8 flex items-center justify-center text-xs font-black rounded-full shadow-md text-white bg-brand-500">
-                      {i + 1}º
-                    </span>
-                  )}
+                  <option value="all">Todos os Vendedores</option>
+                  {sortedData.map((v: any) => (
+                    <option key={v.vendedor_id} value={v.vendedor_id}>{v.vendedor}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {filteredData.map((v: any) => {
+                const originalIndex = sortedData.findIndex((item: any) => item.vendedor_id === v.vendedor_id)
+                const medal = originalIndex < 3 ? (originalIndex === 0 ? '🥇' : originalIndex === 1 ? '🥈' : '🥉') : null
+
+                return (
+                  <div 
+                    key={v.vendedor_id} 
+                    className="border border-divider rounded-2xl p-3 sm:p-5 bg-bg-primary hover:shadow-card-hover hover:border-brand-500/40 transition-all duration-300 relative shadow-card flex flex-col justify-between h-full hover:scale-[1.01] group"
+                  >
+                    {/* Badge Rank / Medal */}
+                    {originalIndex < 3 ? (
+                      <span className="absolute -top-3 -left-3 text-2xl drop-shadow-md select-none">
+                        {medal}
+                      </span>
+                    ) : (
+                      <span className="absolute -top-3 -left-3 w-8 h-8 flex items-center justify-center text-xs font-black rounded-full shadow-md text-white bg-brand-500">
+                        {originalIndex + 1}º
+                      </span>
+                    )}
                   
                   <h3 className="font-semibold text-text-primary mb-3 pl-3 truncate border-b border-divider pb-2 group-hover:text-brand-500 transition-colors" title={v.vendedor}>
                     {v.vendedor}
@@ -182,10 +213,11 @@ export default function Comissoes() {
                       className="w-full flex items-center justify-center gap-1.5 py-2.5 px-4 bg-brand-500 hover:bg-brand-600 active:scale-[0.98] text-white rounded-xl text-xs font-black transition-all cursor-pointer shadow-sm hover:shadow-md mt-2"
                     >
                       Detalhes
-                    </button>
+                  </button>
                   </div>
                 </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         </div>
