@@ -217,27 +217,27 @@ export default function VisaoEstrategicaV3() {
       {/* TIER 2: KPIS PRIMÁRIOS */}
       {(!isMobile || activeTab === 'estatisticas') && (
         <>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {[
               { label: 'Vendas Totais', value: formatBRL(faturamentoAtual), icon: DollarSign, color: 'text-success', bg: 'bg-success/10' },
               { label: 'Volume de Peças', value: formatNum(qtdPedidos), icon: Box, color: 'text-brand-500', bg: 'bg-brand-500/10' },
               { label: 'Ticket Médio', value: formatBRL(ticketMedio), icon: Target, color: 'text-warning', bg: 'bg-warning/10' },
               { label: 'Taxa de Conversão', value: `${taxaConversao.toFixed(1)}%`, icon: TrendingUp, color: 'text-danger', bg: 'bg-danger/10' },
             ].map((kpi, idx) => (
-              <div key={idx} className="bg-bg-primary rounded-xl p-4 border border-border shadow-card flex items-center gap-4">
-                <div className={clsx('p-3 rounded-lg', kpi.bg, kpi.color)}>
+              <div key={idx} className="bg-bg-primary rounded-xl p-3 border border-border shadow-card flex items-center gap-3">
+                <div className={clsx('p-2 rounded-lg', kpi.bg, kpi.color)}>
                   <kpi.icon size={20} />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <div className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">{kpi.label}</div>
-                  <div className="text-lg font-bold text-text-primary">{kpi.value}</div>
+                  <div className="text-base sm:text-lg font-bold text-text-primary truncate" title={String(kpi.value)}>{kpi.value}</div>
                 </div>
               </div>
             ))}
           </div>
 
           {/* TIER 3: KPIS SECUNDÁRIOS */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {[
               { label: 'Volume de Peças (Pedidos)', value: formatNum(qtdPedidos), icon: ShoppingBag, color: 'text-brand-500', bg: 'bg-brand-500/10' },
               { label: 'Ticket Médio', value: formatBRL(ticketMedio), icon: DollarSign, color: 'text-warning', bg: 'bg-warning/10' },
@@ -245,13 +245,13 @@ export default function VisaoEstrategicaV3() {
               { label: 'Clientes Ativos', value: `${clientesAtivos} / ${totalClientes}`, icon: Users, color: 'text-blue-500', bg: 'bg-blue-500/10' },
               { label: 'Vendedores Ativos', value: vd.data?.data?.length || 0, icon: Briefcase, color: 'text-cyan-500', bg: 'bg-cyan-500/10' }
             ].map((kpi, idx) => (
-              <div key={idx} className="bg-bg-primary rounded-xl p-4 border border-border shadow-card flex items-center gap-4">
-                <div className={clsx('p-3 rounded-lg', kpi.bg, kpi.color)}>
+              <div key={idx} className="bg-bg-primary rounded-xl p-3 border border-border shadow-card flex items-center gap-3">
+                <div className={clsx('p-2 rounded-lg', kpi.bg, kpi.color)}>
                   <kpi.icon size={20} />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <div className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">{kpi.label}</div>
-                  <div className="text-lg font-bold text-text-primary">{kpi.value}</div>
+                  <div className="text-base sm:text-lg font-bold text-text-primary truncate" title={String(kpi.value)}>{kpi.value}</div>
                 </div>
               </div>
             ))}
@@ -515,11 +515,11 @@ export default function VisaoEstrategicaV3() {
             <div className="space-y-2">
               {mockTopClients.map((client) => (
                 <div key={client.rank} className="flex items-center justify-between p-3 rounded-lg hover:bg-bg-secondary transition-colors border border-transparent hover:border-divider">
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-3 min-w-0">
                     <div className="w-6 text-text-muted font-bold text-xs">{String(client.rank).padStart(2, '0')}</div>
-                    <div className="font-bold text-text-primary text-sm">{client.name}</div>
+                    <div className="font-bold text-text-primary text-sm truncate" title={client.name}>{client.name}</div>
                   </div>
-                  <div className="font-bold text-text-primary font-mono text-sm">{formatBRL(client.value)}</div>
+                  <div className="font-bold text-text-primary font-mono text-sm shrink-0">{formatBRL(client.value)}</div>
                 </div>
               ))}
             </div>

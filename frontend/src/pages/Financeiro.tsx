@@ -139,7 +139,7 @@ export default function Financeiro() {
             <Wallet className="text-brand-500" size={20} />
             Saldos do Caixa por Espécie
           </h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             {displayEspecies.map((esp) => (
               <div key={esp.nome} className="flex flex-col p-4 rounded-xl bg-bg-secondary border border-divider hover:border-brand-200 transition-colors">
                 <span className="text-xs font-extrabold text-text-secondary mb-1 truncate capitalize">
