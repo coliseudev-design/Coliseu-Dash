@@ -43,9 +43,6 @@ export default function FinanceiroConsolidado() {
             <Wallet className="text-brand-500" size={24} />
             Módulo Financeiro
           </h1>
-          <p className="text-xs sm:text-sm text-text-secondary mt-0.5">
-            Saúde financeira da empresa, contas a pagar/receber, caixas e fluxo de caixa
-          </p>
         </div>
 
         <div className="hidden md:flex items-center gap-3 w-full md:w-auto justify-end">

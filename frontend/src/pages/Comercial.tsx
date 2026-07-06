@@ -4,6 +4,7 @@ import PeriodFilter from '../components/PeriodFilter';
 import { usePeriodStore, PERIOD_OPTIONS, periodToParams } from '../store/periodStore';
 import { BiPeriodFilter } from '../types/bi.types';
 import { useBranchParam } from '../contexts/BranchContext';
+import { useBranchPeriodQuery } from '../hooks/useApi';
 import { BarChart3, Users, Trophy, X, LayoutDashboard, ShoppingCart, Award, Sliders, ChevronDown } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -17,6 +18,12 @@ export default function Comercial() {
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [switching, setSwitching] = useState(false);
 
+  const [selectedVendedor, setSelectedVendedor] = useState<string>('all');
+  const [selectedCidade, setSelectedCidade] = useState<string>('all');
+
+  const vdFull = useBranchPeriodQuery<any>('/ranking/vendedores', { limit: 100 });
+  const cidadesFull = useBranchPeriodQuery<any>('/ranking/cidades', { limit: 100 });
+
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
     handleResize();
@@ -26,7 +33,9 @@ export default function Comercial() {
 
   const filter: BiPeriodFilter = {
     ...periodToParams(periodState),
-    ...branchParam
+    ...branchParam,
+    vendedor_id: selectedVendedor !== 'all' ? selectedVendedor : undefined,
+    cidade: selectedCidade !== 'all' ? selectedCidade : undefined
   };
 
   const tabs = [
@@ -65,9 +74,6 @@ export default function Comercial() {
             <HeaderIcon className="text-brand-500" size={24} />
             {title}
           </h1>
-          <p className="text-xs sm:text-sm text-text-secondary mt-0.5">
-            {description}
-          </p>
         </div>
 
         <div className="hidden md:flex items-center gap-3 w-full md:w-auto justify-end">
@@ -110,6 +116,43 @@ export default function Comercial() {
                 </span>
                 <PeriodFilter excludePeriods={['yesterday']} compact={true} />
               </div>
+
+              {/* Vendedor and Cidade filters inside parent bottom sheet on mobile */}
+              {(location.pathname === '/comercial' || location.pathname === '/comercial/vendas') && (
+                <>
+                  <div className="space-y-2">
+                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block pl-1">
+                      Vendedor
+                    </span>
+                    <select
+                      value={selectedVendedor}
+                      onChange={(e) => setSelectedVendedor(e.target.value)}
+                      className="h-10 px-3 bg-bg-secondary border border-divider text-text-primary rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 w-full cursor-pointer"
+                    >
+                      <option value="all">Todos os Vendedores</option>
+                      {vdFull.data?.data?.map((v: any) => (
+                        <option key={v.id} value={v.id}>{v.nome}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block pl-1">
+                      Cidade
+                    </span>
+                    <select
+                      value={selectedCidade}
+                      onChange={(e) => setSelectedCidade(e.target.value)}
+                      className="h-10 px-3 bg-bg-secondary border border-divider text-text-primary rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 w-full cursor-pointer"
+                    >
+                      <option value="all">Todas as Cidades</option>
+                      {cidadesFull.data?.data?.map((c: any) => (
+                        <option key={c.nome} value={c.nome}>{c.nome}</option>
+                      ))}
+                    </select>
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="mt-8 shrink-0">
@@ -164,7 +207,7 @@ export default function Comercial() {
 
       {/* Área de Renderização das Visões */}
       <div className={clsx("flex-1 min-h-0 overflow-y-auto pr-1", isMobile ? "pb-28" : "")}>
-        <Outlet context={{ filter }} />
+        <Outlet context={{ filter, selectedVendedor, setSelectedVendedor, selectedCidade, setSelectedCidade }} />
       </div>
     </div>
   );

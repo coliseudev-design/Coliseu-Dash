@@ -757,7 +757,7 @@ export default function HomeV1() {
               Top Vendedores (Ranking)
             </h3>
           </div>
-          <div className="flex-1 overflow-y-auto space-y-2 pr-1 max-h-[240px] sm:max-h-[280px]">
+          <div className="flex-1 space-y-2 pr-1 overflow-y-visible sm:overflow-y-auto max-h-none sm:max-h-[280px]">
             {vd.isLoading ? (
               <div className="h-full flex items-center justify-center text-xs text-slate-400">Carregando ranking...</div>
             ) : filteredTopSellers.map((seller: any, i: number) => {
@@ -856,7 +856,7 @@ export default function HomeV1() {
               <Target size={14} className="text-emerald-600" /> Top Cidades (Ranking)
             </h3>
           </div>
-          <div className="flex-1 overflow-y-auto space-y-2 pr-1 max-h-[240px] sm:max-h-[280px]">
+          <div className="flex-1 space-y-2 pr-1 overflow-y-visible sm:overflow-y-auto max-h-none sm:max-h-[280px]">
             {cidadesQuery.isLoading ? (
               <div className="h-full flex items-center justify-center text-xs text-slate-400">Carregando ranking...</div>
             ) : top10Cidades.map((item: any, i: number) => {

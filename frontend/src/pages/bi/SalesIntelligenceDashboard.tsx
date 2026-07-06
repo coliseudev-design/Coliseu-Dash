@@ -72,9 +72,17 @@ export default function SalesIntelligenceDashboard() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const { filter } = useOutletContext<{ filter: BiPeriodFilter }>();
-  const [selectedVendedor, setSelectedVendedor] = useState<string>('all');
-  const [selectedCidade, setSelectedCidade] = useState<string>('all');
+  const context = useOutletContext<any>() || {};
+  const { filter } = context;
+
+  const [localVendedor, setLocalVendedor] = useState<string>('all');
+  const [localCidade, setLocalCidade] = useState<string>('all');
+
+  const selectedVendedor = context.selectedVendedor !== undefined ? context.selectedVendedor : localVendedor;
+  const setSelectedVendedor = context.setSelectedVendedor !== undefined ? context.setSelectedVendedor : setLocalVendedor;
+
+  const selectedCidade = context.selectedCidade !== undefined ? context.selectedCidade : localCidade;
+  const setSelectedCidade = context.setSelectedCidade !== undefined ? context.setSelectedCidade : setLocalCidade;
 
   // List of sellers and cities unfiltered for the dropdown lists
   const vdFull = useBranchPeriodQuery<any>('/ranking/vendedores', { limit: 100 });
@@ -336,7 +344,7 @@ export default function SalesIntelligenceDashboard() {
         </div>
         
         {/* Dropdown Filters (Vendedor and Cidade) */}
-        <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
+        <div className="hidden sm:flex flex-row items-center gap-3 w-full lg:w-auto">
           {/* Vendedor Filter */}
           <div className="flex flex-col gap-1 w-full sm:w-48 lg:w-56">
             <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider pl-1">Vendedor</span>

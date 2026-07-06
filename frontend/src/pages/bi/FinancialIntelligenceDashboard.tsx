@@ -100,7 +100,7 @@ export default function FinancialIntelligenceDashboard() {
     <div aria-label="Inteligência Financeira Dashboard" className="space-y-6 animate-in fade-in duration-300 pb-10">
       
       {/* FILTROS HEADER */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-2 items-start sm:items-end flex-wrap">
+      <div className="hidden sm:flex flex-row gap-3 mb-2 items-end flex-wrap">
         <div className="flex flex-wrap items-end gap-3 w-full sm:w-auto">
           <div className="flex flex-col w-full sm:w-44 md:w-52">
             <span className="text-[11px] text-text-muted font-bold uppercase mb-1">Mês</span>
