@@ -610,28 +610,32 @@ export default function InventoryManagementDashboard() {
               </div>
 
               {/* Description */}
-              <p className="font-bold text-text-primary text-xs leading-snug">{row.desc}</p>
+              <p className="font-bold text-text-primary text-xs leading-snug truncate w-full" title={row.desc}>
+                {row.desc}
+              </p>
 
-              {/* Meta row: marca + grupo */}
-              <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-text-muted">
-                {row.marca && <span><span className="font-bold text-text-secondary">Marca:</span> {row.marca}</span>}
-                {row.grupo && <span><span className="font-bold text-text-secondary">Grupo:</span> {row.grupo}</span>}
-                {row.emb   && <span><span className="font-bold text-text-secondary">Emb:</span> {row.emb}</span>}
-              </div>
-
-              {/* Values row */}
-              <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px]">
-                <span className="font-mono font-bold flex items-center gap-1">
-                  {row.alert && <AlertTriangle size={10} className="text-danger" />}
-                  <span className={row.alert ? "text-danger" : "text-text-primary"}>
-                    Est: {row.estoque.toFixed(2)}
-                  </span>
-                </span>
-                <span className="font-mono text-text-muted">Custo: {formatBRL(row.custo)}</span>
-                <span className="font-mono font-bold text-text-primary">Preço: {formatBRL(row.preco)}</span>
-                {!isDash1 && row.dias != null && (
-                  <span className="font-bold text-success">Dias: {row.dias}</span>
-                )}
+              {/* Attributes Grid (Aligned Left & Right) */}
+              <div className="grid grid-cols-2 gap-2 text-[10px] border-t border-divider pt-2 mt-1">
+                {/* Col 1: Metadata */}
+                <div className="space-y-1 text-left text-text-muted">
+                  {row.marca && <div><span className="font-bold text-text-secondary">Marca:</span> {row.marca}</div>}
+                  {row.grupo && <div><span className="font-bold text-text-secondary">Grupo:</span> {row.grupo}</div>}
+                  {row.emb   && <div><span className="font-bold text-text-secondary">Emb:</span> {row.emb}</div>}
+                </div>
+                {/* Col 2: Values */}
+                <div className="space-y-1 text-right font-mono">
+                  <div className="flex items-center justify-end gap-1">
+                    {row.alert && <AlertTriangle size={10} className="text-danger" />}
+                    <span className={clsx("font-bold", row.alert ? "text-danger" : "text-text-primary")}>
+                      Est: {row.estoque.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="text-text-muted">Custo: {formatBRL(row.custo)}</div>
+                  <div className="font-bold text-text-primary">Preço: {formatBRL(row.preco)}</div>
+                  {!isDash1 && row.dias != null && (
+                    <div className="font-bold text-success font-sans">Dias: {row.dias}</div>
+                  )}
+                </div>
               </div>
             </div>
           ))}
