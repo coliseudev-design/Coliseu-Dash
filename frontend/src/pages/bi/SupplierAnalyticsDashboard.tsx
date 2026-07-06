@@ -372,7 +372,7 @@ export default function SupplierAnalyticsDashboard() {
              Gráfico de Barras <ChevronDown size={14} className="text-text-muted" />
           </div>
         </div>
-        <div className="h-[350px] w-full">
+        <div className="min-h-[250px] sm:min-h-[320px] lg:min-h-[370px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={chartData} margin={{ top: 20, right: 20, bottom: 0, left: -10 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" opacity={0.3} />
@@ -703,7 +703,8 @@ export default function SupplierAnalyticsDashboard() {
                 Catálogo Geral de Produtos
               </h3>
             </div>
-            <div className="overflow-x-auto">
+            {/* Tabela — visível em sm+ */}
+            <div className="hidden sm:block overflow-x-auto">
               <table className="w-full text-left text-sm whitespace-nowrap">
                 <thead>
                   <tr className="bg-bg-secondary/30 text-[10px] text-text-muted uppercase font-bold tracking-wider">
@@ -719,24 +720,14 @@ export default function SupplierAnalyticsDashboard() {
                 <tbody className="divide-y divide-divider/30 text-xs">
                   {topProducts.map((prod: any, idx: number) => {
                     const precoVenda = prod.volume > 0 ? prod.receita / prod.volume : 0;
-                    const precoCusto = precoVenda * 0.65; // Simulating 35% gross margin
+                    const precoCusto = precoVenda * 0.65;
                     const margemBruta = precoVenda > 0 ? ((precoVenda - precoCusto) / precoVenda) * 100 : 0;
-                    const estoqueAtual = prod.volume * Math.floor(Math.random() * 5 + 1); // Simulating stock
-                    
+                    const estoqueAtual = prod.volume * Math.floor(Math.random() * 5 + 1);
                     let statusIcon = '🔴';
                     let statusLabel = 'Crítico';
                     let statusClass = 'text-danger bg-danger/10 border-danger/20';
-                    
-                    if (estoqueAtual > 50) {
-                      statusIcon = '🟢';
-                      statusLabel = 'Alto';
-                      statusClass = 'text-success bg-success/10 border-success/20';
-                    } else if (estoqueAtual > 15) {
-                      statusIcon = '🟡';
-                      statusLabel = 'Médio';
-                      statusClass = 'text-warning bg-warning/10 border-warning/20';
-                    }
-
+                    if (estoqueAtual > 50) { statusIcon = '🟢'; statusLabel = 'Alto'; statusClass = 'text-success bg-success/10 border-success/20'; }
+                    else if (estoqueAtual > 15) { statusIcon = '🟡'; statusLabel = 'Médio'; statusClass = 'text-warning bg-warning/10 border-warning/20'; }
                     return (
                       <tr key={idx} className="hover:bg-bg-secondary/50 transition-colors">
                         <td className="px-5 py-3 font-mono font-bold text-text-muted">SKU_{prod.rank}</td>
@@ -755,6 +746,36 @@ export default function SupplierAnalyticsDashboard() {
                   })}
                 </tbody>
               </table>
+            </div>
+            {/* Cards mobile — visível apenas em xs */}
+            <div className="sm:hidden flex flex-col divide-y divide-divider/30">
+              {topProducts.map((prod: any, idx: number) => {
+                const precoVenda = prod.volume > 0 ? prod.receita / prod.volume : 0;
+                const precoCusto = precoVenda * 0.65;
+                const margemBruta = precoVenda > 0 ? ((precoVenda - precoCusto) / precoVenda) * 100 : 0;
+                const estoqueAtual = prod.volume * Math.floor(Math.random() * 5 + 1);
+                let statusIcon = '🔴';
+                let statusLabel = 'Crítico';
+                let statusClass = 'text-danger bg-danger/10 border-danger/20';
+                if (estoqueAtual > 50) { statusIcon = '🟢'; statusLabel = 'Alto'; statusClass = 'text-success bg-success/10 border-success/20'; }
+                else if (estoqueAtual > 15) { statusIcon = '🟡'; statusLabel = 'Médio'; statusClass = 'text-warning bg-warning/10 border-warning/20'; }
+                return (
+                  <div key={idx} className="py-3 px-4 space-y-1.5">
+                    <div className="flex justify-between items-center gap-2">
+                      <div>
+                        <span className="text-[10px] font-mono text-text-muted">SKU_{prod.rank}</span>
+                        <p className="text-[11px] font-bold text-text-primary truncate max-w-[180px]">{prod.name}</p>
+                      </div>
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-bold border ${statusClass}`}>{statusIcon} {statusLabel}</span>
+                    </div>
+                    <div className="flex justify-between text-[10px] text-text-muted">
+                      <span>Venda: <span className="text-brand-500 font-bold">{formatBRL(precoVenda)}</span></span>
+                      <span>Margem: <span className="text-success font-bold">{margemBruta.toFixed(1)}%</span></span>
+                      <span>Estoque: <span className="text-text-secondary font-bold">{estoqueAtual} un.</span></span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
           

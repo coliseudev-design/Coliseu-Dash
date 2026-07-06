@@ -91,7 +91,7 @@ export default function Produtos() {
       </div>
 
       <div className="card !p-3 flex items-center gap-3 flex-wrap">
-        <div className="flex-1 min-w-[200px] relative">
+        <div className="w-full sm:flex-1 sm:min-w-0 relative">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
           <input
             type="text"

@@ -24,7 +24,7 @@ export default function DashboardLayout() {
       <Sidebar open={menuOpen} onClose={() => setMenuOpen(false)} />
       <div className="flex-1 flex flex-col min-w-0">
         <Header onMenuClick={() => setMenuOpen(true)} title={title} />
-        <main className="flex-1 p-3 sm:p-4 lg:p-6 max-w-[1600px] w-full mx-auto">
+        <main className="flex-1 p-3 sm:p-4 md:p-5 lg:p-6 max-w-[1600px] w-full mx-auto">
           <Outlet />
         </main>
       </div>

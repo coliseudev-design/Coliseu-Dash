@@ -68,7 +68,7 @@ export default function TabRankings() {
       </div>
 
       {/* Grid de Rankings */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-6">
         
         <ChartCard title="Top 15 Clientes" subtitle={`Ordenado por ${metric}`}>
           {renderRankingList(mockTopClientes, Users, 'text-success')}
@@ -104,8 +104,8 @@ export default function TabRankings() {
                     <React.Fragment key={idx}>
                       {/* Funnel Block */}
                       <div 
-                        className={`relative rounded-lg flex items-center justify-between px-6 py-4 shadow-sm ${step.color} ${step.textColor} transition-transform hover:scale-[1.01]`}
-                        style={{ width: `${width}%`, minWidth: '220px' }}
+                        className={`relative rounded-lg flex items-center justify-between px-6 py-4 shadow-sm ${step.color} ${step.textColor} transition-transform hover:scale-[1.01] w-full sm:w-auto`}
+                        style={{ width: `${width}%` }}
                       >
                         <span className="font-bold tracking-wide">{step.stage}</span>
                         <span className="font-mono font-bold text-lg">{formatNum(step.count)}</span>

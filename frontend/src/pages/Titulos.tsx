@@ -24,7 +24,7 @@ export default function Titulos() {
           <span className="text-sm font-medium text-text-primary">Filtros:</span>
         </div>
         <select
-          className="input !w-auto min-w-[150px]"
+          className="input w-full sm:w-auto sm:min-w-[150px]"
           value={tipo}
           onChange={(e) => setTipo(e.target.value as any)}
           aria-label="Tipo de Conta"
@@ -34,7 +34,7 @@ export default function Titulos() {
           <option value="PAGAR">A Pagar</option>
         </select>
         <select
-          className="input !w-auto min-w-[150px]"
+          className="input w-full sm:w-auto sm:min-w-[150px]"
           value={status}
           onChange={(e) => setStatus(e.target.value as any)}
           aria-label="Status de Pagamento"

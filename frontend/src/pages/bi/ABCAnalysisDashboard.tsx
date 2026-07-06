@@ -144,7 +144,7 @@ export default function InventoryManagementDashboard() {
       )}
 
       {/* KPIs (2 ROWS) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between hover:border-success/50 transition-colors">
           <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">
             <div className="p-1.5 bg-success/10 rounded-lg"><DollarSign size={14} className="text-success" /></div> VALOR EM ESTOQUE (CUSTO)
@@ -311,7 +311,7 @@ export default function InventoryManagementDashboard() {
       <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex flex-col">
         {/* Table Filters */}
         <div className="flex flex-wrap items-center gap-3 mb-6">
-          <div className="relative flex-1 min-w-[200px]">
+          <div className="relative w-full sm:flex-1 sm:min-w-0">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
             <input 
               type="text" 
@@ -324,7 +324,7 @@ export default function InventoryManagementDashboard() {
           <select 
             value={marcaFilter}
             onChange={(e) => setMarcaFilter(e.target.value)}
-            className="bg-bg-secondary border border-border rounded-lg px-3 py-1.5 text-xs outline-none"
+            className="w-full sm:w-44 md:w-52 bg-bg-secondary border border-border rounded-lg px-3 py-1.5 text-xs outline-none"
           >
             <option value="">Todas Marcas ({marcasDisponiveis.length})</option>
             {marcasDisponiveis.map((m: any) => <option key={m} value={m}>{m}</option>)}
@@ -332,7 +332,7 @@ export default function InventoryManagementDashboard() {
           <select 
             value={grupoFilter}
             onChange={(e) => setGrupoFilter(e.target.value)}
-            className="bg-bg-secondary border border-border rounded-lg px-3 py-1.5 text-xs outline-none"
+            className="w-full sm:w-44 md:w-52 bg-bg-secondary border border-border rounded-lg px-3 py-1.5 text-xs outline-none"
           >
             <option value="">Todos Grupos ({gruposDisponiveis.length})</option>
             {gruposDisponiveis.map((g: any) => <option key={g} value={g}>{g}</option>)}
@@ -341,7 +341,7 @@ export default function InventoryManagementDashboard() {
             <select 
               value={abcFilter}
               onChange={(e) => setAbcFilter(e.target.value)}
-              className="bg-bg-secondary border border-border rounded-lg px-3 py-1.5 text-xs outline-none"
+              className="w-full sm:w-44 md:w-52 bg-bg-secondary border border-border rounded-lg px-3 py-1.5 text-xs outline-none"
             >
               <option value="">Classe ABC: Todas</option>
               <option value="A">Curva A</option>
@@ -352,7 +352,7 @@ export default function InventoryManagementDashboard() {
           <button 
             onClick={() => setComEstoque(!comEstoque)}
             className={clsx(
-              "border px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-colors",
+              "w-full sm:w-auto border px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-colors justify-center sm:justify-start",
               comEstoque 
                 ? "bg-success/10 text-success border-success/30" 
                 : "bg-bg-secondary text-text-muted border-border"
@@ -380,8 +380,8 @@ export default function InventoryManagementDashboard() {
           </div>
         )}
 
-        {/* Data Table */}
-        <div className="overflow-x-auto">
+        {/* Data Table — Desktop (sm+) */}
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-left text-sm whitespace-nowrap">
             <thead>
               <tr className="text-[9px] text-text-muted uppercase font-bold tracking-wider">
@@ -402,7 +402,7 @@ export default function InventoryManagementDashboard() {
               {paginatedData.map((row: any, i: number) => (
                 <tr key={i} className="hover:bg-bg-secondary/30 transition-colors">
                   <td className="py-3 px-2 font-mono font-bold text-blue-500">{row.cod}</td>
-                  <td className="py-3 px-2 font-bold text-text-primary truncate max-w-[250px]">{row.desc}</td>
+                  <td className="py-3 px-2 font-bold text-text-primary">{row.desc}</td>
                   <td className="py-3 px-2 text-text-secondary">{row.emb}</td>
                   <td className="py-3 px-2 text-text-secondary">{row.marca}</td>
                   <td className="py-3 px-2 text-text-secondary">{row.grupo}</td>
@@ -418,9 +418,11 @@ export default function InventoryManagementDashboard() {
                       )}>{row.status}</span>
                     </td>
                   )}
-                  <td className="py-3 px-2 text-right font-mono font-bold flex justify-end items-center gap-1">
-                    {row.alert && <AlertTriangle size={12} className="text-danger" />}
-                    <span className={row.alert ? "text-danger" : "text-text-primary"}>{row.estoque.toFixed(2)}</span>
+                  <td className="py-3 px-2 text-right font-mono font-bold">
+                    <div className="flex justify-end items-center gap-1">
+                      {row.alert && <AlertTriangle size={12} className="text-danger" />}
+                      <span className={row.alert ? "text-danger" : "text-text-primary"}>{row.estoque.toFixed(2)}</span>
+                    </div>
                   </td>
                   <td className="py-3 px-2 text-right font-mono text-text-muted">{formatBRL(row.custo)}</td>
                   <td className="py-3 px-2 text-right font-mono text-text-primary font-bold">{formatBRL(row.preco)}</td>
@@ -429,6 +431,60 @@ export default function InventoryManagementDashboard() {
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* Data Cards — Mobile (< sm) */}
+        <div className="sm:hidden space-y-2">
+          {paginatedData.map((row: any, i: number) => (
+            <div
+              key={i}
+              className="bg-bg-secondary/40 border border-border rounded-xl p-3 flex flex-col gap-2"
+            >
+              {/* Header row: code + ABC badge (if visible) */}
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-mono font-bold text-blue-500 text-xs">{row.cod}</span>
+                <div className="flex items-center gap-2">
+                  {!isDash1 && row.abc && (
+                    <span className="text-[10px] font-black text-text-muted border border-border rounded px-1.5 py-0.5">ABC: {row.abc}</span>
+                  )}
+                  {!isDash1 && row.status && (
+                    <span className={clsx(
+                      "text-[10px] font-bold px-2 py-0.5 rounded-full",
+                      row.status === 'Crítico' ? "bg-danger/10 text-danger" :
+                      row.status === 'Atenção' ? "bg-warning/10 text-warning" :
+                      row.status === 'Ideal' ? "bg-success/10 text-success" :
+                      "bg-cyan-500/10 text-cyan-500"
+                    )}>{row.status}</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Description */}
+              <p className="font-bold text-text-primary text-xs leading-snug">{row.desc}</p>
+
+              {/* Meta row: marca + grupo */}
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-text-muted">
+                {row.marca && <span><span className="font-bold text-text-secondary">Marca:</span> {row.marca}</span>}
+                {row.grupo && <span><span className="font-bold text-text-secondary">Grupo:</span> {row.grupo}</span>}
+                {row.emb   && <span><span className="font-bold text-text-secondary">Emb:</span> {row.emb}</span>}
+              </div>
+
+              {/* Values row */}
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px]">
+                <span className="font-mono font-bold flex items-center gap-1">
+                  {row.alert && <AlertTriangle size={10} className="text-danger" />}
+                  <span className={row.alert ? "text-danger" : "text-text-primary"}>
+                    Est: {row.estoque.toFixed(2)}
+                  </span>
+                </span>
+                <span className="font-mono text-text-muted">Custo: {formatBRL(row.custo)}</span>
+                <span className="font-mono font-bold text-text-primary">Preço: {formatBRL(row.preco)}</span>
+                {!isDash1 && row.dias != null && (
+                  <span className="font-bold text-success">Dias: {row.dias}</span>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
         
         {/* Pagination */}

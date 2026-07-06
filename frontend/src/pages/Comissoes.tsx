@@ -74,7 +74,7 @@ export default function Comissoes() {
               {sortedData.map((v: any, i: number) => (
                 <div 
                   key={v.vendedor_id} 
-                  className="border border-divider rounded-2xl p-5 bg-bg-primary hover:shadow-card-hover hover:border-brand-500/40 transition-all duration-300 relative shadow-card flex flex-col justify-between h-full hover:scale-[1.01] group"
+                  className="border border-divider rounded-2xl p-3 sm:p-5 bg-bg-primary hover:shadow-card-hover hover:border-brand-500/40 transition-all duration-300 relative shadow-card flex flex-col justify-between h-full hover:scale-[1.01] group"
                 >
                   {/* Badge Rank / Medal */}
                   {i < 3 ? (
@@ -93,8 +93,8 @@ export default function Comissoes() {
                   
                   <div className="space-y-4 flex-1 flex flex-col justify-between">
                     {/* Faturamento em Destaque */}
-                    <div className="flex flex-col gap-1.5 items-center justify-center p-4 bg-brand-500/[0.03] dark:bg-brand-500/[0.01] rounded-2xl border border-brand-500/20 group-hover:border-brand-500/40 transition-colors">
-                      <span className="text-brand-600 dark:text-brand-400 text-[10px] font-black uppercase tracking-widest">Total Faturado</span>
+                    <div className="flex flex-col gap-1.5 items-center justify-center p-3 sm:p-4 bg-brand-500/[0.03] dark:bg-brand-500/[0.01] rounded-2xl border border-brand-500/20 group-hover:border-brand-500/40 transition-colors">
+                      <span className="text-brand-600 dark:text-brand-400 text-[11px] sm:text-xs md:text-sm font-black uppercase tracking-widest">Total Faturado</span>
                       <span className="text-2xl font-black text-brand-500 tracking-tight">{formatBRL(v.total_vendas)}</span>
                     </div>
 
@@ -122,7 +122,7 @@ export default function Comissoes() {
                             <ShoppingCart size={14} />
                           </div>
                           <div>
-                            <p className="text-[10px] text-text-secondary leading-none mb-1 uppercase font-semibold">Vendas</p>
+                             <p className="text-[11px] sm:text-xs md:text-sm text-text-secondary leading-none mb-1 uppercase font-semibold">Vendas</p>
                             <p className="font-semibold text-text-primary text-sm leading-none">{formatNum(v.qtd_vendas)}</p>
                           </div>
                         </div>
@@ -131,7 +131,7 @@ export default function Comissoes() {
                             <Receipt size={14} />
                           </div>
                           <div>
-                            <p className="text-[10px] text-text-secondary leading-none mb-1 uppercase font-semibold">Ticket Médio</p>
+                             <p className="text-[11px] sm:text-xs md:text-sm text-text-secondary leading-none mb-1 uppercase font-semibold">Ticket Médio</p>
                             <p className="font-semibold text-text-primary text-sm leading-none">{formatBRL(v.ticket_medio)}</p>
                           </div>
                         </div>

@@ -100,18 +100,18 @@ export default function FinancialIntelligenceDashboard() {
     <div aria-label="Inteligência Financeira Dashboard" className="space-y-6 animate-in fade-in duration-300 pb-10">
       
       {/* FILTROS HEADER */}
-      <div className="flex flex-col md:flex-row gap-4 mb-2 items-end justify-between xl:justify-start">
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex flex-col">
-            <span className="text-[10px] text-text-muted font-bold uppercase mb-1">Mês</span>
-            <div className="bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm min-w-[200px] flex items-center justify-between cursor-pointer">
+      <div className="flex flex-col sm:flex-row gap-3 mb-2 items-start sm:items-end flex-wrap">
+        <div className="flex flex-wrap items-end gap-3 w-full sm:w-auto">
+          <div className="flex flex-col w-full sm:w-44 md:w-52">
+            <span className="text-[11px] text-text-muted font-bold uppercase mb-1">Mês</span>
+            <div className="bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm w-full flex items-center justify-between cursor-pointer">
               <span className="text-text-primary">Mês Atual</span>
               <ChevronDown size={16} className="text-text-muted" />
             </div>
           </div>
-          <div className="flex flex-col">
-            <span className="text-[10px] text-text-muted font-bold uppercase mb-1">Ano</span>
-            <div className="bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm min-w-[120px] flex items-center justify-between cursor-pointer">
+          <div className="flex flex-col w-full sm:w-28 md:w-32">
+            <span className="text-[11px] text-text-muted font-bold uppercase mb-1">Ano</span>
+            <div className="bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm w-full flex items-center justify-between cursor-pointer">
               <span className="text-text-primary">2026</span>
               <ChevronDown size={16} className="text-text-muted" />
             </div>
@@ -120,7 +120,7 @@ export default function FinancialIntelligenceDashboard() {
       </div>
 
       {/* TOP KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
         {/* Saldo Real */}
         <div className="bg-brand-500/[0.04] border-2 border-brand-500/80 shadow-[0_8px_30px_rgba(13,148,136,0.08)] rounded-2xl p-5 flex flex-col justify-between hover:scale-[1.01] transition-transform duration-300 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-16 h-16 bg-brand-500/10 rounded-full -mr-6 -mt-6"></div>
@@ -202,7 +202,7 @@ export default function FinancialIntelligenceDashboard() {
       </div>
 
       {/* INADIMPLÊNCIA & PROJEÇÃO */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         {/* Inadimplência */}
         <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex flex-col justify-between">
           <h3 className="font-bold text-text-primary text-sm flex items-center gap-2 mb-6">
@@ -211,7 +211,7 @@ export default function FinancialIntelligenceDashboard() {
           
           <div className="flex-1 flex flex-col items-center justify-center">
             {/* Custom SVG Donut Gauge */}
-            <div className="relative w-48 h-48 mb-8">
+            <div className="relative w-32 sm:w-40 md:w-48 h-32 sm:h-40 md:h-48 mb-4 sm:mb-6">
               <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
                 {/* Background Ring */}
                 <circle cx="50" cy="50" r="40" fill="none" stroke="var(--color-bg-tertiary)" strokeWidth="10" />
@@ -293,7 +293,7 @@ export default function FinancialIntelligenceDashboard() {
         <h3 className="font-bold text-text-primary text-sm flex items-center gap-2 mb-6">
           <BarChart3 size={16} className="text-brand-500"/> Evolução Mensal (Recebido vs Pago)
         </h3>
-        <div className="h-[300px] w-full">
+        <div className="min-h-[220px] sm:min-h-[280px] lg:min-h-[320px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={evolucaoData} margin={{ top: 20, right: 20, bottom: 0, left: -10 }} barGap={2}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" opacity={0.3} />
@@ -309,68 +309,92 @@ export default function FinancialIntelligenceDashboard() {
       </div>
 
       {/* ÚLTIMAS CONTAS PAGAS & RECEBIDAS */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
         {/* Últimas Contas Pagas */}
-        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5">
+        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-3 sm:p-5">
           <h3 className="font-bold text-text-primary text-sm flex items-center gap-2 mb-4">
             <TrendingDown size={16} className="text-danger"/> Últimas 10 Contas Pagas
           </h3>
-          <div className="overflow-x-auto">
+          {/* Desktop table */}
+          <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-xs text-left">
               <thead>
                 <tr className="border-b border-divider text-text-secondary font-semibold uppercase tracking-wider">
                   <th className="py-2.5">Descrição</th>
-                  <th className="py-2.5 text-center sm:text-left">Pagamento</th>
+                  <th className="py-2.5">Pagamento</th>
                   <th className="py-2.5 text-right">Valor</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-divider font-medium">
                 {(data?.ultimas_pagas || []).map((item: any, i: number) => (
                   <tr key={i} className="hover:bg-bg-secondary/40 transition-colors">
-                    <td className="py-2.5 max-w-[100px] sm:max-w-[200px] truncate text-text-primary font-bold" title={item.descricao}>{item.descricao}</td>
-                    <td className="py-2.5 text-text-secondary text-center sm:text-left">{item.data_pagamento ? item.data_pagamento.substring(5, 10).split('-').reverse().join('/') : '-'}</td>
+                    <td className="py-2.5 text-text-primary font-bold" title={item.descricao}>{item.descricao}</td>
+                    <td className="py-2.5 text-text-secondary">{item.data_pagamento ? item.data_pagamento.substring(5, 10).split('-').reverse().join('/') : '-'}</td>
                     <td className="py-2.5 text-right font-mono text-danger font-bold whitespace-nowrap">{formatBRL(item.valor)}</td>
                   </tr>
                 ))}
                 {(!data?.ultimas_pagas || data.ultimas_pagas.length === 0) && (
-                  <tr>
-                    <td colSpan={3} className="py-8 text-center text-text-muted italic">Nenhuma conta paga no período</td>
-                  </tr>
+                  <tr><td colSpan={3} className="py-6 text-center text-text-muted italic">Nenhuma conta paga no período</td></tr>
                 )}
               </tbody>
             </table>
           </div>
+          {/* Mobile cards */}
+          <div className="sm:hidden space-y-2">
+            {(data?.ultimas_pagas || []).length === 0 && <p className="text-center text-text-muted text-xs py-4">Nenhuma conta paga no período</p>}
+            {(data?.ultimas_pagas || []).map((item: any, i: number) => (
+              <div key={i} className="p-3 rounded-xl border border-divider/50 bg-bg-secondary/10">
+                <div className="flex justify-between items-start gap-2">
+                  <span className="text-xs font-bold text-text-primary flex-1">{item.descricao}</span>
+                  <span className="text-xs font-mono font-bold text-danger whitespace-nowrap">{formatBRL(item.valor)}</span>
+                </div>
+                <span className="text-[11px] text-text-muted mt-1 block">{item.data_pagamento ? item.data_pagamento.substring(5, 10).split('-').reverse().join('/') : '-'}</span>
+              </div>
+            ))}
+          </div>
         </div>
-        
+
         {/* Últimas Contas Recebidas */}
-        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5">
+        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-3 sm:p-5">
           <h3 className="font-bold text-text-primary text-sm flex items-center gap-2 mb-4">
             <TrendingUp size={16} className="text-success"/> Últimas 10 Contas Recebidas
           </h3>
-          <div className="overflow-x-auto">
+          {/* Desktop table */}
+          <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-xs text-left">
               <thead>
                 <tr className="border-b border-divider text-text-secondary font-semibold uppercase tracking-wider">
                   <th className="py-2.5">Descrição</th>
-                  <th className="py-2.5 text-center sm:text-left">Recebimento</th>
+                  <th className="py-2.5">Recebimento</th>
                   <th className="py-2.5 text-right">Valor</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-divider font-medium">
                 {(data?.ultimas_recebidas || []).map((item: any, i: number) => (
                   <tr key={i} className="hover:bg-bg-secondary/40 transition-colors">
-                    <td className="py-2.5 max-w-[100px] sm:max-w-[200px] truncate text-text-primary font-bold" title={item.descricao}>{item.descricao}</td>
-                    <td className="py-2.5 text-text-secondary text-center sm:text-left">{item.data_pagamento ? item.data_pagamento.substring(5, 10).split('-').reverse().join('/') : '-'}</td>
+                    <td className="py-2.5 text-text-primary font-bold">{item.descricao}</td>
+                    <td className="py-2.5 text-text-secondary">{item.data_pagamento ? item.data_pagamento.substring(5, 10).split('-').reverse().join('/') : '-'}</td>
                     <td className="py-2.5 text-right font-mono text-success font-bold whitespace-nowrap">{formatBRL(item.valor)}</td>
                   </tr>
                 ))}
                 {(!data?.ultimas_recebidas || data.ultimas_recebidas.length === 0) && (
-                  <tr>
-                    <td colSpan={3} className="py-8 text-center text-text-muted italic">Nenhuma conta recebida no período</td>
-                  </tr>
+                  <tr><td colSpan={3} className="py-6 text-center text-text-muted italic">Nenhuma conta recebida no período</td></tr>
                 )}
               </tbody>
             </table>
+          </div>
+          {/* Mobile cards */}
+          <div className="sm:hidden space-y-2">
+            {(data?.ultimas_recebidas || []).length === 0 && <p className="text-center text-text-muted text-xs py-4">Nenhuma conta recebida no período</p>}
+            {(data?.ultimas_recebidas || []).map((item: any, i: number) => (
+              <div key={i} className="p-3 rounded-xl border border-divider/50 bg-bg-secondary/10">
+                <div className="flex justify-between items-start gap-2">
+                  <span className="text-xs font-bold text-text-primary flex-1">{item.descricao}</span>
+                  <span className="text-xs font-mono font-bold text-success whitespace-nowrap">{formatBRL(item.valor)}</span>
+                </div>
+                <span className="text-[11px] text-text-muted mt-1 block">{item.data_pagamento ? item.data_pagamento.substring(5, 10).split('-').reverse().join('/') : '-'}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>

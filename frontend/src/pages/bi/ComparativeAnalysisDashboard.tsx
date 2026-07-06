@@ -100,7 +100,7 @@ export default function ProfitabilityDashboard() {
               <select 
                 value={month} 
                 onChange={(e) => setMonth(Number(e.target.value))}
-                className="bg-bg-secondary border border-border rounded-lg px-3 py-2 text-xs text-text-primary outline-none min-w-[120px]"
+                className="bg-bg-secondary border border-border rounded-lg px-3 py-2 text-xs text-text-primary outline-none w-full sm:w-auto"
               >
                 <option value={1}>Janeiro</option>
                 <option value={2}>Fevereiro</option>
@@ -126,20 +126,20 @@ export default function ProfitabilityDashboard() {
               </select>
            </div>
         </div>
-        <div className="flex flex-col gap-1 flex-1 min-w-[150px]">
+        <div className="flex flex-col gap-1 w-full sm:flex-1 sm:min-w-0">
            <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider px-1">VENDEDOR</span>
            <select className="bg-bg-secondary border border-border rounded-lg px-3 py-2 text-xs text-text-primary outline-none w-full">
              <option>Todos</option>
            </select>
         </div>
-        <div className="flex flex-col gap-1 flex-1 min-w-[200px]">
+        <div className="flex flex-col gap-1 w-full sm:flex-1 sm:min-w-0">
            <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider px-1">CLIENTE</span>
            <div className="relative">
              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
              <input type="text" placeholder="Buscar nome..." className="bg-bg-secondary border border-border rounded-lg pl-9 pr-3 py-2 text-xs text-text-primary outline-none w-full" />
            </div>
         </div>
-        <div className="flex flex-col gap-1 flex-1 min-w-[150px]">
+        <div className="flex flex-col gap-1 w-full sm:flex-1 sm:min-w-0">
            <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider px-1">CIDADE</span>
            <select className="bg-bg-secondary border border-border rounded-lg px-3 py-2 text-xs text-text-primary outline-none w-full">
              <option>TODAS</option>
@@ -204,7 +204,8 @@ export default function ProfitabilityDashboard() {
         <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex flex-col">
           <h3 className="font-bold text-text-primary text-sm mb-1">Resultados por Marca</h3>
           <p className="text-[10px] text-text-muted mb-4">Top 15 marcas por rentabilidade.</p>
-          <div className="flex-1 overflow-x-auto">
+          {/* Tabela — visível em sm+ */}
+          <div className="hidden sm:block flex-1 overflow-x-auto">
             <table className="w-full text-left text-sm whitespace-nowrap">
               <thead>
                 <tr className="border-b border-divider text-[9px] text-text-muted uppercase font-bold tracking-wider">
@@ -229,6 +230,23 @@ export default function ProfitabilityDashboard() {
                 ))}
               </tbody>
             </table>
+          </div>
+          {/* Cards mobile — visível apenas em xs */}
+          <div className="sm:hidden flex flex-col divide-y divide-divider/30">
+            {marcaData.map((row) => (
+              <div key={row.rank} className="py-3 px-1 space-y-1">
+                <div className="flex justify-between items-center">
+                  <span className="text-[11px] font-bold text-text-primary truncate max-w-[55%]" title={row.name}>
+                    <span className="text-text-muted mr-1">{row.rank}º</span>{row.name}
+                  </span>
+                  <span className={clsx("text-[11px] font-bold", row.luc_pct < 30 ? "text-warning" : "text-success")}>{row.luc_pct}%</span>
+                </div>
+                <div className="flex justify-between text-[10px] text-text-muted">
+                  <span>Vendas: <span className="text-text-secondary">{formatBRL(row.vendas)}</span></span>
+                  <span className="text-success font-bold">{formatBRL(row.lucro)}</span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -264,7 +282,8 @@ export default function ProfitabilityDashboard() {
         <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex flex-col">
           <h3 className="font-bold text-text-primary text-sm mb-1">Resultados por Grupo</h3>
           <p className="text-[10px] text-text-muted mb-4">Top 15 grupos com maior volume de vendas e sua rentabilidade.</p>
-          <div className="flex-1 overflow-x-auto">
+          {/* Tabela — visível em sm+ */}
+          <div className="hidden sm:block flex-1 overflow-x-auto">
             <table className="w-full text-left text-sm whitespace-nowrap">
               <thead>
                 <tr className="border-b border-divider text-[9px] text-text-muted uppercase font-bold tracking-wider">
@@ -289,6 +308,23 @@ export default function ProfitabilityDashboard() {
                 ))}
               </tbody>
             </table>
+          </div>
+          {/* Cards mobile — visível apenas em xs */}
+          <div className="sm:hidden flex flex-col divide-y divide-divider/30">
+            {grupoData.map((row) => (
+              <div key={row.rank} className="py-3 px-1 space-y-1">
+                <div className="flex justify-between items-center">
+                  <span className="text-[11px] font-bold text-text-primary truncate max-w-[55%]" title={row.name}>
+                    <span className="text-text-muted mr-1">{row.rank}º</span>{row.name}
+                  </span>
+                  <span className={clsx("text-[11px] font-bold", row.luc_pct < 30 ? "text-warning" : "text-success")}>{row.luc_pct}%</span>
+                </div>
+                <div className="flex justify-between text-[10px] text-text-muted">
+                  <span>Vendas: <span className="text-text-secondary">{formatBRL(row.vendas)}</span></span>
+                  <span className="text-success font-bold">{formatBRL(row.lucro)}</span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -324,7 +360,8 @@ export default function ProfitabilityDashboard() {
         <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex flex-col">
           <h3 className="font-bold text-text-primary text-sm mb-1">Resultados por Vendedor</h3>
           <p className="text-[10px] text-text-muted mb-4">Top 15 vendedores com maior rentabilidade.</p>
-          <div className="flex-1 overflow-x-auto">
+          {/* Tabela — visível em sm+ */}
+          <div className="hidden sm:block flex-1 overflow-x-auto">
             <table className="w-full text-left text-sm whitespace-nowrap">
               <thead>
                 <tr className="border-b border-divider text-[9px] text-text-muted uppercase font-bold tracking-wider">
@@ -349,6 +386,23 @@ export default function ProfitabilityDashboard() {
                 ))}
               </tbody>
             </table>
+          </div>
+          {/* Cards mobile — visível apenas em xs */}
+          <div className="sm:hidden flex flex-col divide-y divide-divider/30">
+            {vendedorData.map((row) => (
+              <div key={row.rank} className="py-3 px-1 space-y-1">
+                <div className="flex justify-between items-center">
+                  <span className="text-[11px] font-bold text-text-primary truncate max-w-[60%]">
+                    <span className="text-text-muted mr-1">{row.rank}º</span>{row.name}
+                  </span>
+                  <span className={clsx("text-[11px] font-bold", row.luc_pct < 30 ? "text-warning" : "text-success")}>{row.luc_pct}%</span>
+                </div>
+                <div className="flex justify-between text-[10px] text-text-muted">
+                  <span>Vendas: <span className="text-text-secondary">{formatBRL(row.vendas)}</span></span>
+                  <span className="text-success font-bold">{formatBRL(row.lucro)}</span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 

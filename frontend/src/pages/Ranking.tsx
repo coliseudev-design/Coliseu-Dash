@@ -37,7 +37,7 @@ function RankingSection({ title, subtitle, icon: Icon, data, loading }: any) {
       </div>
 
       {/* Grid de Conteúdo */}
-      <div className="p-2 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10">
+      <div className="p-2 sm:p-4 md:p-5 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10">
         
         {/* Lado Esquerdo: Tabela */}
         <div className="flex flex-col lg:col-span-6 min-w-0 order-2 lg:order-1">
@@ -62,7 +62,7 @@ function RankingSection({ title, subtitle, icon: Icon, data, loading }: any) {
         {/* Lado Direito: Gráfico de Barras */}
         <div className="flex flex-col lg:col-span-6 min-w-0 order-1 lg:order-2">
           <h3 className="text-xs font-bold text-text-muted uppercase tracking-wider mb-3">Visualização de Impacto</h3>
-          <div className="h-[280px] sm:h-[320px] w-full relative">
+          <div className="min-h-[220px] sm:min-h-[280px] lg:min-h-[340px] w-full relative">
             {!loading && (!data || data.length === 0) ? (
               <div className="absolute inset-0 flex items-center justify-center border border-border rounded-xl bg-bg-secondary/50">
                 <span className="text-sm text-text-muted font-medium">Sem dados para desenhar o gráfico</span>
@@ -187,7 +187,7 @@ export default function Ranking() {
       </div>
 
       {/* Card Unificado com a Tabela e Gráfico */}
-      <div className="pb-10 min-h-[500px]">
+      <div className="pb-10 min-h-[400px] sm:min-h-[500px]">
         <RankingSection 
           title={`Top 10 ${currentTab.label}`} 
           subtitle={currentTab.subtitle} 

@@ -266,7 +266,7 @@ export default function VisaoEstrategicaV3() {
             <div className="flex justify-between items-center mb-6">
               <h3 className="font-bold text-text-primary text-sm uppercase tracking-wider">Faturamento no Período</h3>
             </div>
-            <div className="h-[280px]">
+            <div className="min-h-[200px] sm:min-h-[260px] lg:min-h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={faturamentoPeriodoData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" opacity={0.5} />
@@ -312,7 +312,7 @@ export default function VisaoEstrategicaV3() {
               <div className="flex justify-between items-center mb-4">
                 <h3 className="font-bold text-text-primary text-sm uppercase tracking-wider">Vendedores (Top 10)</h3>
               </div>
-              <div className="h-[260px]">
+              <div className="min-h-[200px] sm:min-h-[260px] lg:min-h-[280px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={mockTopSellers} layout="vertical" margin={{ top: 0, right: 30, left: 10, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--color-border)" opacity={0.5} />
@@ -357,7 +357,7 @@ export default function VisaoEstrategicaV3() {
           <div className="flex justify-between items-center mb-4">
             <h3 className="font-bold text-text-primary text-sm uppercase tracking-wider">Marcas (Top 15)</h3>
           </div>
-          <div className="h-[260px]">
+          <div className="min-h-[200px] sm:min-h-[260px] lg:min-h-[280px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={mockTopBrands} layout="vertical" margin={{ top: 0, right: 30, left: 10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--color-border)" opacity={0.5} />
@@ -406,7 +406,7 @@ export default function VisaoEstrategicaV3() {
           <div className="flex justify-between items-center mb-4">
             <h3 className="font-bold text-text-primary text-sm uppercase tracking-wider">Produtos (Top 15)</h3>
           </div>
-          <div className="h-[260px]">
+          <div className="min-h-[200px] sm:min-h-[260px] lg:min-h-[280px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={mockTopProducts} layout="vertical" margin={{ top: 0, right: 30, left: 10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--color-border)" opacity={0.5} />
@@ -455,7 +455,7 @@ export default function VisaoEstrategicaV3() {
           <div className="flex justify-between items-center mb-4">
             <h3 className="font-bold text-text-primary text-sm uppercase tracking-wider">Cidades (Top 15)</h3>
           </div>
-          <div className="h-[280px]">
+          <div className="min-h-[200px] sm:min-h-[260px] lg:min-h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={mockTopCities} layout="vertical" margin={{ top: 0, right: 30, left: 10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--color-border)" opacity={0.5} />

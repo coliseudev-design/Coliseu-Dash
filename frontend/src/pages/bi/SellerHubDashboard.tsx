@@ -307,7 +307,7 @@ export default function SellerHubDashboard() {
               Voltar para Equipe
             </button>
           ) : (
-            <div className="flex flex-col gap-1 min-w-[240px] flex-1 sm:flex-initial">
+            <div className="flex flex-col gap-1 w-full sm:w-60 md:w-64 flex-1 sm:flex-initial">
               <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Vendedor</span>
               <select
                 value={selectedVendedor}

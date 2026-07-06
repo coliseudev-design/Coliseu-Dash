@@ -374,7 +374,7 @@ export default function HomeV1() {
         </div>
 
         {/* Center Growth Comparison Badge */}
-        <div className="shrink-0 flex flex-col items-center justify-center border-y md:border-y-0 md:border-x border-slate-100 py-4 md:py-0 md:px-10 min-w-[150px]">
+        <div className="shrink-0 flex flex-col items-center justify-center border-y md:border-y-0 md:border-x border-slate-100 py-4 md:py-0 md:px-10">
           <div className={clsx(
             "w-14 h-14 rounded-full flex flex-col items-center justify-center font-black text-xs border shadow-sm",
             crescimentoPct >= 0
@@ -723,7 +723,7 @@ export default function HomeV1() {
               Desempenho dos Vendedores (Gráfico)
             </h3>
           </div>
-          <div className="h-[280px]">
+          <div className="min-h-[220px] sm:min-h-[280px]">
             {vd.isLoading ? (
               <div className="h-full flex items-center justify-center text-xs text-slate-400">Carregando gráfico...</div>
             ) : filteredTopSellers.length === 0 ? (
@@ -761,7 +761,7 @@ export default function HomeV1() {
               Top Vendedores (Ranking)
             </h3>
           </div>
-          <div className="flex-1 overflow-y-auto space-y-2 pr-1 max-h-[280px]">
+          <div className="flex-1 overflow-y-auto space-y-2 pr-1 max-h-[240px] sm:max-h-[280px]">
             {vd.isLoading ? (
               <div className="h-full flex items-center justify-center text-xs text-slate-400">Carregando ranking...</div>
             ) : filteredTopSellers.map((seller: any, i: number) => {
@@ -820,7 +820,7 @@ export default function HomeV1() {
               <Target size={14} className="text-emerald-600" /> Desempenho das Cidades (Gráfico)
             </h3>
           </div>
-          <div className="h-[280px]">
+          <div className="min-h-[220px] sm:min-h-[280px]">
             {cidadesQuery.isLoading ? (
               <div className="h-full flex items-center justify-center text-xs text-slate-400">Carregando gráfico...</div>
             ) : top10Cidades.length === 0 ? (
@@ -858,7 +858,7 @@ export default function HomeV1() {
               <Target size={14} className="text-emerald-600" /> Top Cidades (Ranking)
             </h3>
           </div>
-          <div className="flex-1 overflow-y-auto space-y-2 pr-1 max-h-[280px]">
+          <div className="flex-1 overflow-y-auto space-y-2 pr-1 max-h-[240px] sm:max-h-[280px]">
             {cidadesQuery.isLoading ? (
               <div className="h-full flex items-center justify-center text-xs text-slate-400">Carregando ranking...</div>
             ) : top10Cidades.map((item: any, i: number) => {

@@ -375,7 +375,7 @@ export default function SalesIntelligenceDashboard() {
       </div>
 
       {/* TOP KPIs - ASYMMETRIC GRID (1 MAIN LARGER + 4 SUPPORT CARDS) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
         {/* FATURAMENTO (MAIN LARGER CARD) */}
         <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 relative overflow-hidden md:col-span-2 lg:col-span-2 flex flex-col justify-between">
           <div className="absolute top-0 left-0 w-full h-[3px] bg-brand-500"></div>
@@ -545,7 +545,7 @@ export default function SalesIntelligenceDashboard() {
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-2">
           {/* Left Chart column (col-span-2) */}
-          <div className="lg:col-span-2 h-[260px] w-full">
+          <div className="lg:col-span-2 min-h-[200px] sm:min-h-[260px] lg:min-h-[320px] w-full">
             {isTrajectoryEmpty ? (
               <div className="h-full flex flex-col items-center justify-center text-center p-6 border border-dashed border-border rounded-xl bg-bg-secondary/10">
                 <EyeOff size={32} className="text-text-muted mb-2 stroke-[1.5]" />
@@ -579,7 +579,7 @@ export default function SalesIntelligenceDashboard() {
           </div>
 
           {/* Right Column: Chronological Details per Day or Month */}
-          <div className="lg:col-span-1 flex flex-col justify-between h-[260px]">
+          <div className="lg:col-span-1 flex flex-col justify-between min-h-[200px] sm:min-h-[260px] lg:min-h-[260px]">
             <div className="flex items-center gap-1.5 border-b border-divider/40 pb-2 mb-2">
               <Calendar size={14} className="text-brand-500" />
               <span className="text-[10px] font-bold text-text-primary uppercase tracking-wider">

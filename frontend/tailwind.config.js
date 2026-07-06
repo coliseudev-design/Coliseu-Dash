@@ -3,6 +3,14 @@ export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   darkMode: 'class',
   theme: {
+    screens: {
+      xs: '320px',
+      sm: '360px',
+      md: '480px',
+      lg: '768px',
+      xl: '1024px',
+      '2xl': '1280px',
+    },
     extend: {
       colors: {
         bg: {

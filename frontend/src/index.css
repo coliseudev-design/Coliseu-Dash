@@ -110,7 +110,7 @@
 
 @layer components {
   .card {
-    @apply bg-bg-primary backdrop-blur-md border border-divider shadow-card p-3 sm:p-5 transition-all duration-300 relative overflow-hidden;
+    @apply bg-bg-primary backdrop-blur-md border border-divider shadow-card p-3 sm:p-4 md:p-5 transition-all duration-300 relative overflow-hidden;
     border-radius: var(--border-radius-base, 0.75rem);
   }
   .card:hover {
@@ -134,7 +134,7 @@
            placeholder:text-text-muted transition-all duration-300 text-text-primary;
   }
   .badge {
-    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] sm:text-xs font-medium whitespace-nowrap;
+    @apply inline-flex items-center gap-1 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-md text-[12px] sm:text-xs font-medium whitespace-nowrap;
   }
   .badge-success { @apply badge bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400; }
   .badge-warning { @apply badge bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400; }
@@ -142,8 +142,8 @@
   .badge-info    { @apply badge bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400; }
   .badge-neutral { @apply badge bg-bg-tertiary text-text-secondary; }
 
-  .kpi-label { @apply text-[10px] sm:text-xs font-medium text-text-secondary uppercase tracking-wide leading-tight; }
-  .kpi-value { @apply mono text-lg sm:text-2xl font-semibold text-text-primary leading-tight; }
+  .kpi-label { @apply text-[11px] sm:text-xs md:text-sm font-medium text-text-secondary uppercase tracking-wide leading-tight; }
+  .kpi-value { @apply mono text-base sm:text-xl md:text-2xl font-semibold text-text-primary leading-tight; }
 
   /* Tabela responsiva com scroll horizontal suave */
   .table-scroll {

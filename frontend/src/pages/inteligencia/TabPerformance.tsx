@@ -164,7 +164,7 @@ export default function TabPerformance() {
           {/* Variação Histórica */}
           <div className="lg:col-span-8 flex flex-col">
             <ChartCard title="Evolução do Ticket Médio" subtitle="Variação ao longo do tempo" className="flex-1">
-              <div className="h-[250px] mt-4">
+              <div className="min-h-[200px] sm:min-h-[250px] mt-4">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={mockTicketHist} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                     <defs>
@@ -190,9 +190,9 @@ export default function TabPerformance() {
         </div>
 
         {/* Composição do Ticket Médio */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mt-6">
           <ChartCard title="Composição por Canal" subtitle="Ticket médio (R$) por canal de venda">
-            <div className="h-[200px] mt-2">
+            <div className="min-h-[160px] sm:min-h-[200px] mt-2">
                <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={mockComposicaoCanal} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E5E7EB" />
