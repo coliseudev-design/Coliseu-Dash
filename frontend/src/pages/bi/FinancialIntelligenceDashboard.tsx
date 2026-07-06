@@ -293,7 +293,7 @@ export default function FinancialIntelligenceDashboard() {
         <h3 className="font-bold text-text-primary text-sm flex items-center gap-2 mb-6">
           <BarChart3 size={16} className="text-brand-500"/> Evolução Mensal (Recebido vs Pago)
         </h3>
-        <div className="min-h-[220px] sm:min-h-[280px] lg:min-h-[320px] w-full">
+        <div className="h-[220px] sm:h-[280px] lg:h-[320px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={evolucaoData} margin={{ top: 20, right: 20, bottom: 0, left: -10 }} barGap={2}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" opacity={0.3} />

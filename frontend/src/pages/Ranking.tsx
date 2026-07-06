@@ -62,7 +62,7 @@ function RankingSection({ title, subtitle, icon: Icon, data, loading }: any) {
         {/* Lado Direito: Gráfico de Barras */}
         <div className="flex flex-col lg:col-span-6 min-w-0 order-1 lg:order-2">
           <h3 className="text-xs font-bold text-text-muted uppercase tracking-wider mb-3">Visualização de Impacto</h3>
-          <div className="min-h-[220px] sm:min-h-[280px] lg:min-h-[340px] w-full relative">
+          <div className="h-[220px] sm:h-[280px] lg:h-[340px] w-full relative">
             {!loading && (!data || data.length === 0) ? (
               <div className="absolute inset-0 flex items-center justify-center border border-border rounded-xl bg-bg-secondary/50">
                 <span className="text-sm text-text-muted font-medium">Sem dados para desenhar o gráfico</span>

@@ -544,7 +544,7 @@ export default function SalesIntelligenceDashboard() {
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-2">
           {/* Left Chart column (col-span-2) */}
-          <div className="lg:col-span-2 min-h-[200px] sm:min-h-[260px] lg:min-h-[320px] w-full">
+          <div className="lg:col-span-2 h-[200px] sm:h-[260px] lg:h-[320px] w-full">
             {isTrajectoryEmpty ? (
               <div className="h-full flex flex-col items-center justify-center text-center p-6 border border-dashed border-border rounded-xl bg-bg-secondary/10">
                 <EyeOff size={32} className="text-text-muted mb-2 stroke-[1.5]" />
@@ -578,7 +578,7 @@ export default function SalesIntelligenceDashboard() {
           </div>
 
           {/* Right Column: Chronological Details per Day or Month */}
-          <div className="lg:col-span-1 flex flex-col justify-between min-h-[200px] sm:min-h-[260px] lg:min-h-[260px]">
+          <div className="lg:col-span-1 flex flex-col justify-between h-[200px] sm:h-[260px] lg:h-[260px]">
             <div className="flex items-center gap-1.5 border-b border-divider/40 pb-2 mb-2">
               <Calendar size={14} className="text-brand-500" />
               <span className="text-[10px] font-bold text-text-primary uppercase tracking-wider">

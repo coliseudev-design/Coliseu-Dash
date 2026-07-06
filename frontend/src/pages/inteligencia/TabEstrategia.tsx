@@ -39,7 +39,7 @@ export default function TabEstrategia() {
         </div>
 
         <ChartCard title="Projeção de Faturamento (Q4)" subtitle="Cenários Otimista vs Pessimista (Base Histórica)">
-           <div className="min-h-[220px] sm:min-h-[280px] lg:min-h-[320px] mt-4">
+           <div className="h-[220px] sm:h-[280px] lg:h-[320px] mt-4">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={mockPrevisao} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
@@ -68,7 +68,7 @@ export default function TabEstrategia() {
         {/* Quadrante de Produtos */}
         <div className="flex flex-col">
           <ChartCard title="Matriz de Portfólio (Produtos)" subtitle="Volume de Vendas vs Margem de Lucro (%)" className="flex-1">
-             <div className="min-h-[200px] sm:min-h-[260px] lg:min-h-[300px] mt-2 relative">
+             <div className="h-[200px] sm:h-[260px] lg:h-[300px] mt-2 relative">
               <ResponsiveContainer width="100%" height="100%">
                 <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />

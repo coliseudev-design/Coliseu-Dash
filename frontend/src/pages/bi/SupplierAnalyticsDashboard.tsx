@@ -371,7 +371,7 @@ export default function SupplierAnalyticsDashboard() {
              Gráfico de Barras <ChevronDown size={14} className="text-text-muted" />
           </div>
         </div>
-        <div className="min-h-[250px] sm:min-h-[320px] lg:min-h-[370px] w-full">
+        <div className="h-[250px] sm:h-[320px] lg:h-[370px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={chartData} margin={{ top: 20, right: 20, bottom: 0, left: -10 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" opacity={0.3} />

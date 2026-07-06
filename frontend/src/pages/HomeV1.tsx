@@ -4,7 +4,7 @@ import {
   TrendingUp, TrendingDown, DollarSign, ShoppingBag,
   Calculator, Wallet, Trophy, Medal, ChevronRight, BarChart2,
   AlertTriangle, Crown, Target, Users, Tag, Box, ArrowUpRight,
-  ChevronDown, Sliders, X, LayoutDashboard
+  ChevronDown, Sliders, X, LayoutDashboard, MapPin
 } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -133,7 +133,7 @@ export default function HomeV1() {
 
   // ─── Mobile Layout States ──────────────────────────────────────────────────
   const [isMobile, setIsMobile] = useState(false)
-  const [activeTab, setActiveTab] = useState<'estatisticas' | 'receitas' | 'vendedores' | 'metas'>('estatisticas')
+  const [activeTab, setActiveTab] = useState<'estatisticas' | 'receitas' | 'vendedores' | 'cidades'>('estatisticas')
   const [showFiltersSheet, setShowFiltersSheet] = useState(false)
 
   useEffect(() => {
@@ -361,7 +361,7 @@ export default function HomeV1() {
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-none block mb-1.5">
               Faturamento Período Atual
             </span>
-            <div className="text-3xl font-black text-slate-800 dark:text-white mono leading-none">
+            <div className="text-xl sm:text-2xl md:text-3xl font-black text-slate-800 dark:text-white mono leading-none">
               {ov.isLoading ? '...' : formatBRL(totalPeriodo)}
             </div>
             <div className="text-[10px] text-slate-400 font-bold tracking-wide mt-1.5">
@@ -392,7 +392,7 @@ export default function HomeV1() {
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-none block mb-1.5">
               Faturamento Período Anterior
             </span>
-            <div className="text-2xl font-extrabold text-slate-700 dark:text-slate-300 mono leading-none">
+            <div className="text-lg sm:text-xl md:text-2xl font-extrabold text-slate-700 dark:text-slate-300 mono leading-none">
               {ov.isLoading ? '...' : formatBRL(totalAnterior)}
             </div>
             <div className="text-[10px] text-slate-400 font-bold tracking-wide mt-1.5">
@@ -416,7 +416,7 @@ export default function HomeV1() {
             <div className="text-sm font-extrabold text-slate-800 dark:text-white truncate uppercase mb-1">
               {melhorVendedor?.nome || '—'}
             </div>
-            <div className="text-base font-black text-[#00a896] mono">
+            <div className="text-sm sm:text-base font-black text-[#00a896] mono">
               {melhorVendedor ? formatBRL(melhorVendedor.total) : '—'}
             </div>
             <div className="text-[9px] text-slate-400 font-bold mt-1">
@@ -437,7 +437,7 @@ export default function HomeV1() {
             <div className="text-sm font-extrabold text-slate-800 dark:text-white truncate uppercase mb-1">
               {melhorCliente?.nome || '—'}
             </div>
-            <div className="text-base font-black text-rose-500 mono">
+            <div className="text-sm sm:text-base font-black text-rose-500 mono">
               {melhorCliente ? formatBRL(melhorCliente.total) : '—'}
             </div>
             <div className="text-[9px] text-slate-400 font-bold mt-1">
@@ -458,7 +458,7 @@ export default function HomeV1() {
             <div className="text-sm font-extrabold text-slate-800 dark:text-white truncate uppercase mb-1">
               {melhorMarca?.nome || melhorMarca?.marca || '—'}
             </div>
-            <div className="text-base font-black text-sky-500 mono">
+            <div className="text-sm sm:text-base font-black text-sky-500 mono">
               {melhorMarca ? formatBRL(melhorMarca.total) : '—'}
             </div>
             <div className="text-[9px] text-slate-400 font-bold mt-1">
@@ -479,7 +479,7 @@ export default function HomeV1() {
             <div className="text-sm font-extrabold text-slate-800 dark:text-white truncate uppercase mb-1">
               {melhorCidade?.nome || '—'}
             </div>
-            <div className="text-base font-black text-emerald-600 mono">
+            <div className="text-sm sm:text-base font-black text-emerald-600 mono">
               {melhorCidade ? formatBRL(melhorCidade.total) : '—'}
             </div>
             <div className="text-[9px] text-slate-400 font-bold mt-1">
@@ -711,7 +711,6 @@ export default function HomeV1() {
 
       {/* ── MIDDLE ROW: SELLERS CHART + RANKING LIST ─────────────────────── */}
       {(!isMobile || activeTab === 'vendedores') && (
-        <>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Sellers Horizontal Bar Chart */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm">
@@ -720,7 +719,7 @@ export default function HomeV1() {
               Desempenho dos Vendedores (Gráfico)
             </h3>
           </div>
-          <div className="min-h-[220px] sm:min-h-[280px]">
+          <div className="h-[220px] sm:h-[280px]">
             {vd.isLoading ? (
               <div className="h-full flex items-center justify-center text-xs text-slate-400">Carregando gráfico...</div>
             ) : filteredTopSellers.length === 0 ? (
@@ -807,8 +806,10 @@ export default function HomeV1() {
           </div>
         </div>
       </div>
+      )}
 
       {/* ── ROW 5: CIDADES CHART + RANKING LIST ─────────────────────────── */}
+      {(!isMobile || activeTab === 'cidades') && (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Cities Horizontal Bar Chart */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm">
@@ -817,7 +818,7 @@ export default function HomeV1() {
               <Target size={14} className="text-emerald-600" /> Desempenho das Cidades (Gráfico)
             </h3>
           </div>
-          <div className="min-h-[220px] sm:min-h-[280px]">
+          <div className="h-[220px] sm:h-[280px]">
             {cidadesQuery.isLoading ? (
               <div className="h-full flex items-center justify-center text-xs text-slate-400">Carregando gráfico...</div>
             ) : top10Cidades.length === 0 ? (
@@ -889,21 +890,11 @@ export default function HomeV1() {
           </div>
         </div>
       </div>
-    </>)}
-
-
-
-      {/* ── METAS SECTION (MOBILE ONLY) ──────────────────────────────────── */}
-      {isMobile && activeTab === 'metas' && (
-        <div className="space-y-6 animate-in fade-in duration-300">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-6 shadow-sm">
-            <h3 className="font-extrabold text-slate-800 dark:text-white text-xs uppercase tracking-widest mb-4">
-              Atingimento de Meta
-            </h3>
-            <GaugeChart realizado={totalPeriodo} meta={ov.data?.meta_total || totalPeriodo * 1.2} />
-          </div>
-        </div>
       )}
+
+
+
+
 
       {/* ── MOBILE STICKY BOTTOM NAVIGATION ──────────────────────────────── */}
       {isMobile && (
@@ -945,16 +936,16 @@ export default function HomeV1() {
               <span className="text-[8px] font-bold uppercase tracking-wider mt-1">VENDEDORES</span>
             </button>
 
-            {/* Tab Metas */}
+            {/* Tab Cidades */}
             <button
-              onClick={() => setActiveTab('metas')}
+              onClick={() => setActiveTab('cidades')}
               className={clsx(
                 "flex flex-col items-center justify-center py-1 flex-1 cursor-pointer transition-all",
-                activeTab === 'metas' ? "text-[#00a896]" : "text-slate-400 dark:text-slate-500"
+                activeTab === 'cidades' ? "text-[#00a896]" : "text-slate-400 dark:text-slate-500"
               )}
             >
-              <Target size={18} />
-              <span className="text-[8px] font-bold uppercase tracking-wider mt-1">METAS</span>
+              <MapPin size={18} />
+              <span className="text-[8px] font-bold uppercase tracking-wider mt-1">CIDADES</span>
             </button>
 
             {/* Tab Filtros (Trigger Bottom Sheet) */}
