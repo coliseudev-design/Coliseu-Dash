@@ -294,7 +294,6 @@ export default function SellerHubDashboard() {
               </span>
             )}
           </h2>
-          <p className="text-xs text-text-secondary mt-0.5">Consulta consolidada de faturamento e desempenho comercial realizado</p>
         </div>
         
         <div className="flex flex-wrap items-end gap-3 w-full lg:w-auto">

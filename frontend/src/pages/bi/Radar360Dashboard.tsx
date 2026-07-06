@@ -38,10 +38,9 @@ export default function Radar360Dashboard() {
       </div>
 
       {/* CommandCenter (Busca Preditiva Flutuante) */}
-      <div className="pt-4 pb-8">
-        <div className="text-center mb-6">
+      <div className="pt-4 pb-4">
+        <div className="text-center mb-4">
           <h1 className="text-2xl font-bold bg-gradient-to-r from-brand-500 to-cyan-500 bg-clip-text text-transparent">Radar 360</h1>
-          <p className="text-text-secondary mt-1">Busque um cliente para ativar a Interface Antecipatória</p>
         </div>
         <CommandCenter onSelectCustomer={handleSelectCustomer} />
       </div>

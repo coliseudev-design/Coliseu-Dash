@@ -330,10 +330,9 @@ export default function SalesIntelligenceDashboard() {
     <div className="space-y-6 animate-in fade-in duration-300">
       
       {/* HEADER SECTION */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-divider/40 pb-5 mb-2">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-divider/40 pb-3 mb-2">
         <div>
           <h2 className="text-2xl font-black text-text-primary tracking-tight">Hub de vendas</h2>
-          <p className="text-xs text-text-secondary mt-1">Visão integrada de faturamento, volume de vendas e notas emitidas.</p>
         </div>
         
         {/* Dropdown Filters (Vendedor and Cidade) */}

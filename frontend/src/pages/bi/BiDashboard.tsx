@@ -36,16 +36,16 @@ export default function BiDashboard() {
   return (
     <div className="flex flex-col h-full space-y-4">
       {/* Filtros Globais do BI */}
-      <div className="bg-bg-primary border border-border-primary rounded-lg p-4 flex items-center justify-between shadow-sm flex-wrap gap-4">
-        <h2 className="text-xl font-bold text-text-primary">Business Intelligence</h2>
-        
-        {/* Desktop Filter */}
-        <div className="hidden lg:flex items-center w-full lg:w-auto min-w-0">
-          {showFilter && (
+      {showFilter && (
+        <div className="bg-bg-primary border border-border-primary rounded-lg p-4 flex items-center justify-between shadow-sm flex-wrap gap-4 animate-in slide-in-from-top duration-200">
+          <h2 className="text-xl font-bold text-text-primary">Business Intelligence</h2>
+          
+          {/* Desktop Filter */}
+          <div className="hidden lg:flex items-center w-full lg:w-auto min-w-0">
             <PeriodFilter excludePeriods={['yesterday']} />
-          )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Mobile Sticky Bar trigger */}
       {isMobile && showFilter && (

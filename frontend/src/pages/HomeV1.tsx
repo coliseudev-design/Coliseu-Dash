@@ -277,12 +277,9 @@ export default function HomeV1() {
     <div className={clsx("space-y-6 pb-12", isMobile ? "pb-28" : "pb-12")} aria-label="Visão Estratégica Dashboard">
 
       {/* ── HEADER & PERIOD FILTER ROW ────────────────────────────────────── */}
-      <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight dark:text-white">Visão Estratégica</h2>
-          <p className="text-xs text-text-secondary mt-1 font-medium">
-            Análise estratégica de vendas, clientes, cidades, marcas e faturamento de período selecionado.
-          </p>
         </div>
 
         {/* Custom Period Button Group */}

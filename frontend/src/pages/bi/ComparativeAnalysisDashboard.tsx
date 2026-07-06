@@ -77,12 +77,11 @@ export default function ProfitabilityDashboard() {
     <div className="space-y-6 animate-in fade-in duration-300 pb-10">
       
       {/* HEADER */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-2">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
         <div>
           <h2 className="text-2xl font-bold text-text-primary flex items-center gap-2">
             Painel de Lucratividade
           </h2>
-          <p className="text-sm text-text-secondary mt-1">Gestão de receitas, lucratividade e custos</p>
         </div>
         <div className="flex items-center gap-4">
           <button className="bg-pink-500/10 text-pink-500 hover:bg-pink-500/20 px-4 py-2 rounded-lg font-bold text-xs flex items-center gap-2 transition-colors border border-pink-500/20">

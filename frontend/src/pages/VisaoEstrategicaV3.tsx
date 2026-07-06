@@ -171,10 +171,9 @@ export default function VisaoEstrategicaV3() {
 
   return (
     <div className={clsx("space-y-6", isMobile ? "pb-28" : "pb-6")} aria-label="Visão Estratégica">
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-text-primary">Visão Estratégica</h2>
-          <p className="text-sm text-text-secondary mt-1">Acompanhamento de metas e performance de vendas</p>
         </div>
         <div className="hidden md:flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-3">
           <PeriodFilter />

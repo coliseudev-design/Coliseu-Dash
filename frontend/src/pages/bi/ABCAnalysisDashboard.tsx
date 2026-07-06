@@ -114,12 +114,11 @@ export default function InventoryManagementDashboard() {
     <div className="space-y-6 animate-in fade-in duration-300 pb-10">
       
       {/* HEADER */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-2">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
         <div>
           <h2 className="text-2xl font-bold text-text-primary flex items-center gap-2">
             Gestão de Inventário
           </h2>
-          <p className="text-sm text-text-secondary mt-1">Controle de estoque, curva ABC e saúde do mix de produtos</p>
         </div>
         {!isDash1 && (
           <div className="flex items-center gap-4">
