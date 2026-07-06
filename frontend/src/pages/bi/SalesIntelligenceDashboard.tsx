@@ -707,9 +707,18 @@ export default function SalesIntelligenceDashboard() {
               <div key={order.id || idx} className="p-4 border border-divider rounded-xl bg-bg-secondary/10 flex flex-col gap-2">
                 <div className="flex justify-between items-start">
                   <div>
-                    <h4 className="text-xs font-bold text-text-primary leading-tight">{order.cliente_nome || order.cliente}</h4>
-                    <p className="text-[10px] text-text-secondary mt-0.5">Vendedor: {order.vendedor_nome || order.vendedor}</p>
-                    <p className="text-[10px] text-text-muted mt-0.5 font-mono">Pedido: {order.numero_nota || order.numero_pedido || '-'}</p>
+                    <h4 className="text-xs font-bold text-text-primary leading-tight truncate max-w-[190px] block" title={order.cliente_nome || order.cliente}>
+                      {order.cliente_nome || order.cliente}
+                    </h4>
+                    <div className="text-[10px] mt-1 flex items-center gap-1.5 leading-none">
+                      <span className="text-[#00a896] dark:text-[#00c2ad] font-semibold">
+                        {order.vendedor_nome || order.vendedor ? (order.vendedor_nome || order.vendedor).split(' ')[0] : '-'}
+                      </span>
+                      <span className="text-text-muted font-medium">•</span>
+                      <span className="text-indigo-600 dark:text-indigo-400 font-semibold font-mono">
+                        Ped: {order.numero_nota || order.numero_pedido || '-'}
+                      </span>
+                    </div>
                   </div>
                   {isDevolucao ? (
                     <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-danger/10 text-danger shrink-0">

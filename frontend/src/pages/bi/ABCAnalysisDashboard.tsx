@@ -6,7 +6,7 @@ import { BIService } from '../../services/biApi';
 import { BiPeriodFilter } from '../../types/bi.types';
 import { 
   DollarSign, Box, BarChart2, AlertTriangle, 
-  RefreshCcw, Sparkles, Layers, List, Search, Filter
+  RefreshCcw, Sparkles, Layers, List, Search, Filter, X
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { formatBRL, formatNum } from '../../utils/format';
@@ -50,6 +50,16 @@ export default function InventoryManagementDashboard() {
   const [comEstoque, setComEstoque] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 100;
+
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 640);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Mocks explicitly matching the layout
   const barChartData = data?.barChartData || [];
@@ -307,9 +317,147 @@ export default function InventoryManagementDashboard() {
       )}
 
       {/* DETAILED TABLE SECTION */}
+      {isMobile && (
+        <div className="flex items-center justify-between gap-3 bg-bg-primary border border-border shadow-sm rounded-xl p-3 mb-4 animate-in slide-in-from-top duration-300">
+          <div className="flex-1 min-w-0">
+            <span className="text-[9px] font-bold text-text-muted uppercase block">Filtros Ativos</span>
+            <span className="text-xs font-bold text-text-primary truncate block">
+              {[
+                searchTerm && 'Busca',
+                marcaFilter && 'Marca',
+                grupoFilter && 'Grupo',
+                abcFilter && 'Classe',
+                comEstoque && 'Estoque'
+              ].filter(Boolean).join(', ') || 'Nenhum'}
+            </span>
+          </div>
+          <button
+            onClick={() => setShowMobileFilters(true)}
+            className="px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white rounded-lg text-xs font-bold transition-all shadow-sm cursor-pointer"
+          >
+            Filtros
+          </button>
+        </div>
+      )}
+
+      {showMobileFilters && isMobile && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center select-none animate-in fade-in duration-200">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity duration-300"
+            onClick={() => setShowMobileFilters(false)}
+          />
+          {/* Bottom Sheet Drawer */}
+          <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-t-3xl p-6 shadow-2xl z-10 animate-in slide-in-from-bottom duration-300 max-h-[85vh] overflow-y-auto flex flex-col pb-8">
+            {/* Handle bar */}
+            <div className="w-12 h-1 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-5 shrink-0" />
+
+            <div className="flex justify-between items-center mb-6 shrink-0">
+              <h3 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-widest">
+                Filtrar Inventário
+              </h3>
+              <button
+                onClick={() => setShowMobileFilters(false)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-6 flex-1 text-left">
+              <div className="space-y-2">
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block pl-1">
+                  Busca
+                </span>
+                <input 
+                  type="text" 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Buscar produto ou código..." 
+                  className="w-full bg-bg-secondary border border-divider rounded-xl px-3 py-2 text-xs text-text-primary outline-none focus:border-brand-500"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block pl-1">
+                  Marca
+                </span>
+                <select 
+                  value={marcaFilter}
+                  onChange={(e) => setMarcaFilter(e.target.value)}
+                  className="h-10 px-3 bg-bg-secondary border border-divider text-text-primary rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 w-full cursor-pointer"
+                >
+                  <option value="">Todas Marcas ({marcasDisponiveis.length})</option>
+                  {marcasDisponiveis.map((m: any) => <option key={m} value={m}>{m}</option>)}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block pl-1">
+                  Grupo
+                </span>
+                <select 
+                  value={grupoFilter}
+                  onChange={(e) => setGrupoFilter(e.target.value)}
+                  className="h-10 px-3 bg-bg-secondary border border-divider text-text-primary rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 w-full cursor-pointer"
+                >
+                  <option value="">Todos Grupos ({gruposDisponiveis.length})</option>
+                  {gruposDisponiveis.map((g: any) => <option key={g} value={g}>{g}</option>)}
+                </select>
+              </div>
+
+              {!isDash1 && (
+                <div className="space-y-2">
+                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block pl-1">
+                    Classe ABC
+                  </span>
+                  <select 
+                    value={abcFilter}
+                    onChange={(e) => setAbcFilter(e.target.value)}
+                    className="h-10 px-3 bg-bg-secondary border border-divider text-text-primary rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 w-full cursor-pointer"
+                  >
+                    <option value="">Classe ABC: Todas</option>
+                    <option value="A">Curva A</option>
+                    <option value="B">Curva B</option>
+                    <option value="C">Curva C</option>
+                  </select>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block pl-1">
+                  Estoque
+                </span>
+                <button 
+                  onClick={() => setComEstoque(!comEstoque)}
+                  className={clsx(
+                    "w-full border px-3 py-2 text-xs font-bold flex items-center gap-2 transition-colors justify-center",
+                    comEstoque 
+                      ? "bg-success/10 text-success border-success/30" 
+                      : "bg-bg-secondary text-text-muted border-border"
+                  )}
+                >
+                  <span className={clsx("w-2 h-2 rounded-full", comEstoque ? "bg-success" : "bg-text-muted")}></span> 
+                  Com Estoque
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-8 shrink-0">
+              <button
+                onClick={() => setShowMobileFilters(false)}
+                className="w-full py-3.5 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-2xl text-xs shadow-md transition-all active:scale-[0.98] cursor-pointer"
+              >
+                Confirmar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex flex-col">
         {/* Table Filters */}
-        <div className="flex flex-wrap items-center gap-3 mb-6">
+        <div className="hidden sm:flex flex-wrap items-center gap-3 mb-6">
           <div className="relative w-full sm:flex-1 sm:min-w-0">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
             <input 
