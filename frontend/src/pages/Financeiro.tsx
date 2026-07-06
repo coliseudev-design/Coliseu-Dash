@@ -164,38 +164,75 @@ export default function Financeiro() {
           ) : !movimentos || movimentos.length === 0 ? (
             <div className="text-sm text-text-secondary">Nenhuma movimentação registrada para este caixa no período.</div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-divider text-xs font-bold text-text-secondary uppercase">
-                    <th className="py-2.5 px-2 md:px-4">Descrição / Cliente</th>
-                    <th className="py-2.5 px-2 md:px-4">Tipo</th>
-                    <th className="py-2.5 px-2 md:px-4">Espécie</th>
-                    <th className="py-2.5 px-2 md:px-4">Valor</th>
-                    <th className="py-2.5 px-2 md:px-4">Data Pagamento</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-divider text-sm text-text-primary">
-                  {movimentos.map((mov: any) => (
-                    <tr key={mov.id} className="hover:bg-bg-secondary">
-                      <td className="py-2.5 px-2 md:px-4 max-w-[100px] sm:max-w-none truncate font-medium text-xs sm:text-sm" title={mov.descricao || mov.cliente || 'Lançamento'}>
-                        {mov.descricao || mov.cliente || 'Lançamento'}
-                      </td>
-                      <td className="py-2.5 px-2 md:px-4">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${mov.tipo === 'RECEBER' ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'}`}>
+            <>
+              {/* Desktop Table View */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-divider text-xs font-bold text-text-secondary uppercase">
+                      <th className="py-2.5 px-2 md:px-4">Descrição / Cliente</th>
+                      <th className="py-2.5 px-2 md:px-4">Tipo</th>
+                      <th className="py-2.5 px-2 md:px-4">Espécie</th>
+                      <th className="py-2.5 px-2 md:px-4">Valor</th>
+                      <th className="py-2.5 px-2 md:px-4">Data Pagamento</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-divider text-sm text-text-primary">
+                    {movimentos.map((mov: any) => (
+                      <tr key={mov.id} className="hover:bg-bg-secondary">
+                        <td className="py-2.5 px-2 md:px-4 max-w-[100px] sm:max-w-none truncate font-medium text-xs sm:text-sm" title={mov.descricao || mov.cliente || 'Lançamento'}>
+                          {mov.descricao || mov.cliente || 'Lançamento'}
+                        </td>
+                        <td className="py-2.5 px-2 md:px-4">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${mov.tipo === 'RECEBER' ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'}`}>
+                            {mov.tipo}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-2 md:px-4 font-semibold capitalize text-xs">{mov.especie?.toLowerCase() || 'Outro'}</td>
+                        <td className="py-2.5 px-2 md:px-4 font-mono font-bold text-xs sm:text-sm whitespace-nowrap">{formatBRL(mov.valor_pago || mov.valor)}</td>
+                        <td className="py-2.5 px-2 md:px-4 text-text-secondary text-xs">
+                          {mov.data_pagamento ? new Date(mov.data_pagamento).toLocaleDateString('pt-BR') : ''}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile Cards View */}
+              <div className="md:hidden space-y-2">
+                {movimentos.map((mov: any) => {
+                  const isReceber = mov.tipo === 'RECEBER';
+                  return (
+                    <div key={mov.id} className="p-3 border border-divider rounded-xl bg-bg-secondary/10 flex flex-col gap-1.5">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1 min-w-0 pr-2">
+                          <h4 className="text-xs font-bold text-text-primary truncate block" title={mov.descricao || mov.cliente || 'Lançamento'}>
+                            {mov.descricao || mov.cliente || 'Lançamento'}
+                          </h4>
+                          <div className="text-[10px] text-text-muted mt-1 flex items-center gap-1.5 leading-none">
+                            <span className="capitalize font-semibold">{mov.especie?.toLowerCase() || 'Outro'}</span>
+                            <span>•</span>
+                            <span>
+                              {mov.data_pagamento ? mov.data_pagamento.substring(5, 10).split('-').reverse().join('/') : '-'}
+                            </span>
+                          </div>
+                        </div>
+                        <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold shrink-0 ${isReceber ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'}`}>
                           {mov.tipo}
                         </span>
-                      </td>
-                      <td className="py-2.5 px-2 md:px-4 font-semibold capitalize text-xs">{mov.especie?.toLowerCase() || 'Outro'}</td>
-                      <td className="py-2.5 px-2 md:px-4 font-mono font-bold text-xs sm:text-sm whitespace-nowrap">{formatBRL(mov.valor_pago || mov.valor)}</td>
-                      <td className="py-2.5 px-2 md:px-4 text-text-secondary text-xs">
-                        {mov.data_pagamento ? (isMobile ? mov.data_pagamento.substring(5, 10).split('-').reverse().join('/') : new Date(mov.data_pagamento).toLocaleDateString('pt-BR')) : ''}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                      </div>
+                      <div className="flex justify-between items-center pt-1.5 border-t border-divider mt-0.5">
+                        <span className="text-[10px] text-text-muted font-medium">Valor</span>
+                        <span className={`text-xs font-mono font-bold ${isReceber ? 'text-success' : 'text-danger'}`}>
+                          {formatBRL(mov.valor_pago || mov.valor)}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
           )}
         </div>
 

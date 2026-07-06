@@ -6,7 +6,7 @@ import { BIService } from '../../services/biApi';
 import { BiPeriodFilter } from '../../types/bi.types';
 import { 
   DollarSign, Box, BarChart2, AlertTriangle, 
-  RefreshCcw, Sparkles, Layers, List, Search, Filter, X
+  RefreshCcw, Sparkles, Layers, List, Search, Filter, X, Sliders
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { formatBRL, formatNum } from '../../utils/format';
@@ -121,7 +121,7 @@ export default function InventoryManagementDashboard() {
 
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300 pb-10">
+    <div className={clsx("space-y-6 animate-in fade-in duration-300", isMobile ? "pb-24" : "pb-10")}>
       
       {/* HEADER */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
@@ -318,25 +318,28 @@ export default function InventoryManagementDashboard() {
 
       {/* DETAILED TABLE SECTION */}
       {isMobile && (
-        <div className="flex items-center justify-between gap-3 bg-bg-primary border border-border shadow-sm rounded-xl p-3 mb-4 animate-in slide-in-from-top duration-300">
-          <div className="flex-1 min-w-0">
-            <span className="text-[9px] font-bold text-text-muted uppercase block">Filtros Ativos</span>
-            <span className="text-xs font-bold text-text-primary truncate block">
-              {[
-                searchTerm && 'Busca',
-                marcaFilter && 'Marca',
-                grupoFilter && 'Grupo',
-                abcFilter && 'Classe',
-                comEstoque && 'Estoque'
-              ].filter(Boolean).join(', ') || 'Nenhum'}
-            </span>
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/80 dark:border-slate-800/80 py-2.5 px-4 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] select-none">
+          <div className="flex items-center justify-between w-full max-w-md mx-auto">
+            <div className="flex-1 min-w-0 pr-3 text-left">
+              <span className="text-[9px] font-bold text-text-muted uppercase block">Filtros Ativos</span>
+              <span className="text-xs font-bold text-text-primary truncate block">
+                {[
+                  searchTerm && 'Busca',
+                  marcaFilter && 'Marca',
+                  grupoFilter && 'Grupo',
+                  abcFilter && 'Classe',
+                  comEstoque && 'Estoque'
+                ].filter(Boolean).join(', ') || 'Nenhum'}
+              </span>
+            </div>
+            <button
+              onClick={() => setShowMobileFilters(true)}
+              className="flex items-center gap-1.5 px-5 py-2.5 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-2xl text-xs shadow-md transition-all active:scale-[0.98] cursor-pointer"
+            >
+              <Sliders size={14} />
+              <span>Filtros</span>
+            </button>
           </div>
-          <button
-            onClick={() => setShowMobileFilters(true)}
-            className="px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white rounded-lg text-xs font-bold transition-all shadow-sm cursor-pointer"
-          >
-            Filtros
-          </button>
         </div>
       )}
 

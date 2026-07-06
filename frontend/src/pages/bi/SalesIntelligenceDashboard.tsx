@@ -700,11 +700,11 @@ export default function SalesIntelligenceDashboard() {
         </div>
 
         {/* Mobile Card View Fallback */}
-        <div className="sm:hidden space-y-3">
+        <div className="sm:hidden space-y-2">
           {currentOrders.map((order: any, idx: number) => {
             const isDevolucao = order.es === 2 || order.processo === 2 || (order.valor_total || order.valor || 0) < 0;
             return (
-              <div key={order.id || idx} className="p-4 border border-divider rounded-xl bg-bg-secondary/10 flex flex-col gap-2">
+              <div key={order.id || idx} className="p-3 border border-divider rounded-xl bg-bg-secondary/10 flex flex-col gap-1.5">
                 <div className="flex justify-between items-start">
                   <div>
                     <h4 className="text-xs font-bold text-text-primary leading-tight truncate max-w-[190px] block" title={order.cliente_nome || order.cliente}>
@@ -730,7 +730,7 @@ export default function SalesIntelligenceDashboard() {
                     </span>
                   )}
                 </div>
-                <div className="flex justify-between items-center pt-2 border-t border-divider mt-1">
+                <div className="flex justify-between items-center pt-1.5 border-t border-divider mt-0.5">
                   <div className="flex items-center gap-1 text-[10px] text-text-muted">
                     <Calendar size={12} />
                     {order.data_emissao || order.data}
