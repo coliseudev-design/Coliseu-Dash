@@ -13,17 +13,8 @@ def run_query(db_name, sql):
     out = stdout.read().decode('utf-8')
     return out
 
-# Terminate query PID 271520 or any active update
-print("=== PG STAT BEFORE TERMINATION ===")
-sql = "SELECT pid, state, query FROM pg_stat_activity WHERE query LIKE '%UPDATE dash_financeiro%'"
-print(run_query("coliseu_dashboard", sql))
-
-print("=== TERMINATING QUERY ===")
-sql = "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE query LIKE '%UPDATE dash_financeiro%' AND pid != pg_backend_pid()"
-print(run_query("coliseu_dashboard", sql))
-
-print("=== PG STAT AFTER TERMINATION ===")
-sql = "SELECT pid, state, query FROM pg_stat_activity WHERE query LIKE '%UPDATE dash_financeiro%'"
+print("=== KILLING SLOW TOP PRODUCT QUERIES ===")
+sql = "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE query LIKE '%SELECT COALESCE(vi.produto, p.nome%' AND pid != pg_backend_pid()"
 print(run_query("coliseu_dashboard", sql))
 
 client.close()

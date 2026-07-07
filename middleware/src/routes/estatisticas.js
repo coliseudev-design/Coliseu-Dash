@@ -111,7 +111,7 @@ router.get('/overview', async (req, res, next) => {
             db.query(`SELECT COALESCE(SUM((CASE WHEN f.valor_pago = 0 THEN f.valor ELSE f.valor_pago END)),0) AS v FROM dash_financeiro f WHERE f.tenant_id = $1 AND COALESCE(f.data_pagamento, f.data_vencimento, NOW()) >= $2 AND COALESCE(f.data_pagamento, f.data_vencimento, NOW()) <= $3 AND f.tipo_normalized = 'PAGAR' AND f.status_pagamento_normalized = 'PAGO'${dfFin.clause}`, [tenantId, finRange.start, finRange.end, ...dfFin.params]),
             // 11. Top marcas - CTE pré-filtra vendas antes do JOIN com itens (1.2M linhas)
             db.query(`
-                WITH vf AS MATERIALIZED (
+                WITH vf AS NOT MATERIALIZED (
                     SELECT v.id_firebird, v.tenant_id
                     FROM dash_vendas v
                     WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
@@ -127,7 +127,7 @@ router.get('/overview', async (req, res, next) => {
             `, [tenantId, start, end, ...df.params, ...vf.params]),
             // 12. Top categorias - CTE pré-filtra vendas antes do JOIN com itens
             db.query(`
-                WITH vf AS MATERIALIZED (
+                WITH vf AS NOT MATERIALIZED (
                     SELECT v.id_firebird, v.tenant_id
                     FROM dash_vendas v
                     WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
@@ -240,7 +240,7 @@ router.get('/kpis', async (req, res, next) => {
                   )${dfFin.clause}
             `, [tenantId, start, end, ...dfFin.params]),
             db.query(`
-                WITH vf AS MATERIALIZED (
+                WITH vf AS NOT MATERIALIZED (
                     SELECT v.id_firebird, v.tenant_id
                     FROM dash_vendas v
                     WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3

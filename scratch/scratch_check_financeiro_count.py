@@ -13,7 +13,7 @@ def run_query(db_name, sql):
     out = stdout.read().decode('utf-8')
     return out
 
-print("=== TOTAL ROWS IN dash_financeiro ===")
-print(run_query("coliseu_dashboard", "SELECT count(*) FROM dash_financeiro"))
+print("=== INDEXES ON dash_vendas_itens ===")
+print(run_query("coliseu_dashboard", "SELECT indexname, indexdef FROM pg_indexes WHERE tablename = 'dash_vendas_itens'"))
 
 client.close()
