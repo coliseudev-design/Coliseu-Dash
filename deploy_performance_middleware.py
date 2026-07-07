@@ -5,6 +5,7 @@ FILES_TO_DEPLOY = [
     ('middleware/src/db/postgres.js', '/usr/src/app/src/db/postgres.js'),
     ('middleware/src/routes/bi.js', '/usr/src/app/src/routes/bi.js'),
     ('middleware/src/routes/financeiro.js', '/usr/src/app/src/routes/financeiro.js'),
+    ('middleware/src/routes/estatisticas.js', '/usr/src/app/src/routes/estatisticas.js'),
 ]
 
 ENVS = [
