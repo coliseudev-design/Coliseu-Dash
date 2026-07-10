@@ -1,0 +1,53 @@
+import paramiko
+
+client = paramiko.SSHClient()
+client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+client.connect('2.24.82.19', username='root', password='Col@13894645')
+
+db_container = 'vasjsucz4yxcb7m4rtqindd2'
+
+def run_query(db_name, sql):
+    sql_escaped = sql.replace("'", "'\\''")
+    cmd = f"docker exec {db_container} psql -U coliseu_admin -d {db_name} -c '{sql_escaped}' 2>&1"
+    stdin, stdout, stderr = client.exec_command(cmd)
+    out = stdout.read().decode('utf-8')
+    return out
+
+tenant_id = 'db05d98f-6939-4d80-af33-54cd91c35d7f'
+
+print("=== SILAS SALES IN dash_vendas ===")
+sql = f"""
+SELECT 
+    id_firebird,
+    numero_pedido,
+    data_venda,
+    data_hora_proc,
+    valor_total,
+    valor_desconto,
+    especie,
+    status
+FROM dash_vendas 
+WHERE tenant_id = '{tenant_id}' AND cliente_id_firebird = 19528
+"""
+print(run_query("coliseu_dashboard", sql))
+
+print("=== SILAS ENTRIES IN dash_financeiro ===")
+sql = f"""
+SELECT 
+    id_firebird,
+    tipo,
+    tipo_documento,
+    descricao,
+    data_emissao,
+    data_pagamento,
+    valor,
+    valor_pago,
+    status_pagamento,
+    caixa_id_firebird,
+    venda_id_firebird
+FROM dash_financeiro 
+WHERE tenant_id = '{tenant_id}' AND cliente_id_firebird = 19528
+"""
+print(run_query("coliseu_dashboard", sql))
+
+client.close()
