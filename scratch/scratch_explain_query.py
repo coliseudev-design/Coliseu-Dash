@@ -13,27 +13,33 @@ def run_query(db_name, sql):
     out = stdout.read().decode('utf-8')
     return out
 
-tenant_id = 'ba7a5f04-a525-45fd-bacc-8011ed9486a1'
-start_date = '2025-07-01 00:00:00+00'
-end_date = '2026-07-07 23:59:59.999+00'
+tenant_id = 'db05d98f-6939-4d80-af33-54cd91c35d7f'
+start_date = '2026-06-01 00:00:00+00'
+end_date = '2026-06-30 23:59:59.999+00'
 
-print("=== EXPLAIN ANALYZE ===")
+print("=== EXPLAIN ANALYZE OF MARCAS RANKING QUERY ===")
 sql = f"""
-EXPLAIN (ANALYZE, BUFFERS)
-WITH vf AS (
-    SELECT v.id_firebird, v.tenant_id
+EXPLAIN ANALYZE
+WITH vendas_filtradas AS (
+    SELECT v.id_firebird, v.tenant_id, v.marca, v.valor_total, v.valor_desconto
     FROM dash_vendas v
-    WHERE v.tenant_id = '{tenant_id}' AND v.data_hora_proc >= '{start_date}' AND v.data_hora_proc <= '{end_date}'
-      AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO', 'PROCESSADO')
+    WHERE v.tenant_id = '{tenant_id}'
+      AND v.data_hora_proc >= '{start_date}' AND v.data_hora_proc <= '{end_date}'
+      AND TRIM(status) IN ('FATURADO', 'FINALIZADO', 'PROCESSADO')
       AND (v.depto_id = 1 OR v.depto_id IS NULL)
 )
-SELECT COALESCE(vi.categoria, p.categoria, 'S/ GRUPO') as categoria, SUM(vi.valor_total) AS total
+SELECT 
+    COALESCE(vi.marca, vf.marca, p.marca) AS marca,
+    SUM(COALESCE(vi.valor_total * (1 - COALESCE(vf.valor_desconto, 0) / NULLIF(vf.valor_total, 0)) * (CASE WHEN vf.valor_total < 0 THEN -1 ELSE 1 END), 0)) AS total,
+    COUNT(*) AS qtd_itens
 FROM dash_vendas_itens vi
-JOIN vf ON vf.id_firebird = vi.venda_id_firebird AND vf.tenant_id = vi.tenant_id
+JOIN vendas_filtradas vf ON vf.id_firebird = vi.venda_id_firebird AND vf.tenant_id = vi.tenant_id
 LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
 WHERE vi.tenant_id = '{tenant_id}'
-  AND COALESCE(vi.categoria, p.categoria) IS NOT NULL AND COALESCE(vi.categoria, p.categoria) != ''
-GROUP BY 1 ORDER BY total DESC LIMIT 5
+  AND COALESCE(vi.marca, vf.marca, p.marca) IS NOT NULL
+  AND COALESCE(vi.marca, vf.marca, p.marca) != ''
+GROUP BY 1
+ORDER BY total DESC LIMIT 10
 """
 print(run_query("coliseu_dashboard", sql))
 

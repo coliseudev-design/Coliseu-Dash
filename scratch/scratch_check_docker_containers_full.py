@@ -10,13 +10,7 @@ def run_cmd(cmd):
 
 mw_container = 'nexus-middleware-br0y0d05a1fq8fpwppb3y5bb-195457690815'
 
-print("=== SEARCHING MIDDLEWARE LOGS FOR ERRORS IN PATHS ===")
-# Let's filter logs by path, error, crash, exception or fail
-cmd = f"docker logs {mw_container} 2>&1 | grep -iE 'error|exception|fail|crash|nan|undefined|timeout' | tail -n 100"
-print(run_cmd(cmd))
-
-print("=== LOGS CONTAINING /sync/status ===")
-cmd = f"docker logs {mw_container} 2>&1 | grep -i '/sync/status' | tail -n 20"
-print(run_cmd(cmd))
+print("=== LATEST 100 LOGS FOR MIDDLEWARE ===")
+print(run_cmd(f"docker logs --tail 100 {mw_container}"))
 
 client.close()
