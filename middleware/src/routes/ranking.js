@@ -238,8 +238,10 @@ router.get('/especies', async (req, res, next) => {
                 COALESCE(NULLIF(TRIM(UPPER(split_part(s.item, ':', 1))), ''), 'Não Informada') AS nome,
                 SUM(
                     CASE 
-                        WHEN s.item LIKE '%:%' THEN CAST(split_part(s.item, ':', 2) AS NUMERIC)
-                        ELSE (v.valor_total - COALESCE(v.valor_desconto, 0))
+                        WHEN s.item LIKE '%:%' THEN 
+                            CAST(split_part(s.item, ':', 2) AS NUMERIC) * (CASE WHEN v.valor_total < 0 THEN -1 ELSE 1 END)
+                        ELSE 
+                            (v.valor_total - COALESCE(v.valor_desconto, 0))
                     END
                 ) AS total,
                 COUNT(DISTINCT v.id_firebird) AS qtd
