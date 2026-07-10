@@ -234,13 +234,24 @@ router.get('/especies', async (req, res, next) => {
         const salesFilter = cfopUtil.getSalesFilterClause('v');
 
         const { rows } = await db.query(`
-            SELECT COALESCE(v.especie, 'Não Informada') AS nome, SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) AS total, COUNT(*) AS qtd
+            SELECT 
+                COALESCE(NULLIF(TRIM(UPPER(split_part(s.item, ':', 1))), ''), 'Não Informada') AS nome,
+                SUM(
+                    CASE 
+                        WHEN s.item LIKE '%:%' THEN CAST(split_part(s.item, ':', 2) AS NUMERIC)
+                        ELSE (v.valor_total - COALESCE(v.valor_desconto, 0))
+                    END
+                ) AS total,
+                COUNT(DISTINCT v.id_firebird) AS qtd
             FROM dash_vendas v
+            CROSS JOIN LATERAL regexp_split_to_table(COALESCE(v.especie, 'Não Informada'), '\\|') AS s(item)
             WHERE v.tenant_id = $1
               AND v.data_hora_proc >= $2
               AND v.data_hora_proc <= $3
               ${salesFilter} ${df.clause} ${vf.clause}
-            GROUP BY 1 ORDER BY total DESC LIMIT $${4 + df.params.length + vf.params.length}
+            GROUP BY 1 
+            ORDER BY total DESC 
+            LIMIT $${4 + df.params.length + vf.params.length}
         `, [tenantId, start, end, ...df.params, ...vf.params, limit]);
 
         res.json({ data: rows.map(r => ({
