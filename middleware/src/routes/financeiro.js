@@ -202,7 +202,7 @@ router.get('/caixa', async (req, res, next) => {
         // Entradas em espécie (DINHEIRO) do caixa (por junção com vendas)
         const totDinP = await db.query(`
             SELECT
-                COALESCE(SUM(CASE WHEN f.tipo_normalized = 'RECEBER' AND f.status_pagamento_normalized = 'PAGO' AND COALESCE(f.data_pagamento, f.data_vencimento) >= $2 AND COALESCE(f.data_pagamento, f.data_vencimento) <= $3 AND TRIM(UPPER(COALESCE(v.especie, 'DINHEIRO'))) = 'DINHEIRO' THEN (CASE WHEN f.valor_pago = 0 THEN f.valor ELSE f.valor_pago END) ELSE 0 END), 0) AS entradas_dinheiro
+                COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'RECEBER' AND TRIM(f.status_pagamento) = 'PAGO' AND COALESCE(f.data_pagamento, f.data_vencimento) >= $2 AND COALESCE(f.data_pagamento, f.data_vencimento) <= $3 AND TRIM(UPPER(COALESCE(v.especie, 'DINHEIRO'))) = 'DINHEIRO' THEN (CASE WHEN f.valor_pago = 0 THEN f.valor ELSE f.valor_pago END) ELSE 0 END), 0) AS entradas_dinheiro
             FROM dash_financeiro f
             LEFT JOIN dash_vendas v ON v.tenant_id = f.tenant_id
               AND v.id_firebird = f.venda_id_firebird
@@ -213,11 +213,11 @@ router.get('/caixa', async (req, res, next) => {
         const movP = await db.query(`
             SELECT 
                 TO_CHAR(COALESCE(f.data_pagamento, f.data_vencimento), 'YYYY-MM-DD') AS data,
-                SUM(CASE WHEN f.tipo_normalized = 'RECEBER' THEN (CASE WHEN f.valor_pago = 0 THEN f.valor ELSE f.valor_pago END) ELSE 0 END) AS entradas,
-                SUM(CASE WHEN f.tipo_normalized = 'PAGAR' THEN (CASE WHEN f.valor_pago = 0 THEN f.valor ELSE f.valor_pago END) ELSE 0 END) AS saidas
+                SUM(CASE WHEN TRIM(f.tipo) = 'RECEBER' THEN (CASE WHEN f.valor_pago = 0 THEN f.valor ELSE f.valor_pago END) ELSE 0 END) AS entradas,
+                SUM(CASE WHEN TRIM(f.tipo) = 'PAGAR' THEN (CASE WHEN f.valor_pago = 0 THEN f.valor ELSE f.valor_pago END) ELSE 0 END) AS saidas
             FROM dash_financeiro f
             WHERE f.tenant_id = $1 
-              AND f.status_pagamento_normalized = 'PAGO'
+              AND TRIM(f.status_pagamento) = 'PAGO'
               AND COALESCE(f.data_pagamento, f.data_vencimento) >= $2 
               AND COALESCE(f.data_pagamento, f.data_vencimento) <= $3
               ${filterCaixa}
@@ -231,12 +231,12 @@ router.get('/caixa', async (req, res, next) => {
         if (showEspecies) {
             especieP = await db.query(`
                 SELECT TRIM(UPPER(COALESCE(v.especie, 'DINHEIRO'))) as nome_especie, 
-                       COALESCE(SUM(CASE WHEN f.tipo_normalized = 'RECEBER' THEN COALESCE(f.valor_pago, f.valor) ELSE -COALESCE(f.valor_pago, f.valor) END), 0) AS total_especie
+                       COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'RECEBER' THEN COALESCE(f.valor_pago, f.valor) ELSE -COALESCE(f.valor_pago, f.valor) END), 0) AS total_especie
                 FROM dash_financeiro f
                 LEFT JOIN dash_vendas v ON v.tenant_id = f.tenant_id
                   AND v.id_firebird = f.venda_id_firebird
                 WHERE f.tenant_id = $1
-                  AND f.status_pagamento_normalized = 'PAGO'
+                  AND TRIM(f.status_pagamento) = 'PAGO'
                   AND COALESCE(f.data_pagamento, f.data_vencimento) >= $2 
                   AND COALESCE(f.data_pagamento, f.data_vencimento) <= $3
                   ${filterCaixa}

@@ -105,10 +105,10 @@ router.get('/overview', async (req, res, next) => {
             // 6. Status CANCELADO
             db.query(`SELECT COUNT(*) AS qtd FROM dash_vendas v WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3 AND UPPER(TRIM(v.status)) = 'CANCELADO' ${cfopFilter} ${df.clause} ${vf.clause}`, [tenantId, start, end, ...df.params, ...vf.params]),
             // 7-10. Financeiro
-            db.query(`SELECT COALESCE(SUM(f.valor - f.valor_pago),0) AS v FROM dash_financeiro f WHERE f.tenant_id = $1 AND COALESCE(f.data_vencimento, f.data_emissao, NOW()) >= $2 AND COALESCE(f.data_vencimento, f.data_emissao, NOW()) <= $3 AND f.tipo_normalized = 'RECEBER' AND f.status_pagamento_normalized = 'ABERTO'${dfFin.clause}`, [tenantId, finRange.start, finRange.end, ...dfFin.params]),
-            db.query(`SELECT COALESCE(SUM((CASE WHEN f.valor_pago = 0 THEN f.valor ELSE f.valor_pago END)),0) AS v FROM dash_financeiro f WHERE f.tenant_id = $1 AND COALESCE(f.data_pagamento, f.data_vencimento, NOW()) >= $2 AND COALESCE(f.data_pagamento, f.data_vencimento, NOW()) <= $3 AND f.tipo_normalized = 'RECEBER' AND f.status_pagamento_normalized = 'PAGO'${dfFin.clause}`, [tenantId, finRange.start, finRange.end, ...dfFin.params]),
-            db.query(`SELECT COALESCE(SUM(f.valor - f.valor_pago),0) AS v FROM dash_financeiro f WHERE f.tenant_id = $1 AND COALESCE(f.data_vencimento, f.data_emissao, NOW()) >= $2 AND COALESCE(f.data_vencimento, f.data_emissao, NOW()) <= $3 AND f.tipo_normalized = 'PAGAR' AND f.status_pagamento_normalized = 'ABERTO'${dfFin.clause}`, [tenantId, finRange.start, finRange.end, ...dfFin.params]),
-            db.query(`SELECT COALESCE(SUM((CASE WHEN f.valor_pago = 0 THEN f.valor ELSE f.valor_pago END)),0) AS v FROM dash_financeiro f WHERE f.tenant_id = $1 AND COALESCE(f.data_pagamento, f.data_vencimento, NOW()) >= $2 AND COALESCE(f.data_pagamento, f.data_vencimento, NOW()) <= $3 AND f.tipo_normalized = 'PAGAR' AND f.status_pagamento_normalized = 'PAGO'${dfFin.clause}`, [tenantId, finRange.start, finRange.end, ...dfFin.params]),
+            db.query(`SELECT COALESCE(SUM(f.valor - f.valor_pago),0) AS v FROM dash_financeiro f WHERE f.tenant_id = $1 AND COALESCE(f.data_vencimento, f.data_emissao, NOW()) >= $2 AND COALESCE(f.data_vencimento, f.data_emissao, NOW()) <= $3 AND TRIM(f.tipo) = 'RECEBER' AND TRIM(f.status_pagamento) = 'ABERTO'${dfFin.clause}`, [tenantId, finRange.start, finRange.end, ...dfFin.params]),
+            db.query(`SELECT COALESCE(SUM((CASE WHEN f.valor_pago = 0 THEN f.valor ELSE f.valor_pago END)),0) AS v FROM dash_financeiro f WHERE f.tenant_id = $1 AND COALESCE(f.data_pagamento, f.data_vencimento, NOW()) >= $2 AND COALESCE(f.data_pagamento, f.data_vencimento, NOW()) <= $3 AND TRIM(f.tipo) = 'RECEBER' AND TRIM(f.status_pagamento) = 'PAGO'${dfFin.clause}`, [tenantId, finRange.start, finRange.end, ...dfFin.params]),
+            db.query(`SELECT COALESCE(SUM(f.valor - f.valor_pago),0) AS v FROM dash_financeiro f WHERE f.tenant_id = $1 AND COALESCE(f.data_vencimento, f.data_emissao, NOW()) >= $2 AND COALESCE(f.data_vencimento, f.data_emissao, NOW()) <= $3 AND TRIM(f.tipo) = 'PAGAR' AND TRIM(f.status_pagamento) = 'ABERTO'${dfFin.clause}`, [tenantId, finRange.start, finRange.end, ...dfFin.params]),
+            db.query(`SELECT COALESCE(SUM((CASE WHEN f.valor_pago = 0 THEN f.valor ELSE f.valor_pago END)),0) AS v FROM dash_financeiro f WHERE f.tenant_id = $1 AND COALESCE(f.data_pagamento, f.data_vencimento, NOW()) >= $2 AND COALESCE(f.data_pagamento, f.data_vencimento, NOW()) <= $3 AND TRIM(f.tipo) = 'PAGAR' AND TRIM(f.status_pagamento) = 'PAGO'${dfFin.clause}`, [tenantId, finRange.start, finRange.end, ...dfFin.params]),
             // 11. Top marcas - CTE pré-filtra vendas antes do JOIN com itens (1.2M linhas)
             db.query(`
                 WITH vf AS NOT MATERIALIZED (
@@ -230,15 +230,15 @@ router.get('/kpis', async (req, res, next) => {
             db.query(devQuery.sql, devQuery.params),
             db.query(`
                 SELECT 
-                    COALESCE(SUM(CASE WHEN f.tipo_normalized = 'RECEBER' AND f.status_pagamento_normalized = 'ABERTO' AND COALESCE(f.data_vencimento, f.data_emissao, NOW()) >= $2 AND COALESCE(f.data_vencimento, f.data_emissao, NOW()) <= $3 THEN f.valor - (CASE WHEN f.valor_pago = 0 THEN 0 ELSE f.valor_pago END) ELSE 0 END), 0) AS a_receber,
-                    COALESCE(SUM(CASE WHEN f.tipo_normalized = 'RECEBER' AND f.status_pagamento_normalized = 'PAGO' AND COALESCE(f.data_pagamento, f.data_vencimento, NOW()) >= $2 AND COALESCE(f.data_pagamento, f.data_vencimento, NOW()) <= $3 THEN (CASE WHEN f.valor_pago = 0 THEN f.valor ELSE f.valor_pago END) ELSE 0 END), 0) AS recebido,
-                    COALESCE(SUM(CASE WHEN f.tipo_normalized = 'PAGAR' AND f.status_pagamento_normalized = 'ABERTO' AND COALESCE(f.data_vencimento, f.data_emissao, NOW()) >= $2 AND COALESCE(f.data_vencimento, f.data_emissao, NOW()) <= $3 THEN f.valor - (CASE WHEN f.valor_pago = 0 THEN 0 ELSE f.valor_pago END) ELSE 0 END), 0) AS a_pagar
+                    COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'RECEBER' AND TRIM(f.status_pagamento) = 'ABERTO' AND COALESCE(f.data_vencimento, f.data_emissao, NOW()) >= $2 AND COALESCE(f.data_vencimento, f.data_emissao, NOW()) <= $3 THEN f.valor - (CASE WHEN f.valor_pago = 0 THEN 0 ELSE f.valor_pago END) ELSE 0 END), 0) AS a_receber,
+                    COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'RECEBER' AND TRIM(f.status_pagamento) = 'PAGO' AND COALESCE(f.data_pagamento, f.data_vencimento, NOW()) >= $2 AND COALESCE(f.data_pagamento, f.data_vencimento, NOW()) <= $3 THEN (CASE WHEN f.valor_pago = 0 THEN f.valor ELSE f.valor_pago END) ELSE 0 END), 0) AS recebido,
+                    COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'PAGAR' AND TRIM(f.status_pagamento) = 'ABERTO' AND COALESCE(f.data_vencimento, f.data_emissao, NOW()) >= $2 AND COALESCE(f.data_vencimento, f.data_emissao, NOW()) <= $3 THEN f.valor - (CASE WHEN f.valor_pago = 0 THEN 0 ELSE f.valor_pago END) ELSE 0 END), 0) AS a_pagar
                 FROM dash_financeiro f
                 WHERE f.tenant_id = $1 
                   AND (
-                      (f.status_pagamento_normalized = 'ABERTO' AND COALESCE(f.data_vencimento, f.data_emissao, NOW()) >= $2 AND COALESCE(f.data_vencimento, f.data_emissao, NOW()) <= $3)
+                      (TRIM(f.status_pagamento) = 'ABERTO' AND COALESCE(f.data_vencimento, f.data_emissao, NOW()) >= $2 AND COALESCE(f.data_vencimento, f.data_emissao, NOW()) <= $3)
                       OR
-                      (f.status_pagamento_normalized = 'PAGO' AND COALESCE(f.data_pagamento, f.data_vencimento, NOW()) >= $2 AND COALESCE(f.data_pagamento, f.data_vencimento, NOW()) <= $3)
+                      (TRIM(f.status_pagamento) = 'PAGO' AND COALESCE(f.data_pagamento, f.data_vencimento, NOW()) >= $2 AND COALESCE(f.data_pagamento, f.data_vencimento, NOW()) <= $3)
                   )${dfFin.clause}
             `, [tenantId, start, end, ...dfFin.params]),
             db.query(`
