@@ -114,8 +114,8 @@ router.get('/produtos', async (req, res, next) => {
 
         // CTE pré-filtra vendas pelo período e depto usando índice, depois faz JOIN com itens
         const { rows } = await db.query(`
-            WITH vendas_filtradas AS MATERIALIZED (
-                SELECT v.id_firebird, v.tenant_id
+            WITH vendas_filtradas AS NOT MATERIALIZED (
+                SELECT v.id_firebird, v.tenant_id, v.valor_total, v.valor_desconto
                 FROM dash_vendas v
                 WHERE v.tenant_id = $1
                   AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
@@ -123,8 +123,8 @@ router.get('/produtos', async (req, res, next) => {
             )
             SELECT 
                 COALESCE(vi.produto, p.nome, 'Produto ' || COALESCE(vi.produto_id_firebird::text, '?')) AS nome,
-                SUM(vi.valor_total) AS total,
-                SUM(vi.quantidade) AS qtd_vendida,
+                SUM(COALESCE(vi.valor_total * (1 - COALESCE(vf.valor_desconto, 0) / NULLIF(vf.valor_total, 0)) * (CASE WHEN vf.valor_total < 0 THEN -1 ELSE 1 END), 0)) AS total,
+                SUM(vi.quantidade * (CASE WHEN vf.valor_total < 0 THEN -1 ELSE 1 END)) AS qtd_vendida,
                 AVG(vi.preco_unitario) AS preco_medio
             FROM dash_vendas_itens vi
             JOIN vendas_filtradas vf ON vf.id_firebird = vi.venda_id_firebird AND vf.tenant_id = vi.tenant_id
@@ -193,8 +193,8 @@ router.get('/marcas', async (req, res, next) => {
 
         // CTE MATERIALIZED: força PG a executar a subquery de vendas ANTES do JOIN com itens
         const { rows } = await db.query(`
-            WITH vendas_filtradas AS MATERIALIZED (
-                SELECT v.id_firebird, v.tenant_id, v.marca
+            WITH vendas_filtradas AS NOT MATERIALIZED (
+                SELECT v.id_firebird, v.tenant_id, v.marca, v.valor_total, v.valor_desconto
                 FROM dash_vendas v
                 WHERE v.tenant_id = $1
                   AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
@@ -202,7 +202,7 @@ router.get('/marcas', async (req, res, next) => {
             )
             SELECT 
                 COALESCE(vi.marca, vf.marca, p.marca) AS marca,
-                SUM(vi.valor_total) AS total,
+                SUM(COALESCE(vi.valor_total * (1 - COALESCE(vf.valor_desconto, 0) / NULLIF(vf.valor_total, 0)) * (CASE WHEN vf.valor_total < 0 THEN -1 ELSE 1 END), 0)) AS total,
                 COUNT(*) AS qtd_itens
             FROM dash_vendas_itens vi
             JOIN vendas_filtradas vf ON vf.id_firebird = vi.venda_id_firebird AND vf.tenant_id = vi.tenant_id
@@ -239,6 +239,7 @@ router.get('/especies', async (req, res, next) => {
             WHERE v.tenant_id = $1
               AND v.data_hora_proc >= $2
               AND v.data_hora_proc <= $3
+              AND UPPER(TRIM(v.especie)) NOT IN ('DEVOLUCAO DE CLIENTE', 'GARANTIA', 'DEVOLUÇÃO DE CLIENTE')
               ${salesFilter} ${df.clause} ${vf.clause}
             GROUP BY 1 ORDER BY total DESC LIMIT $${4 + df.params.length + vf.params.length}
         `, [tenantId, start, end, ...df.params, ...vf.params, limit]);
@@ -303,8 +304,8 @@ router.get('/ranking', async (req, res, next) => {
             WITH ranked AS (
                 SELECT v.vendedor_id_firebird,
                     COALESCE(vi.produto, p.nome, 'Sem nome') AS produto_nome,
-                    SUM(vi.valor_total) AS total,
-                    ROW_NUMBER() OVER (PARTITION BY v.vendedor_id_firebird ORDER BY SUM(vi.valor_total) DESC) AS rn
+                    SUM(COALESCE(vi.valor_total * (1 - COALESCE(v.valor_desconto, 0) / NULLIF(v.valor_total, 0)) * (CASE WHEN v.valor_total < 0 THEN -1 ELSE 1 END), 0)) AS total,
+                    ROW_NUMBER() OVER (PARTITION BY v.vendedor_id_firebird ORDER BY SUM(COALESCE(vi.valor_total * (1 - COALESCE(v.valor_desconto, 0) / NULLIF(v.valor_total, 0)) * (CASE WHEN v.valor_total < 0 THEN -1 ELSE 1 END), 0)) DESC) AS rn
                 FROM dash_vendas_itens vi
                 JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
                 LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
@@ -350,14 +351,15 @@ router.get('/categorias', async (req, res, next) => {
 
         // CTE pré-filtra vendas usando índice, depois agrega itens
         const { rows } = await db.query(`
-            WITH vendas_filtradas AS MATERIALIZED (
-                SELECT v.id_firebird, v.tenant_id, v.categoria
+            WITH vendas_filtradas AS NOT MATERIALIZED (
+                SELECT v.id_firebird, v.tenant_id, v.categoria, v.valor_total, v.valor_desconto
                 FROM dash_vendas v
                 WHERE v.tenant_id = $1
                   AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
                   ${salesFilter} ${df.clause} ${vf.clause}
             )
-            SELECT COALESCE(vi.categoria, vf.categoria, p.categoria) AS categoria, SUM(vi.valor_total) AS total
+            SELECT COALESCE(vi.categoria, vf.categoria, p.categoria) AS categoria, 
+                   SUM(COALESCE(vi.valor_total * (1 - COALESCE(vf.valor_desconto, 0) / NULLIF(vf.valor_total, 0)) * (CASE WHEN vf.valor_total < 0 THEN -1 ELSE 1 END), 0)) AS total
             FROM dash_vendas_itens vi
             JOIN vendas_filtradas vf ON vf.id_firebird = vi.venda_id_firebird AND vf.tenant_id = vi.tenant_id
             LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id

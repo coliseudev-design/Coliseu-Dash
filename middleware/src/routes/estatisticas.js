@@ -112,12 +112,13 @@ router.get('/overview', async (req, res, next) => {
             // 11. Top marcas - CTE pré-filtra vendas antes do JOIN com itens (1.2M linhas)
             db.query(`
                 WITH vf AS NOT MATERIALIZED (
-                    SELECT v.id_firebird, v.tenant_id
+                    SELECT v.id_firebird, v.tenant_id, v.valor_total, v.valor_desconto
                     FROM dash_vendas v
                     WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
                       ${salesFilter} ${df.clause} ${vf.clause}
                 )
-                SELECT COALESCE(vi.marca, p.marca, 'S/ MARCA') AS marca, SUM(vi.valor_total) AS total
+                SELECT COALESCE(vi.marca, p.marca, 'S/ MARCA') AS marca, 
+                       SUM(COALESCE(vi.valor_total * (1 - COALESCE(vf.valor_desconto, 0) / NULLIF(vf.valor_total, 0)) * (CASE WHEN vf.valor_total < 0 THEN -1 ELSE 1 END), 0)) AS total
                 FROM dash_vendas_itens vi
                 JOIN vf ON vf.id_firebird = vi.venda_id_firebird AND vf.tenant_id = vi.tenant_id
                 LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
@@ -128,12 +129,13 @@ router.get('/overview', async (req, res, next) => {
             // 12. Top categorias - CTE pré-filtra vendas antes do JOIN com itens
             db.query(`
                 WITH vf AS NOT MATERIALIZED (
-                    SELECT v.id_firebird, v.tenant_id
+                    SELECT v.id_firebird, v.tenant_id, v.valor_total, v.valor_desconto
                     FROM dash_vendas v
                     WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
                       ${salesFilter} ${df.clause} ${vf.clause}
                 )
-                SELECT COALESCE(vi.categoria, p.categoria, 'S/ GRUPO') AS categoria, SUM(vi.valor_total) AS total
+                SELECT COALESCE(vi.categoria, p.categoria, 'S/ GRUPO') AS categoria, 
+                       SUM(COALESCE(vi.valor_total * (1 - COALESCE(vf.valor_desconto, 0) / NULLIF(vf.valor_total, 0)) * (CASE WHEN vf.valor_total < 0 THEN -1 ELSE 1 END), 0)) AS total
                 FROM dash_vendas_itens vi
                 JOIN vf ON vf.id_firebird = vi.venda_id_firebird AND vf.tenant_id = vi.tenant_id
                 LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
@@ -241,12 +243,13 @@ router.get('/kpis', async (req, res, next) => {
             `, [tenantId, start, end, ...dfFin.params]),
             db.query(`
                 WITH vf AS NOT MATERIALIZED (
-                    SELECT v.id_firebird, v.tenant_id
+                    SELECT v.id_firebird, v.tenant_id, v.valor_total, v.valor_desconto
                     FROM dash_vendas v
                     WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
                       ${salesFilter} ${dfV.clause} ${vfV.clause}
                 )
-                SELECT COALESCE(vi.categoria, p.categoria, 'S/ GRUPO') as categoria, SUM(vi.valor_total) AS total
+                SELECT COALESCE(vi.categoria, p.categoria, 'S/ GRUPO') as categoria, 
+                       SUM(COALESCE(vi.valor_total * (1 - COALESCE(vf.valor_desconto, 0) / NULLIF(vf.valor_total, 0)) * (CASE WHEN vf.valor_total < 0 THEN -1 ELSE 1 END), 0)) AS total
                 FROM dash_vendas_itens vi
                 JOIN vf ON vf.id_firebird = vi.venda_id_firebird AND vf.tenant_id = vi.tenant_id
                 LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
@@ -266,7 +269,7 @@ router.get('/kpis', async (req, res, next) => {
             `, [tenantId, start, end, ...df.params, ...vf.params]),
             db.query(`SELECT COALESCE(SUM(estoque), 0) AS qtd, COALESCE(SUM(estoque * preco), 0) AS valor FROM dash_produtos WHERE tenant_id = $1 AND ativo = true`, [tenantId]),
             db.query(`
-                SELECT COALESCE(vi.produto, p.nome, 'Sem nome') AS nome, SUM(vi.quantidade) AS qtd
+                SELECT COALESCE(vi.produto, p.nome, 'Sem nome') AS nome, SUM(vi.quantidade * (CASE WHEN v.valor_total < 0 THEN -1 ELSE 1 END)) AS qtd
                 FROM dash_vendas_itens vi
                 JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
                 LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
