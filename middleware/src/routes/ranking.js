@@ -160,14 +160,14 @@ router.get('/clientes', async (req, res, next) => {
 
         const { rows } = await db.query(`
             SELECT 
-                v.cliente_id_firebird AS id,
+                MAX(v.cliente_id_firebird) AS id,
                 COALESCE(c.nome, 'Cliente ' || COALESCE(v.cliente_id_firebird::text, '?')) AS nome,
                 SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) AS total,
                 COUNT(DISTINCT v.id_firebird) AS qtd_pedidos
             FROM dash_vendas v
             LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
             WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3 ${salesFilter} ${df.clause} ${vf.clause}
-            GROUP BY v.cliente_id_firebird, c.nome
+            GROUP BY COALESCE(c.nome, 'Cliente ' || COALESCE(v.cliente_id_firebird::text, '?'))
             ORDER BY total DESC LIMIT $${4 + df.params.length + vf.params.length}
         `, [tenantId, start, end, ...df.params, ...vf.params, limit]);
 
