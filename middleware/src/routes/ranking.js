@@ -239,7 +239,6 @@ router.get('/especies', async (req, res, next) => {
             WHERE v.tenant_id = $1
               AND v.data_hora_proc >= $2
               AND v.data_hora_proc <= $3
-              AND UPPER(TRIM(v.especie)) NOT IN ('DEVOLUCAO DE CLIENTE', 'GARANTIA', 'DEVOLUÇÃO DE CLIENTE')
               ${salesFilter} ${df.clause} ${vf.clause}
             GROUP BY 1 ORDER BY total DESC LIMIT $${4 + df.params.length + vf.params.length}
         `, [tenantId, start, end, ...df.params, ...vf.params, limit]);
