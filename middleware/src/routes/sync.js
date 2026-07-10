@@ -332,6 +332,11 @@ router.post('/:tabela', async (req, res) => {
         if (['dash_vendas', 'dash_vendas_itens', 'dash_financeiro', 'dash_devolucoes'].includes(tabela)) {
             invalidateTenant(tenantId);
             
+            // Atualiza as estatísticas do otimizador do Postgres para evitar tabelas lentas por falta de estatísticas atualizadas
+            db.query(`ANALYZE ${tabela}`)
+                .then(() => logger.info(`[Sync] Estatísticas da tabela ${tabela} analisadas com sucesso.`))
+                .catch(err => logger.error(`[Sync] Erro ao executar ANALYZE na tabela ${tabela}:`, err.message));
+
             // Tenta dar refresh na visão de forma assíncrona para não prender o Worker
             const viewName = tabela === 'dash_financeiro' ? 'mv_dash_financeiro_diario' : 'mv_dash_vendas_diario';
             db.query(`REFRESH MATERIALIZED VIEW CONCURRENTLY ${viewName}`)
