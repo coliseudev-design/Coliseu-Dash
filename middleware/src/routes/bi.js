@@ -124,7 +124,8 @@ router.get('/sales/executive-summary', async (req, res, next) => {
         const vQuery = `
             SELECT 
                 COALESCE(SUM(v.valor_total - COALESCE(v.valor_desconto, 0)), 0) AS faturamento_total,
-                COUNT(DISTINCT v.id_firebird) AS total_pedidos
+                COUNT(DISTINCT v.id_firebird) AS total_pedidos,
+                (SELECT COALESCE(SUM(vi.quantidade * (CASE WHEN v2.valor_total < 0 THEN -1 ELSE 1 END)), 0) FROM dash_vendas_itens vi JOIN dash_vendas v2 ON v2.id_firebird = vi.venda_id_firebird AND v2.tenant_id = vi.tenant_id ${cidadeJoin.replace(/v\./g, 'v2.')} WHERE v2.tenant_id = $1 AND v2.data_hora_proc >= $2 AND v2.data_hora_proc <= $3 ${salesFilter.replace(/v\./g, 'v2.')} ${df.clause.replace(/v\./g, 'v2.')} ${vf.clause.replace(/v\./g, 'v2.')} ${cf.clause.replace(/v\./g, 'v2.')}) AS total_itens
             FROM dash_vendas v
             ${cidadeJoin}
             WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3 
@@ -137,7 +138,8 @@ router.get('/sales/executive-summary', async (req, res, next) => {
         const vPrevQuery = `
             SELECT 
                 COALESCE(SUM(v.valor_total - COALESCE(v.valor_desconto, 0)), 0) AS faturamento_total,
-                COUNT(DISTINCT v.id_firebird) AS total_pedidos
+                COUNT(DISTINCT v.id_firebird) AS total_pedidos,
+                (SELECT COALESCE(SUM(vi.quantidade * (CASE WHEN v2.valor_total < 0 THEN -1 ELSE 1 END)), 0) FROM dash_vendas_itens vi JOIN dash_vendas v2 ON v2.id_firebird = vi.venda_id_firebird AND v2.tenant_id = vi.tenant_id ${cidadeJoin.replace(/v\./g, 'v2.')} WHERE v2.tenant_id = $1 AND v2.data_hora_proc >= $2 AND v2.data_hora_proc <= $3 ${salesFilter.replace(/v\./g, 'v2.')} ${df.clause.replace(/v\./g, 'v2.')} ${vf.clause.replace(/v\./g, 'v2.')} ${cf.clause.replace(/v\./g, 'v2.')}) AS total_itens
             FROM dash_vendas v
             ${cidadeJoin}
             WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3 
@@ -358,6 +360,8 @@ router.get('/sales/executive-summary', async (req, res, next) => {
             executive_summary: {
                 faturamento, faturamento_anterior, crescimento_pct,
                 quantidade_pedidos: qtd, quantidade_pedidos_anterior: qtd_ant, crescimento_pedidos_pct: cresc_qtd_pct,
+                quantidade_itens: parseFloat(v[0].total_itens || 0),
+                quantidade_itens_anterior: parseFloat(vPrev[0].total_itens || 0),
                 ticket_medio: tm, ticket_medio_anterior: tm_ant, crescimento_ticket_pct: cresc_tm_pct
             },
             top_sellers,

@@ -130,6 +130,7 @@ export default function VisaoEstrategicaV3() {
   // Real data mapping
   const faturamentoAtual = ov.data?.mes?.total || 0;
   const qtdPedidos = kpisData.data?.vendas?.qtd_pedidos || ov.data?.mes?.qtd || 0;
+  const qtdItens = kpisData.data?.vendas?.qtd_itens || ov.data?.mes?.qtd_itens || 0;
   const ticketMedio = kpisData.data?.vendas?.ticket_medio || (qtdPedidos > 0 ? faturamentoAtual / qtdPedidos : 0);
   const clientesAtivos = kpisData.data?.kpis?.clientes_ativos || 0;
   const totalClientes = kpisData.data?.kpis?.total_clientes || 0;
@@ -219,7 +220,7 @@ export default function VisaoEstrategicaV3() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {[
               { label: 'Vendas Totais', value: formatBRL(faturamentoAtual), icon: DollarSign, color: 'text-success', bg: 'bg-success/10' },
-              { label: 'Volume de Peças', value: formatNum(qtdPedidos), icon: Box, color: 'text-brand-500', bg: 'bg-brand-500/10' },
+              { label: 'Volume de Itens', value: formatNum(qtdItens), icon: Box, color: 'text-brand-500', bg: 'bg-brand-500/10' },
               { label: 'Ticket Médio', value: formatBRL(ticketMedio), icon: Target, color: 'text-warning', bg: 'bg-warning/10' },
               { label: 'Taxa de Conversão', value: `${taxaConversao.toFixed(1)}%`, icon: TrendingUp, color: 'text-danger', bg: 'bg-danger/10' },
             ].map((kpi, idx) => (
@@ -238,7 +239,7 @@ export default function VisaoEstrategicaV3() {
           {/* TIER 3: KPIS SECUNDÁRIOS */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {[
-              { label: 'Volume de Peças (Pedidos)', value: formatNum(qtdPedidos), icon: ShoppingBag, color: 'text-brand-500', bg: 'bg-brand-500/10' },
+              { label: 'Volume de Pedidos', value: formatNum(qtdPedidos), icon: ShoppingBag, color: 'text-brand-500', bg: 'bg-brand-500/10' },
               { label: 'Ticket Médio', value: formatBRL(ticketMedio), icon: DollarSign, color: 'text-warning', bg: 'bg-warning/10' },
               { label: 'Taxa de Conversão', value: `${taxaConversao.toFixed(1)}%`, icon: TrendingUp, color: 'text-danger', bg: 'bg-danger/10' },
               { label: 'Clientes Ativos', value: `${clientesAtivos} / ${totalClientes}`, icon: Users, color: 'text-blue-500', bg: 'bg-blue-500/10' },

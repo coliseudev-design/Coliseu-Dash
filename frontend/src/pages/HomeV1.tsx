@@ -175,6 +175,7 @@ export default function HomeV1() {
   const totalPeriodo = ov.data?.mes?.total || 0
   const totalAnterior = ov.data?.anterior?.total || 0
   const qtdPeriodo = kpisQuery.data?.vendas?.qtd_pedidos || ov.data?.mes?.qtd || 0
+  const qtdItens = kpisQuery.data?.vendas?.qtd_itens || ov.data?.mes?.qtd_itens || 0
   const ticketMedio = kpisQuery.data?.vendas?.ticket_medio || (qtdPeriodo > 0 ? totalPeriodo / qtdPeriodo : 0)
   const crescimentoPct = totalAnterior > 0 ? ((totalPeriodo - totalAnterior) / totalAnterior) * 100 : 0
   const taxaConversao = kpisQuery.data?.kpis?.taxa_conversao_pct || 0
@@ -494,16 +495,16 @@ export default function HomeV1() {
 
       {/* ── ROW 3 OF KPIs: METRICS DETAILS (4 Cards) ───────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Volume de Peças */}
+        {/* Volume de Itens */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-4 flex items-center justify-between shadow-sm group hover:-translate-y-0.5 transition-all duration-300">
           <div>
             <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">
-              Volume de Peças
+              Volume de Itens
             </span>
             <div className="text-2xl font-black text-slate-800 dark:text-white mono mb-1">
-              {ov.isLoading ? '...' : formatNum(qtdPeriodo)}
+              {ov.isLoading ? '...' : formatNum(qtdItens)}
             </div>
-            <span className="text-[9px] text-slate-400 font-bold">Total de peças faturadas</span>
+            <span className="text-[9px] text-slate-400 font-bold">Total de itens faturados</span>
           </div>
           <div className="p-2.5 bg-sky-50 text-sky-500 rounded-xl shrink-0 ml-3">
             <Box size={18} />

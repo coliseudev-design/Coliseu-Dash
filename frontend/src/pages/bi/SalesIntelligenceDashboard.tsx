@@ -393,7 +393,7 @@ export default function SalesIntelligenceDashboard() {
           <ComparisonBadge pct={summary.crescimento_pct || 0} />
         </div>
 
-        {/* VOLUME DE PEÇAS */}
+        {/* VOLUME DE ITENS */}
         <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 relative overflow-hidden flex flex-col justify-between">
           <div className="absolute top-0 left-0 w-full h-[3px] bg-brand-500"></div>
           <div>
@@ -401,10 +401,10 @@ export default function SalesIntelligenceDashboard() {
               <div className="p-1.5 bg-brand-500/10 text-brand-500 rounded-lg">
                 <Box size={16} />
               </div>
-              <span className="text-xs font-bold text-text-secondary uppercase tracking-wider block">Volume Peças</span>
+              <span className="text-xs font-bold text-text-secondary uppercase tracking-wider block">Volume Itens</span>
             </div>
             <div className="text-xl font-extrabold text-text-primary pl-1 mb-1 mt-2">
-              {formatNum(summary.quantidade_pedidos || 0)}
+              {formatNum(summary.quantidade_itens || 0)}
             </div>
           </div>
           <span className="text-[10px] text-text-muted mt-2 block font-medium">Itens comercializados</span>
