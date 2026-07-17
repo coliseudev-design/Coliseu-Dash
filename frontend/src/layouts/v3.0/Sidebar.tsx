@@ -17,7 +17,7 @@ interface Props {
 
 const MODULES = [
   { to: '/', label: 'Visão Estratégica', icon: LayoutDashboard, exact: true, id: 'inicio', color: '#3B82F6' },
-  { to: '/comparativo-vendas', label: 'Comparativo de Vendas', icon: GitCompare, exact: true, id: 'inicio', color: '#10B981' },
+  { to: '/comparativo-vendas', label: 'Comparativo', icon: GitCompare, exact: true, id: 'inicio', color: '#10B981' },
 ]
 
 const BI_MODULES = [
@@ -53,7 +53,7 @@ function IconBadge({
 }) {
   return (
     <div
-      className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all duration-200"
+      className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-300 group-hover:scale-105 group-hover:rotate-3"
       style={{
         backgroundColor: isActive ? `${color}22` : `${color}10`,
         boxShadow: isActive ? `0 2px 10px ${color}35` : 'none',
@@ -61,7 +61,7 @@ function IconBadge({
     >
       <Icon
         size={size}
-        style={{ color: isActive ? color : `${color}95` }}
+        style={{ color: isActive ? color : `${color}cc` }}
         strokeWidth={isActive ? 2.2 : 1.8}
       />
     </div>
@@ -88,8 +88,10 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }: 
       onClick={onClose}
       className={({ isActive }) =>
         clsx(
-          'group flex items-center gap-3 px-2.5 py-2 rounded-xl text-sm font-medium transition-all duration-150 mb-0.5',
-          isActive ? 'bg-bg-secondary shadow-sm' : 'hover:bg-bg-secondary/60',
+          'group flex items-center gap-3 px-3 py-2.5 rounded-2xl text-sm font-semibold transition-all duration-300 mb-1 hover:scale-[1.01] active:scale-[0.99] border border-transparent',
+          isActive 
+            ? 'bg-bg-secondary text-text-primary shadow-[0_4px_16px_rgba(0,0,0,0.02)] border-divider/40' 
+            : 'text-text-secondary hover:bg-bg-secondary/40 hover:text-text-primary hover:border-divider/10',
           collapsed ? 'lg:justify-center lg:px-0' : ''
         )
       }
@@ -101,20 +103,28 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }: 
             className={clsx(
               'truncate transition-colors duration-150',
               isActive
-                ? 'text-text-primary font-semibold'
+                ? 'text-text-primary font-bold'
                 : 'text-text-secondary group-hover:text-text-primary',
               collapsed ? 'lg:hidden block' : 'block'
             )}
           >
             {label}
           </span>
-          {isActive && (
+          {isActive ? (
             <div
               className={clsx(
                 "ml-auto w-1.5 h-1.5 rounded-full flex-shrink-0",
                 collapsed ? "lg:hidden block" : "block"
               )}
               style={{ backgroundColor: color }}
+            />
+          ) : (
+            <div
+              className={clsx(
+                "ml-auto w-1.5 h-1.5 rounded-full flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300",
+                collapsed ? "lg:hidden block" : "block"
+              )}
+              style={{ backgroundColor: `${color}80` }}
             />
           )}
         </>
@@ -189,15 +199,9 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }: 
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 overflow-y-auto py-4 px-2.5 flex flex-col">
+        <nav className="flex-1 overflow-y-auto py-2 px-2.5 flex flex-col space-y-1">
           {/* Menu Principal */}
           <div>
-            <div className={clsx(
-              "px-3 mb-3 text-[10px] font-bold text-text-secondary/60 uppercase tracking-widest transition-all duration-300",
-              collapsed ? "lg:hidden block" : "block"
-            )}>
-              Menu Principal
-            </div>
             {allowedModules.map((m) => (
               <NavItem key={m.to} {...m} />
             ))}
@@ -205,13 +209,7 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }: 
 
           {/* Business Intelligence */}
           {allowedBiModules.length > 0 && (
-            <div className="mt-5">
-              <div className={clsx(
-                "px-3 mb-3 text-[10px] font-bold text-text-secondary/60 uppercase tracking-widest transition-all duration-300",
-                collapsed ? "lg:hidden block" : "block"
-              )}>
-                Business Intelligence
-              </div>
+            <div className="mt-1">
               {allowedBiModules.map((m) => (
                 <NavItem key={m.to} {...m} />
               ))}
