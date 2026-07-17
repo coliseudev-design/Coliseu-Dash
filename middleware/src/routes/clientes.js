@@ -3,61 +3,316 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db/postgres');
-const { getPeriodRange } = require('../utils/period');
+const { getPeriodRange, toSafeSqlString } = require('../utils/period');
 const cfopUtil = require('../utils/cfop');
 
-// GET /api/clientes/lista?search=&limit=&offset=
+// GET /api/clientes/lista?search=&limit=&offset=&tempo_inativo=&ordenacao=&vendedor_id=&cidade=&depto_id=
 router.get('/lista', async (req, res, next) => {
     try {
         const tenantId = req.tenant.id;
         const search = req.query.search || '';
-        const limit = Math.min(parseInt(req.query.limit, 10) || 100, 1000);
+        const limit = Math.min(parseInt(req.query.limit, 10) || 50, 1000);
         const offset = parseInt(req.query.offset, 10) || 0;
+        const tempoInativo = req.query.tempo_inativo || 'Qualquer Inatividade';
+        const ordenacao = req.query.ordenacao || 'Mais inativos primeiro (Alerta)';
+        const vendedorId = req.query.vendedor_id;
+        const cidade = req.query.cidade;
+        const deptoId = req.query.depto_id;
 
         const salesFilter = cfopUtil.getSalesFilterClause('v');
 
-        const where = ['c.tenant_id = $1', 'c.ativo = true'];
-        const binds = [tenantId];
-        let pIndex = 2;
+        let statsWhere = ['v.tenant_id = $1'];
+        let statsParams = [tenantId];
+        let sIdx = 2;
+
+        if (deptoId && deptoId !== 'todas' && deptoId !== 'all') {
+            statsWhere.push(`v.depto_id_firebird = $${sIdx}`);
+            statsParams.push(parseInt(deptoId, 10));
+            sIdx++;
+        }
+        if (vendedorId && vendedorId !== 'todas' && vendedorId !== 'all' && vendedorId !== 'TODOS') {
+            statsWhere.push(`v.vendedor_id_firebird = $${sIdx}`);
+            statsParams.push(vendedorId);
+            sIdx++;
+        }
+
+        const filterClause = statsWhere.length > 1 ? 'AND ' + statsWhere.slice(1).join(' AND ') : '';
+
+        // Subquery/CTE de estatísticas agregadas de vendas
+        const statsQuery = `
+            SELECT 
+                v.cliente_id_firebird,
+                COUNT(v.id_firebird) as qtd_pedidos,
+                MAX(v.data_hora_proc) as ultimo_pedido,
+                SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) as total_gasto,
+                (
+                    SELECT vend.nome 
+                    FROM dash_vendas v2
+                    LEFT JOIN dash_vendedores vend ON vend.id_firebird = v2.vendedor_id_firebird AND vend.tenant_id = v2.tenant_id
+                    WHERE v2.cliente_id_firebird = v.cliente_id_firebird AND v2.tenant_id = v.tenant_id
+                    ORDER BY v2.data_hora_proc DESC LIMIT 1
+                ) as vendedor_resp
+            FROM dash_vendas v
+            WHERE v.tenant_id = $1 ${salesFilter} ${filterClause}
+            GROUP BY v.cliente_id_firebird
+        `;
+
+        // Agora construímos a query principal dos clientes
+        let mainWhere = ['c.tenant_id = $1', 'c.ativo = true'];
+        let mainParams = [tenantId];
+        let mIdx = 2;
 
         if (search) {
-            where.push(`(c.nome ILIKE $${pIndex} OR c.documento ILIKE $${pIndex})`);
-            binds.push(`%${search}%`);
-            pIndex++;
+            mainWhere.push(`(c.nome ILIKE $${mIdx} OR c.documento ILIKE $${mIdx})`);
+            mainParams.push(`%${search}%`);
+            mIdx++;
         }
+        if (cidade && cidade !== 'todas' && cidade !== 'all' && cidade !== 'TODOS') {
+            mainWhere.push(`c.cidade = $${mIdx}`);
+            mainParams.push(cidade);
+            mIdx++;
+        }
+
+        let querySql = `
+            WITH sales_stats AS (${statsQuery}),
+            filtered_clients AS (
+                SELECT 
+                    c.id_firebird AS id, c.nome, c.documento, c.cidade, c.estado,
+                    COALESCE(s.qtd_pedidos, 0) as qtd_pedidos,
+                    s.ultimo_pedido,
+                    COALESCE(s.total_gasto, 0) as total_gasto,
+                    COALESCE(s.vendedor_resp, 'Sem Vendedor') as vendedor_resp,
+                    COALESCE(EXTRACT(DAY FROM (NOW() - s.ultimo_pedido)), 999) as dias_inativo
+                FROM dash_clientes c
+                LEFT JOIN sales_stats s ON s.cliente_id_firebird = c.id_firebird
+                WHERE ${mainWhere.join(' AND ')}
+            )
+            SELECT * FROM filtered_clients
+        `;
+
+        // Filtro de tempo inativo
+        let havingClauses = [];
+        if (tempoInativo === 'Ativos (Comprou no mês)') {
+            havingClauses.push('dias_inativo <= 30');
+        } else if (tempoInativo === 'Inativo > 30 dias') {
+            havingClauses.push('dias_inativo > 30');
+        } else if (tempoInativo === 'Inativo > 60 dias') {
+            havingClauses.push('dias_inativo > 60');
+        } else if (tempoInativo === 'Inativo > 90 dias') {
+            havingClauses.push('dias_inativo > 90');
+        } else if (tempoInativo === 'Sem compras / Churn') {
+            havingClauses.push('(ultimo_pedido IS NULL OR dias_inativo > 180)');
+        }
+
+        let whereHaving = '';
+        if (havingClauses.length > 0) {
+            whereHaving = ` WHERE ${havingClauses.join(' AND ')}`;
+        }
+
+        // Ordenação
+        let orderBy = ' ORDER BY dias_inativo DESC, total_gasto DESC';
+        if (ordenacao === 'Mais ativos primeiro') {
+            orderBy = ' ORDER BY dias_inativo ASC, total_gasto DESC';
+        } else if (ordenacao === 'Maior faturamento') {
+            orderBy = ' ORDER BY total_gasto DESC';
+        } else if (ordenacao === 'Menor faturamento') {
+            orderBy = ' ORDER BY total_gasto ASC';
+        } else if (ordenacao === 'Ordem alfabética') {
+            orderBy = ' ORDER BY nome ASC';
+        }
+
+        const totalQuery = `SELECT COUNT(*) AS total FROM (${querySql}${whereHaving}) t`;
+        const totalP = await db.query(totalQuery, [...statsParams, ...mainParams.slice(1)]);
+
+        const finalQuery = `${querySql}${whereHaving}${orderBy} LIMIT $${statsParams.length + mainParams.length} OFFSET $${statsParams.length + mainParams.length + 1}`;
         
-        const whereSql = `WHERE ${where.join(' AND ')}`;
+        const finalParams = [...statsParams, ...mainParams.slice(1), limit, offset];
+        const { rows } = await db.query(finalQuery, finalParams);
 
-        const totalP = await db.query(`SELECT COUNT(*) AS total FROM dash_clientes c ${whereSql}`, binds);
+        res.json({
+            data: rows.map(r => ({
+                id: r.id,
+                nome: r.nome,
+                documento: r.documento,
+                cidade: r.cidade,
+                estado: r.estado,
+                vendedor_resp: r.vendedor_resp,
+                qtd_pedidos: parseInt(r.qtd_pedidos, 10),
+                ultimo_pedido: r.ultimo_pedido,
+                total_gasto: parseFloat(r.total_gasto || 0),
+                dias_inativo: parseInt(r.dias_inativo || 0, 10)
+            })),
+            total: parseInt(totalP.rows[0]?.total || 0, 10),
+            limit,
+            offset
+        });
+    } catch (err) {
+        next(err);
+    }
+});
 
-        const limitIdx = pIndex++;
-        const offsetIdx = pIndex++;
+// GET /api/clientes/analytics-full
+router.get('/analytics-full', async (req, res, next) => {
+    try {
+        const tenantId = req.tenant.id;
+        const period = req.query.period || 'thisMonth';
+        const { start_date, end_date } = req.query;
+        const deptoId = req.query.depto_id;
+        const vendedorId = req.query.vendedor_id;
+        const cidade = req.query.cidade;
 
-        // Subqueries foram convertidas para usar id_firebird e tenant_id e aplicar salesFilter
-        const { rows } = await db.query(`
+        const store = db.dbContext.getStore();
+        const tzOffset = store ? store.tzOffset : -180;
+        const anchorDate = new Date(Date.now() + (tzOffset * 60 * 1000));
+        const { start, end } = getPeriodRange(period, start_date, end_date, anchorDate);
+
+        // Período anterior
+        const diffMs = end.getTime() - start.getTime();
+        const prevStart = new Date(start.getTime() - diffMs - 1);
+        const prevEnd = new Date(start.getTime() - 1);
+
+        const salesFilter = cfopUtil.getSalesFilterClause('v');
+
+        // Filtros dinâmicos
+        let salesWhere = ['v.tenant_id = $1'];
+        let salesParams = [tenantId];
+        let pIdx = 2;
+
+        if (deptoId && deptoId !== 'todas' && deptoId !== 'all') {
+            salesWhere.push(`v.depto_id_firebird = $${pIdx}`);
+            salesParams.push(parseInt(deptoId, 10));
+            pIdx++;
+        }
+        if (vendedorId && vendedorId !== 'todas' && vendedorId !== 'all' && vendedorId !== 'TODOS') {
+            salesWhere.push(`v.vendedor_id_firebird = $${pIdx}`);
+            salesParams.push(vendedorId);
+            pIdx++;
+        }
+        if (cidade && cidade !== 'todas' && cidade !== 'all' && cidade !== 'TODOS') {
+            salesWhere.push(`c.cidade = $${pIdx}`);
+            salesParams.push(cidade);
+            pIdx++;
+        }
+
+        const salesJoins = ' LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id';
+        const filterClause = salesWhere.length > 1 ? 'AND ' + salesWhere.slice(1).join(' AND ') : '';
+
+        // 1. Total Clientes
+        let totalClientsQuery = `SELECT COUNT(*) AS total FROM dash_clientes c WHERE c.tenant_id = $1 AND c.ativo = true`;
+        let totalClientsParams = [tenantId];
+        if (cidade && cidade !== 'todas' && cidade !== 'all' && cidade !== 'TODOS') {
+            totalClientsQuery += ` AND c.cidade = $2`;
+            totalClientsParams.push(cidade);
+        }
+        const totalClientsRes = await db.query(totalClientsQuery, totalClientsParams);
+        const total_clientes = parseInt(totalClientsRes.rows[0]?.total || 0, 10);
+
+        // 2. Mês Atual
+        const currentSalesParams = [...salesParams];
+        const startIdx = pIdx++;
+        const endIdx = pIdx++;
+        currentSalesParams.push(toSafeSqlString(start), toSafeSqlString(end));
+
+        const currentActiveRes = await db.query(`
+            SELECT COUNT(DISTINCT v.cliente_id_firebird) AS total
+            FROM dash_vendas v
+            ${salesJoins}
+            WHERE v.tenant_id = $1 AND v.data_hora_proc >= $${startIdx} AND v.data_hora_proc <= $${endIdx}
+              ${salesFilter}
+              ${filterClause}
+        `, currentSalesParams);
+        const mes_atual = parseInt(currentActiveRes.rows[0]?.total || 0, 10);
+
+        // 3. Mês Anterior
+        const prevSalesParams = [...salesParams];
+        prevSalesParams.push(toSafeSqlString(prevStart), toSafeSqlString(prevEnd));
+        const prevActiveRes = await db.query(`
+            SELECT COUNT(DISTINCT v.cliente_id_firebird) AS total
+            FROM dash_vendas v
+            ${salesJoins}
+            WHERE v.tenant_id = $1 AND v.data_hora_proc >= $${startIdx} AND v.data_hora_proc <= $${endIdx}
+              ${salesFilter}
+              ${filterClause}
+        `, prevSalesParams);
+        const mes_anterior = parseInt(prevActiveRes.rows[0]?.total || 0, 10);
+
+        // 4. Novos Clientes
+        let newClientsQuery = `SELECT COUNT(*) AS total FROM dash_clientes c WHERE c.tenant_id = $1 AND c.ativo = true AND c.data_cadastro >= $2 AND c.data_cadastro <= $3`;
+        let newClientsParams = [tenantId, toSafeSqlString(start), toSafeSqlString(end)];
+        if (cidade && cidade !== 'todas' && cidade !== 'all' && cidade !== 'TODOS') {
+            newClientsQuery += ` AND c.cidade = $4`;
+            newClientsParams.push(cidade);
+        }
+        const newClientsRes = await db.query(newClientsQuery, newClientsParams);
+        const novos_clientes = parseInt(newClientsRes.rows[0]?.total || 0, 10);
+
+        // 5. Clientes com Maior Recorrência (Top 10)
+        const topRecurrentRes = await db.query(`
             SELECT 
-                c.id_firebird AS id, c.nome, c.documento, c.email, c.telefone, c.cidade, c.estado,
-                c.data_cadastro,
-                (SELECT COUNT(*) FROM dash_vendas v WHERE v.cliente_id_firebird = c.id_firebird AND v.tenant_id = c.tenant_id ${salesFilter}) AS qtd_pedidos,
-                (SELECT MAX(v.data_venda) FROM dash_vendas v WHERE v.cliente_id_firebird = c.id_firebird AND v.tenant_id = c.tenant_id ${salesFilter}) AS ultimo_pedido,
-                (SELECT COALESCE(SUM(v.valor_total), 0) FROM dash_vendas v WHERE v.cliente_id_firebird = c.id_firebird AND v.tenant_id = c.tenant_id ${salesFilter}) AS total_gasto
+                c.id_firebird as id, 
+                c.nome, 
+                COUNT(DISTINCT v.id_firebird) as qtd_pedidos,
+                SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) as total_gasto,
+                MAX(v.data_hora_proc) as ultimo_pedido
+            FROM dash_vendas v
+            JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
+            WHERE v.tenant_id = $1 AND v.data_hora_proc >= $${startIdx} AND v.data_hora_proc <= $${endIdx}
+              ${salesFilter}
+              ${filterClause}
+            GROUP BY c.id_firebird, c.nome
+            ORDER BY qtd_pedidos DESC, total_gasto DESC
+            LIMIT 10
+        `, currentSalesParams);
+
+        // 6. Clientes com Menos Recorrência (Top 10)
+        const topChurnRes = await db.query(`
+            SELECT 
+                c.id_firebird as id, 
+                c.nome, 
+                COUNT(DISTINCT v.id_firebird) as qtd_pedidos,
+                MAX(v.data_hora_proc) as ultimo_pedido,
+                COALESCE(EXTRACT(DAY FROM (NOW() - MAX(v.data_hora_proc))), 999) as dias_inativo
             FROM dash_clientes c
-            ${whereSql}
-            ORDER BY c.nome
-            LIMIT $${limitIdx} OFFSET $${offsetIdx}
-        `, [...binds, limit, offset]);
+            JOIN dash_vendas v ON v.cliente_id_firebird = c.id_firebird AND v.tenant_id = c.tenant_id
+            WHERE c.tenant_id = $1 AND c.ativo = true AND v.data_hora_proc < $${startIdx}
+              ${salesFilter}
+              ${cidade && cidade !== 'todas' ? `AND c.cidade = '${cidade.replace(/'/g, "''")}'` : ''}
+              ${vendedorId && vendedorId !== 'todas' ? `AND v.vendedor_id_firebird = '${vendedorId.replace(/'/g, "''")}'` : ''}
+              AND c.id_firebird NOT IN (
+                SELECT DISTINCT cliente_id_firebird FROM dash_vendas v2
+                WHERE v2.tenant_id = $1 AND v2.data_hora_proc >= $${startIdx} AND v2.data_hora_proc <= $${endIdx}
+                  ${salesFilter}
+              )
+            GROUP BY c.id_firebird, c.nome
+            ORDER BY ultimo_pedido ASC
+            LIMIT 10
+        `, currentSalesParams);
 
-        const formatted = rows.map(r => ({
-            ...r,
-            qtd_pedidos: parseInt(r.qtd_pedidos || 0, 10),
-            total_gasto: parseFloat(r.total_gasto || 0)
-        }));
-
-        res.json({ 
-            data: formatted, 
-            total: parseInt(totalP.rows[0]?.total || 0, 10), 
-            limit, 
-            offset 
+        res.json({
+            kpis: {
+                total_clientes,
+                mes_atual,
+                mes_anterior,
+                novos_clientes,
+                sem_vendas_atual: Math.max(0, total_clientes - mes_atual),
+                sem_vendas_anterior: Math.max(0, total_clientes - mes_anterior),
+            },
+            recorrentes: topRecurrentRes.rows.map((r, i) => ({
+                rank: i + 1,
+                id: r.id,
+                name: r.nome,
+                pedidos: parseInt(r.qtd_pedidos, 10),
+                ultimo_pedido: r.ultimo_pedido,
+                total_gasto: parseFloat(r.total_gasto || 0)
+            })),
+            churn: topChurnRes.rows.map((r, i) => ({
+                rank: i + 1,
+                id: r.id,
+                name: r.nome,
+                pedidos: parseInt(r.qtd_pedidos, 10),
+                ultimo_pedido: r.ultimo_pedido,
+                dias_inativo: parseInt(r.dias_inativo || 0, 10)
+            }))
         });
     } catch (err) {
         next(err);

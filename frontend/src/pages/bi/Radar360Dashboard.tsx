@@ -1,8 +1,8 @@
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, useSearchParams } from 'react-router-dom';
 import { useBiPeriodQuery } from '../../hooks/useBiPeriodQuery';
 import { BIService } from '../../services/biApi';
 import { BiPeriodFilter } from '../../types/bi.types';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { User, Calendar, Loader2, Fingerprint } from 'lucide-react';
 
 // Novos componentes da Interface Antecipatória
@@ -14,7 +14,17 @@ import { ActivityHeatmap } from '../../components/bi/Radar360/ActivityHeatmap';
 
 export default function Radar360Dashboard() {
   const { filter } = useOutletContext<{ filter: BiPeriodFilter }>();
-  const [customerId, setCustomerId] = useState<number | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlId = searchParams.get('id');
+  const [customerId, setCustomerId] = useState<number | null>(
+    urlId ? parseInt(urlId, 10) : null
+  );
+
+  useEffect(() => {
+    if (urlId) {
+      setCustomerId(parseInt(urlId, 10));
+    }
+  }, [urlId]);
 
   const { data, isLoading, isError } = useBiPeriodQuery(
     ['bi', 'radar360', customerId],
