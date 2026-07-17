@@ -18,7 +18,7 @@ interface Props {
 const MODULES = [
   { to: '/', label: 'Visão Estratégica', icon: LayoutDashboard, exact: true, id: 'inicio', color: '#3B82F6' },
   { to: '/comparativo-vendas', label: 'Comparativo', icon: GitCompare, exact: true, id: 'inicio', color: '#10B981' },
-  { to: '/hub-vendedor', label: 'Hub do Vendedor', icon: Trophy, exact: true, id: 'hub_vendedor', color: '#F97316' },
+  { to: '/hub-vendedor', label: 'Hub do Vendedor', icon: Trophy, exact: true, id: 'bi_seller_hub', color: '#F97316' },
 ]
 
 const BI_MODULES = [
