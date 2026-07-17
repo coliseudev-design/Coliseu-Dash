@@ -159,11 +159,11 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }: 
             </button>
           ) : (
             <>
-              <div className="flex-1 bg-white dark:bg-slate-900 p-2.5 rounded-2xl border border-divider/60 shadow-[0_4px_18px_rgba(0,0,0,0.04)] flex items-center justify-center max-w-[145px]">
+              <div className="flex-1 bg-white dark:bg-slate-900 p-2 rounded-2xl border border-divider/60 shadow-[0_4px_18px_rgba(0,0,0,0.04)] flex items-center justify-center max-w-[175px] transition-all duration-300">
                 <img
                   src="/logo-coliseu.png"
                   alt="Coliseu Sistemas"
-                  className="h-8 w-auto object-contain"
+                  className="h-11 w-auto object-contain"
                 />
               </div>
               <div className="flex items-center gap-1">
