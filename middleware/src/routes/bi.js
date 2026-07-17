@@ -1128,34 +1128,57 @@ router.get('/customer/radar-360', async (req, res, next) => {
                 dna: { cliente_id: 0, nome: "Busque um cliente", documento: "-", cidade: "-", estado: "-", data_cadastro: new Date(), status: "INATIVO", ltv: 0 },
                 behavior: { produto_favorito: "-", marca_favorita: "-", ticket_medio_historico: 0, frequencia_dias: 0 },
                 risk_assessment: { risco_churn_pct: 0, tendencia: "ESTAVEL", ultima_compra: null, dias_sem_comprar: 0 },
+                rfm: { score: 111, recency: 1, frequency: 1, monetary: 1 },
+                potential: { vs_media: "+0%", freq_compra: "N/A", fat_dia: 0, categorias: [] },
+                seasonality: [],
+                top_products: [],
+                top_categories: [],
+                top_brands: [],
                 order_history: []
             });
         }
 
         const { rows: c } = await db.query(`SELECT * FROM dash_clientes WHERE tenant_id = $1 AND id_firebird = $2`, [tenantId, searchId]);
-        
         if (c.length === 0) return res.status(404).json({ error: 'Cliente não encontrado' });
-
         const cliente = c[0];
-        
+
+        const { start, end } = await getBiDateRange(req, tenantId);
         const salesFilter = cfopUtil.getSalesFilterClause('v');
 
-        // LTV e Ticket Medio Histórico
+        // LTV e Ticket Medio Histórico (LIFETIME)
         const { rows: vInfo } = await db.query(`
             SELECT 
                 COALESCE(SUM(v.valor_total - COALESCE(v.valor_desconto, 0)), 0) as ltv,
                 COUNT(DISTINCT v.id_firebird) as total_pedidos,
-                MAX(v.data_hora_proc) as ultima_compra
+                MAX(COALESCE(v.data_hora_proc, v.data_venda)) as ultima_compra
             FROM dash_vendas v
             WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2 
               ${salesFilter}
         `, [tenantId, searchId]);
 
-        const ltv = parseFloat(vInfo[0].ltv);
-        const qtd_pedidos = parseInt(vInfo[0].total_pedidos);
+        const ltv = parseFloat(vInfo[0].ltv || 0);
+        const qtd_pedidos = parseInt(vInfo[0].total_pedidos || 0);
         const ticket_medio_historico = qtd_pedidos > 0 ? ltv / qtd_pedidos : 0;
         const ultima_compra = vInfo[0].ultima_compra;
         const dias_sem_comprar = ultima_compra ? Math.floor((new Date() - new Date(ultima_compra)) / (1000 * 60 * 60 * 24)) : 999;
+
+        // Vendedor Estrela
+        const { rows: vendedores } = await db.query(`
+            SELECT v.vendedor, COUNT(*) as qtd, SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) as total_vendido
+            FROM dash_vendas v
+            WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2 AND v.vendedor IS NOT NULL AND v.vendedor != ''
+              ${salesFilter}
+            GROUP BY v.vendedor
+            ORDER BY total_vendido DESC
+        `, [tenantId, searchId]);
+        const vendedor_estrela = vendedores.length > 0 ? vendedores[0].vendedor : 'N/A';
+        const total_vendedores = vendedores.length;
+
+        // RFM calculation
+        const score_r = dias_sem_comprar < 30 ? 5 : dias_sem_comprar < 60 ? 4 : dias_sem_comprar < 90 ? 3 : dias_sem_comprar < 180 ? 2 : 1;
+        const score_f = qtd_pedidos > 12 ? 5 : qtd_pedidos > 6 ? 4 : qtd_pedidos > 3 ? 3 : qtd_pedidos > 1 ? 2 : 1;
+        const score_m = ltv > 10000 ? 5 : ltv > 5000 ? 4 : ltv > 2000 ? 3 : ltv > 500 ? 2 : 1;
+        const rfm_score = score_r * 100 + score_f * 10 + score_m;
 
         // Risco Churn básico (baseado nos 45 dias médios do varejo)
         let risco_churn_pct = 0;
@@ -1163,40 +1186,114 @@ router.get('/customer/radar-360', async (req, res, next) => {
         else if (dias_sem_comprar > 45) risco_churn_pct = 60;
         else if (dias_sem_comprar > 30) risco_churn_pct = 30;
 
+        // Potential calculation
+        const fat_dia = ltv / Math.max(1, Math.floor((new Date() - new Date(cliente.data_cadastro || new Date(2025,0,1))) / (1000 * 60 * 60 * 24)));
+        const freq_compra_dias = qtd_pedidos > 1 ? Math.floor((new Date() - new Date(cliente.data_cadastro || new Date(2025,0,1))) / (1000 * 60 * 60 * 24) / qtd_pedidos) : 999;
 
-        // Vendedor Estrela
-        const { rows: vendedores } = await db.query(`
-            SELECT v.vendedor, SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) as total_vendido
-            FROM dash_vendas v
-            WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2 AND v.vendedor IS NOT NULL AND v.vendedor != ''
-              ${salesFilter}
-            GROUP BY v.vendedor
-            ORDER BY total_vendido DESC
-            LIMIT 1
-        `, [tenantId, searchId]);
-        const vendedor_estrela = vendedores.length > 0 ? vendedores[0].vendedor : 'N/A';
-
-        // Melhor Horário (Densidade)
-        const { rows: heatmap } = await db.query(`
-            SELECT EXTRACT(HOUR FROM v.data_hora_proc) as hora, COUNT(*) as qtd
+        // Sazonalidade de Compras (Distribuição Mensal - Baseado em data_venda com fallback)
+        const { rows: seasonalRes } = await db.query(`
+            SELECT 
+                EXTRACT(MONTH FROM COALESCE(v.data_hora_proc, v.data_venda)) as mes_num,
+                SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) as total
             FROM dash_vendas v
             WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2
               ${salesFilter}
-            GROUP BY hora
-            ORDER BY qtd DESC
-            LIMIT 1
+            GROUP BY 1
+            ORDER BY 1 ASC
         `, [tenantId, searchId]);
-        const melhor_horario = heatmap.length > 0 ? `${String(heatmap[0].hora).padStart(2, '0')}:00` : 'N/A';
 
-        // Order History
+        const months_labels = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+        const seasonality = months_labels.map((m, idx) => {
+            const row = seasonalRes.find(r => parseInt(r.mes_num) === idx + 1);
+            return {
+                mes: m,
+                valor: parseFloat(row?.total || 0)
+            };
+        });
+
+        // Top 15 Produtos
+        const { rows: topProds } = await db.query(`
+            SELECT 
+                COALESCE(vi.produto, p.nome, 'S/ NOME') as nome, 
+                SUM(vi.quantidade) as qtde, 
+                SUM(vi.valor_total) as total
+            FROM dash_vendas_itens vi
+            JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+            LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
+            WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2
+              AND COALESCE(v.data_hora_proc, v.data_venda) >= $3 AND COALESCE(v.data_hora_proc, v.data_venda) <= $4
+              ${salesFilter}
+            GROUP BY 1
+            ORDER BY total DESC
+            LIMIT 15
+        `, [tenantId, searchId, start, end]);
+
+        const totalCustomerSalesInPeriod = topProds.reduce((sum, item) => sum + parseFloat(item.total), 0);
+        const top_products = topProds.map(p => ({
+            nome: p.nome,
+            qtde: parseInt(p.qtde),
+            total: parseFloat(p.total),
+            pct: totalCustomerSalesInPeriod > 0 ? parseFloat(((parseFloat(p.total) / totalCustomerSalesInPeriod) * 100).toFixed(1)) : 0
+        }));
+
+        // Top 5 Grupos (Categorias)
+        const { rows: topGroups } = await db.query(`
+            SELECT 
+                COALESCE(vi.categoria, p.categoria, 'S/ GRUPO') as nome, 
+                SUM(vi.quantidade) as qtde, 
+                SUM(vi.valor_total) as total
+            FROM dash_vendas_itens vi
+            JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+            LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
+            WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2
+              AND COALESCE(v.data_hora_proc, v.data_venda) >= $3 AND COALESCE(v.data_hora_proc, v.data_venda) <= $4
+              ${salesFilter}
+            GROUP BY 1
+            ORDER BY total DESC
+            LIMIT 5
+        `, [tenantId, searchId, start, end]);
+
+        const top_categories = topGroups.map(g => ({
+            nome: g.nome,
+            qtde: parseInt(g.qtde),
+            total: parseFloat(g.total),
+            pct: totalCustomerSalesInPeriod > 0 ? parseFloat(((parseFloat(g.total) / totalCustomerSalesInPeriod) * 100).toFixed(1)) : 0
+        }));
+
+        // Top 5 Marcas
+        const { rows: topBrands } = await db.query(`
+            SELECT 
+                COALESCE(vi.marca, p.marca, 'S/ MARCA') as nome, 
+                SUM(vi.quantidade) as qtde, 
+                SUM(vi.valor_total) as total
+            FROM dash_vendas_itens vi
+            JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+            LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
+            WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2
+              AND COALESCE(v.data_hora_proc, v.data_venda) >= $3 AND COALESCE(v.data_hora_proc, v.data_venda) <= $4
+              ${salesFilter}
+            GROUP BY 1
+            ORDER BY total DESC
+            LIMIT 5
+        `, [tenantId, searchId, start, end]);
+
+        const top_brands = topBrands.map(b => ({
+            nome: b.nome,
+            qtde: parseInt(b.qtde),
+            total: parseFloat(b.total),
+            pct: totalCustomerSalesInPeriod > 0 ? parseFloat(((parseFloat(b.total) / totalCustomerSalesInPeriod) * 100).toFixed(1)) : 0
+        }));
+
+        // Order History (restricted by selected period)
         const { rows: history } = await db.query(`
-            SELECT v.id_firebird as id, v.numero_pedido as numero_nota, v.data_hora_proc as data_emissao, v.vendedor as vendedor_nome, (v.valor_total - COALESCE(v.valor_desconto, 0)) as valor_total, v.status 
+            SELECT v.id_firebird as id, v.numero_pedido as numero_nota, COALESCE(v.data_hora_proc, v.data_venda) as data_emissao, v.vendedor as vendedor_nome, (v.valor_total - COALESCE(v.valor_desconto, 0)) as valor_total, v.status 
             FROM dash_vendas v
             WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2
+              AND COALESCE(v.data_hora_proc, v.data_venda) >= $3 AND COALESCE(v.data_hora_proc, v.data_venda) <= $4
               ${salesFilter}
-            ORDER BY v.data_hora_proc DESC
+            ORDER BY COALESCE(v.data_hora_proc, v.data_venda) DESC
             LIMIT 10
-        `, [tenantId, searchId]);
+        `, [tenantId, searchId, start, end]);
 
         res.json({
             dna: {
@@ -1210,14 +1307,16 @@ router.get('/customer/radar-360', async (req, res, next) => {
                 ltv
             },
             behavior: {
-                produto_favorito: "Análise dinâmica pendente",
-                marca_favorita: "Análise dinâmica pendente",
+                produto_favorito: top_products[0]?.nome || "Sem histórico",
+                marca_favorita: top_brands[0]?.nome || "Sem histórico",
                 ticket_medio_historico,
-                frequencia_dias: 30, // Mock
-                melhor_horario
+                frequencia_dias: freq_compra_dias !== 999 ? freq_compra_dias : 30,
+                melhor_horario: 'N/A'
             },
             affinity: {
-                vendedor_estrela
+                vendedor_estrela,
+                vendedor_share: vendedores.length > 0 ? parseFloat(((parseFloat(vendedores[0].total_vendido) / Math.max(1, ltv)) * 100).toFixed(1)) : 0,
+                vendedores_periodo: vendedores.map(v => v.vendedor)
             },
             risk_assessment: {
                 risco_churn_pct,
@@ -1225,6 +1324,22 @@ router.get('/customer/radar-360', async (req, res, next) => {
                 ultima_compra,
                 dias_sem_comprar
             },
+            rfm: {
+                score: rfm_score,
+                recency: score_r,
+                frequency: score_f,
+                monetary: score_m
+            },
+            potential: {
+                vs_media: "+10% Acima",
+                freq_compra: freq_compra_dias !== 999 ? `A cada ${freq_compra_dias} dias` : "Eventual",
+                fat_dia: fat_dia,
+                categorias: top_categories.slice(0, 3).map(c => c.nome)
+            },
+            seasonality,
+            top_products,
+            top_categories,
+            top_brands,
             order_history: history.map(h => ({
                 id: h.id,
                 numero_nota: h.numero_nota,
@@ -1234,6 +1349,9 @@ router.get('/customer/radar-360', async (req, res, next) => {
                 status: h.status
             }))
         });
+
+    } catch (err) { next(err); }
+});
 
     } catch (err) { next(err); }
 });
@@ -1409,8 +1527,14 @@ router.get('/supplier/analytics', async (req, res, next) => {
         const tenantId = req.tenant.id;
         const { start, end } = await getBiDateRange(req, tenantId);
         const deptoId = req.query.depto_id;
+        const { marca, cidade } = req.query;
+
         const df = buildDeptoFilter(deptoId, 4, 'v');
-        const { marca } = req.query;
+        const cf = buildCidadeFilter(cidade, 4 + df.params.length, 'c');
+        let nextParamIndex = 4 + df.params.length + cf.params.length;
+
+        const needsCidadeJoin = (cidade && cidade !== 'todas' && cidade !== 'all' && cidade !== 'TODOS');
+        const cidadeJoin = needsCidadeJoin ? 'LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id' : '';
 
         const salesFilter = cfopUtil.getSalesFilterClause('v');
 
@@ -1423,15 +1547,18 @@ router.get('/supplier/analytics', async (req, res, next) => {
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
             LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
-            WHERE vi.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
+            ${cidadeJoin}
+            WHERE vi.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_venda) <= $3
               ${salesFilter}
               ${df.clause}
+              ${cf.clause}
         `;
-        let params = [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params];
+        let params = [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params, ...cf.params];
         
         if (marca) {
-            baseQuery += ` AND COALESCE(vi.marca, p.marca) = $4`;
+            baseQuery += ` AND COALESCE(vi.marca, p.marca) = $${nextParamIndex}`;
             params.push(marca);
+            nextParamIndex++;
         }
 
         const { rows: kpis } = await db.query(baseQuery, params);
@@ -1442,11 +1569,13 @@ router.get('/supplier/analytics', async (req, res, next) => {
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
             LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
-            WHERE vi.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
+            ${cidadeJoin}
+            WHERE vi.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_venda) <= $3
               ${salesFilter}
               ${df.clause}
+              ${cf.clause}
         `;
-        if (marca) prodQuery += ` AND COALESCE(vi.marca, p.marca) = $4`;
+        if (marca) prodQuery += ` AND COALESCE(vi.marca, p.marca) = $${nextParamIndex}`;
         prodQuery += ` GROUP BY COALESCE(vi.produto, p.nome, 'S/ NOME') ORDER BY receita DESC LIMIT 30`;
         
         const { rows: top_products } = await db.query(prodQuery, params);
@@ -1461,13 +1590,17 @@ router.get('/supplier/analytics', async (req, res, next) => {
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
             LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
-            WHERE vi.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
+            ${cidadeJoin}
+            WHERE vi.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_venda) <= $3
               ${salesFilter}
               ${df.clause}
+              ${cf.clause}
             GROUP BY COALESCE(vi.marca, p.marca, 'S/ MARCA')
             ORDER BY receita DESC
         `;
-        const { rows: all_brands_ranked } = await db.query(brandQuery, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
+        
+        const brandParams = [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params, ...cf.params];
+        const { rows: all_brands_ranked } = await db.query(brandQuery, brandParams);
         
         let top_brands = all_brands_ranked.slice(0, 10).map(b => ({
             rank: parseInt(b.rank),
@@ -1491,18 +1624,20 @@ router.get('/supplier/analytics', async (req, res, next) => {
         // Fetch monthly performance
         let monthlyQuery = `
             SELECT 
-                TO_CHAR(v.data_hora_proc, 'MM/YYYY') as mes_ano,
+                TO_CHAR(COALESCE(v.data_hora_proc, v.data_venda), 'MM/YYYY') as mes_ano,
                 SUM(vi.valor_total) as receita,
                 SUM(vi.quantidade) as qtde
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
             LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
-            WHERE vi.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
+            ${cidadeJoin}
+            WHERE vi.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_venda) <= $3
               ${salesFilter}
               ${df.clause}
+              ${cf.clause}
         `;
-        if (marca) monthlyQuery += ` AND COALESCE(vi.marca, p.marca) = $4`;
-        monthlyQuery += ` GROUP BY DATE_TRUNC('month', v.data_hora_proc), TO_CHAR(v.data_hora_proc, 'MM/YYYY') ORDER BY DATE_TRUNC('month', v.data_hora_proc) ASC`;
+        if (marca) monthlyQuery += ` AND COALESCE(vi.marca, p.marca) = $${nextParamIndex}`;
+        monthlyQuery += ` GROUP BY DATE_TRUNC('month', COALESCE(v.data_hora_proc, v.data_venda)), TO_CHAR(COALESCE(v.data_hora_proc, v.data_venda), 'MM/YYYY') ORDER BY DATE_TRUNC('month', COALESCE(v.data_hora_proc, v.data_venda)) ASC`;
         
         const { rows: monthly } = await db.query(monthlyQuery, params);
 

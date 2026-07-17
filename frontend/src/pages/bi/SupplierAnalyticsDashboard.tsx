@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useBiPeriodQuery } from '../../hooks/useBiPeriodQuery';
+import { useBranchPeriodQuery } from '../../hooks/useApi';
 import { BIService } from '../../services/biApi';
 import { BiPeriodFilter } from '../../types/bi.types';
 import { 
@@ -58,15 +59,54 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 export default function SupplierAnalyticsDashboard() {
   const { filter } = useOutletContext<{ filter: BiPeriodFilter }>();
   const [activeTab, setActiveTab] = useState('Visão Geral de Vendas');
-  const [selectedBrand, setSelectedBrand] = useState(''); // Default to empty (All Brands)
+  
+  // dropdown values (current selected option in UI)
+  const [selectedBrand, setSelectedBrand] = useState('');
+  const [selectedCity, setSelectedCity] = useState('todas');
+  const [selectedPeriod, setSelectedPeriod] = useState('thisMonth');
 
-  const supplierFilter = { ...filter, marca: selectedBrand };
+  // active values (sent to backend API query)
+  const [activeBrand, setActiveBrand] = useState('');
+  const [activeCity, setActiveCity] = useState('todas');
+  const [activePeriod, setActivePeriod] = useState('thisMonth');
+
+  // Load cities list for the dropdown
+  const citiesDropdown = useBranchPeriodQuery<any>('/ranking/cidades', { limit: 100 });
+
+  // Sync initial period from global store
+  useEffect(() => {
+    if (filter.period) {
+      setSelectedPeriod(filter.period);
+      setActivePeriod(filter.period);
+    }
+  }, [filter.period]);
+
+  // Construct active filter object
+  const activeFilter = useMemo<BiPeriodFilter>(() => {
+    const base = {
+      period: activePeriod,
+      cidade: activeCity !== 'todas' ? activeCity : undefined,
+      marca: activeBrand || undefined
+    };
+    return {
+      ...filter,
+      ...base
+    };
+  }, [filter, activePeriod, activeCity, activeBrand]);
 
   const { data, isLoading } = useBiPeriodQuery(
-    ['bi', 'supplier', selectedBrand],
-    () => BIService.getSupplierAnalytics(supplierFilter),
-    supplierFilter
+    ['bi', 'supplier', activeBrand, activeCity, activePeriod],
+    () => BIService.getSupplierAnalytics(activeFilter),
+    activeFilter
   );
+
+  // Auto-select first brand once available
+  useEffect(() => {
+    if (!activeBrand && data?.available_brands && data.available_brands.length > 0) {
+      setSelectedBrand(data.available_brands[0]);
+      setActiveBrand(data.available_brands[0]);
+    }
+  }, [data?.available_brands, activeBrand]);
 
   if (isLoading) {
     return (
@@ -86,7 +126,7 @@ export default function SupplierAnalyticsDashboard() {
   const margem = overview.receita > 0 ? ((overview.receita - overview.custo) / overview.receita) * 100 : 0;
   const ticketMedio = overview.pedidos > 0 ? overview.receita / overview.pedidos : 0;
 
-  const currentBrandData = selectedBrand ? topBrands.find((b: any) => b.name === selectedBrand) : null;
+  const currentBrandData = activeBrand ? topBrands.find((b: any) => b.name === activeBrand) : null;
   const currentRank = currentBrandData ? `${currentBrandData.rank}º` : '-';
   const currentShare = currentBrandData && overview.receita > 0 ? ((currentBrandData.receita / overview.receita) * 100).toFixed(1) + '%' : '-';
 
@@ -94,24 +134,79 @@ export default function SupplierAnalyticsDashboard() {
     <div aria-label="Fornecedores Dashboard" className="space-y-6 animate-in fade-in duration-300 pb-10">
       
       {/* HEADER ACTIONS */}
-      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 mb-2 w-full">
-        <div className="flex items-center gap-4 text-xs font-semibold text-text-muted">
-           <div className="flex items-center gap-1"><span className="text-brand-500">🏢</span> Marca Analisada: <span className="text-brand-500">{selectedBrand || 'Todas'}</span></div>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2 w-full">
+        <div className="flex items-center gap-4 text-[10px] font-extrabold text-text-secondary uppercase tracking-wider pl-1">
+          <div className="flex items-center gap-1">
+            <span className="text-text-muted">🏢 Marca Analisada:</span>
+            <span className="text-brand-500">{activeBrand || 'Todas'}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="text-text-muted">📍 Cidade Analisada:</span>
+            <span className="text-brand-500">{activeCity === 'todas' ? 'Todas' : activeCity}</span>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <select 
-            aria-label="Selecionar Marca"
-            className="bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary outline-none focus:border-brand-500 max-w-[250px]"
-            value={selectedBrand}
-            onChange={(e) => setSelectedBrand(e.target.value)}
+        
+        {/* Dynamic Filters Row */}
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Period Select */}
+          <div className="relative">
+            <select
+              aria-label="Selecionar Período"
+              className="bg-bg-primary border border-border rounded-xl px-3 py-2 pr-8 text-xs text-text-primary outline-none focus:border-brand-500 appearance-none font-bold cursor-pointer"
+              value={selectedPeriod}
+              onChange={(e) => setSelectedPeriod(e.target.value)}
+            >
+              <option value="thisMonth">Mês Atual</option>
+              <option value="lastMonth">Mês Anterior</option>
+              <option value="last30">Últimos 30 dias</option>
+              <option value="last90">Últimos 90 dias</option>
+              <option value="thisYear">Acumulado Ano</option>
+            </select>
+            <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+          </div>
+
+          {/* City Select */}
+          <div className="relative">
+            <select
+              aria-label="Selecionar Cidade"
+              className="bg-bg-primary border border-border rounded-xl px-3 py-2 pr-8 text-xs text-text-primary outline-none focus:border-brand-500 appearance-none font-bold cursor-pointer"
+              value={selectedCity}
+              onChange={(e) => setSelectedCity(e.target.value)}
+            >
+              <option value="todas">Todas as Cidades</option>
+              {citiesDropdown.data?.data?.map((c: any) => (
+                <option key={c.nome || c.cidade} value={c.nome || c.cidade}>{c.nome || c.cidade}</option>
+              ))}
+            </select>
+            <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+          </div>
+
+          {/* Brand Select */}
+          <div className="relative">
+            <select
+              aria-label="Selecionar Marca"
+              className="bg-bg-primary border border-border rounded-xl px-3 py-2 pr-8 text-xs text-text-primary outline-none focus:border-brand-500 appearance-none font-bold cursor-pointer max-w-[200px]"
+              value={selectedBrand}
+              onChange={(e) => setSelectedBrand(e.target.value)}
+            >
+              <option value="">Todas as Marcas</option>
+              {availableBrands.map((b: string) => (
+                <option key={b} value={b}>{b}</option>
+              ))}
+            </select>
+            <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+          </div>
+
+          {/* Green Analisar Button */}
+          <button
+            onClick={() => {
+              setActiveBrand(selectedBrand);
+              setActiveCity(selectedCity);
+              setActivePeriod(selectedPeriod);
+            }}
+            className="bg-[#10B981] hover:bg-emerald-600 active:scale-[0.98] text-white px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shadow-sm cursor-pointer"
           >
-            <option value="">Todas as Marcas</option>
-            {availableBrands.map((b: string) => (
-              <option key={b} value={b}>{b}</option>
-            ))}
-          </select>
-          <button className="bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 transition-colors">
-            <Search size={16} /> Analisar
+            <Search size={14} /> Analisar
           </button>
         </div>
       </div>
