@@ -991,67 +991,226 @@ router.get('/customer/analytics', async (req, res, next) => {
         
         const salesFilter = cfopUtil.getSalesFilterClause('v');
 
-        // Clientes ativos vs Novos
+        const duration = end - start;
+        const prevStart = new Date(start.getTime() - duration - 1000);
+        const prevEnd = new Date(start.getTime() - 1000);
+
+        const vendedorId = req.query.vendedor_id;
+        const cidade = req.query.cidade;
+
+        // Build dynamic clauses for sales queries
+        let salesSellerClause = '';
+        let salesSellerParams = [];
+        if (vendedorId && vendedorId !== 'all') {
+            salesSellerClause = ` AND v.vendedor_id_firebird = $4`;
+            salesSellerParams = [vendedorId];
+        }
+
+        let salesCityJoin = '';
+        let salesCityClause = '';
+        if (cidade && cidade !== 'all') {
+            salesCityJoin = ` JOIN dash_clientes c_city ON c_city.id_firebird = v.cliente_id_firebird AND c_city.tenant_id = v.tenant_id`;
+            salesCityClause = ` AND c_city.cidade = $${salesSellerParams.length + 5}`;
+        }
+
+        // Build dynamic clauses for client query
+        let clientWhere = [`c.tenant_id = $1 AND c.ativo = true`];
+        let clientParams = [tenantId];
+        
+        if (cidade && cidade !== 'all') {
+            clientParams.push(cidade);
+            clientWhere.push(`c.cidade = $${clientParams.length}`);
+        }
+        if (vendedorId && vendedorId !== 'all') {
+            clientParams.push(vendedorId);
+            clientWhere.push(`c.id_firebird IN (SELECT DISTINCT cliente_id_firebird FROM dash_vendas WHERE tenant_id = $1 AND vendedor_id_firebird = $${clientParams.length})`);
+        }
+
+        // Clientes Ativos no período (Mês Atual)
         const { rows: atv } = await db.query(`
             SELECT COUNT(DISTINCT v.cliente_id_firebird) AS ativos
             FROM dash_vendas v
-            WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3 
+            ${salesCityJoin}
+            WHERE v.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_venda) <= $3 
               ${salesFilter}
               ${df.clause}
-        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
+              ${salesSellerClause}
+              ${salesCityClause}
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params, ...salesSellerParams, ...(cidade && cidade !== 'all' ? [cidade] : [])]);
 
+        // Clientes Ativos no período anterior (Mês Anterior)
+        const { rows: atvPrev } = await db.query(`
+            SELECT COUNT(DISTINCT v.cliente_id_firebird) AS ativos
+            FROM dash_vendas v
+            ${salesCityJoin}
+            WHERE v.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_venda) <= $3 
+              ${salesFilter}
+              ${df.clause}
+              ${salesSellerClause}
+              ${salesCityClause}
+        `, [tenantId, toSafeSqlString(prevStart), toSafeSqlString(prevEnd), ...df.params, ...salesSellerParams, ...(cidade && cidade !== 'all' ? [cidade] : [])]);
+
+        // Clientes Totais e Novos
         const { rows: tot } = await db.query(`
             SELECT COUNT(*) AS totais,
                    SUM(CASE WHEN data_cadastro >= $2 AND data_cadastro <= $3 THEN 1 ELSE 0 END) AS novos
-            FROM dash_clientes
-            WHERE tenant_id = $1 AND ativo = true
-        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end)]);
-
-        // Top 50 clientes em risco (compraram antes do inicio, mas nao no periodo atual)
-        const { rows: risco } = await db.query(`
-            SELECT c.id_firebird, c.nome, MAX(v.data_hora_proc) as ultima_compra, SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) as LTV
             FROM dash_clientes c
-            JOIN dash_vendas v ON v.cliente_id_firebird = c.id_firebird AND v.tenant_id = c.tenant_id
-            WHERE c.tenant_id = $1 AND v.data_hora_proc < $2 AND c.ativo = true
-              ${salesFilter}
-              AND c.id_firebird NOT IN (
-                  SELECT DISTINCT cliente_id_firebird FROM dash_vendas v
-                  WHERE tenant_id = $1 AND COALESCE(data_vencimento, data_venda) >= $2 AND COALESCE(data_vencimento, data_venda) <= $3
-                    ${salesFilter}
-              )
-              ${df.clause}
-            GROUP BY c.id_firebird, c.nome
-            ORDER BY ultima_compra DESC, LTV DESC
-            LIMIT 50
-        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
+            WHERE ${clientWhere.join(' AND ')}
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...clientParams.slice(1)]);
 
         const total_clientes = parseInt(tot[0].totais || 0);
-        const clientes_ativos = parseInt(atv[0].ativos || 0);
-        const retencao_pct = total_clientes > 0 ? (clientes_ativos / total_clientes) * 100 : 0;
-        const novos = parseInt(tot[0].novos || 0);
+        const mes_atual_ativos = parseInt(atv[0].ativos || 0);
+        const mes_anterior_ativos = parseInt(atvPrev[0].ativos || 0);
+        const novos_clientes = parseInt(tot[0].novos || 0);
+
+        const retencao_pct = total_clientes > 0 ? parseFloat(((mes_atual_ativos / total_clientes) * 100).toFixed(1)) : 0;
+        const sem_vendas_atual = Math.max(0, total_clientes - mes_atual_ativos);
+        const sem_vendas_anterior = Math.max(0, total_clientes - mes_anterior_ativos);
+        const churn_pct = total_clientes > 0 ? parseFloat(((sem_vendas_atual / total_clientes) * 100).toFixed(1)) : 0;
+
+        // Clientes com Mais Recorrência (Top 10)
+        const { rows: maisRecorrentes } = await db.query(`
+            SELECT c.id_firebird, c.nome, MAX(COALESCE(v.data_hora_proc, v.data_venda)) as ultima_compra, COUNT(DISTINCT v.id_firebird) as total_pedidos
+            FROM dash_clientes c
+            JOIN dash_vendas v ON v.cliente_id_firebird = c.id_firebird AND v.tenant_id = c.tenant_id
+            WHERE ${clientWhere.join(' AND ')}
+              AND COALESCE(v.data_hora_proc, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_venda) <= $3
+              ${salesFilter}
+              ${df.clause}
+              ${vendedorId && vendedorId !== 'all' ? ` AND v.vendedor_id_firebird = '${vendedorId}'` : ''}
+            GROUP BY c.id_firebird, c.nome
+            ORDER BY total_pedidos DESC, ultima_compra DESC
+            LIMIT 10
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params, ...clientParams.slice(1)]);
+
+        // Clientes com Menos Recorrência (Top 10)
+        const { rows: menosRecorrentes } = await db.query(`
+            SELECT c.id_firebird, c.nome, MAX(COALESCE(v.data_hora_proc, v.data_venda)) as ultima_compra, COUNT(DISTINCT v.id_firebird) as total_pedidos
+            FROM dash_clientes c
+            JOIN dash_vendas v ON v.cliente_id_firebird = c.id_firebird AND v.tenant_id = c.tenant_id
+            WHERE ${clientWhere.join(' AND ')}
+              AND COALESCE(v.data_hora_proc, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_venda) <= $3
+              ${salesFilter}
+              ${df.clause}
+              ${vendedorId && vendedorId !== 'all' ? ` AND v.vendedor_id_firebird = '${vendedorId}'` : ''}
+            GROUP BY c.id_firebird, c.nome
+            ORDER BY total_pedidos ASC, ultima_compra ASC
+            LIMIT 10
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params, ...clientParams.slice(1)]);
+
+        // Listagem Geral com paginação e filtros
+        const search = req.query.search || '';
+        const inativoTempo = req.query.inativo_tempo || 'any';
+        const orderBy = req.query.order_by || 'inativos_desc';
+        const page = parseInt(req.query.page || 1);
+        const limit = parseInt(req.query.limit || 50);
+        const offset = (page - 1) * limit;
+
+        if (search) {
+            clientParams.push(`%${search.toUpperCase()}%`);
+            clientWhere.push(`(UPPER(c.nome) LIKE $${clientParams.length} OR c.documento LIKE $${clientParams.length})`);
+        }
+
+        let listQuery = `
+            WITH customer_stats AS (
+                SELECT 
+                    v.cliente_id_firebird,
+                    MAX(COALESCE(v.data_hora_proc, v.data_venda)) as ultima_compra,
+                    COUNT(DISTINCT v.id_firebird) as total_pedidos,
+                    SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) as ltv
+                FROM dash_vendas v
+                WHERE v.tenant_id = $1 ${salesFilter} ${df.clause}
+                GROUP BY v.cliente_id_firebird
+            )
+            SELECT 
+                c.id_firebird as id,
+                c.nome,
+                c.documento as cnpj,
+                c.cidade,
+                c.estado,
+                COALESCE(cs.total_pedidos, 0) as pedidos,
+                cs.ultima_compra,
+                cs.ltv,
+                COALESCE(
+                    (SELECT v2.vendedor FROM dash_vendas v2 WHERE v2.tenant_id = c.tenant_id AND v2.cliente_id_firebird = c.id_firebird ORDER BY COALESCE(v2.data_hora_proc, v2.data_venda) DESC LIMIT 1),
+                    'Sem Vendedor'
+                ) as vendedor_nome
+            FROM dash_clientes c
+            LEFT JOIN customer_stats cs ON cs.cliente_id_firebird = c.id_firebird
+            WHERE ${clientWhere.join(' AND ')}
+        `;
+
+        if (inativoTempo === '30') {
+            listQuery += ` AND (cs.ultima_compra IS NULL OR cs.ultima_compra < NOW() - INTERVAL '30 days')`;
+        } else if (inativoTempo === '60') {
+            listQuery += ` AND (cs.ultima_compra IS NULL OR cs.ultima_compra < NOW() - INTERVAL '60 days')`;
+        } else if (inativoTempo === '90') {
+            listQuery += ` AND (cs.ultima_compra IS NULL OR cs.ultima_compra < NOW() - INTERVAL '90 days')`;
+        }
+
+        if (orderBy === 'inativos_desc') {
+            listQuery += ` ORDER BY cs.ultima_compra ASC NULLS FIRST`;
+        } else if (orderBy === 'inativos_asc') {
+            listQuery += ` ORDER BY cs.ultima_compra DESC NULLS LAST`;
+        } else if (orderBy === 'ltv_desc') {
+            listQuery += ` ORDER BY COALESCE(cs.ltv, 0) DESC`;
+        } else if (orderBy === 'ltv_asc') {
+            listQuery += ` ORDER BY COALESCE(cs.ltv, 0) ASC`;
+        }
+
+        listQuery += ` LIMIT ${limit} OFFSET ${offset}`;
+
+        const { rows: clientesList } = await db.query(listQuery, clientParams);
 
         res.json({
-            customer_overview: {
+            kpis: {
                 total_clientes,
-                clientes_ativos,
-                clientes_novos: novos,
-                clientes_em_crescimento: 0, // Mock
-                clientes_em_queda: 0, // Mock
-                clientes_inativos: total_clientes - clientes_ativos,
-                taxa_retencao_pct: retencao_pct,
-                valor_medio_cliente: 0 // Mock
+                mes_atual_ativos,
+                mes_anterior_ativos,
+                retencao_pct,
+                novos_clientes,
+                sem_vendas_atual,
+                sem_vendas_anterior,
+                churn_pct
             },
-            top_clientes: [], // Mock array to fulfill interface, can add a heavy query later
-            clientes_sem_comprar: risco.map(r => ({
-                cliente_id: r.id_firebird,
-                nome: r.nome,
-                ultima_compra: r.ultima_compra,
-                dias_sem_comprar: Math.floor((new Date() - new Date(r.ultima_compra)) / (1000 * 60 * 60 * 24)),
-                faturamento_historico: parseFloat(r.ltv),
-                frequencia_dias: 30, // Mock for now
-                risco_churn_pct: 50.0 // Mock for now
-            }))
+            mais_recorrentes: maisRecorrentes.map(c => ({
+                id: c.id_firebird,
+                nome: c.nome,
+                ultima_compra: c.ultima_compra,
+                dias_sem_comprar: c.ultima_compra ? Math.floor((new Date() - new Date(c.ultima_compra)) / (1000 * 60 * 60 * 24)) : 999,
+                pedidos: parseInt(c.total_pedidos)
+            })),
+            menos_recorrentes: menosRecorrentes.map(c => ({
+                id: c.id_firebird,
+                nome: c.nome,
+                ultima_compra: c.ultima_compra,
+                dias_sem_comprar: c.ultima_compra ? Math.floor((new Date() - new Date(c.ultima_compra)) / (1000 * 60 * 60 * 24)) : 999,
+                pedidos: parseInt(c.total_pedidos)
+            })),
+            clientes_list: clientesList.map(c => {
+                const dias_inativo = c.ultima_compra ? Math.floor((new Date() - new Date(c.ultima_compra)) / (1000 * 60 * 60 * 24)) : 999;
+                let churnRisk = 0;
+                if (dias_inativo > 90) churnRisk = 95;
+                else if (dias_inativo > 60) churnRisk = 75;
+                else if (dias_inativo > 30) churnRisk = 40;
+                else churnRisk = 10;
+
+                return {
+                    id: c.id,
+                    nome: c.nome,
+                    cnpj: c.cnpj,
+                    cidade: c.cidade,
+                    estado: c.estado,
+                    pedidos: parseInt(c.pedidos),
+                    ultima_compra: c.ultima_compra ? new Date(c.ultima_compra).toLocaleDateString('pt-BR') : 'Sem Compras',
+                    dias_inativo,
+                    risco_churn_pct: churnRisk,
+                    vendedor_nome: c.vendedor_nome
+                };
+            })
         });
+    } catch (err) { next(err); }
+});
     } catch (err) { next(err); }
 });
 
