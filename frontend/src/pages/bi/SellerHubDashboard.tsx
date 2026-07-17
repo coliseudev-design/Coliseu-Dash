@@ -75,38 +75,11 @@ export default function SellerHubDashboard() {
   });
 
   const [rankingViews, setRankingViews] = useState<Record<string, 'list' | 'bar'>>({
+    marcas: 'list',
     clientes: 'list',
     grupos: 'list',
     produtos: 'list'
   });
-
-  const [activeRankingTab, setActiveRankingTab] = useState<'clientes' | 'grupos' | 'produtos'>('clientes');
-  const containerRef = React.useRef<HTMLDivElement>(null);
-
-  const scrollToTab = (tab: 'clientes' | 'grupos' | 'produtos') => {
-    if (containerRef.current) {
-      const el = containerRef.current;
-      const index = tab === 'clientes' ? 0 : tab === 'grupos' ? 1 : 2;
-      el.scrollTo({
-        left: el.clientWidth * index,
-        behavior: 'smooth'
-      });
-      setActiveRankingTab(tab);
-    }
-  };
-
-  const handleScroll = () => {
-    if (containerRef.current) {
-      const el = containerRef.current;
-      const index = Math.round(el.scrollLeft / el.clientWidth);
-      const tabs = ['clientes', 'grupos', 'produtos'] as const;
-      if (tabs[index] && activeRankingTab !== tabs[index]) {
-        setActiveRankingTab(tabs[index]);
-      }
-    }
-  };
-
-  const [mobileActiveRanking, setMobileActiveRanking] = useState<string>('clientes');
   const [evolucaoPeriodType, setEvolucaoPeriodType] = useState<'months' | 'days'>('months');
 
   // Table filtering and sorting states
@@ -524,340 +497,413 @@ export default function SellerHubDashboard() {
         </div>
       </div>
 
-      {/* SECTION: DESEMPENHO POR MARCA (SUBIDO PARA ANTES DOS TOP RANKINGS) */}
-      <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-6">
-        <div className="border-b border-divider/20 pb-3 mb-5">
-          <h3 className="text-base font-extrabold text-text-primary uppercase tracking-wider">Desempenho por Marca</h3>
-          <p className="text-xs text-text-secondary mt-0.5">Distribuição e representação de faturamento realizado por marca</p>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
-          {topMarcas.slice(0, 8).map((m: any, index: number) => {
-            const brandPct = totalMarcasVal > 0 ? (m.value / totalMarcasVal) * 100 : 0;
-            const isLeader = index === 0;
-
-            return (
-              <div 
-                key={m.rank} 
+      {/* SECTION: RANKINGS DE DESEMPENHO EM DUAS COLUNAS/LINHAS */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        
+        {/* CARD 1: TOP 10 MARCAS */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-6 flex flex-col min-h-[380px] transition-all">
+          <div className="flex justify-between items-center border-b border-divider/20 pb-3 mb-4">
+            <div className="flex items-center gap-2">
+              <Award className="text-brand-500" size={18} />
+              <h3 className="text-sm font-extrabold text-text-primary uppercase tracking-wider">Top 10 Marcas</h3>
+            </div>
+            <div className="flex bg-bg-secondary p-0.5 rounded-xl border border-divider shadow-sm shrink-0">
+              <button
+                onClick={() => setRankingViews(prev => ({ ...prev, marcas: 'list' }))}
                 className={clsx(
-                  "border rounded-2xl p-5 flex flex-col justify-between hover:shadow-card-hover transition-all duration-300 relative overflow-hidden",
-                  isLeader 
-                    ? "border-brand-500/80 bg-brand-500/[0.02] shadow-sm"
-                    : "border-divider/50 bg-bg-secondary/10"
+                  "px-3 py-1.5 rounded-lg text-[10px] font-black transition-all cursor-pointer uppercase tracking-wider",
+                  rankingViews.marcas === 'list'
+                    ? "bg-brand-500 text-white shadow-sm"
+                    : "text-text-secondary hover:text-text-primary"
                 )}
               >
-                {isLeader && (
-                  <div className="absolute top-0 right-0 bg-brand-500 text-white text-[9px] font-black uppercase px-2.5 py-0.5 rounded-bl-xl tracking-wider">
-                    Líder
-                  </div>
+                Lista
+              </button>
+              <button
+                onClick={() => setRankingViews(prev => ({ ...prev, marcas: 'bar' }))}
+                className={clsx(
+                  "px-3 py-1.5 rounded-lg text-[10px] font-black transition-all cursor-pointer uppercase tracking-wider",
+                  rankingViews.marcas === 'bar'
+                    ? "bg-brand-500 text-white shadow-sm"
+                    : "text-text-secondary hover:text-text-primary"
                 )}
-                
-                <div className="flex justify-between items-start gap-1">
-                  <span className="text-xs font-bold text-text-primary uppercase truncate max-w-[80%]" title={m.name}>
-                    {m.name}
-                  </span>
-                  <span className="text-xs font-black text-brand-500">
-                    {brandPct.toFixed(1)}%
-                  </span>
-                </div>
-                
-                <div className="w-full bg-bg-secondary h-3.5 rounded-full mt-3 overflow-hidden">
-                  <div className="bg-brand-500 h-full rounded-full transition-all duration-500" style={{ width: `${brandPct}%` }}></div>
-                </div>
-
-                <div className="flex justify-between items-center text-xs text-text-secondary font-medium mt-4 leading-none">
-                  <span>Realizado: <span className="font-extrabold text-text-primary">{formatBRLCompact(m.value)}</span></span>
-                </div>
-              </div>
-            );
-          })}
-          {topMarcas.length === 0 && (
-            <div className="col-span-full text-center py-8 text-text-muted text-xs font-semibold">
-              Nenhuma marca registrada para este vendedor no período.
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Unified Tabbed Rankings Card (Desktop Tab Bar + Mobile Swipe Slider) */}
-      <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-6">
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center border-b border-divider/20 pb-4 mb-5 gap-4">
-          <div>
-            <h3 className="text-base font-extrabold text-text-primary uppercase tracking-wider">Rankings de Desempenho</h3>
-            <p className="text-xs text-text-secondary mt-0.5">Visão consolidada de faturamento por Cliente, Grupo e Produto</p>
-          </div>
-          <div className="flex bg-bg-secondary p-0.5 rounded-xl border border-divider shadow-sm shrink-0 w-full sm:w-auto overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden [WebkitOverflowScrolling:touch]">
-            <button
-              onClick={() => scrollToTab('clientes')}
-              className={clsx(
-                "px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 flex-1 sm:flex-initial whitespace-nowrap",
-                activeRankingTab === 'clientes'
-                  ? "bg-brand-500 text-white shadow-sm"
-                  : "text-text-secondary hover:text-text-primary"
-              )}
-            >
-              <Users size={14} />
-              Clientes
-            </button>
-            <button
-              onClick={() => scrollToTab('grupos')}
-              className={clsx(
-                "px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 flex-1 sm:flex-initial whitespace-nowrap",
-                activeRankingTab === 'grupos'
-                  ? "bg-brand-500 text-white shadow-sm"
-                  : "text-text-secondary hover:text-text-primary"
-              )}
-            >
-              <Box size={14} />
-              Grupos
-            </button>
-            <button
-              onClick={() => scrollToTab('produtos')}
-              className={clsx(
-                "px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 flex-1 sm:flex-initial whitespace-nowrap",
-                activeRankingTab === 'produtos'
-                  ? "bg-brand-500 text-white shadow-sm"
-                  : "text-text-secondary hover:text-text-primary"
-              )}
-            >
-              <Trophy size={14} />
-              Produtos
-            </button>
-          </div>
-        </div>
-
-        <div className="overflow-hidden w-full">
-          <div 
-            ref={containerRef} 
-            onScroll={handleScroll} 
-            className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth w-full [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] md:overflow-hidden"
-          >
-            {/* Panel 1: Clientes */}
-            <div className="w-full shrink-0 snap-start flex flex-col min-h-[340px]">
-              <div className="flex justify-between items-center mb-3">
-                <span className="text-xs font-bold text-text-muted uppercase tracking-wider">Top 10 Clientes</span>
-                <button
-                  onClick={() => setRankingViews(prev => ({ ...prev, clientes: prev.clientes === 'list' ? 'bar' : 'list' }))}
-                  className="p-1.5 bg-bg-secondary hover:bg-bg-secondary/80 text-text-secondary hover:text-text-primary rounded-lg border border-divider transition-all cursor-pointer shadow-sm text-[11px] font-bold px-3 flex items-center gap-1.5"
-                >
-                  {rankingViews.clientes === 'list' ? <BarChart3 size={13} /> : <List size={13} />}
-                  {rankingViews.clientes === 'list' ? "Gráfico" : "Lista"}
-                </button>
-              </div>
-              
-              <div className="flex-1 overflow-y-auto max-h-[300px] text-xs pr-1">
-                {rankingViews.clientes === 'list' ? (
-                  <div className="space-y-0.5">
-                    {topClientes.map((c: any) => {
-                      const share = totalClientesVal > 0 ? (c.value / totalClientesVal) * 100 : 0;
-                      return (
-                        <div key={c.rank} className="flex justify-between items-center py-2 border-b border-divider/5 hover:bg-bg-secondary/50 px-2 rounded-lg transition-colors">
-                          <span className="text-text-secondary truncate font-medium text-xs flex-1 min-w-0 mr-2" title={c.name}>
-                            <span className="font-extrabold text-brand-500 mr-2 font-mono">#{c.rank}</span>
-                            {c.name}
-                          </span>
-                          <div className="text-right shrink-0 flex items-center gap-1.5">
-                            <span className="font-extrabold text-text-primary font-mono text-xs">{formatBRLCompact(c.value)}</span>
-                            <span className="text-[10px] text-danger font-bold">({share.toFixed(1)}%)</span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {topClientes.length === 0 && (
-                      <div className="h-full flex flex-col items-center justify-center text-center p-6">
-                        <EyeOff size={24} className="text-text-muted mb-1 stroke-[1.5]" />
-                        <span className="text-xs text-text-muted font-bold">Nenhum cliente faturado.</span>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  topClientes.length > 0 ? (
-                    <div className="h-[280px] w-full flex items-center justify-center py-2 pr-4">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                          data={topClientes.slice(0, 5)}
-                          layout="vertical"
-                          margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
-                        >
-                          <XAxis type="number" hide />
-                          <YAxis 
-                            dataKey="name" 
-                            type="category" 
-                            width={90} 
-                            tick={{ fontSize: 9, fill: 'currentColor' }} 
-                            axisLine={false}
-                            tickLine={false}
-                          />
-                          <Tooltip content={<CustomTooltip />} />
-                          <Bar dataKey="value" fill="#0D9488" radius={[0, 4, 4, 0]}>
-                            {topClientes.slice(0, 5).map((entry: any, index: number) => (
-                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                            ))}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  ) : (
-                    <div className="h-full flex flex-col items-center justify-center text-center p-6">
-                      <EyeOff size={24} className="text-text-muted mb-1 stroke-[1.5]" />
-                      <span className="text-xs text-text-muted font-bold">Sem dados no período.</span>
-                    </div>
-                  )
-                )}
-              </div>
-            </div>
-
-            {/* Panel 2: Grupos */}
-            <div className="w-full shrink-0 snap-start flex flex-col min-h-[340px]">
-              <div className="flex justify-between items-center mb-3">
-                <span className="text-xs font-bold text-text-muted uppercase tracking-wider">Top 10 Grupos</span>
-                <button
-                  onClick={() => setRankingViews(prev => ({ ...prev, grupos: prev.grupos === 'list' ? 'bar' : 'list' }))}
-                  className="p-1.5 bg-bg-secondary hover:bg-bg-secondary/80 text-text-secondary hover:text-text-primary rounded-lg border border-divider transition-all cursor-pointer shadow-sm text-[11px] font-bold px-3 flex items-center gap-1.5"
-                >
-                  {rankingViews.grupos === 'list' ? <BarChart3 size={13} /> : <List size={13} />}
-                  {rankingViews.grupos === 'list' ? "Gráfico" : "Lista"}
-                </button>
-              </div>
-              
-              <div className="flex-1 overflow-y-auto max-h-[300px] text-xs pr-1">
-                {rankingViews.grupos === 'list' ? (
-                  <div className="space-y-0.5">
-                    {topGrupos.map((g: any) => {
-                      const share = totalGruposVal > 0 ? (g.value / totalGruposVal) * 100 : 0;
-                      return (
-                        <div key={g.rank} className="flex justify-between items-center py-2 border-b border-divider/5 hover:bg-bg-secondary/50 px-2 rounded-lg transition-colors">
-                          <span className="text-text-secondary truncate font-medium text-xs flex-1 min-w-0 mr-2" title={g.name}>
-                            <span className="font-extrabold text-brand-500 mr-2 font-mono">#{g.rank}</span>
-                            {g.name}
-                          </span>
-                          <div className="text-right shrink-0 flex items-center gap-1.5">
-                            <span className="font-extrabold text-text-primary font-mono text-xs">{formatBRLCompact(g.value)}</span>
-                            <span className="text-[10px] text-danger font-bold">({share.toFixed(1)}%)</span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {topGrupos.length === 0 && (
-                      <div className="h-full flex flex-col items-center justify-center text-center p-6">
-                        <EyeOff size={24} className="text-text-muted mb-1 stroke-[1.5]" />
-                        <span className="text-xs text-text-muted font-bold">Nenhum grupo faturado.</span>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  topGrupos.length > 0 ? (
-                    <div className="h-[280px] w-full flex items-center justify-center py-2 pr-4">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                          data={topGrupos.slice(0, 5)}
-                          layout="vertical"
-                          margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
-                        >
-                          <XAxis type="number" hide />
-                          <YAxis 
-                            dataKey="name" 
-                            type="category" 
-                            width={90} 
-                            tick={{ fontSize: 9, fill: 'currentColor' }} 
-                            axisLine={false}
-                            tickLine={false}
-                          />
-                          <Tooltip content={<CustomTooltip />} />
-                          <Bar dataKey="value" fill="#0D9488" radius={[0, 4, 4, 0]}>
-                            {topGrupos.slice(0, 5).map((entry: any, index: number) => (
-                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                            ))}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  ) : (
-                    <div className="h-full flex flex-col items-center justify-center text-center p-6">
-                      <EyeOff size={24} className="text-text-muted mb-1 stroke-[1.5]" />
-                      <span className="text-xs text-text-muted font-bold">Sem dados no período.</span>
-                    </div>
-                  )
-                )}
-              </div>
-            </div>
-
-            {/* Panel 3: Produtos */}
-            <div className="w-full shrink-0 snap-start flex flex-col min-h-[340px]">
-              <div className="flex justify-between items-center mb-3">
-                <span className="text-xs font-bold text-text-muted uppercase tracking-wider">Top 10 Produtos</span>
-                <button
-                  onClick={() => setRankingViews(prev => ({ ...prev, produtos: prev.produtos === 'list' ? 'bar' : 'list' }))}
-                  className="p-1.5 bg-bg-secondary hover:bg-bg-secondary/80 text-text-secondary hover:text-text-primary rounded-lg border border-divider transition-all cursor-pointer shadow-sm text-[11px] font-bold px-3 flex items-center gap-1.5"
-                >
-                  {rankingViews.produtos === 'list' ? <BarChart3 size={13} /> : <List size={13} />}
-                  {rankingViews.produtos === 'list' ? "Gráfico" : "Lista"}
-                </button>
-              </div>
-              
-              <div className="flex-1 overflow-y-auto max-h-[300px] text-xs pr-1">
-                {rankingViews.produtos === 'list' ? (
-                  <div className="space-y-0.5">
-                    {topProdutos.map((p: any) => {
-                      const share = totalProdutosVal > 0 ? (p.value / totalProdutosVal) * 100 : 0;
-                      return (
-                        <div key={p.rank} className="flex justify-between items-center py-2 border-b border-divider/5 hover:bg-bg-secondary/50 px-2 rounded-lg transition-colors">
-                          <span className="text-text-secondary truncate font-medium text-xs flex-1 min-w-0 mr-2" title={p.name}>
-                            <span className="font-extrabold text-brand-500 mr-2 font-mono">#{p.rank}</span>
-                            {p.name}
-                          </span>
-                          <div className="text-right shrink-0 flex items-center gap-1.5">
-                            <span className="font-extrabold text-text-primary font-mono text-xs">{formatBRLCompact(p.value)}</span>
-                            <span className="text-[10px] text-danger font-bold">({share.toFixed(1)}%)</span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {topProdutos.length === 0 && (
-                      <div className="h-full flex flex-col items-center justify-center text-center p-6">
-                        <EyeOff size={24} className="text-text-muted mb-1 stroke-[1.5]" />
-                        <span className="text-xs text-text-muted font-bold">Nenhum produto faturado.</span>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  topProdutos.length > 0 ? (
-                    <div className="h-[280px] w-full flex items-center justify-center py-2 pr-4">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                          data={topProdutos.slice(0, 5)}
-                          layout="vertical"
-                          margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
-                        >
-                          <XAxis type="number" hide />
-                          <YAxis 
-                            dataKey="name" 
-                            type="category" 
-                            width={90} 
-                            tick={{ fontSize: 9, fill: 'currentColor' }} 
-                            axisLine={false}
-                            tickLine={false}
-                          />
-                          <Tooltip content={<CustomTooltip />} />
-                          <Bar dataKey="value" fill="#0D9488" radius={[0, 4, 4, 0]}>
-                            {topProdutos.slice(0, 5).map((entry: any, index: number) => (
-                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                            ))}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  ) : (
-                    <div className="h-full flex flex-col items-center justify-center text-center p-6">
-                      <EyeOff size={24} className="text-text-muted mb-1 stroke-[1.5]" />
-                      <span className="text-xs text-text-muted font-bold">Sem dados no período.</span>
-                    </div>
-                  )
-                )}
-              </div>
+              >
+                Gráfico
+              </button>
             </div>
           </div>
+
+          <div className="flex-1 overflow-y-auto max-h-[300px] text-xs pr-1">
+            {rankingViews.marcas === 'list' ? (
+              <div className="space-y-1">
+                {topMarcas.slice(0, 10).map((m: any, index: number) => {
+                  const rank = index + 1;
+                  const share = totalMarcasVal > 0 ? (m.value / totalMarcasVal) * 100 : 0;
+                  return (
+                    <div key={m.name || index} className="relative flex justify-between items-center py-2 px-3 rounded-lg overflow-hidden group hover:bg-bg-secondary/45 transition-colors">
+                      <div 
+                        className="absolute left-0 top-0 bottom-0 bg-brand-500/5 group-hover:bg-brand-500/10 transition-all duration-500" 
+                        style={{ width: `${share}%` }} 
+                      />
+                      <span className="relative z-10 text-text-secondary truncate font-medium text-xs flex-1 min-w-0 mr-3 flex items-center gap-2" title={m.name}>
+                        <span className={clsx("font-mono text-xs min-w-[20px]", rank === 1 ? "text-amber-500 font-extrabold" : rank === 2 ? "text-slate-400 font-extrabold" : rank === 3 ? "text-orange-600 font-extrabold" : "text-text-muted font-bold")}>#{rank}</span>
+                        <span className="truncate text-text-primary group-hover:text-brand-500 transition-colors">{m.name}</span>
+                      </span>
+                      <div className="relative z-10 text-right shrink-0 flex items-center gap-1.5 font-mono text-xs">
+                        <span className="font-extrabold text-text-primary">{formatBRL(m.value)}</span>
+                        <span className="text-[10px] text-text-secondary">({share.toFixed(1)}%)</span>
+                      </div>
+                    </div>
+                  );
+                })}
+                {topMarcas.length === 0 && (
+                  <div className="h-full flex flex-col items-center justify-center text-center p-6">
+                    <EyeOff size={24} className="text-text-muted mb-1 stroke-[1.5]" />
+                    <span className="text-xs text-text-muted font-bold">Nenhuma marca faturada.</span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              topMarcas.length > 0 ? (
+                <div className="h-[280px] w-full flex items-center justify-center py-2 pr-4">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={topMarcas.slice(0, 10)}
+                      layout="vertical"
+                      margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
+                    >
+                      <XAxis type="number" hide />
+                      <YAxis 
+                        dataKey="name" 
+                        type="category" 
+                        width={90} 
+                        tick={{ fontSize: 9, fill: 'currentColor' }} 
+                        axisLine={false}
+                        tickLine={false}
+                        tickFormatter={(val) => val && val.length > 15 ? val.substring(0, 15) + '...' : val}
+                      />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Bar dataKey="value" fill="#0D9488" radius={[0, 4, 4, 0]}>
+                        {topMarcas.slice(0, 10).map((entry: any, index: number) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center text-center p-6">
+                  <EyeOff size={24} className="text-text-muted mb-1 stroke-[1.5]" />
+                  <span className="text-xs text-text-muted font-bold">Sem dados no período.</span>
+                </div>
+              )
+            )}
+          </div>
         </div>
+
+        {/* CARD 2: TOP 10 GRUPOS */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-6 flex flex-col min-h-[380px] transition-all">
+          <div className="flex justify-between items-center border-b border-divider/20 pb-3 mb-4">
+            <div className="flex items-center gap-2">
+              <Box className="text-brand-500" size={18} />
+              <h3 className="text-sm font-extrabold text-text-primary uppercase tracking-wider">Top 10 Grupos</h3>
+            </div>
+            <div className="flex bg-bg-secondary p-0.5 rounded-xl border border-divider shadow-sm shrink-0">
+              <button
+                onClick={() => setRankingViews(prev => ({ ...prev, grupos: 'list' }))}
+                className={clsx(
+                  "px-3 py-1.5 rounded-lg text-[10px] font-black transition-all cursor-pointer uppercase tracking-wider",
+                  rankingViews.grupos === 'list'
+                    ? "bg-brand-500 text-white shadow-sm"
+                    : "text-text-secondary hover:text-text-primary"
+                )}
+              >
+                Lista
+              </button>
+              <button
+                onClick={() => setRankingViews(prev => ({ ...prev, grupos: 'bar' }))}
+                className={clsx(
+                  "px-3 py-1.5 rounded-lg text-[10px] font-black transition-all cursor-pointer uppercase tracking-wider",
+                  rankingViews.grupos === 'bar'
+                    ? "bg-brand-500 text-white shadow-sm"
+                    : "text-text-secondary hover:text-text-primary"
+                )}
+              >
+                Gráfico
+              </button>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto max-h-[300px] text-xs pr-1">
+            {rankingViews.grupos === 'list' ? (
+              <div className="space-y-1">
+                {topGrupos.slice(0, 10).map((g: any, index: number) => {
+                  const rank = index + 1;
+                  const share = totalGruposVal > 0 ? (g.value / totalGruposVal) * 100 : 0;
+                  return (
+                    <div key={g.name || index} className="relative flex justify-between items-center py-2 px-3 rounded-lg overflow-hidden group hover:bg-bg-secondary/45 transition-colors">
+                      <div 
+                        className="absolute left-0 top-0 bottom-0 bg-brand-500/5 group-hover:bg-brand-500/10 transition-all duration-500" 
+                        style={{ width: `${share}%` }} 
+                      />
+                      <span className="relative z-10 text-text-secondary truncate font-medium text-xs flex-1 min-w-0 mr-3 flex items-center gap-2" title={g.name}>
+                        <span className={clsx("font-mono text-xs min-w-[20px]", rank === 1 ? "text-amber-500 font-extrabold" : rank === 2 ? "text-slate-400 font-extrabold" : rank === 3 ? "text-orange-600 font-extrabold" : "text-text-muted font-bold")}>#{rank}</span>
+                        <span className="truncate text-text-primary group-hover:text-brand-500 transition-colors">{g.name}</span>
+                      </span>
+                      <div className="relative z-10 text-right shrink-0 flex items-center gap-1.5 font-mono text-xs">
+                        <span className="font-extrabold text-text-primary">{formatBRL(g.value)}</span>
+                        <span className="text-[10px] text-text-secondary">({share.toFixed(1)}%)</span>
+                      </div>
+                    </div>
+                  );
+                })}
+                {topGrupos.length === 0 && (
+                  <div className="h-full flex flex-col items-center justify-center text-center p-6">
+                    <EyeOff size={24} className="text-text-muted mb-1 stroke-[1.5]" />
+                    <span className="text-xs text-text-muted font-bold">Nenhum grupo faturado.</span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              topGrupos.length > 0 ? (
+                <div className="h-[280px] w-full flex items-center justify-center py-2 pr-4">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={topGrupos.slice(0, 10)}
+                      layout="vertical"
+                      margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
+                    >
+                      <XAxis type="number" hide />
+                      <YAxis 
+                        dataKey="name" 
+                        type="category" 
+                        width={90} 
+                        tick={{ fontSize: 9, fill: 'currentColor' }} 
+                        axisLine={false}
+                        tickLine={false}
+                        tickFormatter={(val) => val && val.length > 15 ? val.substring(0, 15) + '...' : val}
+                      />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Bar dataKey="value" fill="#0D9488" radius={[0, 4, 4, 0]}>
+                        {topGrupos.slice(0, 10).map((entry: any, index: number) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center text-center p-6">
+                  <EyeOff size={24} className="text-text-muted mb-1 stroke-[1.5]" />
+                  <span className="text-xs text-text-muted font-bold">Sem dados no período.</span>
+                </div>
+              )
+            )}
+          </div>
+        </div>
+
+        {/* CARD 3: TOP 10 CLIENTES */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-6 flex flex-col min-h-[380px] transition-all">
+          <div className="flex justify-between items-center border-b border-divider/20 pb-3 mb-4">
+            <div className="flex items-center gap-2">
+              <Users className="text-brand-500" size={18} />
+              <h3 className="text-sm font-extrabold text-text-primary uppercase tracking-wider">Top 10 Clientes</h3>
+            </div>
+            <div className="flex bg-bg-secondary p-0.5 rounded-xl border border-divider shadow-sm shrink-0">
+              <button
+                onClick={() => setRankingViews(prev => ({ ...prev, clientes: 'list' }))}
+                className={clsx(
+                  "px-3 py-1.5 rounded-lg text-[10px] font-black transition-all cursor-pointer uppercase tracking-wider",
+                  rankingViews.clientes === 'list'
+                    ? "bg-brand-500 text-white shadow-sm"
+                    : "text-text-secondary hover:text-text-primary"
+                )}
+              >
+                Lista
+              </button>
+              <button
+                onClick={() => setRankingViews(prev => ({ ...prev, clientes: 'bar' }))}
+                className={clsx(
+                  "px-3 py-1.5 rounded-lg text-[10px] font-black transition-all cursor-pointer uppercase tracking-wider",
+                  rankingViews.clientes === 'bar'
+                    ? "bg-brand-500 text-white shadow-sm"
+                    : "text-text-secondary hover:text-text-primary"
+                )}
+              >
+                Gráfico
+              </button>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto max-h-[300px] text-xs pr-1">
+            {rankingViews.clientes === 'list' ? (
+              <div className="space-y-1">
+                {topClientes.slice(0, 10).map((c: any, index: number) => {
+                  const rank = index + 1;
+                  const share = totalClientesVal > 0 ? (c.value / totalClientesVal) * 100 : 0;
+                  return (
+                    <div key={c.name || index} className="relative flex justify-between items-center py-2 px-3 rounded-lg overflow-hidden group hover:bg-bg-secondary/45 transition-colors">
+                      <div 
+                        className="absolute left-0 top-0 bottom-0 bg-brand-500/5 group-hover:bg-brand-500/10 transition-all duration-500" 
+                        style={{ width: `${share}%` }} 
+                      />
+                      <span className="relative z-10 text-text-secondary truncate font-medium text-xs flex-1 min-w-0 mr-3 flex items-center gap-2" title={c.name}>
+                        <span className={clsx("font-mono text-xs min-w-[20px]", rank === 1 ? "text-amber-500 font-extrabold" : rank === 2 ? "text-slate-400 font-extrabold" : rank === 3 ? "text-orange-600 font-extrabold" : "text-text-muted font-bold")}>#{rank}</span>
+                        <span className="truncate text-text-primary group-hover:text-brand-500 transition-colors">{c.name}</span>
+                      </span>
+                      <div className="relative z-10 text-right shrink-0 flex items-center gap-1.5 font-mono text-xs">
+                        <span className="font-extrabold text-text-primary">{formatBRL(c.value)}</span>
+                        <span className="text-[10px] text-text-secondary">({share.toFixed(1)}%)</span>
+                      </div>
+                    </div>
+                  );
+                })}
+                {topClientes.length === 0 && (
+                  <div className="h-full flex flex-col items-center justify-center text-center p-6">
+                    <EyeOff size={24} className="text-text-muted mb-1 stroke-[1.5]" />
+                    <span className="text-xs text-text-muted font-bold">Nenhum cliente faturado.</span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              topClientes.length > 0 ? (
+                <div className="h-[280px] w-full flex items-center justify-center py-2 pr-4">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={topClientes.slice(0, 10)}
+                      layout="vertical"
+                      margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
+                    >
+                      <XAxis type="number" hide />
+                      <YAxis 
+                        dataKey="name" 
+                        type="category" 
+                        width={90} 
+                        tick={{ fontSize: 9, fill: 'currentColor' }} 
+                        axisLine={false}
+                        tickLine={false}
+                        tickFormatter={(val) => val && val.length > 15 ? val.substring(0, 15) + '...' : val}
+                      />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Bar dataKey="value" fill="#0D9488" radius={[0, 4, 4, 0]}>
+                        {topClientes.slice(0, 10).map((entry: any, index: number) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center text-center p-6">
+                  <EyeOff size={24} className="text-text-muted mb-1 stroke-[1.5]" />
+                  <span className="text-xs text-text-muted font-bold">Sem dados no período.</span>
+                </div>
+              )
+            )}
+          </div>
+        </div>
+
+        {/* CARD 4: TOP 10 PRODUTOS */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-6 flex flex-col min-h-[380px] transition-all">
+          <div className="flex justify-between items-center border-b border-divider/20 pb-3 mb-4">
+            <div className="flex items-center gap-2">
+              <Trophy className="text-brand-500" size={18} />
+              <h3 className="text-sm font-extrabold text-text-primary uppercase tracking-wider">Top 10 Produtos</h3>
+            </div>
+            <div className="flex bg-bg-secondary p-0.5 rounded-xl border border-divider shadow-sm shrink-0">
+              <button
+                onClick={() => setRankingViews(prev => ({ ...prev, produtos: 'list' }))}
+                className={clsx(
+                  "px-3 py-1.5 rounded-lg text-[10px] font-black transition-all cursor-pointer uppercase tracking-wider",
+                  rankingViews.produtos === 'list'
+                    ? "bg-brand-500 text-white shadow-sm"
+                    : "text-text-secondary hover:text-text-primary"
+                )}
+              >
+                Lista
+              </button>
+              <button
+                onClick={() => setRankingViews(prev => ({ ...prev, produtos: 'bar' }))}
+                className={clsx(
+                  "px-3 py-1.5 rounded-lg text-[10px] font-black transition-all cursor-pointer uppercase tracking-wider",
+                  rankingViews.produtos === 'bar'
+                    ? "bg-brand-500 text-white shadow-sm"
+                    : "text-text-secondary hover:text-text-primary"
+                )}
+              >
+                Gráfico
+              </button>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto max-h-[300px] text-xs pr-1">
+            {rankingViews.produtos === 'list' ? (
+              <div className="space-y-1">
+                {topProdutos.slice(0, 10).map((p: any, index: number) => {
+                  const rank = index + 1;
+                  const share = totalProdutosVal > 0 ? (p.value / totalProdutosVal) * 100 : 0;
+                  return (
+                    <div key={p.name || index} className="relative flex justify-between items-center py-2 px-3 rounded-lg overflow-hidden group hover:bg-bg-secondary/45 transition-colors">
+                      <div 
+                        className="absolute left-0 top-0 bottom-0 bg-brand-500/5 group-hover:bg-brand-500/10 transition-all duration-500" 
+                        style={{ width: `${share}%` }} 
+                      />
+                      <span className="relative z-10 text-text-secondary truncate font-medium text-xs flex-1 min-w-0 mr-3 flex items-center gap-2" title={p.name}>
+                        <span className={clsx("font-mono text-xs min-w-[20px]", rank === 1 ? "text-amber-500 font-extrabold" : rank === 2 ? "text-slate-400 font-extrabold" : rank === 3 ? "text-orange-600 font-extrabold" : "text-text-muted font-bold")}>#{rank}</span>
+                        <span className="truncate text-text-primary group-hover:text-brand-500 transition-colors">{p.name}</span>
+                      </span>
+                      <div className="relative z-10 text-right shrink-0 flex items-center gap-1.5 font-mono text-xs">
+                        <span className="font-extrabold text-text-primary">{formatBRL(p.value)}</span>
+                        <span className="text-[10px] text-text-secondary">({share.toFixed(1)}%)</span>
+                      </div>
+                    </div>
+                  );
+                })}
+                {topProdutos.length === 0 && (
+                  <div className="h-full flex flex-col items-center justify-center text-center p-6">
+                    <EyeOff size={24} className="text-text-muted mb-1 stroke-[1.5]" />
+                    <span className="text-xs text-text-muted font-bold">Nenhum produto faturado.</span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              topProdutos.length > 0 ? (
+                <div className="h-[280px] w-full flex items-center justify-center py-2 pr-4">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={topProdutos.slice(0, 10)}
+                      layout="vertical"
+                      margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
+                    >
+                      <XAxis type="number" hide />
+                      <YAxis 
+                        dataKey="name" 
+                        type="category" 
+                        width={90} 
+                        tick={{ fontSize: 9, fill: 'currentColor' }} 
+                        axisLine={false}
+                        tickLine={false}
+                        tickFormatter={(val) => val && val.length > 15 ? val.substring(0, 15) + '...' : val}
+                      />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Bar dataKey="value" fill="#0D9488" radius={[0, 4, 4, 0]}>
+                        {topProdutos.slice(0, 10).map((entry: any, index: number) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center text-center p-6">
+                  <EyeOff size={24} className="text-text-muted mb-1 stroke-[1.5]" />
+                  <span className="text-xs text-text-muted font-bold">Sem dados no período.</span>
+                </div>
+              )
+            )}
+          </div>
+        </div>
+
       </div>
 
       {/* SECTION: EVOLUÇÃO DO FATURAMENTO (MENSAL VS DIÁRIO GRÁFICO E VALORES TOGGLE) */}
