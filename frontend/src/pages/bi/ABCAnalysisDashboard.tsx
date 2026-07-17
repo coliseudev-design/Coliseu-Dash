@@ -129,7 +129,9 @@ export default function InventoryManagementDashboard() {
           <button className="bg-cyan-500/10 text-cyan-500 hover:bg-cyan-500/20 px-4 py-2 rounded-lg font-bold text-xs flex items-center gap-2 transition-colors border border-cyan-500/20">
             <Sparkles size={14} /> Analisar com IA
           </button>
-          <span className="text-xs font-extrabold text-text-muted uppercase tracking-wider">COMPENSADOS DOURADOS</span>
+          <span className="text-xs font-extrabold text-text-muted uppercase tracking-wider">
+            {useAuthStore.getState().user?.tenant_nome || 'COLISEU SISTEMAS'}
+          </span>
         </div>
       )}
       

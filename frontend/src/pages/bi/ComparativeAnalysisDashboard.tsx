@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useOutletContext } from 'react-router-dom';
+import { useAuthStore } from '../../store/authStore';
 import { useBiPeriodQuery } from '../../hooks/useBiPeriodQuery';
 import { BIService } from '../../services/biApi';
 import { BiPeriodFilter } from '../../types/bi.types';
@@ -29,6 +30,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 export default function ProfitabilityDashboard() {
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [year, setYear] = useState(new Date().getFullYear());
+  const empresaNome = useAuthStore((s) => s.user?.tenant_nome);
 
   // Consome o filtro global de período e filial do contexto do BiDashboard pai
   const { filter: globalFilter } = useOutletContext<{ filter: BiPeriodFilter }>();
@@ -81,7 +83,7 @@ export default function ProfitabilityDashboard() {
         <button className="bg-pink-500/10 text-pink-500 hover:bg-pink-500/20 px-4 py-2 rounded-lg font-bold text-xs flex items-center gap-2 transition-colors border border-pink-500/20">
           <Sparkles size={14} /> Analisar com IA
         </button>
-        <span className="text-xs font-extrabold text-text-muted uppercase tracking-wider">COMPENSADOS DOURADOS</span>
+        <span className="text-xs font-extrabold text-text-muted uppercase tracking-wider">{empresaNome || 'COLISEU SISTEMAS'}</span>
       </div>
       
       {/* FILTROS SUPERIORES COMPLETO */}
