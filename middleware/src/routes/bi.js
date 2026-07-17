@@ -1353,9 +1353,6 @@ router.get('/customer/radar-360', async (req, res, next) => {
     } catch (err) { next(err); }
 });
 
-    } catch (err) { next(err); }
-});
-
 // ==========================================
 // MÓDULO: COMPARATIVE ANALYSIS
 // ==========================================
