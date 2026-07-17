@@ -29,13 +29,12 @@ export default function BiDashboard() {
     ...branchParam
   };
 
-  const queryParams = new URLSearchParams(location.search);
-  const hasCustomerId = queryParams.has('id');
-  const isRadar360Selection = location.pathname.includes('/bi/customer') && !hasCustomerId;
+  // Radar 360 usa filtros próprios internos — ocultar filtro global
+  const isRadar360 = location.pathname.includes('/bi/customer');
 
   const showFilter = !['/bi/abc', '/bi/customer-analytics', '/bi/goals', '/bi/heatmap', '/bi/comparative'].some(
     p => location.pathname.includes(p)
-  ) && !isRadar360Selection;
+  ) && !isRadar360;
 
   return (
     <div className="flex flex-col h-full space-y-4">

@@ -1334,7 +1334,7 @@ router.get('/customer/radar-360', async (req, res, next) => {
             WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2
               ${salesFilter}
             ORDER BY v.data_venda DESC
-            LIMIT 10
+            LIMIT 200
         `, [tenantId, searchId]);
 
         res.json({

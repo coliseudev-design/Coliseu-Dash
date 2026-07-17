@@ -42,6 +42,7 @@ export default function Radar360Dashboard() {
   const [selectedPeriod, setSelectedPeriod] = useState<'TODOS' | 'MES_ATUAL' | '6_MESES' | 'PERSONALIZADO'>('TODOS');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [showAllOrders, setShowAllOrders] = useState(false);
 
   useEffect(() => {
     if (urlId) {
@@ -683,14 +684,17 @@ export default function Radar360Dashboard() {
             <Calendar size={16} className="text-brand-500" />
             Últimos Pedidos
           </h3>
-          <button className="px-3 py-1.5 bg-brand-500 hover:bg-brand-600 text-white text-[10px] font-black rounded-xl transition-all cursor-pointer shadow-sm uppercase tracking-wider">
-            Ver Histórico Completo
+          <button
+            onClick={() => setShowAllOrders(prev => !prev)}
+            className="px-3 py-1.5 bg-brand-500 hover:bg-brand-600 text-white text-[10px] font-black rounded-xl transition-all cursor-pointer shadow-sm uppercase tracking-wider"
+          >
+            {showAllOrders ? 'Ocultar' : `Ver Histórico Completo (${order_history?.length || 0})`}
           </button>
         </div>
 
-        <div className="overflow-x-auto text-[11px] font-medium text-text-primary">
+        <div className={`overflow-x-auto text-[11px] font-medium text-text-primary transition-all duration-300 ${showAllOrders ? 'max-h-[600px] overflow-y-auto' : ''}`}>
           <table className="w-full text-left">
-            <thead className="bg-bg-secondary/40 text-[9px] text-text-secondary uppercase font-black tracking-wider border-b border-divider/10">
+            <thead className="bg-bg-secondary/40 text-[9px] text-text-secondary uppercase font-black tracking-wider border-b border-divider/10 sticky top-0">
               <tr>
                 <th className="px-6 py-3.5">Nota/Pedido</th>
                 <th className="px-6 py-3.5">Vendedor</th>
@@ -700,7 +704,7 @@ export default function Radar360Dashboard() {
               </tr>
             </thead>
             <tbody className="divide-y divide-divider/10">
-              {order_history?.map((order: any) => (
+              {(showAllOrders ? order_history : order_history?.slice(0, 10))?.map((order: any) => (
                 <tr key={order.id} className="hover:bg-bg-secondary/20 transition-colors">
                   <td className="px-6 py-3 font-mono font-bold">#{order.numero_nota}</td>
                   <td className="px-6 py-3 text-text-secondary">{order.vendedor_nome}</td>
