@@ -144,7 +144,7 @@ export default function Radar360Dashboard() {
     );
   }
 
-  const { dna, behavior, rfm, affinity, upsell, top_lists, risk_assessment } = data;
+  const { dna, behavior, rfm, affinity, upsell, top_lists, risk_assessment, order_history } = data;
 
   return (
     <div aria-label="Radar 360 Dashboard Detalhado" className="space-y-6 animate-in fade-in duration-300 pb-12">
