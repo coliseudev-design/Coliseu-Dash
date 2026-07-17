@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useOutletContext, useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
+import { usePeriodStore, periodToParams } from '../../store/periodStore';
+import { useBranchParam } from '../../contexts/BranchContext';
+import PeriodFilter from '../../components/PeriodFilter';
 import { useBiPeriodQuery } from '../../hooks/useBiPeriodQuery';
 import { useBranchPeriodQuery } from '../../hooks/useApi';
 import { BIService } from '../../services/biApi';
@@ -44,7 +47,12 @@ const formatPeriod = (s?: string, e?: string) => {
 const COLORS = ['#0D9488', '#0F766E', '#115E59', '#134E4A', '#14B8A6', '#2DD4BF', '#5EEAD4', '#99F6E4', '#CCFBF1', '#F0FDFA'];
 
 export default function SellerHubDashboard() {
-  const { filter: globalFilter } = useOutletContext<{ filter: BiPeriodFilter }>();
+  const periodState = usePeriodStore();
+  const branchParam = useBranchParam();
+  const globalFilter = useMemo<any>(() => ({
+    ...periodToParams(periodState),
+    ...branchParam
+  }), [periodState, branchParam]);
   const { sellerId } = useParams();
   const navigate = useNavigate();
 
@@ -289,6 +297,26 @@ export default function SellerHubDashboard() {
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       
+      {/* HEADER ROW (Title + Subtitle + Period Selector) */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center text-orange-500 shadow-sm border border-orange-500/10">
+            <Trophy size={20} strokeWidth={2.2} />
+          </div>
+          <div>
+            <h1 className="text-base sm:text-lg md:text-xl font-extrabold text-text-primary uppercase tracking-wider">
+              Hub do Vendedor
+            </h1>
+            <p className="text-[11px] text-text-secondary font-medium">
+              Estatísticas individuais, ranking de vendas e metas do vendedor
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 self-start lg:self-auto bg-bg-primary border border-divider shadow-sm rounded-xl p-1.5">
+          <PeriodFilter />
+        </div>
+      </div>
+
       {/* FILTER BAR ROW */}
       <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
           <h2 className="text-xs font-extrabold text-text-primary flex flex-wrap items-center gap-x-2 gap-y-1 uppercase tracking-wider">
