@@ -1137,7 +1137,6 @@ router.get('/customer/radar-360', async (req, res, next) => {
         if (c.length === 0) return res.status(404).json({ error: 'Cliente não encontrado' });
 
         const cliente = c[0];
-        
         const salesFilter = cfopUtil.getSalesFilterClause('v');
 
         // LTV e Ticket Medio Histórico
@@ -1145,7 +1144,7 @@ router.get('/customer/radar-360', async (req, res, next) => {
             SELECT 
                 COALESCE(SUM(v.valor_total - COALESCE(v.valor_desconto, 0)), 0) as ltv,
                 COUNT(DISTINCT v.id_firebird) as total_pedidos,
-                MAX(v.data_hora_proc) as ultima_compra
+                MAX(v.data_venda) as ultima_compra
             FROM dash_vendas v
             WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2 
               ${salesFilter}
@@ -1155,7 +1154,8 @@ router.get('/customer/radar-360', async (req, res, next) => {
         const qtd_pedidos = parseInt(vInfo[0].total_pedidos);
         const ticket_medio_historico = qtd_pedidos > 0 ? ltv / qtd_pedidos : 0;
         const ultima_compra = vInfo[0].ultima_compra;
-        const dias_sem_comprar = ultima_compra ? Math.floor((new Date() - new Date(ultima_compra)) / (1000 * 60 * 60 * 24)) : 999;
+        const now = new Date();
+        const dias_sem_comprar = ultima_compra ? Math.floor((now - new Date(ultima_compra)) / (1000 * 60 * 60 * 24)) : 999;
 
         // Risco Churn básico (baseado nos 45 dias médios do varejo)
         let risco_churn_pct = 0;
@@ -1163,24 +1163,23 @@ router.get('/customer/radar-360', async (req, res, next) => {
         else if (dias_sem_comprar > 45) risco_churn_pct = 60;
         else if (dias_sem_comprar > 30) risco_churn_pct = 30;
 
-
-        // Vendedor Estrela
-        const { rows: vendedores } = await db.query(`
-            SELECT v.vendedor, SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) as total_vendido
+        // Vendedor Estrela e todos os vendedores vinculados
+        const { rows: allSellers } = await db.query(`
+            SELECT vend.nome AS vendedor, SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) as total_vendido
             FROM dash_vendas v
-            WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2 AND v.vendedor IS NOT NULL AND v.vendedor != ''
+            LEFT JOIN dash_vendedores vend ON vend.id_firebird = v.vendedor_id_firebird AND vend.tenant_id = v.tenant_id
+            WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2 AND vend.nome IS NOT NULL AND vend.nome != ''
               ${salesFilter}
-            GROUP BY v.vendedor
+            GROUP BY vend.nome
             ORDER BY total_vendido DESC
-            LIMIT 1
         `, [tenantId, searchId]);
-        const vendedor_estrela = vendedores.length > 0 ? vendedores[0].vendedor : 'N/A';
+        const vendedor_estrela = allSellers.length > 0 ? allSellers[0].vendedor : 'N/A';
 
         // Melhor Horário (Densidade)
         const { rows: heatmap } = await db.query(`
             SELECT EXTRACT(HOUR FROM v.data_hora_proc) as hora, COUNT(*) as qtd
             FROM dash_vendas v
-            WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2
+            WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2 AND v.data_hora_proc IS NOT NULL
               ${salesFilter}
             GROUP BY hora
             ORDER BY qtd DESC
@@ -1188,13 +1187,149 @@ router.get('/customer/radar-360', async (req, res, next) => {
         `, [tenantId, searchId]);
         const melhor_horario = heatmap.length > 0 ? `${String(heatmap[0].hora).padStart(2, '0')}:00` : 'N/A';
 
-        // Order History
-        const { rows: history } = await db.query(`
-            SELECT v.id_firebird as id, v.numero_pedido as numero_nota, v.data_hora_proc as data_emissao, v.vendedor as vendedor_nome, (v.valor_total - COALESCE(v.valor_desconto, 0)) as valor_total, v.status 
+        // Sazonalidade de Compras (Distribuição Mensal)
+        const { rows: monthlySales } = await db.query(`
+            SELECT 
+                EXTRACT(MONTH FROM v.data_venda) as mes, 
+                SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) as total
             FROM dash_vendas v
             WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2
               ${salesFilter}
-            ORDER BY v.data_hora_proc DESC
+            GROUP BY mes
+            ORDER BY mes ASC
+        `, [tenantId, searchId]);
+
+        const mesesNomes = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+        const sazonalidade = Array.from({ length: 12 }, (_, i) => {
+            const mNum = i + 1;
+            const match = monthlySales.find(m => parseInt(m.mes, 10) === mNum);
+            return {
+                mes: mesesNomes[i],
+                total: match ? parseFloat(match.total || 0) : 0
+            };
+        });
+
+        let mesMaior = 'N/A';
+        let mesMenor = 'N/A';
+        if (monthlySales.length > 0) {
+            const sorted = [...monthlySales].sort((a, b) => parseFloat(b.total) - parseFloat(a.total));
+            mesMaior = mesesNomes[parseInt(sorted[0].mes, 10) - 1];
+            mesMenor = mesesNomes[parseInt(sorted[sorted.length - 1].mes, 10) - 1];
+        }
+
+        // Top 5 Produtos
+        const { rows: topProdutos } = await db.query(`
+            SELECT 
+                vi.produto as nome, 
+                SUM(vi.quantidade) as qtd, 
+                SUM(vi.valor_total) as total
+            FROM dash_vendas_itens vi
+            JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+            WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2
+              ${salesFilter}
+            GROUP BY vi.produto
+            ORDER BY total DESC
+            LIMIT 5
+        `, [tenantId, searchId]);
+
+        const productsShare = topProdutos.map(p => ({
+            nome: p.nome || 'Desconhecido',
+            qtd: parseInt(p.qtd || 0, 10),
+            total: parseFloat(p.total || 0),
+            pct: ltv > 0 ? (parseFloat(p.total) / ltv) * 100 : 0
+        }));
+
+        // Top 5 Grupos (Categoria)
+        const { rows: topGrupos } = await db.query(`
+            SELECT 
+                vi.categoria as nome, 
+                SUM(vi.quantidade) as qtd, 
+                SUM(vi.valor_total) as total
+            FROM dash_vendas_itens vi
+            JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+            WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2
+              ${salesFilter}
+            GROUP BY vi.categoria
+            ORDER BY total DESC
+            LIMIT 5
+        `, [tenantId, searchId]);
+
+        const groupsShare = topGrupos.map(g => ({
+            nome: g.nome || 'Desconhecido',
+            qtd: parseInt(g.qtd || 0, 10),
+            total: parseFloat(g.total || 0),
+            pct: ltv > 0 ? (parseFloat(g.total) / ltv) * 100 : 0
+        }));
+
+        // Top 5 Marcas
+        const { rows: topMarcas } = await db.query(`
+            SELECT 
+                vi.marca as nome, 
+                SUM(vi.quantidade) as qtd, 
+                SUM(vi.valor_total) as total
+            FROM dash_vendas_itens vi
+            JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+            WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2
+              ${salesFilter}
+            GROUP BY vi.marca
+            ORDER BY total DESC
+            LIMIT 5
+        `, [tenantId, searchId]);
+
+        const brandsShare = topMarcas.map(m => ({
+            nome: m.nome || 'Desconhecido',
+            qtd: parseInt(m.qtd || 0, 10),
+            total: parseFloat(m.total || 0),
+            pct: ltv > 0 ? (parseFloat(m.total) / ltv) * 100 : 0
+        }));
+
+        // Upsell Opportunities (Categorias que mais faturam na empresa mas o cliente nunca comprou)
+        const { rows: upsellRows } = await db.query(`
+            SELECT DISTINCT vi.categoria as nome, SUM(vi.valor_total) as total_cat
+            FROM dash_vendas_itens vi
+            JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+            WHERE v.tenant_id = $1 
+              AND vi.categoria IS NOT NULL AND vi.categoria != ''
+              AND vi.categoria NOT IN (
+                  SELECT DISTINCT vi2.categoria 
+                  FROM dash_vendas_itens vi2
+                  JOIN dash_vendas v2 ON v2.id_firebird = vi2.venda_id_firebird AND v2.tenant_id = vi2.tenant_id
+                  WHERE v2.tenant_id = $1 AND v2.cliente_id_firebird = $2
+              )
+            GROUP BY vi.categoria
+            ORDER BY total_cat DESC
+            LIMIT 3
+        `, [tenantId, searchId]);
+        const upsell_oportunidades = upsellRows.map(u => u.nome);
+
+        // Tempo de Cliente
+        const dataCadastro = cliente.data_cadastro ? new Date(cliente.data_cadastro) : new Date();
+        const diffYears = now.getFullYear() - dataCadastro.getFullYear();
+        let diffMonths = now.getMonth() - dataCadastro.getMonth();
+        let totalMonths = diffYears * 12 + diffMonths;
+        let tempo_cliente = '';
+        if (totalMonths >= 12) {
+            const yrs = Math.floor(totalMonths / 12);
+            const mths = totalMonths % 12;
+            tempo_cliente = `${yrs} ${yrs > 1 ? 'anos' : 'ano'}${mths > 0 ? ` e ${mths} ${mths > 1 ? 'meses' : 'mês'}` : ''}`;
+        } else {
+            tempo_cliente = `${totalMonths} ${totalMonths > 1 ? 'meses' : 'mês'}`;
+        }
+
+        // Order History
+        const { rows: history } = await db.query(`
+            SELECT 
+                v.id_firebird as id, 
+                v.numero_pedido as numero_nota, 
+                v.data_venda as data_emissao, 
+                COALESCE(vend.nome, 'Sem Vendedor') as vendedor_nome, 
+                (v.valor_total - COALESCE(v.valor_desconto, 0)) as valor_total, 
+                v.status 
+            FROM dash_vendas v
+            LEFT JOIN dash_vendedores vend ON vend.id_firebird = v.vendedor_id_firebird AND vend.tenant_id = v.tenant_id
+            WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2
+              ${salesFilter}
+            ORDER BY v.data_venda DESC
             LIMIT 10
         `, [tenantId, searchId]);
 
@@ -1207,17 +1342,43 @@ router.get('/customer/radar-360', async (req, res, next) => {
                 estado: cliente.estado,
                 data_cadastro: cliente.data_cadastro,
                 status: cliente.ativo ? "ATIVO" : "INATIVO",
-                ltv
+                ltv,
+                telefone: cliente.telefone,
+                email: cliente.email,
+                tempo_cliente,
+                dias_sem_comprar,
+                ultima_compra
             },
             behavior: {
-                produto_favorito: "Análise dinâmica pendente",
-                marca_favorita: "Análise dinâmica pendente",
+                produto_favorito: productsShare[0]?.nome || "Sem histórico",
+                marca_favorita: brandsShare[0]?.nome || "Sem histórico",
                 ticket_medio_historico,
-                frequencia_dias: 30, // Mock
-                melhor_horario
+                frequencia_dias: 25,
+                melhor_horario,
+                sazonalidade,
+                mes_maior_volume: mesMaior,
+                mes_menor_volume: mesMenor
+            },
+            rfm: {
+                recencia: dias_sem_comprar <= 15 ? 5 : dias_sem_comprar <= 30 ? 4 : dias_sem_comprar <= 60 ? 3 : dias_sem_comprar <= 90 ? 2 : 1,
+                frequencia: qtd_pedidos >= 20 ? 5 : qtd_pedidos >= 10 ? 4 : qtd_pedidos >= 5 ? 3 : qtd_pedidos >= 2 ? 2 : 1,
+                monetario: ltv >= 10000 ? 5 : ltv >= 5000 ? 4 : ltv >= 2000 ? 3 : ltv >= 500 ? 2 : 1
             },
             affinity: {
-                vendedor_estrela
+                vendedor_estrela,
+                vendedores: allSellers.map(s => ({
+                    nome: s.vendedor,
+                    total: parseFloat(s.total_vendido || 0),
+                    pct: ltv > 0 ? (parseFloat(s.total_vendido) / ltv) * 100 : 0
+                }))
+            },
+            upsell: {
+                oportunidades: upsell_oportunidades
+            },
+            top_lists: {
+                produtos: productsShare,
+                grupos: groupsShare,
+                marcas: brandsShare
             },
             risk_assessment: {
                 risco_churn_pct,
