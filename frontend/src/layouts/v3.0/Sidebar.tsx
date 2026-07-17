@@ -273,8 +273,9 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }: 
         {/* Footer */}
         <div className={clsx(
           "px-4 py-4 border-t border-divider/40 text-[11px] text-text-secondary flex flex-col transition-all duration-300",
-          collapsed ? "lg:items-center lg:justify-center gap-1" : "gap-3"
+          collapsed ? "lg:items-center lg:justify-center gap-1" : "gap-4"
         )}>
+          {/* Version & Logout */}
           <div className={clsx(
             "flex items-center w-full",
             collapsed ? "lg:justify-center justify-between" : "justify-between"
@@ -284,6 +285,7 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }: 
               <div>© 2026 Coliseu Sistemas</div>
             </div>
             <button
+              type="button"
               onClick={() => {
                 useAuthStore.getState().logout()
                 window.location.href = '/login'
@@ -294,15 +296,29 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }: 
               <LogOut size={16} />
             </button>
           </div>
+
+          {/* Logo Card e Frase (Apenas quando expandido) */}
           <div className={clsx(
-            "border-t border-divider/20 pt-2 text-[10px] leading-relaxed w-full",
+            "w-full flex flex-col transition-all duration-300",
             collapsed ? "lg:hidden block" : "block"
           )}>
-            <div className="font-semibold text-text-primary">
-              Gerencie <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-cyan-400">tudo.</span>
+            <div className="bg-white dark:bg-slate-900 p-2.5 rounded-2xl border border-divider/60 shadow-[0_4px_18px_rgba(0,0,0,0.04)] flex items-center justify-center mb-3">
+              <img
+                src="/logo-coliseu.png"
+                alt="Coliseu Sistemas"
+                className="h-10 w-auto object-contain"
+              />
             </div>
-            <div className="text-text-secondary">
-              Cresça mais rápido.
+            <div className="px-1 text-left">
+              <div className="text-[9px] font-bold text-text-secondary/60 uppercase tracking-widest mb-1">
+                BUSINESS INTELLIGENCE
+              </div>
+              <div className="text-base font-bold text-text-primary leading-tight">
+                Gerencie <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-cyan-400">tudo.</span>
+              </div>
+              <div className="text-xs text-text-secondary mt-0.5 font-medium">
+                Cresça mais rápido.
+              </div>
             </div>
           </div>
         </div>
