@@ -59,11 +59,17 @@ export default function ComparativoVendas() {
   const [tipo, setTipo] = useState('Venda - Devolucao')
   const [tipoPeriodo, setTipoPeriodo] = useState<'mes' | 'personalizado'>('mes')
 
+  const currentDate = useMemo(() => new Date(), [])
+  const currentMonth = useMemo(() => currentDate.getMonth() + 1, [currentDate])
+  const currentYear = useMemo(() => currentDate.getFullYear(), [currentDate])
+  const prevMonth = useMemo(() => currentMonth === 1 ? 12 : currentMonth - 1, [currentMonth])
+  const prevYear = useMemo(() => currentMonth === 1 ? currentYear - 1 : currentYear, [currentMonth, currentYear])
+
   // Períodos de Comparação
-  const [analiseMes, setAnaliseMes] = useState(6) // Junho
-  const [analiseAno, setAnaliseAno] = useState(2026)
-  const [comparacaoMes, setComparacaoMes] = useState(6) // Junho
-  const [comparacaoAno, setComparacaoAno] = useState(2025)
+  const [analiseMes, setAnaliseMes] = useState(currentMonth)
+  const [analiseAno, setAnaliseAno] = useState(currentYear)
+  const [comparacaoMes, setComparacaoMes] = useState(prevMonth)
+  const [comparacaoAno, setComparacaoAno] = useState(prevYear)
 
   // Intervalos Personalizados
   const [customAnaliseStart, setCustomAnaliseStart] = useState('')
@@ -90,22 +96,19 @@ export default function ComparativoVendas() {
   // Inicializar datas padrão para o período personalizado
   useEffect(() => {
     if (!customAnaliseStart) {
-      const today = new Date().toISOString().slice(0, 10)
-      const start = new Date()
-      start.setDate(1)
+      const today = new Date()
+      const start = new Date(today.getFullYear(), today.getMonth(), 1)
       setCustomAnaliseStart(start.toISOString().slice(0, 10))
-      setCustomAnaliseEnd(today)
+      setCustomAnaliseEnd(today.toISOString().slice(0, 10))
     }
     if (!customComparacaoStart) {
-      const start = new Date()
-      start.setFullYear(start.getFullYear() - 1)
-      start.setDate(1)
-      const end = new Date()
-      end.setFullYear(end.getFullYear() - 1)
+      const start = new Date(prevYear, prevMonth - 1, 1)
+      const lastDay = new Date(prevYear, prevMonth, 0).getDate()
+      const end = new Date(prevYear, prevMonth - 1, lastDay)
       setCustomComparacaoStart(start.toISOString().slice(0, 10))
       setCustomComparacaoEnd(end.toISOString().slice(0, 10))
     }
-  }, [])
+  }, [prevMonth, prevYear])
 
   // Geração de parâmetros de filtro de período com base na seleção
   const buildDateParams = (month: number, year: number) => {
