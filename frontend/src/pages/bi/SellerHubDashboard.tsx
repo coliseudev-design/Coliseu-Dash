@@ -8,7 +8,7 @@ import {
   Trophy, Users, Box, Award, DollarSign, TrendingUp, TrendingDown, 
   Calendar, MapPin, FileText, ChevronLeft, ChevronRight, Activity,
   BarChart3, ArrowUpDown, Clock, Search, EyeOff, Tag, PieChart as PieIcon, List,
-  Target
+  Target, ChevronDown
 } from 'lucide-react';
 import { 
   ResponsiveContainer, AreaChart, Area, BarChart, Bar, XAxis, YAxis, 
@@ -304,17 +304,20 @@ export default function SellerHubDashboard() {
             </button>
           ) : (
             <div className="flex flex-col gap-1 w-full sm:w-60 md:w-64 flex-1 sm:flex-initial">
-              <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider">Vendedor</span>
-              <select
-                value={selectedVendedor}
-                onChange={(e) => setSelectedVendedor(e.target.value)}
-                className="h-12 px-4 bg-bg-secondary border border-divider text-text-primary rounded-2xl text-sm md:text-base font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all duration-300 w-full cursor-pointer shadow-sm"
-              >
-                <option value="">Selecione um vendedor...</option>
-                {vdFull.data?.data?.map((v: any) => (
-                  <option key={v.id} value={v.id}>{v.nome}</option>
-                ))}
-              </select>
+              <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider pl-1">Vendedor</span>
+              <div className="relative w-full">
+                <select
+                  value={selectedVendedor}
+                  onChange={(e) => setSelectedVendedor(e.target.value)}
+                  className="appearance-none h-10 px-3 pr-8 bg-bg-secondary border border-divider text-text-primary rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all duration-300 w-full cursor-pointer shadow-sm"
+                >
+                  <option value="">Selecione um vendedor...</option>
+                  {vdFull.data?.data?.map((v: any) => (
+                    <option key={v.id} value={v.id}>{v.nome}</option>
+                  ))}
+                </select>
+                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+              </div>
             </div>
           )}
         </div>

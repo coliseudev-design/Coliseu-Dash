@@ -10,7 +10,7 @@ import {
 const ROUTE_CONFIGS: Record<string, { label: string; icon: React.ElementType; color: string }> = {
   '/': { label: 'Visão Estratégica', icon: LayoutDashboard, color: '#3B82F6' },
   '/comparativo-vendas': { label: 'Comparativo', icon: GitCompare, color: '#10B981' },
-  '/bi': { label: 'Inteligência de Vendas', icon: BarChart3, color: '#10B981' },
+  '/bi': { label: 'Hub do Vendedor', icon: Users, color: '#10B981' },
   '/bi/sales': { label: 'Inteligência de Vendas', icon: BarChart3, color: '#10B981' },
   '/bi/hub': { label: 'Hub de Vendas', icon: ShoppingCart, color: '#F97316' },
   '/bi/supplier': { label: 'Hub do Fornecedor', icon: Truck, color: '#F59E0B' },

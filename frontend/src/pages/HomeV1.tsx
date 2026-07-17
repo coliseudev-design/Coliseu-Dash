@@ -278,13 +278,11 @@ export default function HomeV1() {
     <div className={clsx("space-y-4 pb-8", isMobile ? "pb-28" : "pb-8")} aria-label="Visão Estratégica Dashboard">
 
       {/* ── HEADER & PERIOD FILTER ROW ────────────────────────────────────── */}
-      <div className="flex flex-col gap-3">
-        <div>
-          <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight dark:text-white">Visão Estratégica</h2>
-        </div>
+      <div className="bg-bg-primary border border-border rounded-xl p-3 px-4 flex items-center justify-between shadow-sm flex-wrap gap-4 animate-in slide-in-from-top duration-200">
+        <span className="text-[10px] font-bold text-text-secondary/80 uppercase tracking-widest pl-1">Período de Análise</span>
 
         {/* Custom Period Button Group */}
-        <div className="hidden md:flex items-center w-full">
+        <div className="hidden md:flex items-center min-w-0">
           <PeriodFilter excludePeriods={['yesterday']} />
         </div>
       </div>

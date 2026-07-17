@@ -125,10 +125,11 @@ export default function ComparativoVendas() {
       ...base,
       period: 'custom',
       depto_id: selectedBranch !== 'todas' ? selectedBranch : undefined,
-      vendedor: vendedor !== 'todas' ? vendedor : undefined,
+      vendedor_id: vendedor !== 'todas' ? vendedor : undefined,
       cidade: cidade !== 'todas' ? cidade : undefined,
       marca: marca !== 'todas' ? marca : undefined,
       categoria: categoria !== 'todas' ? categoria : undefined,
+      grupo: categoria !== 'todas' ? categoria : undefined,
       status: status !== 'Todos' ? status : undefined,
       tipo: tipo !== 'Todos' ? tipo : undefined
     }
@@ -142,10 +143,11 @@ export default function ComparativoVendas() {
       ...base,
       period: 'custom',
       depto_id: selectedBranch !== 'todas' ? selectedBranch : undefined,
-      vendedor: vendedor !== 'todas' ? vendedor : undefined,
+      vendedor_id: vendedor !== 'todas' ? vendedor : undefined,
       cidade: cidade !== 'todas' ? cidade : undefined,
       marca: marca !== 'todas' ? marca : undefined,
       categoria: categoria !== 'todas' ? categoria : undefined,
+      grupo: categoria !== 'todas' ? categoria : undefined,
       status: status !== 'Todos' ? status : undefined,
       tipo: tipo !== 'Todos' ? tipo : undefined
     }
@@ -490,7 +492,7 @@ export default function ComparativoVendas() {
               >
                 <option value="todas">Todos os Vendedores</option>
                 {sellersDropdown.data?.data?.map((s: any) => (
-                  <option key={s.id || s.nome} value={s.nome}>{s.nome.toLowerCase()}</option>
+                  <option key={s.id || s.nome} value={s.id}>{s.nome.toLowerCase()}</option>
                 ))}
               </select>
               <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
