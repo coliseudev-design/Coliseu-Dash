@@ -94,9 +94,17 @@ export default function CustomerAnalyticsDashboard() {
   return (
     <div aria-label="Análise de Clientes Dashboard" className="space-y-6 animate-in fade-in duration-300">
       
-      {/* CARD DE FILTROS SUPERIORES */}
-      <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 flex flex-wrap gap-5 items-center justify-between animate-in slide-in-from-top duration-200">
-        <div className="flex flex-wrap gap-5 items-center w-full">
+      {/* CARD 1: PERÍODO DE ANÁLISE */}
+      <div className="bg-bg-primary border border-divider rounded-2xl p-4 flex items-center justify-between shadow-card animate-in slide-in-from-top duration-200">
+        <span className="text-[10px] font-bold text-text-secondary/80 uppercase tracking-widest pl-1">Período de Análise</span>
+        <div className="flex items-center min-w-0">
+          <PeriodFilter />
+        </div>
+      </div>
+
+      {/* CARD 2: FILTROS DE SELEÇÃO */}
+      <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 flex flex-wrap gap-4 items-center animate-in slide-in-from-top duration-200">
+        <div className="flex flex-wrap gap-4 items-center w-full">
           {/* Vendedor */}
           <div className="flex flex-col gap-1 w-full sm:w-64">
             <span className="text-[10px] font-bold text-text-secondary/70 uppercase tracking-wider pl-1">Vendedor</span>
@@ -136,14 +144,6 @@ export default function CustomerAnalyticsDashboard() {
                 ))}
               </select>
               <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
-            </div>
-          </div>
-
-          {/* Período */}
-          <div className="flex flex-col gap-1 ml-auto w-full sm:w-auto">
-            <span className="text-[10px] font-bold text-text-secondary/70 uppercase tracking-wider pl-1">Período</span>
-            <div className="flex items-center min-w-0">
-              <PeriodFilter />
             </div>
           </div>
         </div>
@@ -499,37 +499,37 @@ export default function CustomerAnalyticsDashboard() {
                       <th className="px-4 py-3 text-center">Ações</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-divider/10 bg-bg-primary text-text-primary font-medium">
+                  <tbody className="divide-y divide-divider/10 bg-bg-primary text-text-primary text-[10.5px] font-medium">
                     {list.data?.data?.map((c: any) => {
                       const riskLevel = c.dias_inativo > 90 ? '99%' : c.dias_inativo > 60 ? '75%' : c.dias_inativo > 30 ? '40%' : '0%';
                       const isAlert = c.dias_inativo > 60;
                       return (
                         <tr key={c.id} className="hover:bg-bg-secondary/20 transition-colors">
                           {/* Cliente */}
-                          <td className="px-4 py-3 min-w-[200px]">
-                            <span className="block font-bold text-text-primary truncate max-w-[220px]">{c.nome}</span>
-                            <span className="block text-[10px] text-text-secondary/70 font-mono mt-0.5">{c.documento || '—'}</span>
+                          <td className="px-4 py-2 min-w-[200px]">
+                            <span className="block font-bold text-text-primary truncate max-w-[220px] text-[11px]">{c.nome}</span>
+                            <span className="block text-[8.5px] text-text-secondary/70 font-mono mt-0.5">{c.documento || '—'}</span>
                           </td>
                           {/* Cidade */}
-                          <td className="px-4 py-3 text-text-secondary font-bold uppercase truncate max-w-[120px]">
+                          <td className="px-4 py-2 text-text-secondary font-bold uppercase truncate max-w-[120px]">
                             {c.cidade ? `${c.cidade}/${c.estado}` : '—'}
                           </td>
                           {/* Vendedor */}
-                          <td className="px-4 py-3 text-text-secondary truncate max-w-[150px]">
+                          <td className="px-4 py-2 text-text-secondary truncate max-w-[150px]">
                             {c.vendedor_resp || '—'}
                           </td>
                           {/* Pedidos */}
-                          <td className="px-4 py-3 text-right font-mono font-bold">
+                          <td className="px-4 py-2 text-right font-mono font-bold">
                             {formatNum(c.qtd_pedidos)}
                           </td>
                           {/* Última Compra */}
-                          <td className="px-4 py-3 text-text-secondary font-mono">
+                          <td className="px-4 py-2 text-text-secondary font-mono">
                             {c.ultimo_pedido ? new Date(c.ultimo_pedido).toLocaleDateString('pt-BR') : '—'}
                           </td>
                           {/* Dias Inativo */}
-                          <td className="px-4 py-3 text-right font-mono">
+                          <td className="px-4 py-2 text-right font-mono">
                             <span className={clsx(
-                              "px-2 py-0.5 rounded-md font-bold text-[10px]",
+                              "px-2 py-0.5 rounded-md font-bold text-[9px]",
                               c.dias_inativo > 90 ? "bg-red-500/10 text-red-500" :
                               c.dias_inativo > 30 ? "bg-orange-500/10 text-orange-600" :
                               "bg-emerald-500/10 text-emerald-600"
@@ -538,9 +538,9 @@ export default function CustomerAnalyticsDashboard() {
                             </span>
                           </td>
                           {/* Risco Churn */}
-                          <td className="px-4 py-3 text-right font-mono">
+                          <td className="px-4 py-2 text-right font-mono">
                             <span className={clsx(
-                              "font-black",
+                              "font-black text-[10.5px]",
                               c.dias_inativo > 90 ? "text-red-500" :
                               c.dias_inativo > 30 ? "text-orange-500" :
                               "text-emerald-600"
@@ -549,10 +549,10 @@ export default function CustomerAnalyticsDashboard() {
                             </span>
                           </td>
                           {/* Ações */}
-                          <td className="px-4 py-3 text-center">
+                          <td className="px-4 py-2 text-center">
                             <button
                               onClick={() => navigate(`/bi/customer?id=${c.id}`)}
-                              className="px-2.5 py-1 bg-bg-secondary hover:bg-brand-500 hover:text-white border border-divider text-text-primary text-[10px] font-black rounded-lg transition-all cursor-pointer shadow-sm uppercase tracking-wider"
+                              className="px-2 py-0.5 bg-bg-secondary hover:bg-brand-500 hover:text-white border border-divider text-text-primary text-[9px] font-black rounded-lg transition-all cursor-pointer shadow-sm uppercase tracking-wider"
                             >
                               Ver Ficha
                             </button>
