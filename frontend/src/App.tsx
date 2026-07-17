@@ -10,6 +10,7 @@ import DashboardLayout from './components/DashboardLayout'
 import ProtectedRoute from './components/ProtectedRoute'
 
 import Home from './pages/Home'
+import ComparativoVendas from './pages/ComparativoVendas'
 import FinanceiroEmDesenvolvimento from './pages/FinanceiroEmDesenvolvimento'
 import FluxoCaixa from './pages/Financeiro' // Usaremos a mesma página por enquanto ou podemos separar futuramente
 import Comissoes from './pages/Comissoes'
@@ -83,6 +84,7 @@ export default function App() {
         }
       >
         <Route index element={<Home />} />
+        <Route path="comparativo-vendas" element={<ProtectedRoute permission="inicio"><ComparativoVendas /></ProtectedRoute>} />
         <Route path="financeiro" element={<ProtectedRoute permission="financeiro"><FinanceiroEmDesenvolvimento /></ProtectedRoute>} />
         <Route path="fluxo-caixa" element={<ProtectedRoute permission="fluxo-caixa"><FluxoCaixa /></ProtectedRoute>} />
         <Route path="estoque" element={<ProtectedRoute permission="estoque"><Estoque /></ProtectedRoute>} />

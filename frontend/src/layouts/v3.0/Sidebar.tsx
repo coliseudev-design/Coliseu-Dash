@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, ShoppingCart, Wallet,
   Trophy, BarChart3, Users, X, LogOut, Shield, DollarSign,
-  Truck, Map, BrainCircuit, Package, Settings, ChevronDown, ChevronUp, ChevronLeft
+  Truck, Map, BrainCircuit, Package, Settings, ChevronDown, ChevronUp, ChevronLeft, GitCompare
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useAuthStore } from '../../store/authStore'
@@ -17,6 +17,7 @@ interface Props {
 
 const MODULES = [
   { to: '/', label: 'Visão Estratégica', icon: LayoutDashboard, exact: true, id: 'inicio', color: '#3B82F6' },
+  { to: '/comparativo-vendas', label: 'Comparativo de Vendas', icon: GitCompare, exact: true, id: 'inicio', color: '#10B981' },
 ]
 
 const BI_MODULES = [
@@ -30,7 +31,7 @@ const BI_MODULES = [
   { to: '/bi/customer-analytics',    label: 'Análise de Clientes',    icon: Users,                       id: 'bi_customer_analytics',  color: '#14B8A6' },
   { to: '/bi/goals',                 label: 'Análise de Metas',       icon: Trophy,                      id: 'bi_goals',               color: '#EAB308' },
   { to: '/bi/heatmap',               label: 'Mapa de Calor',          icon: Map,                         id: 'bi_heatmap',             color: '#0EA5E9' },
-  { to: '/bi/ai-insights',           label: 'Coliseu AI',             icon: BrainCircuit,                id: 'bi_ai_insights',         color: '#8B5CF6' },
+  { to: '/bi/ai-insights',           label: 'Coliseu AI',             icon: BrainCircuit,                id: 'bi_ai_insights',         color: '#00A896' },
 ]
 
 const CONFIG_MODULES = [

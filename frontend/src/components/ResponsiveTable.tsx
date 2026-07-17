@@ -30,7 +30,7 @@ export default function ResponsiveTable<T>({
     <>
       {/* Desktop — tabela normal */}
       <div className={`hidden sm:block overflow-x-auto rounded-xl border border-divider/50 ${className}`}>
-        <table className="w-full text-left text-xs whitespace-nowrap">
+        <table className="w-full text-left text-xs whitespace-nowrap" aria-label="Tabela de dados">
           <thead>
             <tr className="border-b border-divider/50 bg-bg-secondary/40">
               {columns.map((col) => (
