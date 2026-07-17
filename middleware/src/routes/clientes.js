@@ -26,7 +26,7 @@ router.get('/lista', async (req, res, next) => {
         let sIdx = 2;
 
         if (deptoId && deptoId !== 'todas' && deptoId !== 'all') {
-            statsWhere.push(`v.depto_id_firebird = $${sIdx}`);
+            statsWhere.push(`v.depto_id = $${sIdx}`);
             statsParams.push(parseInt(deptoId, 10));
             sIdx++;
         }
@@ -167,9 +167,11 @@ router.get('/analytics-full', async (req, res, next) => {
         const { start, end } = getPeriodRange(period, start_date, end_date, anchorDate);
 
         // Período anterior
-        const diffMs = end.getTime() - start.getTime();
-        const prevStart = new Date(start.getTime() - diffMs - 1);
-        const prevEnd = new Date(start.getTime() - 1);
+        const startDateObj = new Date(start);
+        const endDateObj = new Date(end);
+        const diffMs = endDateObj.getTime() - startDateObj.getTime();
+        const prevStart = new Date(startDateObj.getTime() - diffMs - 1);
+        const prevEnd = new Date(startDateObj.getTime() - 1);
 
         const salesFilter = cfopUtil.getSalesFilterClause('v');
 
@@ -179,7 +181,7 @@ router.get('/analytics-full', async (req, res, next) => {
         let pIdx = 2;
 
         if (deptoId && deptoId !== 'todas' && deptoId !== 'all') {
-            salesWhere.push(`v.depto_id_firebird = $${pIdx}`);
+            salesWhere.push(`v.depto_id = $${pIdx}`);
             salesParams.push(parseInt(deptoId, 10));
             pIdx++;
         }

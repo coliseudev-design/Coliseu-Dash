@@ -7,7 +7,8 @@ import { useBranchPeriodQuery, useApiQuery } from '../../hooks/useApi';
 import { BiPeriodFilter } from '../../types/bi.types';
 import { 
   Users, UserPlus, UserMinus, Activity, AlertCircle, 
-  Search, ChevronLeft, ChevronRight, ChevronDown, Award, EyeOff, FileText 
+  Search, ChevronLeft, ChevronRight, ChevronDown, Award, EyeOff, FileText,
+  TrendingUp, TrendingDown
 } from 'lucide-react';
 import { formatBRL, formatNum } from '../../utils/format';
 import clsx from 'clsx';
