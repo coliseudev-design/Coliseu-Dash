@@ -85,7 +85,7 @@ export default function App() {
       >
         <Route index element={<Home />} />
         <Route path="comparativo-vendas" element={<ProtectedRoute permission="inicio"><ComparativoVendas /></ProtectedRoute>} />
-        <Route path="hub-vendedor" element={<ProtectedRoute permission="bi_seller_hub"><SellerHubDashboard /></ProtectedRoute>} />
+        <Route path="hub-vendedor" element={<ProtectedRoute permission="bi_sales"><SellerHubDashboard /></ProtectedRoute>} />
         <Route path="financeiro" element={<ProtectedRoute permission="financeiro"><FinanceiroEmDesenvolvimento /></ProtectedRoute>} />
         <Route path="fluxo-caixa" element={<ProtectedRoute permission="fluxo-caixa"><FluxoCaixa /></ProtectedRoute>} />
         <Route path="estoque" element={<ProtectedRoute permission="estoque"><Estoque /></ProtectedRoute>} />
