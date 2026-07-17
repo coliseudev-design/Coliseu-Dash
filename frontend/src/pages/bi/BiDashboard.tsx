@@ -29,9 +29,13 @@ export default function BiDashboard() {
     ...branchParam
   };
 
+  const queryParams = new URLSearchParams(location.search);
+  const hasCustomerId = queryParams.has('id');
+  const isRadar360Selection = location.pathname.includes('/bi/customer') && !hasCustomerId;
+
   const showFilter = !['/bi/abc', '/bi/customer-analytics', '/bi/goals', '/bi/heatmap', '/bi/comparative'].some(
     p => location.pathname.includes(p)
-  );
+  ) && !isRadar360Selection;
 
   return (
     <div className="flex flex-col h-full space-y-4">

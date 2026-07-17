@@ -1117,7 +1117,6 @@ router.get('/customer/search', async (req, res, next) => {
     } catch (err) { next(err); }
 });
 
-// GET /api/bi/customer/radar-360
 router.get('/customer/radar-360', async (req, res, next) => {
     try {
         const tenantId = req.tenant.id;
@@ -1125,7 +1124,7 @@ router.get('/customer/radar-360', async (req, res, next) => {
 
         if (!searchId) {
             return res.json({
-                dna: { cliente_id: 0, nome: "Busque um cliente", documento: "-", cidade: "-", estado: "-", data_cadastro: new Date(), status: "INATIVO", ltv: 0 },
+                dna: { cliente_id: 0, nome: "Busque um cliente", documento: "-", cidade: "-", estado: "-", data_cadastro: new Date(), status: "INATIVO", ltv: 0, qtd_pedidos: 0 },
                 behavior: { produto_favorito: "-", marca_favorita: "-", ticket_medio_historico: 0, frequencia_dias: 0 },
                 risk_assessment: { risco_churn_pct: 0, tendencia: "ESTAVEL", ultima_compra: null, dias_sem_comprar: 0 },
                 order_history: []
@@ -1138,8 +1137,9 @@ router.get('/customer/radar-360', async (req, res, next) => {
 
         const cliente = c[0];
         const salesFilter = cfopUtil.getSalesFilterClause('v');
+        const { start, end } = await getBiDateRange(req, tenantId);
 
-        // LTV e Ticket Medio Histórico
+        // LTV e Ticket Medio Histórico (Lifetime)
         const { rows: vInfo } = await db.query(`
             SELECT 
                 COALESCE(SUM(v.valor_total - COALESCE(v.valor_desconto, 0)), 0) as ltv,
@@ -1163,16 +1163,17 @@ router.get('/customer/radar-360', async (req, res, next) => {
         else if (dias_sem_comprar > 45) risco_churn_pct = 60;
         else if (dias_sem_comprar > 30) risco_churn_pct = 30;
 
-        // Vendedor Estrela e todos os vendedores vinculados
+        // Vendedor Estrela e todos os vendedores vinculados (Filtrado por data)
         const { rows: allSellers } = await db.query(`
             SELECT vend.nome AS vendedor, SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) as total_vendido
             FROM dash_vendas v
             LEFT JOIN dash_vendedores vend ON vend.id_firebird = v.vendedor_id_firebird AND vend.tenant_id = v.tenant_id
             WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2 AND vend.nome IS NOT NULL AND vend.nome != ''
+              AND v.data_venda >= $3 AND v.data_venda <= $4
               ${salesFilter}
             GROUP BY vend.nome
             ORDER BY total_vendido DESC
-        `, [tenantId, searchId]);
+        `, [tenantId, searchId, toSafeSqlString(start), toSafeSqlString(end)]);
         const vendedor_estrela = allSellers.length > 0 ? allSellers[0].vendedor : 'N/A';
 
         // Melhor Horário (Densidade)
@@ -1187,7 +1188,7 @@ router.get('/customer/radar-360', async (req, res, next) => {
         `, [tenantId, searchId]);
         const melhor_horario = heatmap.length > 0 ? `${String(heatmap[0].hora).padStart(2, '0')}:00` : 'N/A';
 
-        // Sazonalidade de Compras (Distribuição Mensal)
+        // Sazonalidade de Compras (Distribuição Mensal - Histórico)
         const { rows: monthlySales } = await db.query(`
             SELECT 
                 EXTRACT(MONTH FROM v.data_venda) as mes, 
@@ -1217,7 +1218,7 @@ router.get('/customer/radar-360', async (req, res, next) => {
             mesMenor = mesesNomes[parseInt(sorted[sorted.length - 1].mes, 10) - 1];
         }
 
-        // Top 5 Produtos
+        // Top 5 Produtos (Filtrado por data)
         const { rows: topProdutos } = await db.query(`
             SELECT 
                 vi.produto as nome, 
@@ -1226,11 +1227,12 @@ router.get('/customer/radar-360', async (req, res, next) => {
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
             WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2
+              AND v.data_venda >= $3 AND v.data_venda <= $4
               ${salesFilter}
             GROUP BY vi.produto
             ORDER BY total DESC
             LIMIT 5
-        `, [tenantId, searchId]);
+        `, [tenantId, searchId, toSafeSqlString(start), toSafeSqlString(end)]);
 
         const productsShare = topProdutos.map(p => ({
             nome: p.nome || 'Desconhecido',
@@ -1239,7 +1241,7 @@ router.get('/customer/radar-360', async (req, res, next) => {
             pct: ltv > 0 ? (parseFloat(p.total) / ltv) * 100 : 0
         }));
 
-        // Top 5 Grupos (Categoria)
+        // Top 5 Grupos (Categoria - Filtrado por data)
         const { rows: topGrupos } = await db.query(`
             SELECT 
                 vi.categoria as nome, 
@@ -1248,11 +1250,12 @@ router.get('/customer/radar-360', async (req, res, next) => {
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
             WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2
+              AND v.data_venda >= $3 AND v.data_venda <= $4
               ${salesFilter}
             GROUP BY vi.categoria
             ORDER BY total DESC
             LIMIT 5
-        `, [tenantId, searchId]);
+        `, [tenantId, searchId, toSafeSqlString(start), toSafeSqlString(end)]);
 
         const groupsShare = topGrupos.map(g => ({
             nome: g.nome || 'Desconhecido',
@@ -1261,7 +1264,7 @@ router.get('/customer/radar-360', async (req, res, next) => {
             pct: ltv > 0 ? (parseFloat(g.total) / ltv) * 100 : 0
         }));
 
-        // Top 5 Marcas
+        // Top 5 Marcas (Filtrado por data)
         const { rows: topMarcas } = await db.query(`
             SELECT 
                 vi.marca as nome, 
@@ -1270,11 +1273,12 @@ router.get('/customer/radar-360', async (req, res, next) => {
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
             WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2
+              AND v.data_venda >= $3 AND v.data_venda <= $4
               ${salesFilter}
             GROUP BY vi.marca
             ORDER BY total DESC
             LIMIT 5
-        `, [tenantId, searchId]);
+        `, [tenantId, searchId, toSafeSqlString(start), toSafeSqlString(end)]);
 
         const brandsShare = topMarcas.map(m => ({
             nome: m.nome || 'Desconhecido',
@@ -1343,6 +1347,7 @@ router.get('/customer/radar-360', async (req, res, next) => {
                 data_cadastro: cliente.data_cadastro,
                 status: cliente.ativo ? "ATIVO" : "INATIVO",
                 ltv,
+                qtd_pedidos,
                 telefone: cliente.telefone,
                 email: cliente.email,
                 tempo_cliente,

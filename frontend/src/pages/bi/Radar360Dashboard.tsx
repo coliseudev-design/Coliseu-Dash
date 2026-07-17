@@ -514,7 +514,7 @@ export default function Radar360Dashboard() {
           </div>
           <div>
             <span className="text-[9px] font-black text-text-secondary/70 uppercase tracking-widest block mb-0.5">Compras Totais</span>
-            <span className="text-lg font-black text-text-primary block font-mono leading-tight">{qtd_pedidos} compras</span>
+            <span className="text-lg font-black text-text-primary block font-mono leading-tight">{dna.qtd_pedidos || 0} compras</span>
             <span className="text-[9px] text-text-secondary font-bold">Faturamento de pedidos realizados</span>
           </div>
         </div>
