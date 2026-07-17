@@ -86,19 +86,32 @@ export default function Sidebar({ open, onClose }: Props) {
         )}
       >
         {/* Logo */}
-        <div className="h-20 px-4 flex items-center justify-between border-b border-divider/40 bg-transparent">
-          <img
-            src="/logo-coliseu.png"
-            alt="Coliseu Sistemas"
-            className="h-14 w-auto object-contain"
-          />
-          <button
-            className="lg:hidden p-1.5 text-text-secondary hover:bg-bg-secondary rounded"
-            onClick={onClose}
-            aria-label="Fechar menu"
-          >
-            <X size={20} />
-          </button>
+        <div className="px-4 py-5 flex flex-col border-b border-divider/40 bg-transparent">
+          <div className="flex items-center justify-between">
+            <img
+              src="/logo-coliseu.png"
+              alt="Coliseu Sistemas"
+              className="h-12 w-auto object-contain"
+            />
+            <button
+              className="lg:hidden p-1.5 text-text-secondary hover:bg-bg-secondary rounded"
+              onClick={onClose}
+              aria-label="Fechar menu"
+            >
+              <X size={20} />
+            </button>
+          </div>
+          <div className="mt-4 px-1">
+            <div className="text-[10px] font-bold text-text-secondary/60 uppercase tracking-widest mb-1.5">
+              PORTAL GERENCIAL
+            </div>
+            <div className="text-base font-bold text-text-primary leading-tight">
+              Gerencie <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-cyan-400">tudo.</span>
+            </div>
+            <div className="text-xs text-text-secondary mt-1 font-medium">
+              Cresça mais rápido.
+            </div>
+          </div>
         </div>
 
         {/* Nav */}

@@ -251,43 +251,42 @@ export default function Login() {
                     e.currentTarget.style.display = 'none';
                   }}
                 />
-                <h2 className="font-heading text-3xl font-bold text-text-primary tracking-tight">Bem-vindo de volta.</h2>
-                <p className="text-text-secondary mt-2 text-base">
-                  Entre para acessar seus dashboards gerenciais.
+                <h2 className="font-heading text-2xl font-bold text-text-primary tracking-tight mt-4">
+                  Gerencie <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-cyan-400">tudo.</span>
+                </h2>
+                <p className="text-text-secondary text-lg font-medium mt-1">
+                  Cresça mais rápido.
                 </p>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-5">
                 {/* Seletor do Sistema (Tipo do Sistema) */}
                 {!requiresSelection && (
-                  <div>
-                    <label className="block text-sm font-medium text-text-primary mb-2">Modelo de Sistema</label>
-                    <div className="grid grid-cols-2 gap-2 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl border border-border">
-                      <button
-                        type="button"
-                        onClick={() => setVersao('Dash 1.0')}
-                        className={`py-2 px-3 rounded-lg font-semibold text-xs transition-all flex items-center justify-center gap-1.5 ${
-                          versao === 'Dash 1.0'
-                            ? 'bg-brand-600 text-white shadow-sm'
-                            : 'text-text-secondary hover:text-text-primary hover:bg-slate-200 dark:hover:bg-slate-700/50'
-                        }`}
-                      >
-                        <LayoutDashboard className="w-3.5 h-3.5" />
-                        <span>Dash 1.0</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setVersao('B.I IA.')}
-                        className={`py-2 px-3 rounded-lg font-semibold text-xs transition-all flex items-center justify-center gap-1.5 ${
-                          versao === 'B.I IA.'
-                            ? 'bg-brand-600 text-white shadow-sm'
-                            : 'text-text-secondary hover:text-text-primary hover:bg-slate-200 dark:hover:bg-slate-700/50'
-                        }`}
-                      >
-                        <BarChart3 className="w-3.5 h-3.5" />
-                        <span>B.I IA.</span>
-                      </button>
-                    </div>
+                  <div className="grid grid-cols-2 gap-2 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl border border-border">
+                    <button
+                      type="button"
+                      onClick={() => setVersao('Dash 1.0')}
+                      className={`py-2 px-3 rounded-lg font-semibold text-xs transition-all flex items-center justify-center gap-1.5 ${
+                        versao === 'Dash 1.0'
+                          ? 'bg-brand-600 text-white shadow-sm'
+                          : 'text-text-secondary hover:text-text-primary hover:bg-slate-200 dark:hover:bg-slate-700/50'
+                      }`}
+                    >
+                      <LayoutDashboard className="w-3.5 h-3.5" />
+                      <span>Dash 1.0</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setVersao('B.I IA.')}
+                      className={`py-2 px-3 rounded-lg font-semibold text-xs transition-all flex items-center justify-center gap-1.5 ${
+                        versao === 'B.I IA.'
+                          ? 'bg-brand-600 text-white shadow-sm'
+                          : 'text-text-secondary hover:text-text-primary hover:bg-slate-200 dark:hover:bg-slate-700/50'
+                      }`}
+                    >
+                      <BarChart3 className="w-3.5 h-3.5" />
+                      <span>B.I IA.</span>
+                    </button>
                   </div>
                 )}
 
@@ -331,21 +330,6 @@ export default function Login() {
                         >
                           {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
-                      </div>
-
-                      {/* Botão/Checkbox Lembrar Senha */}
-                      <div className="flex items-center justify-between mt-3">
-                        <label className="flex items-center gap-2 cursor-pointer group">
-                          <input
-                            type="checkbox"
-                            checked={salvarSenha}
-                            onChange={(e) => setSalvarSenha(e.target.checked)}
-                            className="w-4.5 h-4.5 rounded border-border text-brand-600 focus:ring-brand-500 cursor-pointer transition-all dark:bg-bg-primary"
-                          />
-                          <span className="text-sm text-text-secondary group-hover:text-text-primary transition-colors font-medium select-none">
-                            Salvar Senha
-                          </span>
-                        </label>
                       </div>
                     </div>
                   </>
