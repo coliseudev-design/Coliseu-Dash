@@ -135,13 +135,20 @@ router.post('/login', async (req, res) => {
             return res.status(403).json({ error: 'Usuário inativo', code: 'USER_INACTIVE' });
         }
 
-        // Validar senha (REMOVIDO A PEDIDO DO USUÁRIO)
-        // const isMatch = await bcrypt.compare(password, user.senha_hash);
-        // if (!isMatch) {
-        //     return res.status(401).json({ error: 'Senha incorreta', code: 'INVALID_LOGIN' });
-        // }
+        // Validar senha
+        const isMatch = await bcrypt.compare(password, user.senha_hash);
+        if (!isMatch) {
+            return res.status(401).json({ error: 'Senha incorreta', code: 'INVALID_LOGIN' });
+        }
+
+        // Se a senha digitada for a senha padrão, solicita a alteração no frontend
+        if (password === '123456') {
+            return res.status(200).json({ requiresPasswordChange: true, email: user.email });
+        }
 
         // TODO: Futuramente chamar o Identity Server aqui para checar limite de licenças simultâneas do tenant
+
+        const selectedVersion = req.body.versao || user.versao || 'Dash 1.0';
 
         // Validar licença de versão no Identity Server
         let licensedVersions = [];
@@ -170,11 +177,10 @@ router.post('/login', async (req, res) => {
                             return res.status(403).json({ error: 'Licença desativada no servidor de licenças.', code: 'LICENSE_INACTIVE' });
                         }
                         licensedVersions = licenseData.versions || [];
-                        const userVersion = user.versao || 'Dash 1.0';
-                        if (licensedVersions.length > 0 && !licensedVersions.includes(userVersion)) {
-                            logger.warn('[Auth] Bloqueio de login: versão não habilitada na licença', { email: user.email, userVersion, licensedVersions });
+                        if (licensedVersions.length > 0 && !licensedVersions.includes(selectedVersion)) {
+                            logger.warn('[Auth] Bloqueio de login: versão não habilitada na licença', { email: user.email, selectedVersion, licensedVersions });
                             return res.status(403).json({ 
-                                error: `A versão '${userVersion}' configurada para o seu usuário não está habilitada na licença da empresa.`, 
+                                error: `A versão '${selectedVersion}' não está habilitada na licença da empresa no servidor de licenças.`, 
                                 code: 'VERSION_NOT_LICENSED' 
                             });
                         }
@@ -192,26 +198,6 @@ router.post('/login', async (req, res) => {
                 }
             }
         }
-
-        // Gerar JWT
-        const token = jwt.sign(
-            {
-                sub: user.id,
-                email: user.email,
-                tenant: user.tenant_id,
-                tenantId: user.tenant_id,
-                module: config.security.expectedModuleSlug,
-                companyName: user.tenant_id === '00000000-0000-0000-0000-000000000000' ? 'Coliseu Sistemas (Master)' : 'Empresa Cliente',
-                role: user.role,
-                layoutVersion: user.versao
-            },
-            config.security.jwtDeviceKey,
-            { expiresIn: '12h' }
-        );
-
-        logger.info('[Auth] Login interno bem-sucedido', { email: user.email, tenant: user.tenant_id });
-
-        const permissions = await getUserPermissions(user.id, user.tenant_id);
 
         // Buscar as versões às quais o usuário tem acesso
         let available_versions = [];
@@ -236,6 +222,41 @@ router.post('/login', async (req, res) => {
             available_versions = available_versions.filter(v => licensedVersions.includes(v));
         }
 
+        // Validar se o usuário tem permissão para a versão selecionada
+        if (!available_versions.includes(selectedVersion)) {
+            logger.warn('[Auth] Bloqueio de login: usuário sem permissão para a versão', { email: user.email, selectedVersion, available_versions });
+            return res.status(403).json({
+                error: `Você não tem acesso à versão '${selectedVersion}'. Verifique seus grupos de acesso.`,
+                code: 'USER_VERSION_ACCESS_DENIED'
+            });
+        }
+
+        // Atualizar a versão ativa do usuário no banco de dados se for diferente
+        if (user.versao !== selectedVersion) {
+            await db.query('UPDATE dash_usuarios SET versao = $1 WHERE id = $2', [selectedVersion, user.id]);
+            user.versao = selectedVersion;
+        }
+
+        // Gerar JWT
+        const token = jwt.sign(
+            {
+                sub: user.id,
+                email: user.email,
+                tenant: user.tenant_id,
+                tenantId: user.tenant_id,
+                module: config.security.expectedModuleSlug,
+                companyName: user.tenant_id === '00000000-0000-0000-0000-000000000000' ? 'Coliseu Sistemas (Master)' : 'Empresa Cliente',
+                role: user.role,
+                layoutVersion: selectedVersion
+            },
+            config.security.jwtDeviceKey,
+            { expiresIn: '12h' }
+        );
+
+        logger.info('[Auth] Login interno bem-sucedido', { email: user.email, tenant: user.tenant_id, version: selectedVersion });
+
+        const permissions = await getUserPermissions(user.id, user.tenant_id);
+
         // Filtrar as permissões de layout (layout_1, layout_2, layout_3) com base na licença contratada
         let filteredPermissions = [...permissions];
         if (user.tenant_id !== '00000000-0000-0000-0000-000000000000' && licensedVersions.length > 0) {
@@ -256,8 +277,8 @@ router.post('/login', async (req, res) => {
                 role: user.role,
                 tenant_id: user.tenant_id,
                 permissions: filteredPermissions,
-                versao: user.versao,
-                layout_version: user.versao,
+                versao: selectedVersion,
+                layout_version: selectedVersion,
                 available_versions
             }
         });
@@ -265,6 +286,183 @@ router.post('/login', async (req, res) => {
     } catch (err) {
         logger.error('[Auth] Erro na rota de login', err);
         res.status(500).json({ error: 'Erro interno no servidor', code: 'INTERNAL_ERROR' });
+    }
+});
+
+/**
+ * Rota para alterar a senha padrão (123456)
+ */
+router.post('/change-default-password', async (req, res) => {
+    try {
+        const { email, password, newPassword, selectedTenantId, versao } = req.body;
+
+        if (!email || !password || !newPassword) {
+            return res.status(400).json({ error: 'Email, senha atual e nova senha são obrigatórios', code: 'MISSING_FIELDS' });
+        }
+
+        if (password !== '123456') {
+            return res.status(400).json({ error: 'Esta rota é apenas para alteração de senha padrão', code: 'NOT_DEFAULT_PASSWORD' });
+        }
+
+        if (newPassword === '123456') {
+            return res.status(400).json({ error: 'A nova senha não pode ser a senha padrão "123456"', code: 'PASSWORD_TOO_WEAK' });
+        }
+
+        const normalizedEmail = email.trim().toLowerCase();
+
+        // Buscar usuário localmente
+        const query = `SELECT id, tenant_id, email, nome, role, ativo, senha_hash, permissions, versao FROM dash_usuarios WHERE LOWER(TRIM(email)) = LOWER(TRIM($1))`;
+        const result = await db.query(query, [normalizedEmail]);
+
+        if (result.rowCount === 0) {
+            return res.status(401).json({ error: 'Usuário não encontrado', code: 'INVALID_LOGIN' });
+        }
+
+        const user = result.rows[0];
+
+        if (!user.ativo) {
+            return res.status(403).json({ error: 'Usuário inativo', code: 'USER_INACTIVE' });
+        }
+
+        // Validar se a senha atual confere
+        const isMatch = await bcrypt.compare(password, user.senha_hash);
+        if (!isMatch) {
+            return res.status(401).json({ error: 'Senha atual incorreta', code: 'INVALID_LOGIN' });
+        }
+
+        // Criar hash da nova senha
+        const salt = await bcrypt.genSalt(10);
+        const newSenhaHash = await bcrypt.hash(newPassword, salt);
+
+        const selectedVersion = versao || user.versao || 'Dash 1.0';
+
+        // Atualizar senha e versão no DB
+        await db.query(
+            'UPDATE dash_usuarios SET senha_hash = $1, versao = $2 WHERE id = $3',
+            [newSenhaHash, selectedVersion, user.id]
+        );
+
+        user.versao = selectedVersion;
+
+        // Validar licença de versão no Identity Server
+        let licensedVersions = [];
+        if (user.tenant_id !== '00000000-0000-0000-0000-000000000000') {
+            const { identityApiUrl, identityInternalKey, expectedModuleSlug } = config.security;
+
+            if (identityApiUrl && identityInternalKey) {
+                try {
+                    const url = `${identityApiUrl}/internal/companies/${user.tenant_id}/modules/${expectedModuleSlug}/info`;
+                    const controller = new AbortController();
+                    const timeout = setTimeout(() => controller.abort(), 3000);
+
+                    const response = await fetch(url, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Internal-Api-Key': identityInternalKey
+                        },
+                        signal: controller.signal
+                    });
+                    clearTimeout(timeout);
+
+                    if (response.status === 200) {
+                        const licenseData = await response.json();
+                        if (licenseData.isActive === false) {
+                            return res.status(403).json({ error: 'Licença desativada no servidor de licenças.', code: 'LICENSE_INACTIVE' });
+                        }
+                        licensedVersions = licenseData.versions || [];
+                        if (licensedVersions.length > 0 && !licensedVersions.includes(selectedVersion)) {
+                            return res.status(403).json({ 
+                                error: `A versão '${selectedVersion}' não está habilitada na licença da empresa no servidor de licenças.`, 
+                                code: 'VERSION_NOT_LICENSED' 
+                            });
+                        }
+                    }
+                } catch (err) {
+                    logger.error('[Auth] Erro ao comunicar com o servidor de licenças na troca de senha', err);
+                }
+            }
+        }
+
+        // Buscar as versões às quais o usuário tem acesso
+        let available_versions = [];
+        if (user.role === 'master' || user.role === 'admin') {
+            available_versions = ['Dash 1.0', 'B.I IA.'];
+        } else {
+            const versionsRes = await db.query(
+                `SELECT DISTINCT g.versao 
+                 FROM dash_usuario_grupo ug
+                 JOIN dash_grupos_acesso g ON ug.grupo_id = g.id
+                 WHERE ug.usuario_id = $1`,
+                [user.id]
+            );
+            available_versions = versionsRes.rows.map(r => r.versao);
+            if (user.versao && !available_versions.includes(user.versao)) {
+                available_versions.push(user.versao);
+            }
+        }
+
+        // Filtrar por licença
+        if (user.tenant_id !== '00000000-0000-0000-0000-000000000000' && licensedVersions.length > 0) {
+            available_versions = available_versions.filter(v => licensedVersions.includes(v));
+        }
+
+        // Validar permissão
+        if (!available_versions.includes(selectedVersion)) {
+            return res.status(403).json({
+                error: `Você não tem acesso à versão '${selectedVersion}'. Verifique seus grupos de acesso.`,
+                code: 'USER_VERSION_ACCESS_DENIED'
+            });
+        }
+
+        // Gerar JWT
+        const token = jwt.sign(
+            {
+                sub: user.id,
+                email: user.email,
+                tenant: user.tenant_id,
+                tenantId: user.tenant_id,
+                module: config.security.expectedModuleSlug,
+                companyName: user.tenant_id === '00000000-0000-0000-0000-000000000000' ? 'Coliseu Sistemas (Master)' : 'Empresa Cliente',
+                role: user.role,
+                layoutVersion: selectedVersion
+            },
+            config.security.jwtDeviceKey,
+            { expiresIn: '12h' }
+        );
+
+        const permissions = await getUserPermissions(user.id, user.tenant_id);
+
+        let filteredPermissions = [...permissions];
+        if (user.tenant_id !== '00000000-0000-0000-0000-000000000000' && licensedVersions.length > 0) {
+            if (!licensedVersions.includes('Dash 1.0')) {
+                filteredPermissions = filteredPermissions.filter(p => p !== 'layout_1');
+            }
+            if (!licensedVersions.includes('B.I IA.')) {
+                filteredPermissions = filteredPermissions.filter(p => p !== 'layout_3');
+            }
+        }
+
+        logger.info('[Auth] Senha padrão alterada e login realizado com sucesso', { email: user.email });
+
+        res.status(200).json({
+            token,
+            user: {
+                id: user.id,
+                email: user.email,
+                nome: user.nome,
+                role: user.role,
+                tenant_id: user.tenant_id,
+                permissions: filteredPermissions,
+                versao: selectedVersion,
+                layout_version: selectedVersion,
+                available_versions
+            }
+        });
+
+    } catch (err) {
+        logger.error('[Auth] Erro ao alterar senha padrão', err);
+        res.status(500).json({ error: 'Erro interno no servidor ao alterar a senha', code: 'INTERNAL_ERROR' });
     }
 });
 

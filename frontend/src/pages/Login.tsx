@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, Navigate, Link } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
-import { LogIn, TrendingUp, BarChart3, Users, LayoutDashboard, Eye, EyeOff } from 'lucide-react'
+import { LogIn, TrendingUp, BarChart3, Users, LayoutDashboard, Eye, EyeOff, ShieldCheck } from 'lucide-react'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -17,6 +17,32 @@ export default function Login() {
   const [companies, setCompanies] = useState<{ id: string; name: string }[]>([])
   const [selectedTenantId, setSelectedTenantId] = useState('')
 
+  // Novos Estados
+  const [versao, setVersao] = useState<'Dash 1.0' | 'B.I IA.'>('Dash 1.0')
+  const [salvarSenha, setSalvarSenha] = useState(false)
+  const [requiresPasswordChange, setRequiresPasswordChange] = useState(false)
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmNewPassword, setConfirmNewPassword] = useState('')
+  const [changePasswordError, setChangePasswordError] = useState<string | null>(null)
+  const [changePasswordLoading, setChangePasswordLoading] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+
+  // Recupera credenciais salvas se houver
+  useEffect(() => {
+    const savedEmail = localStorage.getItem('coliseu_saved_email')
+    const savedPassword = localStorage.getItem('coliseu_saved_password')
+    const savedRemember = localStorage.getItem('coliseu_saved_remember') === 'true'
+    
+    if (savedRemember && savedEmail) {
+      setEmail(savedEmail)
+      if (savedPassword) {
+        setSenha(savedPassword)
+      }
+      setSalvarSenha(true)
+    }
+  }, [])
+
   if (user) return <Navigate to="/" replace />
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -26,14 +52,23 @@ export default function Login() {
         alert('Por favor, selecione uma empresa para continuar.')
         return
       }
-      const res = await login(email, senha, selectedTenantId)
+      const res = await login(email, senha, selectedTenantId, versao)
       if (res.success && !res.requiresSelection) {
+        if (salvarSenha) {
+          localStorage.setItem('coliseu_saved_email', email)
+          localStorage.setItem('coliseu_saved_password', senha)
+          localStorage.setItem('coliseu_saved_remember', 'true')
+        } else {
+          localStorage.removeItem('coliseu_saved_email')
+          localStorage.removeItem('coliseu_saved_password')
+          localStorage.removeItem('coliseu_saved_remember')
+        }
         navigate('/', { replace: true })
       }
       return
     }
 
-    const res = await login(email, senha)
+    const res = await login(email, senha, undefined, versao)
     if (res.success) {
       if (res.requiresSelection) {
         setRequiresSelection(true)
@@ -42,8 +77,69 @@ export default function Login() {
           setSelectedTenantId(res.companies[0].id)
         }
       } else {
+        if (salvarSenha) {
+          localStorage.setItem('coliseu_saved_email', email)
+          localStorage.setItem('coliseu_saved_password', senha)
+          localStorage.setItem('coliseu_saved_remember', 'true')
+        } else {
+          localStorage.removeItem('coliseu_saved_email')
+          localStorage.removeItem('coliseu_saved_password')
+          localStorage.removeItem('coliseu_saved_remember')
+        }
         navigate('/', { replace: true })
       }
+    } else if (res.requiresPasswordChange) {
+      setRequiresPasswordChange(true)
+    }
+  }
+
+  const handleChangePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setChangePasswordError(null)
+
+    if (!newPassword) {
+      setChangePasswordError('Por favor, informe a nova senha.')
+      return
+    }
+
+    if (newPassword === '123456') {
+      setChangePasswordError('A nova senha não pode ser a senha padrão "123456".')
+      return
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      setChangePasswordError('As senhas não coincidem.')
+      return
+    }
+
+    if (newPassword.length < 6) {
+      setChangePasswordError('A nova senha deve ter pelo menos 6 caracteres.')
+      return
+    }
+
+    setChangePasswordLoading(true)
+    try {
+      const changeDefaultPassword = useAuthStore.getState().changeDefaultPassword
+      const success = await changeDefaultPassword(email, senha, newPassword, selectedTenantId || undefined, versao)
+      if (success) {
+        if (salvarSenha) {
+          localStorage.setItem('coliseu_saved_email', email)
+          localStorage.setItem('coliseu_saved_password', newPassword)
+          localStorage.setItem('coliseu_saved_remember', 'true')
+        } else {
+          localStorage.removeItem('coliseu_saved_email')
+          localStorage.removeItem('coliseu_saved_password')
+          localStorage.removeItem('coliseu_saved_remember')
+        }
+        navigate('/', { replace: true })
+      } else {
+        const storeError = useAuthStore.getState().error
+        setChangePasswordError(storeError || 'Erro ao gravar a nova senha.')
+      }
+    } catch (err) {
+      setChangePasswordError('Erro de conexão ao alterar a senha.')
+    } finally {
+      setChangePasswordLoading(false)
     }
   }
 
@@ -132,7 +228,7 @@ export default function Login() {
         </div>
       </div>
 
-      {/* Direita: Formulário de Login */}
+      {/* Direita: Formulário de Login / Alteração de Senha */}
       <div className="w-full lg:w-2/5 bg-bg-primary flex flex-col justify-center px-6 sm:px-12 lg:px-16 xl:px-24 relative">
         
         {/* Mobile Header (Sempre visível em mobile, oculto em Desktop porque tem a barra lateral) */}
@@ -144,126 +240,287 @@ export default function Login() {
         </div>
 
         <div className="w-full max-w-sm mx-auto mt-16 lg:mt-0">
-          <div className="mb-10 text-left">
-            <img 
-              src="/logo-coliseu.png" 
-              alt="Coliseu Sistemas" 
-              className="h-16 sm:h-20 w-auto object-contain mb-8"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
-              }}
-            />
-            <h2 className="font-heading text-3xl font-bold text-text-primary tracking-tight">Bem-vindo de volta.</h2>
-            <p className="text-text-secondary mt-2 text-base">
-              Entre para acessar seus dashboards gerenciais.
-            </p>
-          </div>
+          {!requiresPasswordChange ? (
+            <>
+              <div className="mb-8 text-left">
+                <img 
+                  src="/logo-coliseu.png" 
+                  alt="Coliseu Sistemas" 
+                  className="h-16 sm:h-20 w-auto object-contain mb-6"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+                <h2 className="font-heading text-3xl font-bold text-text-primary tracking-tight">Bem-vindo de volta.</h2>
+                <p className="text-text-secondary mt-2 text-base">
+                  Entre para acessar seus dashboards gerenciais.
+                </p>
+              </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {!requiresSelection ? (
-              <>
-                <div>
-                  <label className="block text-sm font-medium text-text-primary mb-1.5">E-mail de Acesso</label>
-                  <input
-                    type="email"
-                    className="w-full px-4 py-3 rounded-lg border border-border focus:border-brand-500 focus:ring-2 focus:ring-brand-500 outline-none transition-all text-text-primary bg-bg-primary"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="email@coliseusistemas.com.br"
-                    required
-                    autoFocus
-                    autoComplete="email"
-                    inputMode="email"
-                  />
+              <form onSubmit={handleSubmit} className="space-y-5">
+                {/* Seletor do Sistema (Tipo do Sistema) */}
+                {!requiresSelection && (
+                  <div>
+                    <label className="block text-sm font-medium text-text-primary mb-2">Modelo de Sistema</label>
+                    <div className="grid grid-cols-2 gap-2 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl border border-border">
+                      <button
+                        type="button"
+                        onClick={() => setVersao('Dash 1.0')}
+                        className={`py-2 px-3 rounded-lg font-semibold text-xs transition-all flex items-center justify-center gap-1.5 ${
+                          versao === 'Dash 1.0'
+                            ? 'bg-brand-600 text-white shadow-sm'
+                            : 'text-text-secondary hover:text-text-primary hover:bg-slate-200 dark:hover:bg-slate-700/50'
+                        }`}
+                      >
+                        <LayoutDashboard className="w-3.5 h-3.5" />
+                        <span>Dash 1.0</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setVersao('B.I IA.')}
+                        className={`py-2 px-3 rounded-lg font-semibold text-xs transition-all flex items-center justify-center gap-1.5 ${
+                          versao === 'B.I IA.'
+                            ? 'bg-brand-600 text-white shadow-sm'
+                            : 'text-text-secondary hover:text-text-primary hover:bg-slate-200 dark:hover:bg-slate-700/50'
+                        }`}
+                      >
+                        <BarChart3 className="w-3.5 h-3.5" />
+                        <span>B.I IA.</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {!requiresSelection ? (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-text-primary mb-1.5">E-mail de Acesso</label>
+                      <input
+                        type="email"
+                        className="w-full px-4 py-3 rounded-lg border border-border focus:border-brand-500 focus:ring-2 focus:ring-brand-500 outline-none transition-all text-text-primary bg-bg-primary"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="email@coliseusistemas.com.br"
+                        required
+                        autoFocus
+                        autoComplete="email"
+                        inputMode="email"
+                      />
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="block text-sm font-medium text-text-primary">Senha</label>
+                        <a href="#" className="text-xs text-brand-600 hover:text-brand-700 transition-colors font-medium">Esqueceu a senha?</a>
+                      </div>
+                      <div className="relative">
+                        <input
+                          type={showPassword ? 'text' : 'password'}
+                          className="w-full px-4 py-3 rounded-lg border border-border focus:border-brand-500 focus:ring-2 focus:ring-brand-500 outline-none transition-all text-text-primary bg-bg-primary pr-12"
+                          value={senha}
+                          onChange={(e) => setSenha(e.target.value)}
+                          placeholder="••••••••"
+                          required
+                          autoComplete="current-password"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary transition-colors p-1"
+                          tabIndex={-1}
+                        >
+                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+
+                      {/* Botão/Checkbox Lembrar Senha */}
+                      <div className="flex items-center justify-between mt-3">
+                        <label className="flex items-center gap-2 cursor-pointer group">
+                          <input
+                            type="checkbox"
+                            checked={salvarSenha}
+                            onChange={(e) => setSalvarSenha(e.target.checked)}
+                            className="w-4.5 h-4.5 rounded border-border text-brand-600 focus:ring-brand-500 cursor-pointer transition-all dark:bg-bg-primary"
+                          />
+                          <span className="text-sm text-text-secondary group-hover:text-text-primary transition-colors font-medium select-none">
+                            Salvar Senha
+                          </span>
+                        </label>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div>
+                    <label className="block text-sm font-medium text-text-primary mb-1.5">Selecione a Empresa</label>
+                    <select
+                      className="w-full px-4 py-3 rounded-lg border border-border focus:border-brand-500 focus:ring-2 focus:ring-brand-500 outline-none transition-all text-text-primary bg-bg-primary cursor-pointer mb-2"
+                      value={selectedTenantId}
+                      onChange={(e) => setSelectedTenantId(e.target.value)}
+                      required
+                    >
+                      {companies.map((company) => (
+                        <option key={company.id} value={company.id} className="text-text-primary bg-bg-primary">
+                          {company.name}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRequiresSelection(false)
+                        setCompanies([])
+                        setSelectedTenantId('')
+                      }}
+                      className="mt-2 text-xs text-brand-600 hover:text-brand-700 font-medium transition-colors"
+                    >
+                      ← Voltar para login
+                    </button>
+                  </div>
+                )}
+
+                {error && (
+                  <div className="bg-red-50 border border-red-100 text-red-600 text-sm rounded-lg p-3.5 flex items-center gap-2">
+                    <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" /></svg>
+                    {error}
+                  </div>
+                )}
+
+                <button 
+                  type="submit" 
+                  className="w-full py-3.5 px-4 bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white rounded-lg font-medium shadow-sm shadow-brand-500/30 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed mt-4" 
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <>
+                      <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>Autenticando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>{requiresSelection ? 'Confirmar Acesso' : 'Entrar'}</span>
+                      <LogIn className="w-5 h-5" />
+                    </>
+                  )}
+                </button>
+              </form>
+
+              <div className="mt-10 text-center text-sm text-text-secondary">
+                Ainda não tem conta?{' '}
+                <Link to="/register" className="font-semibold text-brand-600 hover:text-brand-700 transition-colors">
+                  Criar acesso ✨
+                </Link>
+              </div>
+            </>
+          ) : (
+            // Novo Layout de Alteração de Senha Padrão (123456)
+            <>
+              <div className="mb-8 text-left">
+                <img 
+                  src="/logo-coliseu.png" 
+                  alt="Coliseu Sistemas" 
+                  className="h-16 sm:h-20 w-auto object-contain mb-6"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+                
+                <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/10 border border-amber-500/20 text-amber-600 rounded-full text-xs font-semibold mb-4">
+                  <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
+                  Senha Padrão Detectada
                 </div>
 
+                <h2 className="font-heading text-3xl font-bold text-text-primary tracking-tight">Alteração de Senha</h2>
+                <p className="text-text-secondary mt-2 text-base leading-relaxed">
+                  Sua senha atual é temporária. Por favor, defina uma nova senha segura para continuar.
+                </p>
+              </div>
+
+              <form onSubmit={handleChangePasswordSubmit} className="space-y-5">
                 <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="block text-sm font-medium text-text-primary">Senha</label>
-                    <a href="#" className="text-xs text-brand-600 hover:text-brand-700 transition-colors font-medium">Esqueceu a senha?</a>
-                  </div>
+                  <label className="block text-sm font-medium text-text-primary mb-1.5">Nova Senha</label>
                   <div className="relative">
                     <input
-                      type={showPassword ? 'text' : 'password'}
+                      type={showNewPassword ? 'text' : 'password'}
                       className="w-full px-4 py-3 rounded-lg border border-border focus:border-brand-500 focus:ring-2 focus:ring-brand-500 outline-none transition-all text-text-primary bg-bg-primary pr-12"
-                      value={senha}
-                      onChange={(e) => setSenha(e.target.value)}
-                      placeholder="••••••••"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Mínimo 6 caracteres"
                       required
-                      autoComplete="current-password"
+                      autoFocus
                     />
                     <button
                       type="button"
-                      onClick={() => setShowPassword(!showPassword)}
+                      onClick={() => setShowNewPassword(!showNewPassword)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary transition-colors p-1"
                       tabIndex={-1}
                     >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
                 </div>
-              </>
-            ) : (
-              <div>
-                <label className="block text-sm font-medium text-text-primary mb-1.5">Selecione a Empresa</label>
-                <select
-                  className="w-full px-4 py-3 rounded-lg border border-border focus:border-brand-500 focus:ring-2 focus:ring-brand-500 outline-none transition-all text-text-primary bg-bg-primary cursor-pointer mb-2"
-                  value={selectedTenantId}
-                  onChange={(e) => setSelectedTenantId(e.target.value)}
-                  required
+
+                <div>
+                  <label className="block text-sm font-medium text-text-primary mb-1.5">Confirmar Nova Senha</label>
+                  <div className="relative">
+                    <input
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      className="w-full px-4 py-3 rounded-lg border border-border focus:border-brand-500 focus:ring-2 focus:ring-brand-500 outline-none transition-all text-text-primary bg-bg-primary pr-12"
+                      value={confirmNewPassword}
+                      onChange={(e) => setConfirmNewPassword(e.target.value)}
+                      placeholder="Repita a nova senha"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary transition-colors p-1"
+                      tabIndex={-1}
+                    >
+                      {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {changePasswordError && (
+                  <div className="bg-red-50 border border-red-100 text-red-600 text-sm rounded-lg p-3.5 flex items-center gap-2">
+                    <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" /></svg>
+                    {changePasswordError}
+                  </div>
+                )}
+
+                <button 
+                  type="submit" 
+                  className="w-full py-3.5 px-4 bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white rounded-lg font-medium shadow-sm shadow-brand-500/30 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed mt-4" 
+                  disabled={changePasswordLoading}
                 >
-                  {companies.map((company) => (
-                    <option key={company.id} value={company.id} className="text-text-primary bg-bg-primary">
-                      {company.name}
-                    </option>
-                  ))}
-                </select>
+                  {changePasswordLoading ? (
+                    <>
+                      <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>Gravando nova senha...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Gravar e Entrar</span>
+                      <ShieldCheck className="w-5 h-5" />
+                    </>
+                  )}
+                </button>
+
                 <button
                   type="button"
                   onClick={() => {
-                    setRequiresSelection(false)
-                    setCompanies([])
-                    setSelectedTenantId('')
+                    setRequiresPasswordChange(false)
+                    setNewPassword('')
+                    setConfirmNewPassword('')
+                    setChangePasswordError(null)
                   }}
-                  className="mt-2 text-xs text-brand-600 hover:text-brand-700 font-medium transition-colors"
+                  className="w-full py-3 px-4 bg-transparent border border-border text-text-primary rounded-lg font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-center text-sm"
                 >
-                  ← Voltar para login
+                  Voltar ao Login
                 </button>
-              </div>
-            )}
-
-            {error && (
-              <div className="bg-red-50 border border-red-100 text-red-600 text-sm rounded-lg p-3.5 flex items-center gap-2">
-                <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" /></svg>
-                {error}
-              </div>
-            )}
-
-            <button 
-              type="submit" 
-              className="w-full py-3.5 px-4 bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white rounded-lg font-medium shadow-sm shadow-brand-500/30 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed mt-4" 
-              disabled={loading}
-            >
-              {loading ? (
-                <>
-                  <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Autenticando...</span>
-                </>
-              ) : (
-                <>
-                  <span>{requiresSelection ? 'Confirmar Acesso' : 'Entrar'}</span>
-                  <LogIn className="w-5 h-5" />
-                </>
-              )}
-            </button>
-          </form>
-
-          <div className="mt-10 text-center text-sm text-text-secondary">
-            Ainda não tem conta?{' '}
-            <Link to="/register" className="font-semibold text-brand-600 hover:text-brand-700 transition-colors">
-              Criar acesso ✨
-            </Link>
-          </div>
+              </form>
+            </>
+          )}
         </div>
       </div>
 

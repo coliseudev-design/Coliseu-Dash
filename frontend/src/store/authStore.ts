@@ -18,11 +18,13 @@ interface AuthState {
   token: string | null
   loading: boolean
   error: string | null
-  login: (email: string, senha?: string, selectedTenantId?: string) => Promise<{
+  login: (email: string, senha?: string, selectedTenantId?: string, versao?: string) => Promise<{
     success: boolean
     requiresSelection?: boolean
+    requiresPasswordChange?: boolean
     companies?: { id: string; name: string }[]
   }>
+  changeDefaultPassword: (email: string, currentSenha?: string, newSenha?: string, selectedTenantId?: string, versao?: string) => Promise<boolean>
   register: (nome: string, email: string, senha: string, companyKey: string) => Promise<boolean>
   logout: () => Promise<void>
   init: () => void
@@ -43,19 +45,25 @@ export const useAuthStore = create<AuthState>((set) => ({
       } catch { /* ignore */ }
     }
   },
-  login: async (email, senha, selectedTenantId) => {
+  login: async (email, senha, selectedTenantId, versao) => {
     set({ loading: true, error: null })
     try {
       // Login via Backend Interno do Dashboard
       const { data } = await api.post('/auth/login', { 
           email, 
           password: senha,
-          selectedTenantId
+          selectedTenantId,
+          versao
       })
       
       if (data.requiresSelection) {
         set({ loading: false })
         return { success: true, requiresSelection: true, companies: data.companies }
+      }
+
+      if (data.requiresPasswordChange) {
+        set({ loading: false })
+        return { success: false, requiresPasswordChange: true }
       }
 
       // O Identity devolve pelo menos o token
@@ -82,6 +90,40 @@ export const useAuthStore = create<AuthState>((set) => ({
       }
       set({ error: msg, loading: false })
       return { success: false }
+    }
+  },
+  changeDefaultPassword: async (email, currentSenha, newSenha, selectedTenantId, versao) => {
+    set({ loading: true, error: null })
+    try {
+      const { data } = await api.post('/auth/change-default-password', {
+        email,
+        password: currentSenha,
+        newPassword: newSenha,
+        selectedTenantId,
+        versao
+      })
+
+      const token = data.token
+      const user = data.user || { email, nome: data.companyName || email }
+      user.versao = data.user?.versao || data.profile?.versao || data.user?.layout_version || data.profile?.layout_version || 'Dash 1.0';
+      user.layout_version = user.versao;
+      user.available_versions = data.user?.available_versions || [user.versao];
+
+      localStorage.setItem('coliseu_token', token)
+      localStorage.setItem('coliseu_user', JSON.stringify(user))
+
+      const w = (window as any).__syncWorker
+      if (w) w.postMessage({ type: 'SET_TOKEN', token })
+
+      set({ user, token, loading: false })
+      return true
+    } catch (e: unknown) {
+      let msg = 'Erro ao alterar a senha'
+      if (axios.isAxiosError(e) && e.response?.data) {
+        msg = e.response.data.error || e.response.data.message || msg
+      }
+      set({ error: msg, loading: false })
+      return false
     }
   },
   register: async (nome, email, senha, companyKey) => {
