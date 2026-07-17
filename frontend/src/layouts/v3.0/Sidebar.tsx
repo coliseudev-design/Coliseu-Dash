@@ -141,47 +141,31 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }: 
       >
         {/* Logo */}
         <div className={clsx(
-          "px-4 flex items-center border-b border-divider/40 bg-transparent transition-all duration-300",
-          collapsed ? "h-20 lg:justify-center" : "h-20 justify-between"
+          "px-4 border-b border-divider/40 bg-transparent transition-all duration-300 flex items-center justify-between",
+          collapsed ? "h-20 justify-center" : "h-20"
         )}>
           {collapsed ? (
+            <button
+              type="button"
+              onClick={onToggleCollapse}
+              className="p-2 text-text-secondary hover:text-text-primary hover:bg-bg-secondary rounded-xl transition-all"
+              title="Expandir menu"
+            >
+              <img
+                src="/coliseu-simbolo.png"
+                alt="Coliseu"
+                className="w-8 h-8 object-contain"
+              />
+            </button>
+          ) : (
             <>
-              {/* Mobile view (always expanded) */}
-              <div className="flex items-center justify-between w-full lg:hidden">
+              <div className="flex-1 bg-white dark:bg-slate-900 p-2.5 rounded-2xl border border-divider/60 shadow-[0_4px_18px_rgba(0,0,0,0.04)] flex items-center justify-center max-w-[145px]">
                 <img
                   src="/logo-coliseu.png"
                   alt="Coliseu Sistemas"
-                  className="h-14 w-auto object-contain"
+                  className="h-8 w-auto object-contain"
                 />
-                <button
-                  className="p-1.5 text-text-secondary hover:bg-bg-secondary rounded"
-                  onClick={onClose}
-                  aria-label="Fechar menu"
-                >
-                  <X size={20} />
-                </button>
               </div>
-              {/* Desktop view (collapsed) */}
-              <button
-                type="button"
-                onClick={onToggleCollapse}
-                className="hidden lg:flex p-2 text-text-secondary hover:text-text-primary hover:bg-bg-secondary rounded-xl transition-all"
-                title="Expandir menu"
-              >
-                <img
-                  src="/coliseu-simbolo.png"
-                  alt="Coliseu"
-                  className="w-8 h-8 object-contain"
-                />
-              </button>
-            </>
-          ) : (
-            <>
-              <img
-                src="/logo-coliseu.png"
-                alt="Coliseu Sistemas"
-                className="h-14 w-auto object-contain"
-              />
               <div className="flex items-center gap-1">
                 <button
                   type="button"
@@ -275,40 +259,49 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }: 
           "px-4 py-4 border-t border-divider/40 text-[11px] text-text-secondary flex flex-col transition-all duration-300",
           collapsed ? "lg:items-center lg:justify-center gap-1" : "gap-4"
         )}>
-          {/* Version & Logout */}
-          <div className={clsx(
-            "flex items-center w-full",
-            collapsed ? "lg:justify-center justify-between" : "justify-between"
-          )}>
-            <div className={clsx(collapsed ? "lg:hidden block" : "block")}>
-              <div className="font-semibold text-text-primary">Coliseu Dash v2.0</div>
-              <div>© 2026 Coliseu Sistemas</div>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                useAuthStore.getState().logout()
-                window.location.href = '/login'
-              }}
-              className="p-2 text-text-secondary hover:text-danger hover:bg-danger/10 rounded-lg transition-colors"
-              title="Sair do sistema"
-            >
-              <LogOut size={16} />
-            </button>
+          {/* Logo Card e Logout Button ao lado */}
+          <div className="w-full flex items-center justify-between gap-3">
+            {collapsed ? (
+              <button
+                type="button"
+                onClick={() => {
+                  useAuthStore.getState().logout()
+                  window.location.href = '/login'
+                }}
+                className="p-2.5 text-text-secondary hover:text-danger hover:bg-danger/10 rounded-xl transition-colors flex items-center justify-center"
+                title="Sair do sistema"
+              >
+                <LogOut size={16} />
+              </button>
+            ) : (
+              <>
+                <div className="flex-1 bg-white dark:bg-slate-900 p-2.5 rounded-2xl border border-divider/60 shadow-[0_4px_18px_rgba(0,0,0,0.04)] flex items-center justify-center">
+                  <img
+                    src="/logo-coliseu.png"
+                    alt="Coliseu Sistemas"
+                    className="h-8 w-auto object-contain"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    useAuthStore.getState().logout()
+                    window.location.href = '/login'
+                  }}
+                  className="p-2.5 text-text-secondary hover:text-danger hover:bg-danger/10 border border-divider/60 rounded-xl transition-colors flex-shrink-0 flex items-center justify-center bg-bg-primary"
+                  title="Sair do sistema"
+                >
+                  <LogOut size={18} />
+                </button>
+              </>
+            )}
           </div>
 
-          {/* Logo Card e Frase (Apenas quando expandido) */}
+          {/* Slogan Frase */}
           <div className={clsx(
             "w-full flex flex-col transition-all duration-300",
             collapsed ? "lg:hidden block" : "block"
           )}>
-            <div className="bg-white dark:bg-slate-900 p-2.5 rounded-2xl border border-divider/60 shadow-[0_4px_18px_rgba(0,0,0,0.04)] flex items-center justify-center mb-3">
-              <img
-                src="/logo-coliseu.png"
-                alt="Coliseu Sistemas"
-                className="h-10 w-auto object-contain"
-              />
-            </div>
             <div className="px-1 text-left">
               <div className="text-[9px] font-bold text-text-secondary/60 uppercase tracking-widest mb-1">
                 BUSINESS INTELLIGENCE
