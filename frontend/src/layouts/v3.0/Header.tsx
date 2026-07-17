@@ -61,7 +61,7 @@ export default function Header({ onMenuClick, activeRoute }: Props) {
         <Menu size={22} />
       </button>
 
-      <div className="flex items-center gap-2.5 ml-1 sm:ml-2 lg:ml-0 truncate">
+      <div className="flex items-center gap-2.5 ml-1 sm:ml-2 lg:ml-0 min-w-0 flex-shrink-0">
         <div
           className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
           style={{
@@ -71,14 +71,19 @@ export default function Header({ onMenuClick, activeRoute }: Props) {
         >
           <activeRoute.icon size={16} style={{ color: activeRoute.color }} strokeWidth={2.2} />
         </div>
-        <h1 className="font-heading text-sm sm:text-base font-extrabold text-text-primary uppercase tracking-wider">{activeRoute.label}</h1>
+        <h1 className="font-heading text-xs sm:text-sm md:text-base font-extrabold text-text-primary uppercase tracking-wider truncate whitespace-nowrap">
+          {activeRoute.label}
+        </h1>
       </div>
 
-      <div className="ml-auto flex items-center gap-1 sm:gap-3">
-        {/* Badge Agente Desktop */}
-        <div className="hidden lg:flex items-center gap-1.5 px-2 py-1 rounded-md bg-bg-secondary text-xs font-semibold">
-           <div className={`w-2 h-2 rounded-full ${agentStatus === 'ONLINE' ? 'bg-success' : 'bg-danger animate-pulse'}`} />
-           <span className="text-text-secondary">{agentStatus === 'ONLINE' ? 'Agente OK' : 'Falha no Banco'}</span>
+      <div className="ml-auto flex items-center gap-1 sm:gap-2.5">
+        {/* Glowing Agente status dot (no text to save space) */}
+        <div 
+          className="hidden lg:flex relative w-5 h-5 items-center justify-center rounded-full bg-slate-100/80 dark:bg-slate-800/80 cursor-help"
+          title={agentStatus === 'ONLINE' ? 'Agente: Banco de Dados Conectado' : 'Agente: Falha na Conexão com o Banco'}
+        >
+          <span className={`absolute inline-flex h-2.5 w-2.5 rounded-full opacity-75 animate-ping ${agentStatus === 'ONLINE' ? 'bg-success' : 'bg-danger'}`} />
+          <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${agentStatus === 'ONLINE' ? 'bg-success' : 'bg-danger'}`} />
         </div>
 
         {/* Status sync (desktop) */}
@@ -119,8 +124,8 @@ export default function Header({ onMenuClick, activeRoute }: Props) {
         {/* Layout Version Switcher is removed */}
 
         {empresaNome && (
-          <div className="hidden sm:flex items-center px-2 border-r border-[#E0E0E0] mr-1 pr-3">
-            <span className="text-sm font-bold text-slate-700 uppercase tracking-wide">
+          <div className="hidden xl:flex items-center px-2 border-r border-[#E0E0E0] mr-1 pr-3">
+            <span className="text-xs font-bold text-slate-600 uppercase tracking-wide">
               {empresaNome}
             </span>
           </div>

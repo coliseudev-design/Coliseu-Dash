@@ -123,6 +123,8 @@ export default function ComparativoVendas() {
       : { start_date: customAnaliseStart, end_date: customAnaliseEnd }
     return {
       ...base,
+      period: 'custom',
+      depto_id: selectedBranch !== 'todas' ? selectedBranch : undefined,
       vendedor: vendedor !== 'todas' ? vendedor : undefined,
       cidade: cidade !== 'todas' ? cidade : undefined,
       marca: marca !== 'todas' ? marca : undefined,
@@ -130,7 +132,7 @@ export default function ComparativoVendas() {
       status: status !== 'Todos' ? status : undefined,
       tipo: tipo !== 'Todos' ? tipo : undefined
     }
-  }, [tipoPeriodo, analiseMes, analiseAno, customAnaliseStart, customAnaliseEnd, vendedor, cidade, marca, categoria, status, tipo])
+  }, [tipoPeriodo, analiseMes, analiseAno, customAnaliseStart, customAnaliseEnd, selectedBranch, vendedor, cidade, marca, categoria, status, tipo])
 
   const comparacaoParams = useMemo(() => {
     const base = tipoPeriodo === 'mes'
@@ -138,6 +140,8 @@ export default function ComparativoVendas() {
       : { start_date: customComparacaoStart, end_date: customComparacaoEnd }
     return {
       ...base,
+      period: 'custom',
+      depto_id: selectedBranch !== 'todas' ? selectedBranch : undefined,
       vendedor: vendedor !== 'todas' ? vendedor : undefined,
       cidade: cidade !== 'todas' ? cidade : undefined,
       marca: marca !== 'todas' ? marca : undefined,
@@ -145,7 +149,7 @@ export default function ComparativoVendas() {
       status: status !== 'Todos' ? status : undefined,
       tipo: tipo !== 'Todos' ? tipo : undefined
     }
-  }, [tipoPeriodo, comparacaoMes, comparacaoAno, customComparacaoStart, customComparacaoEnd, vendedor, cidade, marca, categoria, status, tipo])
+  }, [tipoPeriodo, comparacaoMes, comparacaoAno, customComparacaoStart, customComparacaoEnd, selectedBranch, vendedor, cidade, marca, categoria, status, tipo])
 
   // Queries Reais de Dados do BI para os dois períodos
   const ovAnalise = useBranchPeriodQuery<any>('/estatisticas/overview', analiseParams)
@@ -252,7 +256,7 @@ export default function ComparativoVendas() {
                     const val = e.target.value
                     setSelectedBranch(val === 'todas' ? 'todas' : parseInt(val, 10))
                   }}
-                  className="bg-bg-secondary border border-border rounded-xl px-4 py-2 text-xs font-semibold text-text-primary outline-none pr-8 cursor-pointer focus:border-brand-500"
+                  className="appearance-none bg-bg-secondary border border-border rounded-xl px-3 py-1.5 text-[11px] font-bold text-text-primary outline-none pr-8 cursor-pointer focus:border-brand-500"
                 >
                   <option value="todas">Todas as Empresas</option>
                   {filiais.map(f => <option key={f.depto_id} value={f.depto_id}>{f.nome}</option>)}
@@ -270,7 +274,7 @@ export default function ComparativoVendas() {
                   aria-label="Status"
                   value={status}
                   onChange={(e) => setStatus(e.target.value)}
-                  className="bg-bg-secondary border border-border rounded-xl px-4 py-2 text-xs font-semibold text-text-primary outline-none pr-8 cursor-pointer focus:border-brand-500"
+                  className="appearance-none bg-bg-secondary border border-border rounded-xl px-3 py-1.5 text-[11px] font-bold text-text-primary outline-none pr-8 cursor-pointer focus:border-brand-500"
                 >
                   <option value="Todos">Todos os Status</option>
                   <option value="Processado">Processado</option>
@@ -290,7 +294,7 @@ export default function ComparativoVendas() {
                   aria-label="Tipo de Venda"
                   value={tipo}
                   onChange={(e) => setTipo(e.target.value)}
-                  className="bg-bg-secondary border border-border rounded-xl px-4 py-2 text-xs font-semibold text-text-primary outline-none pr-8 cursor-pointer focus:border-brand-500"
+                  className="appearance-none bg-bg-secondary border border-border rounded-xl px-3 py-1.5 text-[11px] font-bold text-text-primary outline-none pr-8 cursor-pointer focus:border-brand-500"
                 >
                   <option value="Todos">Todos os Tipos</option>
                   <option value="Venda - Devolucao">Venda - Devolucao</option>
@@ -349,11 +353,11 @@ export default function ComparativoVendas() {
                       aria-label="Mês de Análise"
                       value={analiseMes}
                       onChange={(e) => setAnaliseMes(Number(e.target.value))}
-                      className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-xs font-medium text-text-primary outline-none pr-8 cursor-pointer focus:border-brand-500"
+                      className="w-full appearance-none bg-bg-primary border border-border rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-text-primary outline-none pr-7 cursor-pointer focus:border-brand-500"
                     >
                       {MONTHS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                     </select>
-                    <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+                    <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
                   </div>
                 </div>
                 <div className="flex flex-col gap-1">
@@ -364,11 +368,11 @@ export default function ComparativoVendas() {
                       aria-label="Ano de Análise"
                       value={analiseAno}
                       onChange={(e) => setAnaliseAno(Number(e.target.value))}
-                      className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-xs font-medium text-text-primary outline-none pr-8 cursor-pointer focus:border-brand-500"
+                      className="w-full appearance-none bg-bg-primary border border-border rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-text-primary outline-none pr-7 cursor-pointer focus:border-brand-500"
                     >
                       {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
                     </select>
-                    <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+                    <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
                   </div>
                 </div>
               </div>
@@ -421,11 +425,11 @@ export default function ComparativoVendas() {
                       aria-label="Mês de Comparação"
                       value={comparacaoMes}
                       onChange={(e) => setComparacaoMes(Number(e.target.value))}
-                      className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-xs font-medium text-text-primary outline-none pr-8 cursor-pointer focus:border-brand-500"
+                      className="w-full appearance-none bg-bg-primary border border-border rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-text-primary outline-none pr-7 cursor-pointer focus:border-brand-500"
                     >
                       {MONTHS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                     </select>
-                    <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+                    <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
                   </div>
                 </div>
                 <div className="flex flex-col gap-1">
@@ -436,11 +440,11 @@ export default function ComparativoVendas() {
                       aria-label="Ano de Comparação"
                       value={comparacaoAno}
                       onChange={(e) => setComparacaoAno(Number(e.target.value))}
-                      className="w-full bg-bg-primary border border-border rounded-lg px-3 py-2 text-xs font-medium text-text-primary outline-none pr-8 cursor-pointer focus:border-brand-500"
+                      className="w-full appearance-none bg-bg-primary border border-border rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-text-primary outline-none pr-7 cursor-pointer focus:border-brand-500"
                     >
                       {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
                     </select>
-                    <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+                    <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
                   </div>
                 </div>
               </div>
@@ -482,14 +486,14 @@ export default function ComparativoVendas() {
                 aria-label="Vendedor"
                 value={vendedor}
                 onChange={(e) => setVendedor(e.target.value)}
-                className="w-full bg-bg-secondary border border-border rounded-xl px-3 py-2 text-xs font-semibold text-text-primary outline-none pr-8 cursor-pointer focus:border-brand-500 text-left capitalize"
+                className="w-full appearance-none bg-bg-secondary border border-border rounded-xl px-2.5 py-1.5 text-[11px] font-bold text-text-primary outline-none pr-7 cursor-pointer focus:border-brand-500 text-left capitalize"
               >
                 <option value="todas">Todos os Vendedores</option>
                 {sellersDropdown.data?.data?.map((s: any) => (
                   <option key={s.id || s.nome} value={s.nome}>{s.nome.toLowerCase()}</option>
                 ))}
               </select>
-              <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+              <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
             </div>
           </div>
 
@@ -502,14 +506,14 @@ export default function ComparativoVendas() {
                 aria-label="Cidade"
                 value={cidade}
                 onChange={(e) => setCidade(e.target.value)}
-                className="w-full bg-bg-secondary border border-border rounded-xl px-3 py-2 text-xs font-semibold text-text-primary outline-none pr-8 cursor-pointer focus:border-brand-500 uppercase"
+                className="w-full appearance-none bg-bg-secondary border border-border rounded-xl px-2.5 py-1.5 text-[11px] font-bold text-text-primary outline-none pr-7 cursor-pointer focus:border-brand-500 uppercase"
               >
                 <option value="todas">Todas as Cidades</option>
                 {citiesDropdown.data?.data?.map((c: any) => (
                   <option key={c.nome || c.cidade} value={c.nome || c.cidade}>{c.nome || c.cidade}</option>
                 ))}
               </select>
-              <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+              <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
             </div>
           </div>
 
@@ -522,14 +526,14 @@ export default function ComparativoVendas() {
                 aria-label="Marca"
                 value={marca}
                 onChange={(e) => setMarca(e.target.value)}
-                className="w-full bg-bg-secondary border border-border rounded-xl px-3 py-2 text-xs font-semibold text-text-primary outline-none pr-8 cursor-pointer focus:border-brand-500 uppercase"
+                className="w-full appearance-none bg-bg-secondary border border-border rounded-xl px-2.5 py-1.5 text-[11px] font-bold text-text-primary outline-none pr-7 cursor-pointer focus:border-brand-500 uppercase"
               >
                 <option value="todas">Todas as Marcas</option>
                 {brandsDropdown.data?.data?.map((m: any) => (
                   <option key={m.nome || m.marca} value={m.nome || m.marca}>{m.nome || m.marca}</option>
                 ))}
               </select>
-              <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+              <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
             </div>
           </div>
 
@@ -542,23 +546,33 @@ export default function ComparativoVendas() {
                 aria-label="Categoria"
                 value={categoria}
                 onChange={(e) => setCategoria(e.target.value)}
-                className="w-full bg-bg-secondary border border-border rounded-xl px-3 py-2 text-xs font-semibold text-text-primary outline-none pr-8 cursor-pointer focus:border-brand-500 uppercase"
+                className="w-full appearance-none bg-bg-secondary border border-border rounded-xl px-2.5 py-1.5 text-[11px] font-bold text-text-primary outline-none pr-7 cursor-pointer focus:border-brand-500 uppercase"
               >
                 <option value="todas">Todas as Categorias</option>
                 {categoriesDropdown.data?.data?.map((c: any) => (
                   <option key={c.nome || c.categoria} value={c.nome || c.categoria}>{c.nome || c.categoria}</option>
                 ))}
               </select>
-              <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+              <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
             </div>
           </div>
 
           {/* Green Comparar Button */}
           <div className="col-span-2 md:col-span-1 h-[36px]">
-            <div className="bg-[#10B981] text-white font-bold rounded-xl flex items-center justify-center gap-2 text-xs h-full shadow-sm hover:bg-emerald-600 transition-all select-none">
+            <button
+              onClick={() => {
+                ovAnalise.refetch();
+                ovComparacao.refetch();
+                kpiAnalise.refetch();
+                kpiComparacao.refetch();
+                rankAnalise.refetch();
+                rankComparacao.refetch();
+              }}
+              className="w-full h-full bg-[#10B981] hover:bg-emerald-600 text-white font-bold rounded-xl flex items-center justify-center gap-2 text-xs shadow-sm hover:shadow-md transition-all active:scale-[0.98] cursor-pointer select-none"
+            >
               <Play size={14} fill="white" />
-              SINCRO
-            </div>
+              Comparar
+            </button>
           </div>
         </div>
       </div>

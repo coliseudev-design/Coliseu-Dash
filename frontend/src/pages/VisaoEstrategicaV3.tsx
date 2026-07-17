@@ -176,8 +176,13 @@ export default function VisaoEstrategicaV3() {
     <div className={clsx("space-y-5", isMobile ? "pb-28" : "pb-4")} aria-label="Visão Estratégica">
       
       {/* HEADER SECTION WITH PERIOD FILTER */}
-      <div className="hidden md:flex items-center">
-        <PeriodFilter />
+      <div className="bg-bg-primary border border-border rounded-xl p-3 px-4 flex items-center justify-between shadow-sm flex-wrap gap-4 animate-in slide-in-from-top duration-200">
+        <span className="text-[10px] font-bold text-text-secondary/80 uppercase tracking-widest pl-1">Período de Análise</span>
+        
+        {/* Desktop Filter */}
+        <div className="hidden md:flex items-center min-w-0">
+          <PeriodFilter />
+        </div>
       </div>
 
       {/* TIER 0: DROPDOWN FILTERS (VENDEDOR & MARCA) */}

@@ -44,7 +44,7 @@ function IconBadge({
   icon: Icon,
   color,
   isActive,
-  size = 16,
+  size = 14,
 }: {
   icon: React.ElementType
   color: string
@@ -53,10 +53,10 @@ function IconBadge({
 }) {
   return (
     <div
-      className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-300 group-hover:scale-105 group-hover:rotate-3"
+      className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all duration-200"
       style={{
         backgroundColor: isActive ? `${color}22` : `${color}10`,
-        boxShadow: isActive ? `0 2px 10px ${color}35` : 'none',
+        boxShadow: isActive ? `0 1px 6px ${color}25` : 'none',
       }}
     >
       <Icon
@@ -88,10 +88,10 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }: 
       onClick={onClose}
       className={({ isActive }) =>
         clsx(
-          'group flex items-center gap-3 px-3 py-2.5 rounded-2xl text-sm font-semibold transition-all duration-300 mb-1 hover:scale-[1.01] active:scale-[0.99] border border-transparent',
+          'group flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 mb-0.5 hover:-translate-y-[1px] active:translate-y-[0.5px] border',
           isActive 
-            ? 'bg-bg-secondary text-text-primary shadow-[0_4px_16px_rgba(0,0,0,0.02)] border-divider/40' 
-            : 'text-text-secondary hover:bg-bg-secondary/40 hover:text-text-primary hover:border-divider/10',
+            ? 'bg-white text-text-primary border-slate-200/60 border-b-[3px] border-b-brand-500 shadow-[0_2px_4px_rgba(0,0,0,0.04)]' 
+            : 'text-text-secondary border-transparent hover:bg-bg-secondary/40 hover:text-text-primary hover:border-b-2 hover:border-b-divider/60',
           collapsed ? 'lg:justify-center lg:px-0' : ''
         )
       }
@@ -103,7 +103,7 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }: 
             className={clsx(
               'truncate transition-colors duration-150',
               isActive
-                ? 'text-text-primary font-bold'
+                ? 'text-text-primary font-extrabold'
                 : 'text-text-secondary group-hover:text-text-primary',
               collapsed ? 'lg:hidden block' : 'block'
             )}
@@ -199,7 +199,7 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }: 
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 overflow-y-auto py-2 px-2.5 flex flex-col space-y-1">
+        <nav className="flex-1 overflow-y-auto py-2 px-2 flex flex-col space-y-0.5">
           {/* Menu Principal */}
           <div>
             {allowedModules.map((m) => (
@@ -209,7 +209,7 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }: 
 
           {/* Business Intelligence */}
           {allowedBiModules.length > 0 && (
-            <div className="mt-1">
+            <div className="mt-0.5">
               {allowedBiModules.map((m) => (
                 <NavItem key={m.to} {...m} />
               ))}

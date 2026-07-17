@@ -37,10 +37,11 @@ export default function BiDashboard() {
     <div className="flex flex-col h-full space-y-4">
       {/* Filtros Globais do BI */}
       {showFilter && (
-        <div className="bg-bg-primary border border-border-primary rounded-lg p-4 flex items-center justify-end shadow-sm flex-wrap gap-4 animate-in slide-in-from-top duration-200">
+        <div className="bg-bg-primary border border-border-primary rounded-lg p-3 px-4 flex items-center justify-between shadow-sm flex-wrap gap-4 animate-in slide-in-from-top duration-200">
+          <span className="text-[10px] font-bold text-text-secondary/80 uppercase tracking-widest pl-1">Período de Análise</span>
           
           {/* Desktop Filter */}
-          <div className="hidden lg:flex items-center w-full lg:w-auto min-w-0">
+          <div className="hidden lg:flex items-center min-w-0">
             <PeriodFilter excludePeriods={['yesterday']} />
           </div>
         </div>
