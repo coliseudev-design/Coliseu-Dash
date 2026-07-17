@@ -284,17 +284,14 @@ export default function SellerHubDashboard() {
       
       {/* FILTER BAR ROW */}
       <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl md:text-2xl font-black text-text-primary flex flex-wrap items-center gap-x-2 gap-y-1">
-            <Activity className="text-brand-500" size={24} />
-            <span>{selectedSellerName || 'Hub do Vendedor'}</span>
+          <h2 className="text-xs font-extrabold text-text-primary flex flex-wrap items-center gap-x-2 gap-y-1 uppercase tracking-wider">
+            <span>{selectedSellerName ? `Vendedor: ${selectedSellerName}` : 'Selecione um Vendedor'}</span>
             {data?.start_date && (
-              <span className="text-xs md:text-sm font-bold text-text-secondary whitespace-nowrap">
+              <span className="text-[10px] font-bold text-text-secondary whitespace-nowrap">
                 ({dateRangeLabel})
               </span>
             )}
           </h2>
-        </div>
         
         <div className="flex flex-wrap items-end gap-3 w-full lg:w-auto">
           {sellerId ? (

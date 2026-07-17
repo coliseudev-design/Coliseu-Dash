@@ -93,16 +93,10 @@ export default function SupplierAnalyticsDashboard() {
   return (
     <div aria-label="Fornecedores Dashboard" className="space-y-6 animate-in fade-in duration-300 pb-10">
       
-      {/* HEADER & FILTERS */}
-      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 mb-2">
-        <div>
-          <h2 className="text-2xl font-bold text-text-primary flex items-center gap-2">
-            <Building2 size={24} className="text-brand-500" />
-            Hub de Fornecedores
-          </h2>
-          <div className="flex items-center gap-4 mt-3 text-xs font-semibold text-text-muted">
-             <div className="flex items-center gap-1"><span className="text-brand-500">🏢</span> Marca Analisada: <span className="text-brand-500">{selectedBrand}</span></div>
-          </div>
+      {/* HEADER ACTIONS */}
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 mb-2 w-full">
+        <div className="flex items-center gap-4 text-xs font-semibold text-text-muted">
+           <div className="flex items-center gap-1"><span className="text-brand-500">🏢</span> Marca Analisada: <span className="text-brand-500">{selectedBrand || 'Todas'}</span></div>
         </div>
         <div className="flex items-center gap-3">
           <select 

@@ -109,16 +109,9 @@ export default function SalesHubDashboard() {
   return (
     <div aria-label="Hub de Vendas Dashboard" className="space-y-6 animate-in fade-in duration-300">
       
-      {/* HEADER */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
-        <div>
-          <h2 className="text-2xl font-black text-text-primary flex items-center gap-2">
-            Hub de Vendas
-          </h2>
-          <p className="text-xs text-text-secondary">Central de monitoramento de pedidos, status de faturamento e performance</p>
-        </div>
-        
-        {isMobile && (
+      {/* HEADER ACTIONS */}
+      {isMobile && (
+        <div className="mb-2">
           <button
             onClick={() => setShowFiltersSheet(true)}
             className="w-full sm:w-auto px-4 h-11 bg-bg-primary border border-divider text-text-primary rounded-xl text-xs font-bold shadow-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer shrink-0"
@@ -129,8 +122,8 @@ export default function SalesHubDashboard() {
               <span className="w-2 h-2 rounded-full bg-brand-500 animate-pulse" />
             )}
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* DESKTOP FILTERS BAR */}
       {!isMobile && (

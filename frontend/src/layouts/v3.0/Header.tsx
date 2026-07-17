@@ -9,10 +9,10 @@ import api from '../../services/api'
 
 interface Props {
   onMenuClick: () => void
-  title: string
+  activeRoute: { label: string; icon: React.ElementType; color: string }
 }
 
-export default function Header({ onMenuClick, title }: Props) {
+export default function Header({ onMenuClick, activeRoute }: Props) {
   const user = useAuthStore((s) => s.user)
   const logout = useAuthStore((s) => s.logout)
   const { status, lastSync, triggerSync, isSyncing, agentStatus } = useSyncStatus()
@@ -61,7 +61,18 @@ export default function Header({ onMenuClick, title }: Props) {
         <Menu size={22} />
       </button>
 
-      <h1 className="font-heading text-base sm:text-lg font-semibold ml-1 sm:ml-2 lg:ml-0 truncate">{title}</h1>
+      <div className="flex items-center gap-2.5 ml-1 sm:ml-2 lg:ml-0 truncate">
+        <div
+          className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+          style={{
+            backgroundColor: `${activeRoute.color}15`,
+            boxShadow: `0 2px 8px ${activeRoute.color}20`,
+          }}
+        >
+          <activeRoute.icon size={16} style={{ color: activeRoute.color }} strokeWidth={2.2} />
+        </div>
+        <h1 className="font-heading text-sm sm:text-base font-extrabold text-text-primary uppercase tracking-wider">{activeRoute.label}</h1>
+      </div>
 
       <div className="ml-auto flex items-center gap-1 sm:gap-3">
         {/* Badge Agente Desktop */}

@@ -37,8 +37,7 @@ export default function BiDashboard() {
     <div className="flex flex-col h-full space-y-4">
       {/* Filtros Globais do BI */}
       {showFilter && (
-        <div className="bg-bg-primary border border-border-primary rounded-lg p-4 flex items-center justify-between shadow-sm flex-wrap gap-4 animate-in slide-in-from-top duration-200">
-          <h2 className="text-xl font-bold text-text-primary">Business Intelligence</h2>
+        <div className="bg-bg-primary border border-border-primary rounded-lg p-4 flex items-center justify-end shadow-sm flex-wrap gap-4 animate-in slide-in-from-top duration-200">
           
           {/* Desktop Filter */}
           <div className="hidden lg:flex items-center w-full lg:w-auto min-w-0">

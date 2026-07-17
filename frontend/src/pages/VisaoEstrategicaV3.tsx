@@ -175,15 +175,9 @@ export default function VisaoEstrategicaV3() {
   return (
     <div className={clsx("space-y-5", isMobile ? "pb-28" : "pb-4")} aria-label="Visão Estratégica">
       
-      {/* HEADER SECTION WITH TITLE & PERIOD FILTER */}
-      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-text-primary">Visão Estratégica</h2>
-          <p className="text-xs text-text-secondary mt-1">Visão geral consolidada das empresas, vendas acumuladas e metas.</p>
-        </div>
-        <div className="hidden md:flex items-center">
-          <PeriodFilter />
-        </div>
+      {/* HEADER SECTION WITH PERIOD FILTER */}
+      <div className="hidden md:flex items-center">
+        <PeriodFilter />
       </div>
 
       {/* TIER 0: DROPDOWN FILTERS (VENDEDOR & MARCA) */}

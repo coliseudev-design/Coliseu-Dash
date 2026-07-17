@@ -233,17 +233,7 @@ export default function ComparativoVendas() {
   return (
     <div className="space-y-6 pb-12 animate-in fade-in duration-300">
       
-      {/* HEADER */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-text-primary flex items-center gap-2">
-            <GitCompare className="text-brand-500" /> Comparativo de Vendas
-          </h2>
-          <p className="text-xs text-text-secondary mt-1">
-            Analise o desempenho entre dois períodos distintos filtrando dados reais.
-          </p>
-        </div>
-      </div>
+
 
       {/* FILTER PANEL */}
       <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 space-y-4">
