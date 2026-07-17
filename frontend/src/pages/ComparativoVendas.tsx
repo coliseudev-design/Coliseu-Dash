@@ -125,10 +125,10 @@ export default function ComparativoVendas() {
       ...base,
       period: 'custom',
       depto_id: selectedBranch !== 'todas' ? selectedBranch : undefined,
-      vendedor: vendedor !== 'todas' ? vendedor : undefined,
+      vendedor_id: vendedor !== 'todas' ? vendedor : undefined,
       cidade: cidade !== 'todas' ? cidade : undefined,
       marca: marca !== 'todas' ? marca : undefined,
-      categoria: categoria !== 'todas' ? categoria : undefined,
+      grupo: categoria !== 'todas' ? categoria : undefined,
       status: status !== 'Todos' ? status : undefined,
       tipo: tipo !== 'Todos' ? tipo : undefined
     }
@@ -142,21 +142,18 @@ export default function ComparativoVendas() {
       ...base,
       period: 'custom',
       depto_id: selectedBranch !== 'todas' ? selectedBranch : undefined,
-      vendedor: vendedor !== 'todas' ? vendedor : undefined,
+      vendedor_id: vendedor !== 'todas' ? vendedor : undefined,
       cidade: cidade !== 'todas' ? cidade : undefined,
       marca: marca !== 'todas' ? marca : undefined,
-      categoria: categoria !== 'todas' ? categoria : undefined,
+      grupo: categoria !== 'todas' ? categoria : undefined,
       status: status !== 'Todos' ? status : undefined,
       tipo: tipo !== 'Todos' ? tipo : undefined
     }
   }, [tipoPeriodo, comparacaoMes, comparacaoAno, customComparacaoStart, customComparacaoEnd, selectedBranch, vendedor, cidade, marca, categoria, status, tipo])
 
   // Queries Reais de Dados do BI para os dois períodos
-  const ovAnalise = useBranchPeriodQuery<any>('/estatisticas/overview', analiseParams)
-  const ovComparacao = useBranchPeriodQuery<any>('/estatisticas/overview', comparacaoParams)
-
-  const kpiAnalise = useBranchPeriodQuery<any>('/estatisticas/kpis', analiseParams)
-  const kpiComparacao = useBranchPeriodQuery<any>('/estatisticas/kpis', comparacaoParams)
+  const ovAnalise = useBranchPeriodQuery<any>('/bi/sales/commercial-kpis', analiseParams)
+  const ovComparacao = useBranchPeriodQuery<any>('/bi/sales/commercial-kpis', comparacaoParams)
 
   // Ranking Query dinâmica dependendo do filtro selecionado
   const getRankingEndpoint = () => {
@@ -170,20 +167,20 @@ export default function ComparativoVendas() {
   const rankComparacao = useBranchPeriodQuery<any>(getRankingEndpoint(), { ...comparacaoParams, limit: 15 })
 
   // KPI Faturamento
-  const fatAnalise = ovAnalise.data?.mes?.total || 0
-  const fatComparacao = ovComparacao.data?.mes?.total || 0
+  const fatAnalise = ovAnalise.data?.faturamento_total || 0
+  const fatComparacao = ovComparacao.data?.faturamento_total || 0
   const fatDiff = fatAnalise - fatComparacao
   const fatPct = fatComparacao > 0 ? (fatDiff / fatComparacao) * 100 : 0
 
   // KPI Pedidos
-  const pedAnalise = kpiAnalise.data?.vendas?.qtd_pedidos || ovAnalise.data?.mes?.qtd || 0
-  const pedComparacao = kpiComparacao.data?.vendas?.qtd_pedidos || ovComparacao.data?.mes?.qtd || 0
+  const pedAnalise = ovAnalise.data?.total_pedidos || 0
+  const pedComparacao = ovComparacao.data?.total_pedidos || 0
   const pedDiff = pedAnalise - pedComparacao
   const pedPct = pedComparacao > 0 ? (pedDiff / pedComparacao) * 100 : 0
 
   // KPI Ticket Médio
-  const tktAnalise = kpiAnalise.data?.vendas?.ticket_medio || (pedAnalise > 0 ? fatAnalise / pedAnalise : 0)
-  const tktComparacao = kpiComparacao.data?.vendas?.ticket_medio || (pedComparacao > 0 ? fatComparacao / pedComparacao : 0)
+  const tktAnalise = ovAnalise.data?.ticket_medio || 0
+  const tktComparacao = ovComparacao.data?.ticket_medio || 0
   const tktDiff = tktAnalise - tktComparacao
   const tktPct = tktComparacao > 0 ? (tktDiff / tktComparacao) * 100 : 0
 
@@ -490,7 +487,7 @@ export default function ComparativoVendas() {
               >
                 <option value="todas">Todos os Vendedores</option>
                 {sellersDropdown.data?.data?.map((s: any) => (
-                  <option key={s.id || s.nome} value={s.nome}>{s.nome.toLowerCase()}</option>
+                  <option key={s.id || s.nome} value={s.id}>{s.nome.toLowerCase()}</option>
                 ))}
               </select>
               <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
@@ -563,8 +560,6 @@ export default function ComparativoVendas() {
               onClick={() => {
                 ovAnalise.refetch();
                 ovComparacao.refetch();
-                kpiAnalise.refetch();
-                kpiComparacao.refetch();
                 rankAnalise.refetch();
                 rankComparacao.refetch();
               }}
