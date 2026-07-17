@@ -85,6 +85,7 @@ export default function App() {
       >
         <Route index element={<Home />} />
         <Route path="comparativo-vendas" element={<ProtectedRoute permission="inicio"><ComparativoVendas /></ProtectedRoute>} />
+        <Route path="hub-vendedor" element={<ProtectedRoute permission="bi_seller_hub"><SellerHubDashboard /></ProtectedRoute>} />
         <Route path="financeiro" element={<ProtectedRoute permission="financeiro"><FinanceiroEmDesenvolvimento /></ProtectedRoute>} />
         <Route path="fluxo-caixa" element={<ProtectedRoute permission="fluxo-caixa"><FluxoCaixa /></ProtectedRoute>} />
         <Route path="estoque" element={<ProtectedRoute permission="estoque"><Estoque /></ProtectedRoute>} />
@@ -118,7 +119,7 @@ export default function App() {
 
         {/* Novas Rotas de BI */}
         <Route path="bi" element={<BiDashboard />}>
-          <Route index element={<ProtectedRoute permission="bi_seller_hub"><SellerHubDashboard /></ProtectedRoute>} />
+          <Route index element={<ProtectedRoute permission="bi_sales"><SalesIntelligenceDashboard /></ProtectedRoute>} />
           <Route path="sales" element={<ProtectedRoute permission="bi_sales"><SalesIntelligenceDashboard /></ProtectedRoute>} />
           <Route path="vendedor" element={<ProtectedRoute permission="bi_seller_hub"><SellerHubDashboard /></ProtectedRoute>} />
           <Route path="hub" element={<ProtectedRoute permission="bi_hub"><SalesHubDashboard /></ProtectedRoute>} />

@@ -18,10 +18,11 @@ interface Props {
 const MODULES = [
   { to: '/', label: 'Visão Estratégica', icon: LayoutDashboard, exact: true, id: 'inicio', color: '#3B82F6' },
   { to: '/comparativo-vendas', label: 'Comparativo', icon: GitCompare, exact: true, id: 'inicio', color: '#10B981' },
+  { to: '/hub-vendedor', label: 'Hub do Vendedor', icon: Trophy, exact: true, id: 'hub_vendedor', color: '#F97316' },
 ]
 
 const BI_MODULES = [
-  { to: '/bi',                       label: 'Hub do Vendedor',        icon: Users,          exact: true,  id: 'bi_seller_hub',          color: '#10B981' },
+  { to: '/bi',                       label: 'Inteligência de Vendas', icon: BarChart3,     exact: true,  id: 'bi_sales',               color: '#10B981' },
   { to: '/bi/hub',                   label: 'Hub de Vendas',          icon: ShoppingCart,               id: 'bi_hub',                 color: '#F97316' },
   { to: '/bi/supplier',              label: 'Hub do Fornecedor',      icon: Truck,                       id: 'bi_supplier',            color: '#F59E0B' },
   { to: '/bi/abc',                   label: 'Gestão de Inventário',   icon: Package,                     id: 'bi_abc',                 color: '#06B6D4' },

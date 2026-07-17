@@ -53,6 +53,11 @@ export default function SellerHubDashboard() {
 
   // Local Filter state matching mock
   const [selectedVendedor, setSelectedVendedor] = useState<string>('');
+  const [selectedCidade, setSelectedCidade] = useState<string>('todas');
+  const [selectedMarca, setSelectedMarca] = useState<string>('todas');
+
+  const cidadesDropdown = useBranchPeriodQuery<any>('/ranking/cidades', { limit: 100 });
+  const marcasDropdown = useBranchPeriodQuery<any>('/ranking/marcas', { limit: 100 });
   
   // Toggles for charts & rankings
   const [viewMode, setViewMode] = useState<Record<string, 'chart' | 'text'>>({
@@ -114,8 +119,10 @@ export default function SellerHubDashboard() {
 
   const activeFilter = useMemo(() => ({
     ...globalFilter,
-    vendedor_id: selectedVendedor || undefined
-  }), [globalFilter, selectedVendedor]);
+    vendedor_id: selectedVendedor || undefined,
+    cidade: selectedCidade !== 'todas' && selectedCidade !== 'all' ? selectedCidade : undefined,
+    marca: selectedMarca !== 'todas' && selectedMarca !== 'all' ? selectedMarca : undefined
+  }), [globalFilter, selectedVendedor, selectedCidade, selectedMarca]);
 
   const selectedSellerName = useMemo(() => {
     if (!selectedVendedor || !vdFull.data?.data) return '';
@@ -303,20 +310,59 @@ export default function SellerHubDashboard() {
               Voltar para Equipe
             </button>
           ) : (
-            <div className="flex flex-col gap-1 w-full sm:w-60 md:w-64 flex-1 sm:flex-initial">
-              <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider pl-1">Vendedor</span>
-              <div className="relative w-full">
-                <select
-                  value={selectedVendedor}
-                  onChange={(e) => setSelectedVendedor(e.target.value)}
-                  className="appearance-none h-10 px-3 pr-8 bg-bg-secondary border border-divider text-text-primary rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all duration-300 w-full cursor-pointer shadow-sm"
-                >
-                  <option value="">Selecione um vendedor...</option>
-                  {vdFull.data?.data?.map((v: any) => (
-                    <option key={v.id} value={v.id}>{v.nome}</option>
-                  ))}
-                </select>
-                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+            <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto flex-1 sm:flex-initial">
+              {/* Vendedor */}
+              <div className="flex flex-col gap-1 w-full sm:w-56 flex-1">
+                <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider pl-1">Vendedor</span>
+                <div className="relative w-full">
+                  <select
+                    value={selectedVendedor}
+                    onChange={(e) => setSelectedVendedor(e.target.value)}
+                    className="appearance-none h-10 px-3 pr-8 bg-bg-secondary border border-divider text-text-primary rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all duration-300 w-full cursor-pointer shadow-sm"
+                  >
+                    <option value="">Selecione um vendedor...</option>
+                    {vdFull.data?.data?.map((v: any) => (
+                      <option key={v.id} value={v.id}>{v.nome}</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+                </div>
+              </div>
+
+              {/* Cidade */}
+              <div className="flex flex-col gap-1 w-full sm:w-52 flex-1">
+                <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider pl-1">Cidade</span>
+                <div className="relative w-full">
+                  <select
+                    value={selectedCidade}
+                    onChange={(e) => setSelectedCidade(e.target.value)}
+                    className="appearance-none h-10 px-3 pr-8 bg-bg-secondary border border-divider text-text-primary rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all duration-300 w-full cursor-pointer shadow-sm uppercase"
+                  >
+                    <option value="todas">Todas as Cidades</option>
+                    {cidadesDropdown.data?.data?.map((c: any) => (
+                      <option key={c.nome || c.cidade} value={c.nome || c.cidade}>{c.nome || c.cidade}</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+                </div>
+              </div>
+
+              {/* Marca */}
+              <div className="flex flex-col gap-1 w-full sm:w-52 flex-1">
+                <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider pl-1">Marca</span>
+                <div className="relative w-full">
+                  <select
+                    value={selectedMarca}
+                    onChange={(e) => setSelectedMarca(e.target.value)}
+                    className="appearance-none h-10 px-3 pr-8 bg-bg-secondary border border-divider text-text-primary rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all duration-300 w-full cursor-pointer shadow-sm uppercase"
+                  >
+                    <option value="todas">Todas as Marcas</option>
+                    {marcasDropdown.data?.data?.map((m: any) => (
+                      <option key={m.nome || m.marca} value={m.nome || m.marca}>{m.nome || m.marca}</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+                </div>
               </div>
             </div>
           )}

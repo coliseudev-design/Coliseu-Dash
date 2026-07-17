@@ -1569,6 +1569,9 @@ router.get('/seller/summary', async (req, res, next) => {
         let mes = parseInt(req.query.mes);
         let ano = parseInt(req.query.ano);
         let vendedorId = req.query.vendedor_id;
+        const deptoId = req.query.depto_id;
+        const cidade = req.query.cidade;
+        const marca = req.query.marca;
 
         if (vendedorId === 'undefined' || vendedorId === 'null') {
             vendedorId = null;
@@ -1652,22 +1655,70 @@ router.get('/seller/summary', async (req, res, next) => {
 
         const salesFilter = cfopUtil.getSalesFilterClause('v');
 
+        // Dynamic filters builder
+        const df = buildDeptoFilter(deptoId, 5, 'v');
+        let nextIdx = 5 + df.params.length;
+
+        const cf = buildCidadeFilter(cidade, nextIdx, 'c');
+        nextIdx += cf.params.length;
+
+        const mf = buildMarcaFilter(marca, nextIdx, 'vi', 'p');
+        nextIdx += mf.params.length;
+
+        const hasItemFilter = (marca && marca !== 'todas' && marca !== 'all' && marca !== 'TODOS');
+        const needsCidadeJoin = (cidade && cidade !== 'todas' && cidade !== 'all' && cidade !== 'TODOS');
+        const needsItemJoin = hasItemFilter;
+
+        const baseParams = [tenantId, null, null, vendedorId, ...df.params, ...cf.params];
+        if (hasItemFilter) {
+            baseParams.push(...mf.params);
+        }
+
+        const getQueryParams = (startVal, endVal) => {
+            const arr = [...baseParams];
+            arr[1] = toSafeSqlString(startVal);
+            arr[2] = toSafeSqlString(endVal);
+            return arr;
+        };
+
+        let salesJoins = '';
+        if (needsCidadeJoin) {
+            salesJoins += ' LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id';
+        }
+        if (needsItemJoin) {
+            salesJoins += ' INNER JOIN dash_vendas_itens vi ON vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id';
+            salesJoins += ' LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id';
+        }
+
+        const salesClauses = `${salesFilter} ${df.clause} ${cf.clause} ${mf.clause}`;
+
+        let devJoins = ' LEFT JOIN dash_vendas v ON v.id_firebird = d.venda_id_firebird AND v.tenant_id = d.tenant_id';
+        if (needsCidadeJoin) {
+            devJoins += ' LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id';
+        }
+        if (needsItemJoin) {
+            devJoins += ' INNER JOIN dash_vendas_itens vi ON vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id';
+            devJoins += ' LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id';
+        }
+
         // 1. Faturamento Mês Atual (Bruto)
         const salesRes = await db.query(`
             SELECT 
                 COALESCE(SUM(v.valor_total - COALESCE(v.valor_desconto, 0)), 0) AS total_bruto,
                 COUNT(DISTINCT v.id_firebird) AS total_pedidos
             FROM dash_vendas v
+            ${salesJoins}
             WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3 AND v.vendedor_id_firebird = $4
-              ${salesFilter}
-        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), vendedorId]);
+              ${salesClauses}
+        `, getQueryParams(start, end));
 
         const devRes = await db.query(`
             SELECT COALESCE(SUM(d.valor), 0) AS total
             FROM dash_devolucoes d
-            LEFT JOIN dash_vendas v2 ON v2.id_firebird = d.venda_id_firebird AND v2.tenant_id = d.tenant_id
-            WHERE d.tenant_id = $1 AND d.data_devolucao >= $2 AND d.data_devolucao <= $3 AND v2.vendedor_id_firebird = $4
-        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), vendedorId]);
+            ${devJoins}
+            WHERE d.tenant_id = $1 AND d.data_devolucao >= $2 AND d.data_devolucao <= $3 AND v.vendedor_id_firebird = $4
+              ${df.clause} ${cf.clause} ${mf.clause}
+        `, getQueryParams(start, end));
 
         const faturamento = parseFloat(salesRes.rows[0].total_bruto || 0) - parseFloat(devRes.rows[0].total || 0);
         const total_pedidos = parseInt(salesRes.rows[0].total_pedidos || 0, 10);
@@ -1678,16 +1729,18 @@ router.get('/seller/summary', async (req, res, next) => {
             SELECT 
                 COALESCE(SUM(v.valor_total - COALESCE(v.valor_desconto, 0)), 0) AS total_bruto
             FROM dash_vendas v
+            ${salesJoins}
             WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3 AND v.vendedor_id_firebird = $4
-              ${salesFilter}
-        `, [tenantId, toSafeSqlString(prevStart), toSafeSqlString(prevEnd), vendedorId]);
+              ${salesClauses}
+        `, getQueryParams(prevStart, prevEnd));
 
         const devPrevRes = await db.query(`
             SELECT COALESCE(SUM(d.valor), 0) AS total
             FROM dash_devolucoes d
-            LEFT JOIN dash_vendas v2 ON v2.id_firebird = d.venda_id_firebird AND v2.tenant_id = d.tenant_id
-            WHERE d.tenant_id = $1 AND d.data_devolucao >= $2 AND d.data_devolucao <= $3 AND v2.vendedor_id_firebird = $4
-        `, [tenantId, toSafeSqlString(prevStart), toSafeSqlString(prevEnd), vendedorId]);
+            ${devJoins}
+            WHERE d.tenant_id = $1 AND d.data_devolucao >= $2 AND d.data_devolucao <= $3 AND v.vendedor_id_firebird = $4
+              ${df.clause} ${cf.clause} ${mf.clause}
+        `, getQueryParams(prevStart, prevEnd));
 
         const faturamento_anterior = parseFloat(salesPrevRes.rows[0].total_bruto || 0) - parseFloat(devPrevRes.rows[0].total || 0);
         const crescimento_pct = faturamento_anterior > 0 ? ((faturamento - faturamento_anterior) / faturamento_anterior) * 100 : 0;
@@ -1697,20 +1750,22 @@ router.get('/seller/summary', async (req, res, next) => {
             SELECT COUNT(DISTINCT c.id_firebird) AS total
             FROM dash_clientes c
             JOIN dash_vendas v ON v.cliente_id_firebird = c.id_firebird AND v.tenant_id = c.tenant_id
+            ${needsItemJoin ? 'INNER JOIN dash_vendas_itens vi ON vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id' : ''}
             WHERE c.tenant_id = $1 
               AND c.data_cadastro >= $2 AND c.data_cadastro <= $3
               AND v.vendedor_id_firebird = $4
-              ${salesFilter}
-        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), vendedorId]);
+              ${salesFilter} ${df.clause} ${cf.clause} ${mf.clause}
+        `, getQueryParams(start, end));
 
         const activeClientsRes = await db.query(`
             SELECT COUNT(DISTINCT v.cliente_id_firebird) AS total
             FROM dash_vendas v
+            ${salesJoins}
             WHERE v.tenant_id = $1 
               AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
               AND v.vendedor_id_firebird = $4
-              ${salesFilter}
-        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), vendedorId]);
+              ${salesClauses}
+        `, getQueryParams(start, end));
 
         const clientes_novos = parseInt(newClientsRes.rows[0].total || 0, 10);
         const clientes_ativos = parseInt(activeClientsRes.rows[0].total || 0, 10);
@@ -1722,12 +1777,13 @@ router.get('/seller/summary', async (req, res, next) => {
             SELECT COALESCE(c.cidade, 'Não Informada') AS cidade, SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) AS total
             FROM dash_vendas v
             LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
+            ${needsItemJoin ? 'INNER JOIN dash_vendas_itens vi ON vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id' : ''}
             WHERE v.tenant_id = $1 
               AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
               AND v.vendedor_id_firebird = $4
-              ${salesFilter}
+              ${salesClauses}
             GROUP BY 1 ORDER BY total DESC LIMIT 1
-        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), vendedorId]);
+        `, getQueryParams(start, end));
         const cidade_top = topCityRes.rowCount > 0 ? topCityRes.rows[0].cidade : 'N/A';
         const cidade_top_valor = topCityRes.rowCount > 0 ? parseFloat(topCityRes.rows[0].total || 0) : 0;
 
@@ -1737,24 +1793,26 @@ router.get('/seller/summary', async (req, res, next) => {
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
             LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
+            ${needsCidadeJoin ? 'LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id' : ''}
             WHERE vi.tenant_id = $1 
               AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
               AND v.vendedor_id_firebird = $4
-              ${salesFilter}
+              ${salesFilter} ${df.clause} ${cf.clause} ${mf.clause}
             GROUP BY 1 ORDER BY total DESC LIMIT 15
-        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), vendedorId]);
+        `, getQueryParams(start, end));
         const top_marcas = topBrandsRes.rows.map((r, i) => ({ rank: i + 1, name: r.nome, value: parseFloat(r.total || 0) }));
 
         const topClientsRes = await db.query(`
             SELECT COALESCE(c.nome, 'Cliente ' || COALESCE(v.cliente_id_firebird::text, '?')) AS nome, SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) AS total
             FROM dash_vendas v
             LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
+            ${needsItemJoin ? 'INNER JOIN dash_vendas_itens vi ON vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id' : ''}
             WHERE v.tenant_id = $1 
               AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
               AND v.vendedor_id_firebird = $4
-              ${salesFilter}
+              ${salesClauses}
             GROUP BY 1 ORDER BY total DESC LIMIT 10
-        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), vendedorId]);
+        `, getQueryParams(start, end));
         const top_clientes = topClientsRes.rows.map((r, i) => ({ rank: i + 1, name: r.nome, value: parseFloat(r.total || 0) }));
 
         const topGroupsRes = await db.query(`
@@ -1762,12 +1820,13 @@ router.get('/seller/summary', async (req, res, next) => {
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
             LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
+            ${needsCidadeJoin ? 'LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id' : ''}
             WHERE vi.tenant_id = $1 
               AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
               AND v.vendedor_id_firebird = $4
-              ${salesFilter}
+              ${salesFilter} ${df.clause} ${cf.clause} ${mf.clause}
             GROUP BY 1 ORDER BY total DESC LIMIT 10
-        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), vendedorId]);
+        `, getQueryParams(start, end));
         const top_grupos = topGroupsRes.rows.map((r, i) => ({ rank: i + 1, name: r.nome, value: parseFloat(r.total || 0) }));
 
         const topProductsRes = await db.query(`
@@ -1775,12 +1834,13 @@ router.get('/seller/summary', async (req, res, next) => {
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
             LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
+            ${needsCidadeJoin ? 'LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id' : ''}
             WHERE vi.tenant_id = $1 
               AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
               AND v.vendedor_id_firebird = $4
-              ${salesFilter}
+              ${salesFilter} ${df.clause} ${cf.clause} ${mf.clause}
             GROUP BY 1 ORDER BY total DESC LIMIT 10
-        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), vendedorId]);
+        `, getQueryParams(start, end));
         const top_produtos = topProductsRes.rows.map((r, i) => ({ rank: i + 1, name: r.nome, value: parseFloat(r.total || 0) }));
 
         // 6. Histórico de Vendas (Evolução Diária)
@@ -1789,13 +1849,14 @@ router.get('/seller/summary', async (req, res, next) => {
                 TO_CHAR(v.data_hora_proc, 'DD/MM') AS dia,
                 SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) AS total
             FROM dash_vendas v
+            ${salesJoins}
             WHERE v.tenant_id = $1 
               AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
               AND v.vendedor_id_firebird = $4
-              ${salesFilter}
+              ${salesClauses}
             GROUP BY DATE_TRUNC('day', v.data_hora_proc), TO_CHAR(v.data_hora_proc, 'DD/MM')
             ORDER BY DATE_TRUNC('day', v.data_hora_proc) ASC
-        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), vendedorId]);
+        `, getQueryParams(start, end));
         const historico_vendas = trajectoryRes.rows.map(t => ({ dia: t.dia, valor: parseFloat(t.total || 0) }));
 
         // 7. Vendas por Dia da Semana
@@ -1804,12 +1865,13 @@ router.get('/seller/summary', async (req, res, next) => {
                 EXTRACT(ISODOW FROM v.data_hora_proc) AS dow_num,
                 SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) AS total
             FROM dash_vendas v
+            ${salesJoins}
             WHERE v.tenant_id = $1 
               AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
               AND v.vendedor_id_firebird = $4
-              ${salesFilter}
+              ${salesClauses}
             GROUP BY 1 ORDER BY 1 ASC
-        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), vendedorId]);
+        `, getQueryParams(start, end));
         
         const dowNames = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
         const vendas_por_dia_semana = Array.from({ length: 7 }, (_, i) => {
@@ -1827,12 +1889,13 @@ router.get('/seller/summary', async (req, res, next) => {
                 CEIL(EXTRACT(DAY FROM v.data_hora_proc) / 7.0) AS week,
                 SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) AS total
             FROM dash_vendas v
+            ${salesJoins}
             WHERE v.tenant_id = $1 
               AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
               AND v.vendedor_id_firebird = $4
-              ${salesFilter}
+              ${salesClauses}
             GROUP BY 1, 2
-        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), vendedorId]);
+        `, getQueryParams(start, end));
         
         const heatmap_dados = [];
         for (let dow = 1; dow <= 7; dow++) {
@@ -1858,13 +1921,14 @@ router.get('/seller/summary', async (req, res, next) => {
                 v.status
             FROM dash_vendas v
             LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
+            ${needsItemJoin ? 'INNER JOIN dash_vendas_itens vi ON vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id' : ''}
             WHERE v.tenant_id = $1 
               AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
               AND v.vendedor_id_firebird = $4
-              ${salesFilter}
+              ${salesClauses}
             ORDER BY v.data_hora_proc DESC, v.id_firebird DESC
             LIMIT 30
-        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), vendedorId]);
+        `, getQueryParams(start, end));
         
         const notas_fiscais = invoicesRes.rows.map(r => ({
             cod: String(r.id),
