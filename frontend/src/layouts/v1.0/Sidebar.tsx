@@ -1,8 +1,7 @@
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink } from 'react-router-dom'
 import {
-  LayoutDashboard, ShoppingCart, Wallet,
-  Trophy, BarChart3, Users, X, LogOut, Shield,
-  Package, Settings, ChevronDown, ChevronUp
+  LayoutDashboard, Wallet, Trophy, BarChart3, Users, X, LogOut, Shield,
+  Package, Settings, ChevronDown, ChevronUp, ChevronLeft
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useAuthStore } from '../../store/authStore'
@@ -11,6 +10,8 @@ import { useState } from 'react'
 interface Props {
   open: boolean
   onClose: () => void
+  collapsed: boolean
+  onToggleCollapse: () => void
 }
 
 const MODULES = [
@@ -56,7 +57,7 @@ function IconBadge({
   )
 }
 
-export default function Sidebar({ open, onClose }: Props) {
+export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }: Props) {
   const user = useAuthStore((s) => s.user)
   const [configOpen, setConfigOpen] = useState(false)
 
@@ -79,45 +80,84 @@ export default function Sidebar({ open, onClose }: Props) {
       )}
       <aside
         className={clsx(
-          'fixed lg:sticky top-0 left-0 h-screen w-64 bg-bg-primary/95 backdrop-blur-xl border-r border-divider/40 z-40',
+          'fixed lg:sticky top-0 left-0 h-screen bg-bg-primary/95 backdrop-blur-xl border-r border-divider/40 z-40',
           'transform transition-transform duration-250 ease-out lg:translate-x-0',
-          'flex flex-col shadow-2xl lg:shadow-[8px_0_32px_rgba(0,0,0,0.02)]',
+          'flex flex-col shadow-2xl lg:shadow-[8px_0_32px_rgba(0,0,0,0.02)] transition-all duration-300 ease-in-out',
           open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
+          collapsed ? 'lg:w-20' : 'lg:w-64 w-64'
         )}
       >
         {/* Logo */}
-        <div className="px-4 py-5 flex flex-col border-b border-divider/40 bg-transparent">
-          <div className="flex items-center justify-between">
-            <img
-              src="/logo-coliseu.png"
-              alt="Coliseu Sistemas"
-              className="h-12 w-auto object-contain"
-            />
-            <button
-              className="lg:hidden p-1.5 text-text-secondary hover:bg-bg-secondary rounded"
-              onClick={onClose}
-              aria-label="Fechar menu"
-            >
-              <X size={20} />
-            </button>
-          </div>
-          <div className="mt-4 px-1">
-            <div className="text-[10px] font-bold text-text-secondary/60 uppercase tracking-widest mb-1.5">
-              PORTAL GERENCIAL
-            </div>
-            <div className="text-base font-bold text-text-primary leading-tight">
-              Gerencie <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-cyan-400">tudo.</span>
-            </div>
-            <div className="text-xs text-text-secondary mt-1 font-medium">
-              Cresça mais rápido.
-            </div>
-          </div>
+        <div className={clsx(
+          "px-4 flex items-center border-b border-divider/40 bg-transparent transition-all duration-300",
+          collapsed ? "h-20 lg:justify-center" : "h-20 justify-between"
+        )}>
+          {collapsed ? (
+            <>
+              {/* Mobile view (always expanded) */}
+              <div className="flex items-center justify-between w-full lg:hidden">
+                <img
+                  src="/logo-coliseu.png"
+                  alt="Coliseu Sistemas"
+                  className="h-14 w-auto object-contain"
+                />
+                <button
+                  className="p-1.5 text-text-secondary hover:bg-bg-secondary rounded"
+                  onClick={onClose}
+                  aria-label="Fechar menu"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              {/* Desktop view (collapsed) */}
+              <button
+                type="button"
+                onClick={onToggleCollapse}
+                className="hidden lg:flex p-2 text-text-secondary hover:text-text-primary hover:bg-bg-secondary rounded-xl transition-all"
+                title="Expandir menu"
+              >
+                <img
+                  src="/coliseu-simbolo.png"
+                  alt="Coliseu"
+                  className="w-8 h-8 object-contain"
+                />
+              </button>
+            </>
+          ) : (
+            <>
+              <img
+                src="/logo-coliseu.png"
+                alt="Coliseu Sistemas"
+                className="h-14 w-auto object-contain"
+              />
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={onToggleCollapse}
+                  className="hidden lg:flex p-1.5 text-text-secondary hover:text-text-primary hover:bg-bg-secondary rounded-lg transition-colors"
+                  title="Recolher menu"
+                >
+                  <ChevronLeft size={18} />
+                </button>
+                <button
+                  className="lg:hidden p-1.5 text-text-secondary hover:bg-bg-secondary rounded"
+                  onClick={onClose}
+                  aria-label="Fechar menu"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto py-4 px-2.5 flex flex-col">
           <div className="flex-1">
-            <div className="px-3 mb-3 text-[10px] font-bold text-text-secondary/60 uppercase tracking-widest">
+            <div className={clsx(
+              "px-3 mb-3 text-[10px] font-bold text-text-secondary/60 uppercase tracking-widest transition-all duration-300",
+              collapsed ? "lg:hidden block" : "block"
+            )}>
               Menu Principal
             </div>
 
@@ -133,6 +173,7 @@ export default function Sidebar({ open, onClose }: Props) {
                     isActive
                       ? 'bg-bg-secondary shadow-sm'
                       : 'hover:bg-bg-secondary/60',
+                    collapsed ? 'lg:justify-center lg:px-0' : ''
                   )
                 }
               >
@@ -145,13 +186,17 @@ export default function Sidebar({ open, onClose }: Props) {
                         isActive
                           ? 'text-text-primary font-semibold'
                           : 'text-text-secondary group-hover:text-text-primary',
+                        collapsed ? 'lg:hidden block' : 'block'
                       )}
                     >
                       {label}
                     </span>
                     {isActive && (
                       <div
-                        className="ml-auto w-1.5 h-1.5 rounded-full flex-shrink-0"
+                        className={clsx(
+                          "ml-auto w-1.5 h-1.5 rounded-full flex-shrink-0",
+                          collapsed ? "lg:hidden block" : "block"
+                        )}
                         style={{ backgroundColor: color }}
                       />
                     )}
@@ -165,19 +210,29 @@ export default function Sidebar({ open, onClose }: Props) {
           {allowedConfigModules.length > 0 && (
             <div className="mt-auto pt-3 border-t border-divider/40">
               <button
-                onClick={() => setConfigOpen(!configOpen)}
-                className="w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-sm font-medium text-text-secondary hover:bg-bg-secondary/60 hover:text-text-primary transition-all duration-150 mb-0.5 group"
+                type="button"
+                onClick={() => {
+                  if (collapsed) {
+                    onToggleCollapse()
+                  } else {
+                    setConfigOpen(!configOpen)
+                  }
+                }}
+                className={clsx(
+                  "w-full flex items-center px-2.5 py-2 rounded-xl text-sm font-medium text-text-secondary hover:bg-bg-secondary/60 hover:text-text-primary transition-all duration-150 mb-0.5 group",
+                  collapsed ? "lg:justify-center lg:px-0" : "justify-between"
+                )}
               >
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-text-secondary/8 group-hover:bg-text-secondary/15 transition-colors">
                     <Settings size={16} className="text-text-secondary" strokeWidth={1.8} />
                   </div>
-                  <span className="truncate">Configurações</span>
+                  <span className={clsx("truncate", collapsed ? "lg:hidden block" : "block")}>Configurações</span>
                 </div>
-                {configOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                {!collapsed && (configOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
               </button>
 
-              {configOpen && (
+              {configOpen && !collapsed && (
                 <div className="mt-1 space-y-0.5 pl-2">
                   {allowedConfigModules.map(({ to, label, icon, color }) => (
                     <NavLink
@@ -217,21 +272,40 @@ export default function Sidebar({ open, onClose }: Props) {
         </nav>
 
         {/* Footer */}
-        <div className="px-4 py-3 border-t border-divider/40 text-[11px] text-text-secondary flex items-center justify-between">
-          <div>
-            <div className="font-semibold text-text-primary">Coliseu Dash v2.0</div>
-            <div>© 2026 Coliseu Sistemas</div>
+        <div className={clsx(
+          "px-4 py-4 border-t border-divider/40 text-[11px] text-text-secondary flex flex-col transition-all duration-300",
+          collapsed ? "lg:items-center lg:justify-center gap-1" : "gap-3"
+        )}>
+          <div className={clsx(
+            "flex items-center w-full",
+            collapsed ? "lg:justify-center justify-between" : "justify-between"
+          )}>
+            <div className={clsx(collapsed ? "lg:hidden block" : "block")}>
+              <div className="font-semibold text-text-primary">Coliseu Dash v1.0</div>
+              <div>© 2026 Coliseu Sistemas</div>
+            </div>
+            <button
+              onClick={() => {
+                useAuthStore.getState().logout()
+                window.location.href = '/login'
+              }}
+              className="p-2 text-text-secondary hover:text-danger hover:bg-danger/10 rounded-lg transition-colors"
+              title="Sair do sistema"
+            >
+              <LogOut size={16} />
+            </button>
           </div>
-          <button
-            onClick={() => {
-              useAuthStore.getState().logout()
-              window.location.href = '/login'
-            }}
-            className="p-2 text-text-secondary hover:text-danger hover:bg-danger/10 rounded-lg transition-colors"
-            title="Sair do sistema"
-          >
-            <LogOut size={16} />
-          </button>
+          <div className={clsx(
+            "border-t border-divider/20 pt-2 text-[10px] leading-relaxed w-full",
+            collapsed ? "lg:hidden block" : "block"
+          )}>
+            <div className="font-semibold text-text-primary">
+              Gerencie <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-cyan-400">tudo.</span>
+            </div>
+            <div className="text-text-secondary">
+              Cresça mais rápido.
+            </div>
+          </div>
         </div>
       </aside>
     </>
