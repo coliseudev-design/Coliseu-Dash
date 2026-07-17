@@ -1,73 +1,74 @@
 import { useState, useMemo } from 'react';
 import { useOutletContext } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useBiPeriodQuery } from '../../hooks/useBiPeriodQuery';
 import { BIService } from '../../services/biApi';
 import { BiPeriodFilter } from '../../types/bi.types';
 import { 
-  DollarSign, ArrowDown, TrendingUp, Percent, Sparkles, Search, Filter, ChevronDown
+  DollarSign, ArrowDown, TrendingUp, Percent, Sparkles, Filter, ChevronDown, Award
 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { formatBRL, formatBRLCompact } from '../../utils/format';
+import { formatBRL } from '../../utils/format';
 import clsx from 'clsx';
 
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-bg-tertiary border border-border shadow-lg p-3 rounded-lg z-50">
-        <p className="text-text-primary font-bold text-sm mb-1">{label}</p>
-        {payload.map((entry: any, index: number) => (
-          <div key={index} className="text-xs text-text-secondary">
-            value : <span className="font-bold text-text-primary">{formatBRL(entry.value)}</span>
-          </div>
-        ))}
-      </div>
-    );
-  }
-  return null;
-};
-
 export default function ProfitabilityDashboard() {
+  const [selectedPeriodTab, setSelectedPeriodTab] = useState<'MÊS' | 'ACUMULADO'>('MÊS');
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [year, setYear] = useState(new Date().getFullYear());
+  const [selectedVendedor, setSelectedVendedor] = useState<string>('todas');
+  const [selectedCidade, setSelectedCidade] = useState<string>('todas');
 
-  // Consome o filtro global de período e filial do contexto do BiDashboard pai
+  // Consome o filtro global de filial do contexto do BiDashboard pai
   const { filter: globalFilter } = useOutletContext<{ filter: BiPeriodFilter }>();
 
-  // Gera as datas de início/fim com base no mês/ano selecionado localmente,
-  // mas preserva depto_id e centro_custo do filtro global.
-  const buildDateRange = (m: number, y: number) => {
+  // Busca de Vendedores e Cidades do banco de dados para os filtros
+  const sellersQuery = useQuery<any>(['bi', 'sellers'], BIService.getSellers);
+  const citiesQuery = useQuery<any>(['bi', 'cities'], BIService.getCities);
+
+  // Gera as datas de início/fim com base no mês/ano e tab acumulada
+  const buildDateRange = (m: number, y: number, isAcumulado: boolean) => {
     const pad = (n: number) => String(n).padStart(2, '0');
     const lastDay = new Date(y, m, 0).getDate();
     return {
-      start_date: `${y}-${pad(m)}-01`,
+      start_date: isAcumulado ? `${y}-01-01` : `${y}-${pad(m)}-01`,
       end_date: `${y}-${pad(m)}-${pad(lastDay)}`
     };
   };
 
-  // Filtro ativo: datas locais + filial do contexto global
+  // Filtro de API ativo para envio
   const activeFilter = useMemo<BiPeriodFilter>(() => ({
     period: 'custom',
-    ...buildDateRange(month, year),
+    ...buildDateRange(month, year, selectedPeriodTab === 'ACUMULADO'),
     depto_id: globalFilter.depto_id,
-    centro_custo: globalFilter.centro_custo
-  }), [month, year, globalFilter.depto_id, globalFilter.centro_custo]);
+    centro_custo: globalFilter.centro_custo,
+    vendedor_id: selectedVendedor,
+    cidade: selectedCidade
+  }), [month, year, selectedPeriodTab, globalFilter.depto_id, globalFilter.centro_custo, selectedVendedor, selectedCidade]);
 
-  const { data, isLoading, isError } = useBiPeriodQuery(
-    ['bi', 'comparative'],
-    BIService.getComparativeAnalysis,
+  const { data, isLoading, isError, refetch } = useBiPeriodQuery(
+    ['bi', 'comparative', activeFilter],
+    () => BIService.getComparativeAnalysis(activeFilter),
     activeFilter
   );
 
+  const formatNum = (val: number) => new Intl.NumberFormat('pt-BR').format(val);
+
+  const handleFilterClick = () => {
+    refetch();
+  };
+
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64 text-text-secondary">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-500 mr-3"></div>
-        Carregando Painel de Lucratividade...
+      <div className="flex flex-col items-center justify-center min-h-[50vh] text-brand-500 space-y-4">
+        <LoaderSpinner />
+        <div className="text-center">
+          <p className="text-text-primary text-sm font-black uppercase tracking-widest animate-pulse">Carregando Painel de Lucratividade...</p>
+          <p className="text-xs text-text-secondary mt-1">Processando margens e faturamentos da empresa...</p>
+        </div>
       </div>
     );
   }
 
-  // Mocks matching the reference image layout
+  // Dados retornados do backend
   const marcaData = data?.marcaData || [];
   const grupoData = data?.grupoData || [];
   const vendedorData = data?.vendedorData || [];
@@ -76,23 +77,48 @@ export default function ProfitabilityDashboard() {
   return (
     <div className="space-y-6 animate-in fade-in duration-300 pb-10">
       
-      {/* HEADER ACTIONS */}
-      <div className="flex justify-end items-center gap-4 mb-2">
-        <button className="bg-pink-500/10 text-pink-500 hover:bg-pink-500/20 px-4 py-2 rounded-lg font-bold text-xs flex items-center gap-2 transition-colors border border-pink-500/20">
-          <Sparkles size={14} /> Analisar com IA
-        </button>
-        <span className="text-xs font-extrabold text-text-muted uppercase tracking-wider">COMPENSADOS DOURADOS</span>
+      {/* TÍTULO PRINCIPAL */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-divider/10 pb-2">
+        <div>
+          <h1 className="text-xl font-extrabold text-text-primary tracking-tight flex items-center gap-2">
+            <span className="text-brand-500">💰</span> Painel de Lucratividade
+          </h1>
+          <p className="text-[10px] text-text-secondary/70 font-bold uppercase tracking-wider">Análise de contribuição e eficiência operacional</p>
+        </div>
       </div>
       
-      {/* FILTROS SUPERIORES COMPLETO */}
-      <div className="bg-bg-primary border border-border shadow-card rounded-xl p-3 flex flex-wrap gap-4 items-end">
-        <div className="flex flex-col gap-1">
-           <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider px-1">PERÍODO <span className="bg-blue-500 text-white px-1 rounded ml-1">MÊS</span> <span className="text-text-muted/50 ml-1">ACUMULADO</span></span>
-           <div className="flex gap-2">
+      {/* FILTROS SUPERIORES COMPLETO (TELA IGUAL AO MODELO) */}
+      <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 flex flex-wrap gap-4 items-end animate-in slide-in-from-top-4 duration-200">
+        
+        {/* Filtro Período */}
+        <div className="flex flex-col gap-1.5 w-full sm:w-auto">
+          <label htmlFor="select-month" className="text-[9px] font-black text-text-secondary/70 uppercase tracking-wider pl-1 flex items-center gap-2">
+            Período
+            <div className="inline-flex bg-bg-secondary p-0.5 rounded-lg border border-divider/10">
+              {(['MÊS', 'ACUMULADO'] as const).map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setSelectedPeriodTab(tab)}
+                  className={clsx(
+                    "px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider transition-all cursor-pointer",
+                    selectedPeriodTab === tab 
+                      ? "bg-brand-500 text-white" 
+                      : "text-text-secondary hover:text-text-primary"
+                  )}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+          </label>
+          <div className="flex gap-2">
+            <div className="relative">
               <select 
+                id="select-month"
                 value={month} 
                 onChange={(e) => setMonth(Number(e.target.value))}
-                className="bg-bg-secondary border border-border rounded-lg px-3 py-2 text-xs text-text-primary outline-none w-full sm:w-auto"
+                className="appearance-none h-10 px-3 bg-bg-secondary border border-divider text-text-primary rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all duration-300 w-32 cursor-pointer pr-8 shadow-sm"
               >
                 <option value={1}>Janeiro</option>
                 <option value={2}>Fevereiro</option>
@@ -107,336 +133,366 @@ export default function ProfitabilityDashboard() {
                 <option value={11}>Novembro</option>
                 <option value={12}>Dezembro</option>
               </select>
+              <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+            </div>
+            <div className="relative">
               <select 
+                id="select-year"
+                aria-label="Ano"
                 value={year} 
                 onChange={(e) => setYear(Number(e.target.value))}
-                className="bg-bg-secondary border border-border rounded-lg px-3 py-2 text-xs text-text-primary outline-none"
+                className="appearance-none h-10 px-3 bg-bg-secondary border border-divider text-text-primary rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all duration-300 w-24 cursor-pointer pr-8 shadow-sm"
               >
                 <option value={2026}>2026</option>
                 <option value={2025}>2025</option>
                 <option value={2024}>2024</option>
               </select>
-           </div>
+              <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+            </div>
+          </div>
         </div>
-        <div className="flex flex-col gap-1 w-full sm:flex-1 sm:min-w-0">
-           <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider px-1">VENDEDOR</span>
-           <select className="bg-bg-secondary border border-border rounded-lg px-3 py-2 text-xs text-text-primary outline-none w-full">
-             <option>Todos</option>
-           </select>
+
+        {/* Filtro Vendedor */}
+        <div className="flex flex-col gap-1.5 w-full sm:flex-1 sm:min-w-0">
+          <label htmlFor="select-vendedor" className="text-[9px] font-black text-text-secondary/70 uppercase tracking-wider pl-1">Vendedor</label>
+          <div className="relative w-full">
+            <select
+              id="select-vendedor"
+              value={selectedVendedor}
+              onChange={(e) => setSelectedVendedor(e.target.value)}
+              className="appearance-none h-10 px-4 bg-bg-secondary border border-divider text-text-primary rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all duration-300 w-full cursor-pointer pr-10 shadow-sm"
+            >
+              <option value="todas">Todos os Vendedores</option>
+              {sellersQuery.data?.data?.map((v: any) => (
+                <option key={v.id} value={v.id}>{v.nome}</option>
+              ))}
+            </select>
+            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+          </div>
         </div>
-        <div className="flex flex-col gap-1 w-full sm:flex-1 sm:min-w-0">
-           <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider px-1">CLIENTE</span>
-           <div className="relative">
-             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
-             <input type="text" placeholder="Buscar nome..." className="bg-bg-secondary border border-border rounded-lg pl-9 pr-3 py-2 text-xs text-text-primary outline-none w-full" />
-           </div>
+
+        {/* Filtro Cidade */}
+        <div className="flex flex-col gap-1.5 w-full sm:flex-1 sm:min-w-0">
+          <label htmlFor="select-cidade" className="text-[9px] font-black text-text-secondary/70 uppercase tracking-wider pl-1">Cidade</label>
+          <div className="relative w-full">
+            <select
+              id="select-cidade"
+              value={selectedCidade}
+              onChange={(e) => setSelectedCidade(e.target.value)}
+              className="appearance-none h-10 px-4 bg-bg-secondary border border-divider text-text-primary rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all duration-300 w-full cursor-pointer pr-10 shadow-sm uppercase"
+            >
+              <option value="todas">Todas as Cidades</option>
+              {citiesQuery.data?.data?.map((c: any) => (
+                <option key={c.nome || c.cidade} value={c.nome || c.cidade}>{c.nome || c.cidade}</option>
+              ))}
+            </select>
+            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+          </div>
         </div>
-        <div className="flex flex-col gap-1 w-full sm:flex-1 sm:min-w-0">
-           <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider px-1">CIDADE</span>
-           <select className="bg-bg-secondary border border-border rounded-lg px-3 py-2 text-xs text-text-primary outline-none w-full">
-             <option>TODAS</option>
-           </select>
-        </div>
-        <button className="bg-blue-500 hover:bg-blue-600 text-white font-bold px-5 py-2 rounded-lg flex items-center gap-2 h-[36px] text-xs transition-colors shadow-sm">
+
+        {/* Botão Filtrar */}
+        <button
+          onClick={handleFilterClick}
+          className="bg-brand-500 hover:bg-brand-600 text-white font-black px-6 py-2 rounded-xl flex items-center justify-center gap-2 h-10 text-xs transition-colors shadow-sm cursor-pointer shrink-0 uppercase tracking-wider"
+        >
           <Filter size={14} /> FILTRAR
         </button>
       </div>
 
-      {/* 4 KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Faturamento */}
-        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex flex-col justify-between hover:border-success/50 transition-colors">
-          <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-wider mb-3">
-            <div className="p-1.5 bg-success/10 rounded-lg"><DollarSign size={14} className="text-success" /></div> FATURAMENTO TOTAL
+      {/* 4 KPIs DE RESULTADO */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in duration-300">
+        
+        {/* Card 1: Faturamento Total */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 flex flex-col justify-between">
+          <div className="flex items-center gap-2 text-[9px] font-black text-text-secondary/70 uppercase tracking-widest mb-3">
+            <div className="p-1.5 bg-emerald-500/10 text-emerald-500 rounded-lg"><DollarSign size={14} /></div> FATURAMENTO TOTAL
           </div>
-          <div
-            className="text-3xl font-extrabold text-text-primary mb-1 truncate"
-            title={formatBRL(overview.faturamento)}
-          >{formatBRLCompact(overview.faturamento)}</div>
-          <div className="text-[10px] text-text-muted">Receita bruta do período</div>
+          <div className="text-2xl font-black text-text-primary mb-0.5 font-mono">{formatCurrency(overview.faturamento)}</div>
+          <div className="text-[9px] text-text-secondary font-bold">Receita bruta do período</div>
         </div>
 
-        {/* Custo */}
-        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex flex-col justify-between hover:border-pink-500/50 transition-colors">
-          <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-wider mb-3">
-            <div className="p-1.5 bg-pink-500/10 rounded-lg"><ArrowDown size={14} className="text-pink-500" /></div> CUSTO TOTAL
+        {/* Card 2: Custo Total */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 flex flex-col justify-between">
+          <div className="flex items-center gap-2 text-[9px] font-black text-text-secondary/70 uppercase tracking-widest mb-3">
+            <div className="p-1.5 bg-red-500/10 text-red-500 rounded-lg"><ArrowDown size={14} /></div> CUSTO TOTAL
           </div>
-          <div
-            className="text-3xl font-extrabold text-text-primary mb-1 truncate"
-            title={formatBRL(overview.custo)}
-          >{formatBRLCompact(overview.custo)}</div>
-          <div className="text-[10px] text-text-muted">Custo dos produtos vendidos</div>
+          <div className="text-2xl font-black text-text-primary mb-0.5 font-mono">{formatCurrency(overview.custo)}</div>
+          <div className="text-[9px] text-text-secondary font-bold">Custo dos produtos vendidos</div>
         </div>
 
-        {/* Lucro */}
-        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex flex-col justify-between hover:border-warning/50 transition-colors">
-          <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-wider mb-3">
-            <div className="p-1.5 bg-warning/10 rounded-lg"><TrendingUp size={14} className="text-warning" /></div> LUCRO BRUTO (R$)
+        {/* Card 3: Lucro Bruto */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 flex flex-col justify-between">
+          <div className="flex items-center gap-2 text-[9px] font-black text-text-secondary/70 uppercase tracking-widest mb-3">
+            <div className="p-1.5 bg-amber-500/10 text-amber-500 rounded-lg"><TrendingUp size={14} /></div> LUCRO BRUTO (RB)
           </div>
-          <div
-            className="text-3xl font-extrabold text-text-primary mb-1 truncate"
-            title={formatBRL(overview.lucro)}
-          >{formatBRLCompact(overview.lucro)}</div>
-          <div className="text-[10px] text-text-muted">Lucro após custos diretos</div>
+          <div className="text-2xl font-black text-text-primary mb-0.5 font-mono">{formatCurrency(overview.lucro)}</div>
+          <div className="text-[9px] text-text-secondary font-bold">Lucro após custos diretos</div>
         </div>
 
-        {/* Margem */}
-        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex flex-col justify-between hover:border-cyan-500/50 transition-colors">
-          <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-wider mb-3">
-            <div className="p-1.5 bg-cyan-500/10 rounded-lg"><Percent size={14} className="text-cyan-500" /></div> MARGEM DE LUCRO (%)
+        {/* Card 4: Margem de Lucro */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 flex flex-col justify-between">
+          <div className="flex items-center gap-2 text-[9px] font-black text-text-secondary/70 uppercase tracking-widest mb-3">
+            <div className="p-1.5 bg-cyan-500/10 text-cyan-500 rounded-lg"><Percent size={14} /></div> MARGEM DE LUCRO (%)
           </div>
-          <div className="text-3xl font-extrabold text-text-primary mb-1">{overview.margem_pct.toFixed(1)}%</div>
-          <div className="text-[10px] text-text-muted">Eficiência operacional</div>
+          <div className="text-2xl font-black text-text-primary mb-0.5 font-mono">{overview.margem_pct.toFixed(2)}%</div>
+          <div className="text-[9px] text-text-secondary font-bold">Eficiência operacional</div>
         </div>
       </div>
 
-      {/* MARCAS SECTION */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Tabela Marca */}
-        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex flex-col">
-          <h3 className="font-bold text-text-primary text-sm mb-1">Resultados por Marca</h3>
-          <p className="text-[10px] text-text-muted mb-4">Top 15 marcas por rentabilidade.</p>
-          {/* Tabela — visível em sm+ */}
-          <div className="hidden sm:block flex-1 overflow-x-auto">
-            <table className="w-full text-left text-sm whitespace-nowrap">
-              <thead>
-                <tr className="border-b border-divider text-[9px] text-text-muted uppercase font-bold tracking-wider">
-                  <th className="pb-2 px-1 w-6">#</th>
-                  <th className="pb-2 px-1">MARCA</th>
-                  <th className="pb-2 px-1 text-right">VENDAS</th>
-                  <th className="pb-2 px-1 text-right">CUSTO</th>
-                  <th className="pb-2 px-1 text-right">LUCRO BRUTO</th>
-                  <th className="pb-2 px-1 text-right">LUCRATIVIDADE (%)</th>
+      {/* BLOCO 1: RESULTADOS POR MARCA */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+        
+        {/* Tabela de Marcas (7/12) */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-3xl p-5 flex flex-col lg:col-span-7">
+          <div className="mb-4">
+            <h3 className="font-black text-text-primary text-xs uppercase tracking-wider">Resultados por Marca</h3>
+            <p className="text-[9px] text-text-secondary/60 font-bold uppercase mt-0.5">Top 15 marcas por rentabilidade comercial.</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-[11px] font-medium whitespace-nowrap">
+              <thead className="bg-bg-secondary/40 text-[9px] text-text-secondary uppercase font-black tracking-wider border-b border-divider/10">
+                <tr>
+                  <th className="py-2.5 px-2 w-6">#</th>
+                  <th className="py-2.5 px-2">MARCA</th>
+                  <th className="py-2.5 px-2 text-right">VENDAS</th>
+                  <th className="py-2.5 px-2 text-right">CUSTO</th>
+                  <th className="py-2.5 px-2 text-right">LUCRO BRUTO</th>
+                  <th className="py-2.5 px-2 text-right">LUCRATIVIDADE</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-divider/30 text-[11px]">
-                {marcaData.map((row) => (
-                  <tr key={row.rank} className="hover:bg-bg-secondary/50 transition-colors">
-                    <td className="py-2.5 px-1 font-bold text-text-muted">{row.rank}º</td>
-                    <td className="py-2.5 px-1 font-bold text-text-primary max-w-[120px] truncate" title={row.name}>{row.name}</td>
-                    <td className="py-2.5 px-1 text-right text-text-secondary">{formatBRL(row.vendas)}</td>
-                    <td className="py-2.5 px-1 text-right text-text-secondary">{formatBRL(row.custo)}</td>
-                    <td className="py-2.5 px-1 text-right font-bold text-success">{formatBRL(row.lucro)}</td>
-                    <td className={clsx("py-2.5 px-1 text-right font-bold", row.luc_pct < 30 ? "text-warning" : "text-success")}>{row.luc_pct}%</td>
+              <tbody className="divide-y divide-divider/10">
+                {marcaData.slice(0, 15).map((row: any) => (
+                  <tr key={row.rank} className="hover:bg-bg-secondary/20 transition-colors">
+                    <td className="py-2 px-2 font-bold text-text-secondary/60 font-mono">{row.rank}º</td>
+                    <td className="py-2 px-2 font-bold text-text-primary max-w-[120px] truncate uppercase">{row.name}</td>
+                    <td className="py-2 px-2 text-right text-text-secondary font-mono">{formatCurrency(row.vendas)}</td>
+                    <td className="py-2 px-2 text-right text-text-secondary font-mono">{formatCurrency(row.custo)}</td>
+                    <td className="py-2 px-2 text-right font-bold text-emerald-500 font-mono">{formatCurrency(row.lucro)}</td>
+                    <td className={clsx(
+                      "py-2 px-2 text-right font-black font-mono",
+                      row.luc_pct < 15 ? "text-red-500" : row.luc_pct < 30 ? "text-orange-500" : "text-emerald-500"
+                    )}>
+                      {row.luc_pct.toFixed(2)}%
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          {/* Cards mobile — visível apenas em xs */}
-          <div className="sm:hidden flex flex-col divide-y divide-divider/30">
-            {marcaData.map((row) => (
-              <div key={row.rank} className="py-3 px-1 space-y-1">
-                <div className="flex justify-between items-center">
-                  <span className="text-[11px] font-bold text-text-primary truncate max-w-[55%]" title={row.name}>
-                    <span className="text-text-muted mr-1">{row.rank}º</span>{row.name}
-                  </span>
-                  <span className={clsx("text-[11px] font-bold", row.luc_pct < 30 ? "text-warning" : "text-success")}>{row.luc_pct}%</span>
+        </div>
+
+        {/* Gráfico de Barras Horizontais Customizado por Marca (5/12) */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-3xl p-5 flex flex-col lg:col-span-5 justify-between">
+          <div className="mb-4">
+            <h3 className="font-black text-text-primary text-xs uppercase tracking-wider">Lucratividade por Marca</h3>
+            <p className="text-[9px] text-text-secondary/60 font-bold uppercase mt-0.5">Margem de contribuição por fabricante</p>
+          </div>
+
+          <div className="flex-1 flex flex-col justify-center space-y-2 pt-2">
+            {marcaData.slice(0, 15).map((row: any, idx: number) => {
+              const maxVal = Math.max(...marcaData.map((x: any) => x.vendas)) || 1;
+              const widthPct = Math.max(10, (row.vendas / maxVal) * 100);
+              return (
+                <div key={idx} className="flex items-center gap-3">
+                  <span className="w-24 text-right truncate text-[10px] font-bold text-text-secondary uppercase">{row.name}</span>
+                  <div className="flex-1 bg-bg-secondary h-2.5 rounded-full relative group border border-divider/10 overflow-hidden">
+                    <div 
+                      className="bg-brand-500 h-full rounded-full transition-all duration-300 relative"
+                      style={{ 
+                        width: `${widthPct}%`,
+                        backgroundColor: row.color || '#0EA5E9'
+                      }}
+                    >
+                      {/* Tooltip no Hover */}
+                      <div className="absolute left-1/2 bottom-full -translate-x-1/2 mb-1 bg-black/95 text-white text-[9px] font-mono px-2 py-0.5 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none whitespace-nowrap">
+                        {row.name} | Valor: {formatCurrency(row.vendas)}
+                      </div>
+                    </div>
+                  </div>
+                  <span className="w-12 text-left text-[10px] font-black font-mono text-text-primary">{row.luc_pct.toFixed(1)}%</span>
                 </div>
-                <div className="flex justify-between text-[10px] text-text-muted">
-                  <span>Vendas: <span className="text-text-secondary">{formatBRL(row.vendas)}</span></span>
-                  <span className="text-success font-bold">{formatBRL(row.lucro)}</span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
-        {/* Gráfico Marca */}
-        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex flex-col">
-          <div className="flex justify-between items-start mb-6">
-            <div>
-              <h3 className="font-bold text-text-primary text-sm mb-1">Lucratividade por Marca</h3>
-              <p className="text-[10px] text-text-muted">Eficiência operacional e retorno por fabricante</p>
-            </div>
-          </div>
-          <div className="h-[400px] w-full mt-auto">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={marcaData} layout="vertical" margin={{ top: 0, right: 10, left: 20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--color-border)" opacity={0.3} />
-                <XAxis type="number" tickFormatter={(v) => `R$${v/1000}k`} tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} tickLine={false} axisLine={false} />
-                <YAxis dataKey="name" type="category" tick={{ fontSize: 9, fill: 'var(--color-text-secondary)' }} tickLine={false} axisLine={false} width={100} />
-                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.4 }} />
-                <Bar dataKey="lucro" radius={[0, 4, 4, 0]} maxBarSize={14}>
-                  {marcaData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
       </div>
 
-      {/* GRUPOS SECTION */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Tabela Grupo */}
-        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex flex-col">
-          <h3 className="font-bold text-text-primary text-sm mb-1">Resultados por Grupo</h3>
-          <p className="text-[10px] text-text-muted mb-4">Top 15 grupos com maior volume de vendas e sua rentabilidade.</p>
-          {/* Tabela — visível em sm+ */}
-          <div className="hidden sm:block flex-1 overflow-x-auto">
-            <table className="w-full text-left text-sm whitespace-nowrap">
-              <thead>
-                <tr className="border-b border-divider text-[9px] text-text-muted uppercase font-bold tracking-wider">
-                  <th className="pb-2 px-1 w-6">#</th>
-                  <th className="pb-2 px-1">GRUPO</th>
-                  <th className="pb-2 px-1 text-right">VENDAS</th>
-                  <th className="pb-2 px-1 text-right">CUSTO</th>
-                  <th className="pb-2 px-1 text-right">LUCRO BRUTO</th>
-                  <th className="pb-2 px-1 text-right">LUCRATIVIDADE (%)</th>
+      {/* BLOCO 2: RESULTADOS POR GRUPO */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+        
+        {/* Tabela de Grupos (7/12) */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-3xl p-5 flex flex-col lg:col-span-7">
+          <div className="mb-4">
+            <h3 className="font-black text-text-primary text-xs uppercase tracking-wider">Resultados por Grupo</h3>
+            <p className="text-[9px] text-text-secondary/60 font-bold uppercase mt-0.5">Top 15 grupos com maior margem de vendas.</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-[11px] font-medium whitespace-nowrap">
+              <thead className="bg-bg-secondary/40 text-[9px] text-text-secondary uppercase font-black tracking-wider border-b border-divider/10">
+                <tr>
+                  <th className="py-2.5 px-2 w-6">#</th>
+                  <th className="py-2.5 px-2">GRUPO</th>
+                  <th className="py-2.5 px-2 text-right">VENDAS</th>
+                  <th className="py-2.5 px-2 text-right">CUSTO</th>
+                  <th className="py-2.5 px-2 text-right">LUCRO BRUTO</th>
+                  <th className="py-2.5 px-2 text-right">LUCRATIVIDADE</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-divider/30 text-[11px]">
-                {grupoData.map((row) => (
-                  <tr key={row.rank} className="hover:bg-bg-secondary/50 transition-colors">
-                    <td className="py-2.5 px-1 font-bold text-text-muted">{row.rank}º</td>
-                    <td className="py-2.5 px-1 font-bold text-text-primary max-w-[120px] truncate" title={row.name}>{row.name}</td>
-                    <td className="py-2.5 px-1 text-right text-text-secondary">{formatBRL(row.vendas)}</td>
-                    <td className="py-2.5 px-1 text-right text-text-secondary">{formatBRL(row.custo)}</td>
-                    <td className="py-2.5 px-1 text-right font-bold text-success">{formatBRL(row.lucro)}</td>
-                    <td className={clsx("py-2.5 px-1 text-right font-bold", row.luc_pct < 30 ? "text-warning" : "text-success")}>{row.luc_pct}%</td>
+              <tbody className="divide-y divide-divider/10">
+                {grupoData.slice(0, 15).map((row: any) => (
+                  <tr key={row.rank} className="hover:bg-bg-secondary/20 transition-colors">
+                    <td className="py-2 px-2 font-bold text-text-secondary/60 font-mono">{row.rank}º</td>
+                    <td className="py-2 px-2 font-bold text-text-primary max-w-[120px] truncate uppercase">{row.name}</td>
+                    <td className="py-2 px-2 text-right text-text-secondary font-mono">{formatCurrency(row.vendas)}</td>
+                    <td className="py-2 px-2 text-right text-text-secondary font-mono">{formatCurrency(row.custo)}</td>
+                    <td className="py-2 px-2 text-right font-bold text-emerald-500 font-mono">{formatCurrency(row.lucro)}</td>
+                    <td className={clsx(
+                      "py-2 px-2 text-right font-black font-mono",
+                      row.luc_pct < 15 ? "text-red-500" : row.luc_pct < 30 ? "text-orange-500" : "text-emerald-500"
+                    )}>
+                      {row.luc_pct.toFixed(2)}%
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          {/* Cards mobile — visível apenas em xs */}
-          <div className="sm:hidden flex flex-col divide-y divide-divider/30">
-            {grupoData.map((row) => (
-              <div key={row.rank} className="py-3 px-1 space-y-1">
-                <div className="flex justify-between items-center">
-                  <span className="text-[11px] font-bold text-text-primary truncate max-w-[55%]" title={row.name}>
-                    <span className="text-text-muted mr-1">{row.rank}º</span>{row.name}
-                  </span>
-                  <span className={clsx("text-[11px] font-bold", row.luc_pct < 30 ? "text-warning" : "text-success")}>{row.luc_pct}%</span>
+        </div>
+
+        {/* Gráfico de Barras Horizontais Customizado por Grupo (5/12) */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-3xl p-5 flex flex-col lg:col-span-5 justify-between">
+          <div className="mb-4">
+            <h3 className="font-black text-text-primary text-xs uppercase tracking-wider">Lucratividade por Grupo</h3>
+            <p className="text-[9px] text-text-secondary/60 font-bold uppercase mt-0.5">Margem de contribuição por grupo (Top 15)</p>
+          </div>
+
+          <div className="flex-1 flex flex-col justify-center space-y-2 pt-2">
+            {grupoData.slice(0, 15).map((row: any, idx: number) => {
+              const maxVal = Math.max(...grupoData.map((x: any) => x.vendas)) || 1;
+              const widthPct = Math.max(10, (row.vendas / maxVal) * 100);
+              return (
+                <div key={idx} className="flex items-center gap-3">
+                  <span className="w-24 text-right truncate text-[10px] font-bold text-text-secondary uppercase">{row.name}</span>
+                  <div className="flex-1 bg-bg-secondary h-2.5 rounded-full relative group border border-divider/10 overflow-hidden">
+                    <div 
+                      className="bg-brand-500 h-full rounded-full transition-all duration-300 relative"
+                      style={{ 
+                        width: `${widthPct}%`,
+                        backgroundColor: '#0EA5E9'
+                      }}
+                    >
+                      {/* Tooltip no Hover */}
+                      <div className="absolute left-1/2 bottom-full -translate-x-1/2 mb-1 bg-black/95 text-white text-[9px] font-mono px-2 py-0.5 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none whitespace-nowrap">
+                        {row.name} | Valor: {formatCurrency(row.vendas)}
+                      </div>
+                    </div>
+                  </div>
+                  <span className="w-12 text-left text-[10px] font-black font-mono text-text-primary">{row.luc_pct.toFixed(1)}%</span>
                 </div>
-                <div className="flex justify-between text-[10px] text-text-muted">
-                  <span>Vendas: <span className="text-text-secondary">{formatBRL(row.vendas)}</span></span>
-                  <span className="text-success font-bold">{formatBRL(row.lucro)}</span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
-        {/* Gráfico Grupo */}
-        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex flex-col">
-          <div className="flex justify-between items-start mb-6">
-            <div>
-              <h3 className="font-bold text-text-primary text-sm mb-1">Lucratividade por Grupo</h3>
-              <p className="text-[10px] text-text-muted">Margem de contribuição por grupo (Top 15)</p>
-            </div>
-          </div>
-          <div className="h-[400px] w-full mt-auto">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={grupoData} layout="vertical" margin={{ top: 0, right: 10, left: 20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--color-border)" opacity={0.3} />
-                <XAxis type="number" tickFormatter={(v) => `R$${v/1000}k`} tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} tickLine={false} axisLine={false} />
-                <YAxis dataKey="name" type="category" tick={{ fontSize: 9, fill: 'var(--color-text-secondary)' }} tickLine={false} axisLine={false} width={100} />
-                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.4 }} />
-                <Bar dataKey="lucro" fill="#06B6D4" radius={[0, 4, 4, 0]} maxBarSize={14}>
-                  {grupoData.map((entry, index) => (
-                     <Cell key={`cell-${index}`} fill={index < 3 ? '#0EA5E9' : index < 7 ? '#06B6D4' : '#F59E0B'} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
       </div>
 
-      {/* VENDEDORES SECTION */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Tabela Vendedor */}
-        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex flex-col">
-          <h3 className="font-bold text-text-primary text-sm mb-1">Resultados por Vendedor</h3>
-          <p className="text-[10px] text-text-muted mb-4">Top 15 vendedores com maior rentabilidade.</p>
-          {/* Tabela — visível em sm+ */}
-          <div className="hidden sm:block flex-1 overflow-x-auto">
-            <table className="w-full text-left text-sm whitespace-nowrap">
-              <thead>
-                <tr className="border-b border-divider text-[9px] text-text-muted uppercase font-bold tracking-wider">
-                  <th className="pb-2 px-1 w-6">#</th>
-                  <th className="pb-2 px-1">VENDEDOR</th>
-                  <th className="pb-2 px-1 text-right">VENDAS</th>
-                  <th className="pb-2 px-1 text-right">CUSTO</th>
-                  <th className="pb-2 px-1 text-right">LUCRO BRUTO</th>
-                  <th className="pb-2 px-1 text-right">LUCRATIVIDADE (%)</th>
+      {/* BLOCO 3: RESULTADOS POR VENDEDOR */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+        
+        {/* Tabela de Vendedores (7/12) */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-3xl p-5 flex flex-col lg:col-span-7">
+          <div className="mb-4">
+            <h3 className="font-black text-text-primary text-xs uppercase tracking-wider">Resultados por Vendedor</h3>
+            <p className="text-[9px] text-text-secondary/60 font-bold uppercase mt-0.5">Desempenho financeiro e rentabilidade comercial.</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-[11px] font-medium whitespace-nowrap">
+              <thead className="bg-bg-secondary/40 text-[9px] text-text-secondary uppercase font-black tracking-wider border-b border-divider/10">
+                <tr>
+                  <th className="py-2.5 px-2 w-6">#</th>
+                  <th className="py-2.5 px-2">VENDEDOR</th>
+                  <th className="py-2.5 px-2 text-right">VENDAS</th>
+                  <th className="py-2.5 px-2 text-right">CUSTO</th>
+                  <th className="py-2.5 px-2 text-right">LUCRO BRUTO</th>
+                  <th className="py-2.5 px-2 text-right">LUCRATIVIDADE</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-divider/30 text-[11px]">
-                {vendedorData.map((row) => (
-                  <tr key={row.rank} className="hover:bg-bg-secondary/50 transition-colors">
-                    <td className="py-2.5 px-1 font-bold text-text-muted">{row.rank}º</td>
-                    <td className="py-2.5 px-1 font-bold text-text-primary truncate">{row.name}</td>
-                    <td className="py-2.5 px-1 text-right text-text-secondary">{formatBRL(row.vendas)}</td>
-                    <td className="py-2.5 px-1 text-right text-text-secondary">{formatBRL(row.custo)}</td>
-                    <td className="py-2.5 px-1 text-right font-bold text-success">{formatBRL(row.lucro)}</td>
-                    <td className={clsx("py-2.5 px-1 text-right font-bold", row.luc_pct < 30 ? "text-warning" : "text-success")}>{row.luc_pct}%</td>
+              <tbody className="divide-y divide-divider/10">
+                {vendedorData.slice(0, 10).map((row: any) => (
+                  <tr key={row.rank} className="hover:bg-bg-secondary/20 transition-colors">
+                    <td className="py-2 px-2 font-bold text-text-secondary/60 font-mono">{row.rank}º</td>
+                    <td className="py-2 px-2 font-bold text-text-primary max-w-[120px] truncate uppercase">{row.name}</td>
+                    <td className="py-2 px-2 text-right text-text-secondary font-mono">{formatCurrency(row.vendas)}</td>
+                    <td className="py-2 px-2 text-right text-text-secondary font-mono">{formatCurrency(row.custo)}</td>
+                    <td className="py-2 px-2 text-right font-bold text-emerald-500 font-mono">{formatCurrency(row.lucro)}</td>
+                    <td className={clsx(
+                      "py-2 px-2 text-right font-black font-mono",
+                      row.luc_pct < 15 ? "text-red-500" : row.luc_pct < 30 ? "text-orange-500" : "text-emerald-500"
+                    )}>
+                      {row.luc_pct.toFixed(2)}%
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          {/* Cards mobile — visível apenas em xs */}
-          <div className="sm:hidden flex flex-col divide-y divide-divider/30">
-            {vendedorData.map((row) => (
-              <div key={row.rank} className="py-3 px-1 space-y-1">
-                <div className="flex justify-between items-center">
-                  <span className="text-[11px] font-bold text-text-primary truncate max-w-[60%]">
-                    <span className="text-text-muted mr-1">{row.rank}º</span>{row.name}
-                  </span>
-                  <span className={clsx("text-[11px] font-bold", row.luc_pct < 30 ? "text-warning" : "text-success")}>{row.luc_pct}%</span>
+        </div>
+
+        {/* Gráfico de Barras Horizontais Customizado por Vendedor (5/12) */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-3xl p-5 flex flex-col lg:col-span-5 justify-between">
+          <div className="mb-4">
+            <h3 className="font-black text-text-primary text-xs uppercase tracking-wider">Lucratividade por Vendedor</h3>
+            <p className="text-[9px] text-text-secondary/60 font-bold uppercase mt-0.5">Desempenho de margem e faturamento de vendas</p>
+          </div>
+
+          <div className="flex-1 flex flex-col justify-center space-y-2.5 pt-2">
+            {vendedorData.slice(0, 10).map((row: any, idx: number) => {
+              const maxVal = Math.max(...vendedorData.map((x: any) => x.vendas)) || 1;
+              const widthPct = Math.max(10, (row.vendas / maxVal) * 100);
+              return (
+                <div key={idx} className="flex items-center gap-3">
+                  <span className="w-24 text-right truncate text-[10px] font-bold text-text-secondary uppercase">{row.name}</span>
+                  <div className="flex-1 bg-bg-secondary h-2.5 rounded-full relative group border border-divider/10 overflow-hidden">
+                    <div 
+                      className="bg-brand-500 h-full rounded-full transition-all duration-300 relative"
+                      style={{ 
+                        width: `${widthPct}%`,
+                        backgroundColor: row.color || '#10B981'
+                      }}
+                    >
+                      {/* Tooltip no Hover */}
+                      <div className="absolute left-1/2 bottom-full -translate-x-1/2 mb-1 bg-black/95 text-white text-[9px] font-mono px-2 py-0.5 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none whitespace-nowrap">
+                        {row.name} | Valor: {formatCurrency(row.vendas)}
+                      </div>
+                    </div>
+                  </div>
+                  <span className="w-12 text-left text-[10px] font-black font-mono text-text-primary">{row.luc_pct.toFixed(1)}%</span>
                 </div>
-                <div className="flex justify-between text-[10px] text-text-muted">
-                  <span>Vendas: <span className="text-text-secondary">{formatBRL(row.vendas)}</span></span>
-                  <span className="text-success font-bold">{formatBRL(row.lucro)}</span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
-        {/* Gráfico Vendedor */}
-        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex flex-col">
-          <div className="flex justify-between items-start mb-6">
-            <div>
-              <h3 className="font-bold text-text-primary text-sm mb-1">Lucratividade por Vendedor</h3>
-              <p className="text-[10px] text-text-muted">Desempenho da equipe comercial na retenção de lucro</p>
-            </div>
-          </div>
-          <div className="h-[250px] w-full mt-auto">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={vendedorData} layout="vertical" margin={{ top: 0, right: 10, left: 20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--color-border)" opacity={0.3} />
-                <XAxis type="number" tickFormatter={(v) => `R$${v/1000}k`} tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} tickLine={false} axisLine={false} />
-                <YAxis dataKey="name" type="category" tick={{ fontSize: 9, fill: 'var(--color-text-secondary)' }} tickLine={false} axisLine={false} width={60} />
-                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.4 }} />
-                <Bar dataKey="lucro" radius={[0, 4, 4, 0]} maxBarSize={30}>
-                  {vendedorData.map((entry, index) => (
-                     <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
       </div>
 
-      {/* FOOTER CALLOUT */}
-      <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex flex-col justify-center">
-        <h3 className="font-bold text-text-primary text-sm mb-2">Análise de Lucratividade</h3>
-        <p className="text-xs text-text-secondary">
-          A lucratividade de <span className="font-bold text-text-primary">{overview.margem_pct.toFixed(1)}%</span> indica que para cada R$ 100,00 vendidos, a empresa retém <span className="font-bold text-success">R$ {overview.margem_pct.toFixed(2)}</span> após cobrir os custos dos produtos.
+      {/* ANÁLISE DE LUCRATIVIDADE (RODAPÉ DO MODELO) */}
+      <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 animate-in fade-in duration-300">
+        <h3 className="font-black text-text-primary text-xs uppercase tracking-wider mb-2">Análise de Lucratividade</h3>
+        <p className="text-xs text-text-secondary leading-relaxed font-semibold">
+          A lucratividade de <span className="font-black text-text-primary font-mono">{overview.margem_pct.toFixed(2)}%</span> indica que para cada R$ 100,00 vendidos, a empresa retém <span className="font-black text-emerald-500 font-mono">R$ {overview.margem_pct.toFixed(2)}</span> após cobrir todos os custos diretos dos produtos.
         </p>
       </div>
 
-      {isError && (
-        <div className="bg-danger/10 border border-danger/20 text-danger p-3 rounded-lg text-sm mt-4">
-          Aviso: Os dados não puderam ser carregados devido a uma falha de conexão com o banco de dados/API.
-        </div>
-      )}
+    </div>
+  );
+}
+
+function LoaderSpinner() {
+  return (
+    <div className="relative flex items-center justify-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-500"></div>
+      <div className="absolute text-xs font-black text-brand-500">💰</div>
     </div>
   );
 }

@@ -1409,9 +1409,35 @@ router.get('/comparative/summary', async (req, res, next) => {
         const tenantId = req.tenant.id;
         const { start, end } = await getBiDateRange(req, tenantId);
         const deptoId = req.query.depto_id;
-        const df = buildDeptoFilter(deptoId, 4, 'v');
-        
+        const vendedorId = req.query.vendedor_id;
+        const cidade = req.query.cidade;
+
         const salesFilter = cfopUtil.getSalesFilterClause('v');
+
+        // Construção dinâmica de filtros de vendas e joins
+        let whereClause = `v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3`;
+        let params = [tenantId, toSafeSqlString(start), toSafeSqlString(end)];
+        let pIdx = 4;
+
+        if (deptoId && deptoId !== 'todas' && deptoId !== 'all') {
+            whereClause += ` AND v.depto_id = $${pIdx}`;
+            params.push(parseInt(deptoId, 10));
+            pIdx++;
+        }
+
+        let joinClause = '';
+        if (cidade && cidade !== 'todas' && cidade !== 'all' && cidade !== 'TODOS') {
+            joinClause += ` JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id`;
+            whereClause += ` AND c.cidade = $${pIdx}`;
+            params.push(cidade);
+            pIdx++;
+        }
+
+        if (vendedorId && vendedorId !== 'todas' && vendedorId !== 'all' && vendedorId !== 'TODOS') {
+            whereClause += ` AND v.vendedor_id_firebird = $${pIdx}`;
+            params.push(vendedorId);
+            pIdx++;
+        }
 
         // --- KPI Overview ---
         const { rows: kpis } = await db.query(`
@@ -1419,10 +1445,10 @@ router.get('/comparative/summary', async (req, res, next) => {
                 COALESCE(SUM(v.valor_total - COALESCE(v.valor_desconto, 0)), 0) AS faturamento,
                 COALESCE(SUM(v.valor_custo), 0) AS custo
             FROM dash_vendas v
-            WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
+            ${joinClause}
+            WHERE ${whereClause}
               ${salesFilter}
-              ${df.clause}
-        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
+        `, params);
 
         const faturamento = parseFloat(kpis[0].faturamento);
         const custo = parseFloat(kpis[0].custo);
@@ -1437,14 +1463,14 @@ router.get('/comparative/summary', async (req, res, next) => {
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
             LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
-            WHERE vi.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
+            ${joinClause}
+            WHERE ${whereClause}
               ${salesFilter}
               AND COALESCE(vi.marca, v.marca, p.marca) IS NOT NULL AND COALESCE(vi.marca, v.marca, p.marca) != ''
-              ${df.clause}
             GROUP BY COALESCE(vi.marca, v.marca, p.marca, 'S/ MARCA')
             ORDER BY vendas DESC
             LIMIT 15
-        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
+        `, params);
 
         const colors = ['#0EA5E9', '#10B981', '#3B82F6', '#8B5CF6', '#A855F7', '#D946EF', '#F472B6', '#F43F5E', '#EF4444', '#F97316', '#F59E0B', '#EAB308', '#EAB308'];
 
@@ -1471,14 +1497,14 @@ router.get('/comparative/summary', async (req, res, next) => {
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
             LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
-            WHERE vi.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
+            ${joinClause}
+            WHERE ${whereClause}
               ${salesFilter}
               AND COALESCE(vi.categoria, v.categoria, p.categoria) IS NOT NULL AND COALESCE(vi.categoria, v.categoria, p.categoria) != ''
-              ${df.clause}
             GROUP BY COALESCE(vi.categoria, v.categoria, p.categoria, 'S/ GRUPO')
             ORDER BY vendas DESC
             LIMIT 15
-        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
+        `, params);
 
         const grupoData = grupos.map((g, i) => {
             const g_vendas = parseFloat(g.vendas || 0);
@@ -1501,13 +1527,13 @@ router.get('/comparative/summary', async (req, res, next) => {
                    SUM(v.valor_custo) as custo
             FROM dash_vendas v
             LEFT JOIN dash_vendedores vend ON vend.id_firebird = v.vendedor_id_firebird AND vend.tenant_id = v.tenant_id
-            WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
+            ${joinClause}
+            WHERE ${whereClause}
               ${salesFilter}
-              ${df.clause}
             GROUP BY v.vendedor_id_firebird, vend.nome
             ORDER BY vendas DESC
             LIMIT 15
-        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
+        `, params);
 
         const vendedorData = vends.map((vd, i) => {
             const vd_vendas = parseFloat(vd.vendas || 0);
