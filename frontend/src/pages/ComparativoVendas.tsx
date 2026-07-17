@@ -6,7 +6,7 @@ import {
 import {
   DollarSign, ShoppingBag, Award, GitCompare, Play, Maximize2, ChevronDown
 } from 'lucide-react'
-import { useBranchPeriodQuery } from '../hooks/useApi'
+import { useApiQuery, useBranchPeriodQuery } from '../hooks/useApi'
 import { useBranch } from '../contexts/BranchContext'
 import { formatBRL, formatBRLCompact, formatNum } from '../utils/format'
 import clsx from 'clsx'
@@ -152,8 +152,8 @@ export default function ComparativoVendas() {
   }, [tipoPeriodo, comparacaoMes, comparacaoAno, customComparacaoStart, customComparacaoEnd, selectedBranch, vendedor, cidade, marca, categoria, status, tipo])
 
   // Queries Reais de Dados do BI para os dois períodos
-  const ovAnalise = useBranchPeriodQuery<any>('/bi/sales/commercial-kpis', analiseParams)
-  const ovComparacao = useBranchPeriodQuery<any>('/bi/sales/commercial-kpis', comparacaoParams)
+  const ovAnalise = useApiQuery<any>('/bi/sales/commercial-kpis', analiseParams)
+  const ovComparacao = useApiQuery<any>('/bi/sales/commercial-kpis', comparacaoParams)
 
   // Ranking Query dinâmica dependendo do filtro selecionado
   const getRankingEndpoint = () => {
@@ -163,8 +163,8 @@ export default function ComparativoVendas() {
     return '/ranking/cidades'
   }
 
-  const rankAnalise = useBranchPeriodQuery<any>(getRankingEndpoint(), { ...analiseParams, limit: 15 })
-  const rankComparacao = useBranchPeriodQuery<any>(getRankingEndpoint(), { ...comparacaoParams, limit: 15 })
+  const rankAnalise = useApiQuery<any>(getRankingEndpoint(), { ...analiseParams, limit: 15 })
+  const rankComparacao = useApiQuery<any>(getRankingEndpoint(), { ...comparacaoParams, limit: 15 })
 
   // KPI Faturamento
   const fatAnalise = ovAnalise.data?.faturamento_total || 0
