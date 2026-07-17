@@ -297,38 +297,14 @@ export default function SellerHubDashboard() {
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       
-      {/* HEADER ROW (Title + Subtitle + Period Selector) */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center text-orange-500 shadow-sm border border-orange-500/10">
-            <Trophy size={20} strokeWidth={2.2} />
-          </div>
-          <div>
-            <h1 className="text-base sm:text-lg md:text-xl font-extrabold text-text-primary uppercase tracking-wider">
-              Hub do Vendedor
-            </h1>
-            <p className="text-[11px] text-text-secondary font-medium">
-              Estatísticas individuais, ranking de vendas e metas do vendedor
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 self-start lg:self-auto bg-bg-primary border border-divider shadow-sm rounded-xl p-1.5">
+      {/* FILTER BAR ROW */}
+      <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-4 flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4">
+        {/* Period Selector (Left) */}
+        <div className="flex items-center gap-2 self-start xl:self-auto bg-bg-secondary border border-divider shadow-sm rounded-xl p-1">
           <PeriodFilter />
         </div>
-      </div>
-
-      {/* FILTER BAR ROW */}
-      <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-          <h2 className="text-xs font-extrabold text-text-primary flex flex-wrap items-center gap-x-2 gap-y-1 uppercase tracking-wider">
-            <span>{selectedSellerName ? `Vendedor: ${selectedSellerName}` : 'Selecione um Vendedor'}</span>
-            {data?.start_date && (
-              <span className="text-[10px] font-bold text-text-secondary whitespace-nowrap">
-                ({dateRangeLabel})
-              </span>
-            )}
-          </h2>
         
-        <div className="flex flex-wrap items-end gap-3 w-full lg:w-auto">
+        <div className="flex flex-wrap items-end gap-3 w-full xl:w-auto">
           {sellerId ? (
             <button
               onClick={() => navigate('/comercial/equipe')}
@@ -398,9 +374,9 @@ export default function SellerHubDashboard() {
       </div>
 
       {/* HIGHLIGHTED FATURAMENTO & METAS GRID */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         {/* Faturamento Comparison Card */}
-        <div className="lg:col-span-8 bg-bg-primary border border-divider shadow-card rounded-2xl p-6 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6 hover:shadow-card-hover transition-all duration-300">
+        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-6 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6 hover:shadow-card-hover transition-all duration-300">
           {/* Left teal border decoration */}
           <div className="absolute top-0 bottom-0 left-0 w-[6px] bg-brand-500"></div>
 
@@ -443,61 +419,6 @@ export default function SellerHubDashboard() {
               <DollarSign size={24} />
             </div>
           </div>
-        </div>
-
-        {/* Metas Velocímetro Card */}
-        <div className="lg:col-span-4 bg-bg-primary border border-divider shadow-card rounded-2xl p-5 flex flex-col justify-between hover:shadow-card-hover transition-all duration-300 relative overflow-hidden">
-          <div className="absolute top-0 bottom-0 left-0 w-[4px] bg-emerald-500"></div>
-          <div className="flex items-center gap-2 mb-2">
-            <div className="p-1 bg-emerald-500/10 text-emerald-500 rounded-lg">
-              <Target size={16} />
-            </div>
-            <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Atingimento de Meta</span>
-          </div>
-
-          {(() => {
-            const metaValor = 150000.00;
-            const metaAtingimentoPct = Math.min(100, Math.round((faturamento / metaValor) * 100)) || 0;
-            const angle = (metaAtingimentoPct / 100) * 180;
-            const needleAngle = 180 - angle;
-            const needleRad = (needleAngle * Math.PI) / 180;
-            const radius = 35;
-            const needleX = 50 + radius * Math.cos(needleRad);
-            const needleY = 50 - radius * Math.sin(needleRad);
-
-            return (
-              <div className="flex items-center justify-between gap-4 py-1">
-                {/* SVG Velocímetro */}
-                <div className="relative w-32 h-20 shrink-0">
-                  <svg viewBox="0 0 100 55" className="w-full h-full">
-                    {/* Background arc */}
-                    <path d="M 10 50 A 40 40 0 0 1 90 50" fill="none" stroke="var(--color-bg-tertiary)" strokeWidth="8" strokeLinecap="round" />
-                    {/* Value arc */}
-                    <path 
-                      d="M 10 50 A 40 40 0 0 1 90 50" 
-                      fill="none" 
-                      stroke={metaAtingimentoPct >= 100 ? "#10B981" : "#0D9488"} 
-                      strokeWidth="8" 
-                      strokeLinecap="round" 
-                      strokeDasharray={`${(metaAtingimentoPct / 100) * 125.6} 125.6`} 
-                    />
-                    {/* Needle */}
-                    <line x1="50" y1="50" x2={needleX} y2={needleY} stroke="var(--color-text-primary)" strokeWidth="2.5" strokeLinecap="round" />
-                    <circle cx="50" cy="50" r="3.5" fill="var(--color-text-primary)" />
-                  </svg>
-                  <div className="absolute bottom-0 left-0 right-0 text-center">
-                    <span className="text-lg font-black text-text-primary">{metaAtingimentoPct}%</span>
-                  </div>
-                </div>
-
-                <div className="space-y-1 text-right">
-                  <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider block">Objetivo</span>
-                  <div className="text-base font-extrabold text-text-primary leading-none">{formatBRL(metaValor)}</div>
-                  <span className="text-[10px] text-text-muted font-semibold block mt-1">Falta: {formatBRL(Math.max(0, metaValor - faturamento))}</span>
-                </div>
-              </div>
-            );
-          })()}
         </div>
       </div>
 
