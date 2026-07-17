@@ -10,6 +10,8 @@ import {
 import { formatBRL } from '../../utils/format';
 import clsx from 'clsx';
 
+const formatCurrency = formatBRL;
+
 export default function ProfitabilityDashboard() {
   const [selectedPeriodTab, setSelectedPeriodTab] = useState<'MÊS' | 'ACUMULADO'>('MÊS');
   const [month, setMonth] = useState(new Date().getMonth() + 1);
