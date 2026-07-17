@@ -533,7 +533,7 @@ export default function SellerHubDashboard() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto max-h-[300px] text-xs pr-1">
+          <div className="flex-1 text-xs pr-1">
             {rankingViews.marcas === 'list' ? (
               <div className="space-y-1">
                 {topMarcas.slice(0, 10).map((m: any, index: number) => {
@@ -565,7 +565,7 @@ export default function SellerHubDashboard() {
               </div>
             ) : (
               topMarcas.length > 0 ? (
-                <div className="h-[280px] w-full flex items-center justify-center py-2 pr-4">
+                <div className="h-[370px] w-full flex items-center justify-center py-2 pr-4">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                       data={topMarcas.slice(0, 10)}
@@ -634,7 +634,7 @@ export default function SellerHubDashboard() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto max-h-[300px] text-xs pr-1">
+          <div className="flex-1 text-xs pr-1">
             {rankingViews.grupos === 'list' ? (
               <div className="space-y-1">
                 {topGrupos.slice(0, 10).map((g: any, index: number) => {
@@ -666,7 +666,7 @@ export default function SellerHubDashboard() {
               </div>
             ) : (
               topGrupos.length > 0 ? (
-                <div className="h-[280px] w-full flex items-center justify-center py-2 pr-4">
+                <div className="h-[370px] w-full flex items-center justify-center py-2 pr-4">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                       data={topGrupos.slice(0, 10)}
@@ -735,7 +735,7 @@ export default function SellerHubDashboard() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto max-h-[300px] text-xs pr-1">
+          <div className="flex-1 text-xs pr-1">
             {rankingViews.clientes === 'list' ? (
               <div className="space-y-1">
                 {topClientes.slice(0, 10).map((c: any, index: number) => {
@@ -767,7 +767,7 @@ export default function SellerHubDashboard() {
               </div>
             ) : (
               topClientes.length > 0 ? (
-                <div className="h-[280px] w-full flex items-center justify-center py-2 pr-4">
+                <div className="h-[370px] w-full flex items-center justify-center py-2 pr-4">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                       data={topClientes.slice(0, 10)}
@@ -836,7 +836,7 @@ export default function SellerHubDashboard() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto max-h-[300px] text-xs pr-1">
+          <div className="flex-1 text-xs pr-1">
             {rankingViews.produtos === 'list' ? (
               <div className="space-y-1">
                 {topProdutos.slice(0, 10).map((p: any, index: number) => {
@@ -868,7 +868,7 @@ export default function SellerHubDashboard() {
               </div>
             ) : (
               topProdutos.length > 0 ? (
-                <div className="h-[280px] w-full flex items-center justify-center py-2 pr-4">
+                <div className="h-[370px] w-full flex items-center justify-center py-2 pr-4">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                       data={topProdutos.slice(0, 10)}
