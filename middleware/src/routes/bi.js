@@ -1472,7 +1472,7 @@ router.get('/comparative/summary', async (req, res, next) => {
             LIMIT 15
         `, params);
 
-        const colors = ['#0EA5E9', '#10B981', '#3B82F6', '#8B5CF6', '#A855F7', '#D946EF', '#F472B6', '#F43F5E', '#EF4444', '#F97316', '#F59E0B', '#EAB308', '#EAB308'];
+        const colors = ['#0EA5E9', '#10B981', '#3B82F6', '#14B8A6', '#06B6D4', '#22C55E', '#84CC16', '#F59E0B', '#EAB308', '#F97316', '#EF4444', '#F43F5E', '#F472B6'];
 
         const marcaData = marcas.map((m, i) => {
             const m_vendas = parseFloat(m.vendas || 0);
@@ -1550,6 +1550,54 @@ router.get('/comparative/summary', async (req, res, next) => {
             };
         });
 
+        // --- Cidades ---
+        let cityWhere = `v.tenant_id = $1 AND v.data_venda >= $2 AND v.data_venda <= $3`;
+        let cityParams = [tenantId, toSafeSqlString(start), toSafeSqlString(end)];
+        let cIdx = 4;
+        if (deptoId && deptoId !== 'todas' && deptoId !== 'all') {
+            cityWhere += ` AND v.depto_id = $${cIdx}`;
+            cityParams.push(parseInt(deptoId, 10));
+            cIdx++;
+        }
+        if (cidade && cidade !== 'todas' && cidade !== 'all' && cidade !== 'TODOS') {
+            cityWhere += ` AND c.cidade = $${cIdx}`;
+            cityParams.push(cidade);
+            cIdx++;
+        }
+        if (vendedorId && vendedorId !== 'todas' && vendedorId !== 'all' && vendedorId !== 'TODOS') {
+            cityWhere += ` AND v.vendedor_id_firebird = $${cIdx}`;
+            cityParams.push(vendedorId);
+            cIdx++;
+        }
+
+        const { rows: cids } = await db.query(`
+            SELECT COALESCE(c.cidade, 'S/ CIDADE') as nome, 
+                   SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) as vendas,
+                   SUM(v.valor_custo) as custo
+            FROM dash_vendas v
+            JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
+            WHERE ${cityWhere}
+              ${salesFilter}
+            GROUP BY c.cidade
+            ORDER BY vendas DESC
+            LIMIT 15
+        `, cityParams);
+
+        const cidadeData = cids.map((cid, i) => {
+            const cid_vendas = parseFloat(cid.vendas || 0);
+            const cid_custo = parseFloat(cid.custo || 0);
+            const cid_lucro = cid_vendas - cid_custo;
+            return {
+                rank: i + 1,
+                name: cid.nome,
+                vendas: cid_vendas,
+                custo: cid_custo,
+                lucro: cid_lucro,
+                luc_pct: cid_vendas > 0 ? (cid_lucro / cid_vendas) * 100 : 0,
+                color: colors[i % colors.length]
+            };
+        });
+
         res.json({
             overview: {
                 faturamento,
@@ -1559,7 +1607,8 @@ router.get('/comparative/summary', async (req, res, next) => {
             },
             marcaData,
             grupoData,
-            vendedorData
+            vendedorData,
+            cidadeData
         });
     } catch (err) { next(err); }
 });
