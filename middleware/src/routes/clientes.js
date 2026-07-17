@@ -49,12 +49,12 @@ router.get('/lista', async (req, res, next) => {
                     SELECT vend.nome 
                     FROM dash_vendas v2
                     LEFT JOIN dash_vendedores vend ON vend.id_firebird = v2.vendedor_id_firebird AND vend.tenant_id = v2.tenant_id
-                    WHERE v2.cliente_id_firebird = v.cliente_id_firebird AND v2.tenant_id = v.tenant_id
+                    WHERE v2.cliente_id_firebird = v.cliente_id_firebird AND v2.tenant_id = $1
                     ORDER BY v2.data_hora_proc DESC LIMIT 1
                 ) as vendedor_resp
             FROM dash_vendas v
             WHERE v.tenant_id = $1 ${salesFilter} ${filterClause}
-            GROUP BY v.cliente_id_firebird
+            GROUP BY v.cliente_id_firebird, v.tenant_id
         `;
 
         // Agora construímos a query principal dos clientes
@@ -213,7 +213,7 @@ router.get('/analytics-full', async (req, res, next) => {
         const currentSalesParams = [...salesParams];
         const startIdx = pIdx++;
         const endIdx = pIdx++;
-        currentSalesParams.push(toSafeSqlString(start), toSafeSqlString(end));
+        currentSalesParams.push(start, end);
 
         const currentActiveRes = await db.query(`
             SELECT COUNT(DISTINCT v.cliente_id_firebird) AS total
@@ -240,7 +240,7 @@ router.get('/analytics-full', async (req, res, next) => {
 
         // 4. Novos Clientes
         let newClientsQuery = `SELECT COUNT(*) AS total FROM dash_clientes c WHERE c.tenant_id = $1 AND c.ativo = true AND c.data_cadastro >= $2 AND c.data_cadastro <= $3`;
-        let newClientsParams = [tenantId, toSafeSqlString(start), toSafeSqlString(end)];
+        let newClientsParams = [tenantId, start, end];
         if (cidade && cidade !== 'todas' && cidade !== 'all' && cidade !== 'TODOS') {
             newClientsQuery += ` AND c.cidade = $4`;
             newClientsParams.push(cidade);

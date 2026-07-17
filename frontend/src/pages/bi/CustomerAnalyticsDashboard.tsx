@@ -95,21 +95,11 @@ export default function CustomerAnalyticsDashboard() {
     <div aria-label="Análise de Clientes Dashboard" className="space-y-6 animate-in fade-in duration-300">
       
       {/* CARD DE FILTROS SUPERIORES */}
-      <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-6 flex flex-col xl:flex-row xl:items-center justify-between gap-4 animate-in slide-in-from-top duration-200">
-        <div>
-          <h2 className="text-base font-black text-text-primary uppercase tracking-wider flex items-center gap-2">
-            <Users className="text-brand-500" size={20} />
-            Análise de Clientes
-          </h2>
-          <p className="text-[11px] text-text-secondary font-bold mt-0.5">
-            Monitoramento de saúde de base, novos clientes e riscos de churn da carteira.
-          </p>
-        </div>
-        
-        <div className="flex flex-wrap gap-4 items-center shrink-0">
+      <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 flex flex-wrap gap-5 items-center justify-between animate-in slide-in-from-top duration-200">
+        <div className="flex flex-wrap gap-5 items-center w-full">
           {/* Vendedor */}
-          <div className="flex flex-col gap-0.5 w-full sm:w-52">
-            <span className="text-[10px] font-black text-text-secondary/70 uppercase tracking-wider pl-1">Vendedor</span>
+          <div className="flex flex-col gap-1 w-full sm:w-64">
+            <span className="text-[10px] font-bold text-text-secondary/70 uppercase tracking-wider pl-1">Vendedor</span>
             <div className="relative w-full">
               <select
                 value={selectedVendedor}
@@ -117,20 +107,20 @@ export default function CustomerAnalyticsDashboard() {
                   setSelectedVendedor(e.target.value);
                   setPage(1);
                 }}
-                className="appearance-none h-9 px-3 bg-bg-secondary border border-divider text-text-primary rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all duration-300 w-full cursor-pointer pr-9 shadow-sm"
+                className="appearance-none h-10 px-4 bg-bg-secondary border border-divider text-text-primary rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all duration-300 w-full cursor-pointer pr-10 shadow-sm"
               >
                 <option value="todas">Todos os Vendedores</option>
                 {sellersQuery.data?.data?.map((v: any) => (
                   <option key={v.id} value={v.id}>{v.nome}</option>
                 ))}
               </select>
-              <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+              <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
             </div>
           </div>
 
           {/* Cidade */}
-          <div className="flex flex-col gap-0.5 w-full sm:w-52">
-            <span className="text-[10px] font-black text-text-secondary/70 uppercase tracking-wider pl-1">Cidade</span>
+          <div className="flex flex-col gap-1 w-full sm:w-64">
+            <span className="text-[10px] font-bold text-text-secondary/70 uppercase tracking-wider pl-1">Cidade</span>
             <div className="relative w-full">
               <select
                 value={selectedCidade}
@@ -138,20 +128,20 @@ export default function CustomerAnalyticsDashboard() {
                   setSelectedCidade(e.target.value);
                   setPage(1);
                 }}
-                className="appearance-none h-9 px-3 bg-bg-secondary border border-divider text-text-primary rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all duration-300 w-full cursor-pointer pr-9 shadow-sm uppercase"
+                className="appearance-none h-10 px-4 bg-bg-secondary border border-divider text-text-primary rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all duration-300 w-full cursor-pointer pr-10 shadow-sm uppercase"
               >
                 <option value="todas">Todas as Cidades</option>
                 {citiesQuery.data?.data?.map((c: any) => (
                   <option key={c.nome || c.cidade} value={c.nome || c.cidade}>{c.nome || c.cidade}</option>
                 ))}
               </select>
-              <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+              <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
             </div>
           </div>
 
           {/* Período */}
-          <div className="flex flex-col gap-0.5 w-full sm:w-auto">
-            <span className="text-[10px] font-black text-text-secondary/70 uppercase tracking-wider pl-1">Período</span>
+          <div className="flex flex-col gap-1 ml-auto w-full sm:w-auto">
+            <span className="text-[10px] font-bold text-text-secondary/70 uppercase tracking-wider pl-1">Período</span>
             <div className="flex items-center min-w-0">
               <PeriodFilter />
             </div>
