@@ -453,7 +453,7 @@ export default function Radar360Dashboard() {
                 "text-4xl font-extrabold font-mono leading-none",
                 dna.dias_sem_comprar > 90 ? "text-red-500" : "text-emerald-500"
               )}>
-                {risco_churn_pct}%
+                {risk_assessment.risco_churn_pct}%
               </span>
               <span className="text-[9px] font-black uppercase tracking-wider text-red-500">Alerta</span>
             </div>
