@@ -806,7 +806,16 @@ export default function SupplierAnalyticsDashboard() {
                       <td colSpan={9} className="px-5 py-12 text-center text-text-secondary font-semibold">
                         Nenhum item em estoque para esta busca ou marca.
                       </td>
-               {activeTab === 'Catálogo' && (
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'Catálogo' && (
         <div className="space-y-6 animate-in fade-in duration-300">
           <div className="bg-bg-primary border border-border shadow-card rounded-xl flex flex-col overflow-hidden">
             <div className="p-4 border-b border-divider flex justify-between items-center bg-gradient-to-r from-bg-secondary to-bg-primary">
