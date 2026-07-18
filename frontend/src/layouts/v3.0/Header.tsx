@@ -170,19 +170,25 @@ export default function Header({ onMenuClick, activeRoute }: Props) {
         <Menu size={22} />
       </button>
 
-      <div className="flex items-center gap-2.5 ml-1 sm:ml-2 lg:ml-0 min-w-0 flex-shrink-0">
-        <div
-          className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-          style={{
-            backgroundColor: `${activeRoute.color}15`,
-            boxShadow: `0 2px 8px ${activeRoute.color}20`,
-          }}
-        >
-          <activeRoute.icon size={16} style={{ color: activeRoute.color }} strokeWidth={2.2} />
+      <div className="flex items-center gap-3 ml-1 sm:ml-2 lg:ml-0 min-w-0 flex-shrink-0">
+        {/* Logo Coliseu */}
+        <div className="bg-white dark:bg-slate-900 p-1 rounded-xl border border-divider/40 shadow-sm flex items-center justify-center h-9 w-20 sm:w-24">
+          <img
+            src="/logo-coliseu.png"
+            alt="Coliseu Sistemas"
+            className="h-6 sm:h-7 w-auto object-contain"
+          />
         </div>
-        <h1 className="font-heading text-xs sm:text-sm md:text-base font-extrabold text-text-primary uppercase tracking-wider truncate whitespace-nowrap">
-          {activeRoute.label}
-        </h1>
+        
+        {/* Slogan */}
+        <div className="hidden xl:flex flex-col leading-none text-left border-l border-divider/40 pl-3">
+          <span className="text-[7px] font-black text-text-secondary/50 uppercase tracking-widest">
+            BUSINESS INTELLIGENCE
+          </span>
+          <span className="text-xs font-black text-text-primary mt-0.5">
+            Gerencie <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-cyan-400">tudo.</span>
+          </span>
+        </div>
       </div>
 
       {/* Menu Superior - Top Navigation Hub (Desktop) */}

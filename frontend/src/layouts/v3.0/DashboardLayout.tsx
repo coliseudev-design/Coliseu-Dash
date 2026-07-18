@@ -55,7 +55,24 @@ export default function DashboardLayout() {
       />
       <div className="flex-1 flex flex-col min-w-0">
         <Header onMenuClick={() => setMenuOpen(true)} activeRoute={activeRoute} />
-        <main className="flex-1 p-3 sm:p-4 md:p-5 lg:p-6 max-w-[1600px] w-full mx-auto">
+        <main className="flex-1 p-3 sm:p-4 md:p-5 lg:p-6 max-w-[1600px] w-full mx-auto flex flex-col gap-4">
+          {/* Título do Menu/Rota Ativa - Posicionado conforme solicitado no conteúdo da página */}
+          <div className="flex items-center gap-2.5 flex-shrink-0 animate-in fade-in duration-200">
+            <div
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{
+                backgroundColor: `${activeRoute.color}15`,
+                boxShadow: `0 2px 8px ${activeRoute.color}20`,
+                border: `1px solid ${activeRoute.color}25`
+              }}
+            >
+              <activeRoute.icon size={16} style={{ color: activeRoute.color }} strokeWidth={2.2} />
+            </div>
+            <h2 className="font-heading text-base sm:text-lg md:text-xl font-black text-text-primary uppercase tracking-wide">
+              {activeRoute.label}
+            </h2>
+          </div>
+
           <Outlet />
         </main>
       </div>
