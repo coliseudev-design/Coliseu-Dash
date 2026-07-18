@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, Wallet, LogOut, Shield,
   Settings, ChevronDown, ChevronUp, ChevronLeft, GitCompare,
@@ -7,7 +7,8 @@ import {
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useAuthStore } from '../../store/authStore'
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
+
 
 interface Props {
   open: boolean
@@ -81,6 +82,21 @@ function IconBadge({
 export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }: Props) {
   const user = useAuthStore((s) => s.user)
   const [configOpen, setConfigOpen] = useState(false)
+  const location = useLocation()
+  const navRef = useRef<HTMLElement>(null)
+
+  // Restaurar posição de scroll ao navegar
+  useEffect(() => {
+    const savedScroll = sessionStorage.getItem('sidebar-scroll')
+    if (savedScroll && navRef.current) {
+      navRef.current.scrollTop = Number(savedScroll)
+    }
+  }, [location.pathname])
+
+  // Salvar posição de scroll ao rolar
+  const handleScroll = (e: React.UIEvent<HTMLElement>) => {
+    sessionStorage.setItem('sidebar-scroll', String(e.currentTarget.scrollTop))
+  }
 
   const hasAccess = (moduleId: string) => {
     if (user?.role === 'master') return true
@@ -209,7 +225,11 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }: 
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 overflow-y-auto py-2 px-2 flex flex-col space-y-0.5">
+        <nav 
+          ref={navRef}
+          onScroll={handleScroll}
+          className="flex-1 overflow-y-auto py-2 px-2 flex flex-col space-y-0.5"
+        >
           {/* Menu Principal */}
           <div>
             {allowedModules.map((m) => (
