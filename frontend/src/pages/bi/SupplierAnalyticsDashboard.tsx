@@ -805,17 +805,7 @@ export default function SupplierAnalyticsDashboard() {
                       <td colSpan={9} className="px-5 py-12 text-center text-text-secondary font-semibold">
                         Nenhum item em estoque para esta busca ou marca.
                       </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-        </div>
-      )}
-
-      {activeTab === 'Catálogo' && (
+               {activeTab === 'Catálogo' && (
         <div className="space-y-6 animate-in fade-in duration-300">
           <div className="bg-bg-primary border border-border shadow-card rounded-xl flex flex-col overflow-hidden">
             <div className="p-4 border-b border-divider flex justify-between items-center bg-gradient-to-r from-bg-secondary to-bg-primary">
@@ -824,13 +814,14 @@ export default function SupplierAnalyticsDashboard() {
                 Catálogo Geral de Produtos
               </h3>
             </div>
+            
             {/* Tabela — visível em sm+ */}
             <div className="hidden sm:block overflow-x-auto">
               <table className="w-full text-left text-sm whitespace-nowrap">
                 <thead>
-                  <tr className="bg-bg-secondary/30 text-[10px] text-text-muted uppercase font-bold tracking-wider">
-                    <th className="px-5 py-3">CÓDIGO</th>
-                    <th className="px-5 py-3">DESCRIÇÃO</th>
+                  <tr className="bg-bg-secondary/30 text-[10px] text-text-muted uppercase font-bold tracking-wider border-b border-divider">
+                    <th className="px-5 py-3 text-left">CÓDIGO</th>
+                    <th className="px-5 py-3 text-left">DESCRIÇÃO</th>
                     <th className="px-5 py-3 text-right">PREÇO CUSTO (R$)</th>
                     <th className="px-5 py-3 text-right">PREÇO VENDA (R$)</th>
                     <th className="px-5 py-3 text-center">MARGEM (%)</th>
@@ -839,60 +830,76 @@ export default function SupplierAnalyticsDashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-divider/30 text-xs">
-                  {topProducts.map((prod: any, idx: number) => {
-                    const precoVenda = prod.volume > 0 ? prod.receita / prod.volume : 0;
-                    const precoCusto = precoVenda * 0.65;
-                    const margemBruta = precoVenda > 0 ? ((precoVenda - precoCusto) / precoVenda) * 100 : 0;
-                    const estoqueAtual = prod.volume * Math.floor(Math.random() * 5 + 1);
-                    let statusIcon = '🔴';
-                    let statusLabel = 'Crítico';
+                  {rawInventory.map((item: any, idx: number) => {
+                    const preco = parseFloat(item.preco || 0);
+                    const custo = parseFloat(item.custo || 0);
+                    const margemLucro = preco > 0 ? ((preco - custo) / preco) * 100 : 0;
+                    
                     let statusClass = 'text-danger bg-danger/10 border-danger/20';
-                    if (estoqueAtual > 50) { statusIcon = '🟢'; statusLabel = 'Alto'; statusClass = 'text-success bg-success/10 border-success/20'; }
-                    else if (estoqueAtual > 15) { statusIcon = '🟡'; statusLabel = 'Médio'; statusClass = 'text-warning bg-warning/10 border-warning/20'; }
+                    let statusLabel = 'Crítico';
+                    if (item.status === 'Ideal') {
+                      statusClass = 'text-success bg-success/10 border-success/20';
+                      statusLabel = 'Ideal';
+                    } else if (item.status === 'Critico') {
+                      statusClass = 'text-warning bg-warning/10 border-warning/20';
+                      statusLabel = 'Crítico';
+                    } else if (item.status === 'Ruptura') {
+                      statusClass = 'text-danger bg-danger/10 border-danger/20';
+                      statusLabel = 'Ruptura';
+                    }
+
                     return (
                       <tr key={idx} className="hover:bg-bg-secondary/50 transition-colors">
-                        <td className="px-5 py-3 font-mono font-bold text-text-muted">SKU_{prod.rank}</td>
-                        <td className="px-5 py-3 font-bold text-text-primary">{prod.name}</td>
-                        <td className="px-5 py-3 text-right font-medium text-text-secondary">{formatBRL(precoCusto)}</td>
-                        <td className="px-5 py-3 text-right font-bold text-brand-500">{formatBRL(precoVenda)}</td>
-                        <td className="px-5 py-3 text-center font-bold text-success">{margemBruta.toFixed(1)}%</td>
-                        <td className="px-5 py-3 text-right font-bold text-text-primary">{estoqueAtual} un.</td>
+                        <td className="px-5 py-3 font-mono font-bold text-brand-500 text-left">{item.cod}</td>
+                        <td className="px-5 py-3 font-bold text-text-primary text-left truncate max-w-[280px]" title={item.desc}>{item.desc}</td>
+                        <td className="px-5 py-3 text-right font-mono font-bold text-text-secondary">{formatBRL(custo)}</td>
+                        <td className="px-5 py-3 text-right font-mono font-bold text-brand-500">{formatBRL(preco)}</td>
+                        <td className="px-5 py-3 text-center font-mono font-bold text-success">{margemLucro.toFixed(1)}%</td>
+                        <td className="px-5 py-3 text-right font-mono font-bold text-text-primary">{formatNum(item.estoque)} un.</td>
                         <td className="px-5 py-3 text-center">
-                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold border ${statusClass}`}>
-                            {statusIcon} {statusLabel}
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-bold border ${statusClass}`}>
+                            {statusLabel}
                           </span>
                         </td>
                       </tr>
                     );
                   })}
+                  {rawInventory.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="px-5 py-12 text-center text-text-secondary font-semibold">
+                        Nenhum produto cadastrado no catálogo deste fornecedor.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
+
             {/* Cards mobile — visível apenas em xs */}
             <div className="sm:hidden flex flex-col divide-y divide-divider/30">
-              {topProducts.map((prod: any, idx: number) => {
-                const precoVenda = prod.volume > 0 ? prod.receita / prod.volume : 0;
-                const precoCusto = precoVenda * 0.65;
-                const margemBruta = precoVenda > 0 ? ((precoVenda - precoCusto) / precoVenda) * 100 : 0;
-                const estoqueAtual = prod.volume * Math.floor(Math.random() * 5 + 1);
-                let statusIcon = '🔴';
-                let statusLabel = 'Crítico';
+              {rawInventory.map((item: any, idx: number) => {
+                const preco = parseFloat(item.preco || 0);
+                const custo = parseFloat(item.custo || 0);
+                const margemLucro = preco > 0 ? ((preco - custo) / preco) * 100 : 0;
+                
                 let statusClass = 'text-danger bg-danger/10 border-danger/20';
-                if (estoqueAtual > 50) { statusIcon = '🟢'; statusLabel = 'Alto'; statusClass = 'text-success bg-success/10 border-success/20'; }
-                else if (estoqueAtual > 15) { statusIcon = '🟡'; statusLabel = 'Médio'; statusClass = 'text-warning bg-warning/10 border-warning/20'; }
+                if (item.status === 'Ideal') statusClass = 'text-success bg-success/10 border-success/20';
+                else if (item.status === 'Critico') statusClass = 'text-warning bg-warning/10 border-warning/20';
+
                 return (
                   <div key={idx} className="py-3 px-4 space-y-1.5">
                     <div className="flex justify-between items-center gap-2">
                       <div>
-                        <span className="text-[10px] font-mono text-text-muted">SKU_{prod.rank}</span>
-                        <p className="text-[11px] font-bold text-text-primary truncate max-w-[180px]">{prod.name}</p>
+                        <span className="text-[10px] font-mono text-brand-500 font-bold">{item.cod}</span>
+                        <p className="text-[11px] font-bold text-text-primary truncate max-w-[180px]">{item.desc}</p>
                       </div>
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-bold border ${statusClass}`}>{statusIcon} {statusLabel}</span>
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold border ${statusClass}`}>{item.status}</span>
                     </div>
                     <div className="flex justify-between text-[10px] text-text-muted">
-                      <span>Venda: <span className="text-brand-500 font-bold">{formatBRL(precoVenda)}</span></span>
-                      <span>Margem: <span className="text-success font-bold">{margemBruta.toFixed(1)}%</span></span>
-                      <span>Estoque: <span className="text-text-secondary font-bold">{estoqueAtual} un.</span></span>
+                      <span>Custo: <span className="font-mono text-text-secondary font-bold">{formatBRL(custo)}</span></span>
+                      <span>Venda: <span className="font-mono text-brand-500 font-bold">{formatBRL(preco)}</span></span>
+                      <span>Margem: <span className="font-mono text-success font-bold">{margemLucro.toFixed(1)}%</span></span>
+                      <span>Estoque: <span className="font-mono text-text-primary font-bold">{formatNum(item.estoque)}</span></span>
                     </div>
                   </div>
                 );
@@ -901,31 +908,42 @@ export default function SupplierAnalyticsDashboard() {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5">
+            <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 hover:shadow-md transition-shadow">
               <h4 className="font-bold text-text-primary text-sm flex items-center gap-2 mb-3">
                 <Target size={16} className="text-success" /> Destaque de Rentabilidade
               </h4>
               <p className="text-xs text-text-secondary mb-2">Produto com melhor projeção de margem do catálogo.</p>
-              <div className="bg-success/10 border border-success/20 rounded-lg p-3">
-                <div className="font-bold text-success text-sm truncate">{topProducts[0]?.name || 'N/A'}</div>
-                <div className="text-xs text-success/80 mt-1">Margem Projetada: 35.0%</div>
-              </div>
+              {(() => {
+                const items = [...rawInventory].sort((a, b) => {
+                  const mA = a.preco > 0 ? ((a.preco - a.custo) / a.preco) : 0;
+                  const mB = b.preco > 0 ? ((b.preco - b.custo) / b.preco) : 0;
+                  return mB - mA;
+                });
+                const best = items[0];
+                if (!best) return <div className="text-xs text-text-secondary">Nenhum produto disponível</div>;
+                const margem = best.preco > 0 ? ((best.preco - best.custo) / best.preco) * 100 : 0;
+                return (
+                  <div className="bg-success/5 border border-success/15 rounded-lg p-3">
+                    <div className="font-bold text-success text-sm truncate">{best.desc}</div>
+                    <div className="text-xs text-success/80 mt-1">Margem Projetada: {margem.toFixed(1)}% • Código: {best.cod}</div>
+                  </div>
+                );
+              })()}
             </div>
             
-            <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5">
+            <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 hover:shadow-md transition-shadow">
               <h4 className="font-bold text-text-primary text-sm flex items-center gap-2 mb-3">
                 <Activity size={16} className="text-warning" /> Ação Recomendada
               </h4>
               <p className="text-xs text-text-secondary mb-2">Sugestão automática do sistema baseada no volume atual.</p>
               <div className="bg-warning/10 border border-warning/20 rounded-lg p-3">
                 <div className="font-bold text-warning text-sm truncate">Campanha de Giro Rápido</div>
-                <div className="text-xs text-warning/80 mt-1">Sugerido para produtos com status 🟢 (Estoque Alto)</div>
+                <div className="text-xs text-warning/80 mt-1 font-semibold">Sugerido para produtos com status Ideal (Estoque Alto)</div>
               </div>
             </div>
           </div>
         </div>
       )}
-
     </div>
   );
 }
