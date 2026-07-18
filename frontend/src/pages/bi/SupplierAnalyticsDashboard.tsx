@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useBiPeriodQuery } from '../../hooks/useBiPeriodQuery';
 import { BIService } from '../../services/biApi';
@@ -11,6 +11,7 @@ import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Respons
 import { formatBRL, formatBRLCompact, formatNum } from '../../utils/format';
 import clsx from 'clsx';
 import { PromptViewer } from '../../components/PromptViewer';
+
 
 // Badge Comparativo para tabelas
 const DeltaBadge = ({ pct }: { pct: number | null }) => {
@@ -77,7 +78,21 @@ export default function SupplierAnalyticsDashboard() {
     );
   }
 
-  const performanceMensal = data?.monthly_performance || [];
+  const performanceMensal = useMemo(() => {
+    const raw = data?.monthly_performance || [];
+    return raw.map((row, i) => {
+      const prev = i > 0 ? raw[i - 1] : null;
+      const cresc_vendas = prev && prev.valor > 0 ? ((row.valor - prev.valor) / prev.valor) * 100 : null;
+      const cresc_qtde = prev && prev.qtde > 0 ? ((row.qtde - prev.qtde) / prev.qtde) * 100 : null;
+      return {
+        ...row,
+        vendas: row.valor,
+        cresc_vendas,
+        cresc_qtde
+      };
+    });
+  }, [data?.monthly_performance]);
+
   const chartData = data?.monthly_performance || [];
   const overview = data?.overview || { receita: 0, custo: 0, pedidos: 0, clientes: 0 };
   const topProducts = data?.top_products || [];
