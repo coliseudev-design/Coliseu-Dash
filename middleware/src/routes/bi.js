@@ -1079,6 +1079,11 @@ router.get('/customer/search', async (req, res, next) => {
                 FROM dash_clientes
                 WHERE tenant_id = $1 
                   AND (UPPER(nome) LIKE $2 OR documento LIKE $2)
+                  AND ativo = true
+                  -- Excluir fornecedores puros (campo tipo sincronizado do ERP)
+                  AND (tipo IS NULL OR UPPER(TRIM(tipo)) NOT IN ('FORNECEDOR', 'FORNECEDORES', 'FORNEC'))
+                  -- Somente quem tem ao menos 1 pedido de venda vinculado
+                  AND EXISTS (SELECT 1 FROM dash_vendas vx WHERE vx.cliente_id_firebird = id_firebird AND vx.tenant_id = tenant_id)
                 ORDER BY nome ASC
                 LIMIT 10
             )
