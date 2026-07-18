@@ -60,6 +60,13 @@ router.get('/lista', async (req, res, next) => {
         // Agora construímos a query principal dos clientes
         let mainWhere = ['c.tenant_id = $1', 'c.ativo = true'];
 
+        // Excluir fornecedores puros — tipo FORNECEDOR (quando sincronizado) ou sem pedidos e sem títulos
+        mainWhere.push(`(c.tipo IS NULL OR UPPER(TRIM(c.tipo)) NOT IN ('FORNECEDOR', 'FORNECEDORES', 'FORNEC'))`);
+        // Somente clientes com ao menos 1 pedido vinculado
+        mainWhere.push(`EXISTS (SELECT 1 FROM dash_vendas vx WHERE vx.cliente_id_firebird = c.id_firebird AND vx.tenant_id = c.tenant_id)`);
+        // Somente clientes com ao menos 1 título financeiro vinculado
+        mainWhere.push(`EXISTS (SELECT 1 FROM dash_financeiro fx WHERE fx.cliente_id_firebird = c.id_firebird AND fx.tenant_id = c.tenant_id)`);
+
         if (search) {
             mainWhere.push(`(c.nome ILIKE $${bIdx} OR c.documento ILIKE $${bIdx})`);
             binds.push(`%${search}%`);
@@ -200,7 +207,13 @@ router.get('/analytics-full', async (req, res, next) => {
         const filterClause = salesWhere.length > 1 ? 'AND ' + salesWhere.slice(1).join(' AND ') : '';
 
         // 1. Total Clientes
-        let totalClientsQuery = `SELECT COUNT(*) AS total FROM dash_clientes c WHERE c.tenant_id = $1 AND c.ativo = true`;
+        let totalClientsQuery = `
+            SELECT COUNT(*) AS total FROM dash_clientes c 
+            WHERE c.tenant_id = $1 AND c.ativo = true
+              AND (c.tipo IS NULL OR UPPER(TRIM(c.tipo)) NOT IN ('FORNECEDOR', 'FORNECEDORES', 'FORNEC'))
+              AND EXISTS (SELECT 1 FROM dash_vendas vx WHERE vx.cliente_id_firebird = c.id_firebird AND vx.tenant_id = c.tenant_id)
+              AND EXISTS (SELECT 1 FROM dash_financeiro fx WHERE fx.cliente_id_firebird = c.id_firebird AND fx.tenant_id = c.tenant_id)
+        `;
         let totalClientsParams = [tenantId];
         if (cidade && cidade !== 'todas' && cidade !== 'all' && cidade !== 'TODOS') {
             totalClientsQuery += ` AND c.cidade = $2`;
@@ -239,7 +252,14 @@ router.get('/analytics-full', async (req, res, next) => {
         const mes_anterior = parseInt(prevActiveRes.rows[0]?.total || 0, 10);
 
         // 4. Novos Clientes
-        let newClientsQuery = `SELECT COUNT(*) AS total FROM dash_clientes c WHERE c.tenant_id = $1 AND c.ativo = true AND c.data_cadastro >= $2 AND c.data_cadastro <= $3`;
+        let newClientsQuery = `
+            SELECT COUNT(*) AS total FROM dash_clientes c 
+            WHERE c.tenant_id = $1 AND c.ativo = true 
+              AND c.data_cadastro >= $2 AND c.data_cadastro <= $3
+              AND (c.tipo IS NULL OR UPPER(TRIM(c.tipo)) NOT IN ('FORNECEDOR', 'FORNECEDORES', 'FORNEC'))
+              AND EXISTS (SELECT 1 FROM dash_vendas vx WHERE vx.cliente_id_firebird = c.id_firebird AND vx.tenant_id = c.tenant_id)
+              AND EXISTS (SELECT 1 FROM dash_financeiro fx WHERE fx.cliente_id_firebird = c.id_firebird AND fx.tenant_id = c.tenant_id)
+        `;
         let newClientsParams = [tenantId, start, end];
         if (cidade && cidade !== 'todas' && cidade !== 'all' && cidade !== 'TODOS') {
             newClientsQuery += ` AND c.cidade = $4`;
@@ -340,7 +360,11 @@ router.get('/kpis', async (req, res, next) => {
         const salesFilter = cfopUtil.getSalesFilterClause('v');
 
         const totalP = await db.query(
-            'SELECT COUNT(*) AS total FROM dash_clientes WHERE tenant_id = $1 AND ativo = true', 
+            `SELECT COUNT(*) AS total FROM dash_clientes c
+             WHERE c.tenant_id = $1 AND c.ativo = true
+               AND (c.tipo IS NULL OR UPPER(TRIM(c.tipo)) NOT IN ('FORNECEDOR', 'FORNECEDORES', 'FORNEC'))
+               AND EXISTS (SELECT 1 FROM dash_vendas vx WHERE vx.cliente_id_firebird = c.id_firebird AND vx.tenant_id = c.tenant_id)
+               AND EXISTS (SELECT 1 FROM dash_financeiro fx WHERE fx.cliente_id_firebird = c.id_firebird AND fx.tenant_id = c.tenant_id)`,
             [tenantId]
         );
 

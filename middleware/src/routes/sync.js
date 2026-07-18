@@ -7,7 +7,8 @@ const logger = require('../config/logger');
 const { invalidateTenant } = require('../config/cache');
 
 const TABELAS_MAP = {
-    'dash_clientes': ['id_firebird', 'nome', 'documento', 'email', 'telefone', 'cidade', 'estado', 'classificacao', 'data_cadastro', 'ativo'],
+    'dash_clientes': ['id_firebird', 'nome', 'documento', 'email', 'telefone', 'cidade', 'estado', 'classificacao', 'tipo', 'data_cadastro', 'ativo'],
+
     'dash_produtos': ['id_firebird', 'codigo', 'nome', 'descricao', 'categoria', 'marca', 'preco', 'custo', 'estoque', 'estoque_minimo', 'ativo', 'referencia', 'codigo_fabrica', 'marca_id', 'grupo_id'],
     'dash_vendedores': ['id_firebird', 'nome', 'email', 'ativo'],
     'dash_fornecedores': ['id_firebird', 'nome', 'documento', 'cidade', 'estado'],
@@ -30,7 +31,8 @@ const TABELAS_MAP = {
 const COL_MAX_LENGTH = {
     // dash_clientes
     nome: 255, documento: 100, email: 255, telefone: 100, cidade: 255,
-    estado: 2, classificacao: 50,
+    estado: 2, classificacao: 50, tipo: 50,
+
     // dash_vendas / dash_vendas_itens / dash_produtos
     categoria: 255, marca: 255, especie: 255, vendedor: 255,
     produto: 500, descricao: 500, motivo: 500,

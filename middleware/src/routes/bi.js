@@ -1001,10 +1001,14 @@ router.get('/customer/analytics', async (req, res, next) => {
         `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
 
         const { rows: tot } = await db.query(`
-            SELECT COUNT(*) AS totais,
-                   SUM(CASE WHEN data_cadastro >= $2 AND data_cadastro <= $3 THEN 1 ELSE 0 END) AS novos
-            FROM dash_clientes
-            WHERE tenant_id = $1 AND ativo = true
+            SELECT 
+                COUNT(*) AS totais,
+                SUM(CASE WHEN c.data_cadastro >= $2 AND c.data_cadastro <= $3 THEN 1 ELSE 0 END) AS novos
+            FROM dash_clientes c
+            WHERE c.tenant_id = $1 AND c.ativo = true
+              AND (c.tipo IS NULL OR UPPER(TRIM(c.tipo)) NOT IN ('FORNECEDOR', 'FORNECEDORES', 'FORNEC'))
+              AND EXISTS (SELECT 1 FROM dash_vendas vx WHERE vx.cliente_id_firebird = c.id_firebird AND vx.tenant_id = c.tenant_id)
+              AND EXISTS (SELECT 1 FROM dash_financeiro fx WHERE fx.cliente_id_firebird = c.id_firebird AND fx.tenant_id = c.tenant_id)
         `, [tenantId, toSafeSqlString(start), toSafeSqlString(end)]);
 
         // Top 50 clientes em risco (compraram antes do inicio, mas nao no periodo atual)
@@ -1013,6 +1017,8 @@ router.get('/customer/analytics', async (req, res, next) => {
             FROM dash_clientes c
             JOIN dash_vendas v ON v.cliente_id_firebird = c.id_firebird AND v.tenant_id = c.tenant_id
             WHERE c.tenant_id = $1 AND v.data_hora_proc < $2 AND c.ativo = true
+              AND (c.tipo IS NULL OR UPPER(TRIM(c.tipo)) NOT IN ('FORNECEDOR', 'FORNECEDORES', 'FORNEC'))
+              AND EXISTS (SELECT 1 FROM dash_financeiro fx WHERE fx.cliente_id_firebird = c.id_firebird AND fx.tenant_id = c.tenant_id)
               ${salesFilter}
               AND c.id_firebird NOT IN (
                   SELECT DISTINCT cliente_id_firebird FROM dash_vendas v
