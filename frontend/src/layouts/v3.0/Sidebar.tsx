@@ -20,67 +20,68 @@ interface Props {
 const MENU_GROUPS = [
   {
     id: 'corporativas',
-    label: 'Visões Corporativas',
+    label: 'Corporativo',
     icon: LayoutDashboard,
     color: '#3B82F6',
     items: [
-      { to: '/', label: 'Visão Estratégica', icon: LayoutDashboard, exact: true, id: 'inicio', color: '#3B82F6' },
-      { to: '/comparativo-vendas', label: 'Análise Comparativa', icon: GitCompare, exact: true, id: 'inicio', color: '#10B981' },
+      { to: '/', label: 'Painel Geral', icon: LayoutDashboard, exact: true, id: 'inicio', color: '#3B82F6', iconClass: 'icon-corporativo' },
+      { to: '/comparativo-vendas', label: 'Comparativos', icon: GitCompare, exact: true, id: 'inicio', color: '#10B981', iconClass: 'icon-corporativo' },
     ]
   },
   {
     id: 'comercial',
-    label: 'Inteligência Comercial',
+    label: 'Comercial',
     icon: TrendingUp,
     color: '#F97316',
     items: [
-      { to: '/bi', label: 'Inteligência de Vendas', icon: TrendingUp, exact: true, id: 'bi_sales', color: '#10B981' },
-      { to: '/hub-vendedor', label: 'Central do Vendedor', icon: BadgeCheck, exact: true, id: 'bi_sales', color: '#F97316' },
+      { to: '/bi', label: 'Vendas', icon: TrendingUp, exact: true, id: 'bi_sales', color: '#10B981', iconClass: 'icon-comercial' },
+      { to: '/hub-vendedor', label: 'Vendedores', icon: BadgeCheck, exact: true, id: 'bi_sales', color: '#F97316', iconClass: 'icon-comercial' },
     ]
   },
   {
     id: 'clientes',
-    label: 'Clientes & Parceiros',
+    label: 'Clientes',
     icon: UsersRound,
     color: '#EC4899',
     items: [
-      { to: '/bi/customer-analytics', label: 'Painel de Clientes', icon: UsersRound, id: 'bi_customer_analytics', color: '#14B8A6' },
-      { to: '/bi/customer', label: 'Perfil 360° do Cliente', icon: Radar, id: 'bi_customer', color: '#EC4899' },
-      { to: '/bi/supplier', label: 'Central do Fornecedor', icon: Factory, id: 'bi_supplier', color: '#F59E0B' },
+      { to: '/bi/customer-analytics', label: 'Análise Geral', icon: UsersRound, id: 'bi_customer_analytics', color: '#14B8A6', iconClass: 'icon-clientes' },
+      { to: '/bi/customer', label: 'Perfil 360°', icon: Radar, id: 'bi_customer', color: '#EC4899', iconClass: 'icon-clientes' },
+      { to: '/bi/supplier', label: 'Fornecedores', icon: Factory, id: 'bi_supplier', color: '#F59E0B', iconClass: 'icon-clientes' },
     ]
   },
   {
     id: 'controladoria',
-    label: 'Controladoria & Performance',
+    label: 'Finanças',
     icon: Banknote,
     color: '#22C55E',
     items: [
-      { to: '/bi/finance', label: 'Gestão Financeira', icon: Banknote, id: 'bi_finance', color: '#22C55E' },
-      { to: '/bi/comparative', label: 'Análise de Lucratividade', icon: CircleDollarSign, id: 'bi_comparative', color: '#84CC16' },
+      { to: '/bi/finance', label: 'Fluxo de Caixa', icon: Banknote, id: 'bi_finance', color: '#22C55E', iconClass: 'icon-financas' },
+      { to: '/bi/comparative', label: 'Lucratividade', icon: CircleDollarSign, id: 'bi_comparative', color: '#84CC16', iconClass: 'icon-financas' },
     ]
   },
   {
     id: 'operacoes',
-    label: 'Operações & Estoque',
+    label: 'Operações',
     icon: Boxes,
     color: '#06B6D4',
     items: [
-      { to: '/bi/abc', label: 'Inteligência de Estoque', icon: Boxes, id: 'bi_abc', color: '#06B6D4' },
+      { to: '/bi/abc', label: 'Giro de Estoque', icon: Boxes, id: 'bi_abc', color: '#06B6D4', iconClass: 'icon-operacoes' },
     ]
   },
   {
     id: 'compras',
-    label: 'Inteligência de Compras',
+    label: 'Compras (IA)',
     icon: ShoppingCart,
     color: '#A855F7',
     items: [
       { 
         to: '/bi/compras-ia', 
-        label: 'Gestão de Compras & IA', 
+        label: 'Compras (IA)', 
         icon: ShoppingCart, 
         id: 'bi_compras_ia', 
         color: '#A855F7', 
-        isComingSoon: true 
+        isComingSoon: true,
+        iconClass: 'icon-compras'
       },
     ]
   }
@@ -97,11 +98,13 @@ function IconBadge({
   color,
   isActive,
   size = 14,
+  iconClass,
 }: {
   icon: React.ElementType
   color: string
   isActive: boolean
   size?: number
+  iconClass?: string
 }) {
   return (
     <div
@@ -125,6 +128,7 @@ function IconBadge({
       />
       <Icon
         size={size}
+        className={clsx("transition-transform duration-300 ease-in-out", iconClass)}
         style={{ color: isActive ? color : `${color}bb`, position: 'relative' }}
         strokeWidth={isActive ? 2.2 : 1.8}
       />
@@ -195,7 +199,7 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }: 
 
   const allowedConfigModules = CONFIG_MODULES.filter((m) => hasAccess(m.id))
 
-  const NavItem = ({ to, label, icon, exact, color, isComingSoon }: { to: string; label: string; icon: React.ElementType; exact?: boolean; color: string; isComingSoon?: boolean }) => {
+  const NavItem = ({ to, label, icon, exact, color, isComingSoon, iconClass }: { to: string; label: string; icon: React.ElementType; exact?: boolean; color: string; isComingSoon?: boolean; iconClass?: string }) => {
     const handleNavItemClick = (e: React.MouseEvent) => {
       if (isComingSoon) {
         e.preventDefault()
@@ -214,7 +218,7 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }: 
           clsx(
             'group flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 mb-0.5 hover:-translate-y-[1px] active:translate-y-[0.5px] border w-full',
             isActive && !isComingSoon
-              ? 'bg-white text-text-primary border-slate-200/60 border-b-[3px] border-b-brand-500 shadow-[0_2px_4px_rgba(0,0,0,0.04)]' 
+              ? 'bg-gradient-to-r from-[#0052D4] via-[#4364F7] to-[#6FB1FC] text-white border-transparent shadow-[0_4px_15px_rgba(67,100,247,0.35)]' 
               : 'text-text-secondary border-transparent hover:bg-bg-secondary/40 hover:text-text-primary hover:border-b-2 hover:border-b-divider/60',
             collapsed ? 'lg:justify-center lg:px-0' : ''
           )
@@ -224,20 +228,20 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }: 
           const activeState = isActive && !isComingSoon
           return (
             <>
-              <IconBadge icon={icon} color={color} isActive={activeState} />
+              <IconBadge icon={icon} color={activeState ? '#ffffff' : color} isActive={activeState} iconClass={iconClass} />
               <span
                 className={clsx(
                   'truncate transition-colors duration-150 flex items-center gap-1.5',
                   activeState
-                    ? 'text-text-primary font-extrabold'
+                    ? 'text-white font-extrabold'
                     : 'text-text-secondary group-hover:text-text-primary',
                   collapsed ? 'lg:hidden block' : 'block'
                 )}
               >
                 {label}
                 {isComingSoon && (
-                  <span className="bg-purple-500/10 text-purple-600 dark:text-purple-400 text-[8px] px-1.5 py-0.5 rounded-full font-black uppercase tracking-wider scale-90 border border-purple-500/20">
-                    IA
+                  <span className="bg-gradient-to-r from-purple-500 via-[#4364F7] to-cyan-400 text-white text-[7px] px-1.5 py-0.5 rounded-full font-black uppercase tracking-wider scale-90 border border-purple-400/40 shadow-[0_0_8px_rgba(168,85,247,0.5)] animate-pulse flex-shrink-0">
+                    PREDITIVO
                   </span>
                 )}
               </span>
@@ -267,6 +271,54 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }: 
 
   return (
     <>
+      {/* Estilos de Microinterações de Ícones 3D */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes tilt3d {
+          0%, 100% { transform: perspective(100px) rotateX(0deg) rotateY(0deg) scale(1); }
+          50% { transform: perspective(100px) rotateX(12deg) rotateY(15deg) scale(1.05); }
+        }
+        @keyframes heartPulse {
+          0%, 100% { transform: scale(1); opacity: 0.9; }
+          50% { transform: scale(1.15) translateY(-1px); opacity: 1; }
+        }
+        @keyframes orbitRotate {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        @keyframes swingTilt {
+          0%, 100% { transform: rotate(0deg); }
+          25% { transform: rotate(5deg); }
+          75% { transform: rotate(-5deg); }
+        }
+        @keyframes depthBounce {
+          0%, 100% { transform: translateZ(0) scale(1); }
+          50% { transform: translateZ(10px) scale(1.1); }
+        }
+        @keyframes glowPulse {
+          0%, 100% { filter: drop-shadow(0 0 2px rgba(168, 85, 247, 0.4)); }
+          50% { filter: drop-shadow(0 0 8px rgba(168, 85, 247, 0.8)); }
+        }
+
+        .group:hover .icon-corporativo {
+          animation: tilt3d 0.8s ease-in-out infinite !important;
+        }
+        .group:hover .icon-comercial {
+          animation: heartPulse 0.6s ease-in-out infinite !important;
+        }
+        .group:hover .icon-clientes {
+          animation: orbitRotate 3s linear infinite !important;
+        }
+        .group:hover .icon-financas {
+          animation: swingTilt 0.8s ease-in-out infinite !important;
+        }
+        .group:hover .icon-operacoes {
+          animation: depthBounce 0.7s ease-in-out infinite !important;
+        }
+        .group:hover .icon-compras {
+          animation: glowPulse 1s ease-in-out infinite !important;
+        }
+      `}} />
+
       {/* Backdrop mobile */}
       {open && (
         <div
@@ -355,10 +407,12 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }: 
                   }}
                   title={group.label}
                   className={clsx(
-                    "w-full flex items-center px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-150 mb-0.5 group border border-transparent cursor-pointer",
+                    "w-full flex items-center px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-150 mb-0.5 group border cursor-pointer",
                     hasActiveRoute && !collapsed
-                      ? "text-text-primary bg-bg-secondary/40 font-extrabold"
-                      : "text-text-secondary hover:bg-bg-secondary/20 hover:text-text-primary",
+                      ? "text-text-primary bg-white dark:bg-slate-900/60 font-extrabold shadow-[0_10px_30px_-5px_rgba(0,0,0,0.05),_0_5px_15px_-3px_rgba(0,0,0,0.02)] border-slate-200/40 dark:border-slate-800/40"
+                      : isExpanded && !collapsed
+                        ? "text-text-primary bg-bg-secondary/40 border-transparent shadow-[0_4px_12px_rgba(0,0,0,0.02)] font-extrabold"
+                        : "text-text-secondary border-transparent hover:bg-bg-secondary/20 hover:text-text-primary",
                     collapsed ? "lg:justify-center lg:px-0" : "justify-between"
                   )}
                 >
@@ -371,9 +425,9 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }: 
                   {!collapsed && (isExpanded ? <ChevronUp size={12} className="text-text-muted" /> : <ChevronDown size={12} className="text-text-muted" />)}
                 </button>
 
-                {/* Submenus Retráteis */}
+                {/* Submenus Retráteis com Efeito de Vidro (Glassmorphism) */}
                 {!collapsed && isExpanded && (
-                  <div className="mt-0.5 pl-2.5 space-y-0.5 border-l border-divider/40 ml-4 animate-in slide-in-from-top-1 duration-150">
+                  <div className="mt-1 pl-1.5 pr-1.5 py-1.5 space-y-0.5 ml-4 mr-1 bg-white/20 dark:bg-slate-900/25 backdrop-blur-md border border-white/10 dark:border-white/5 shadow-[0_4px_15px_rgba(0,0,0,0.03)] rounded-xl animate-in slide-in-from-top-1 duration-150">
                     {group.items.map((item) => (
                       <NavItem key={item.to} {...item} />
                     ))}
@@ -485,19 +539,31 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }: 
 
       {/* Modal / Popup Inteligência de Compras com IA */}
       {isComingSoonOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 z-[999] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-bg-primary border border-border shadow-2xl rounded-2xl w-full max-w-md p-6 text-center animate-in zoom-in-95 duration-200 flex flex-col items-center">
-            {/* 3D Premium IA Icon badge */}
-            <div className="w-16 h-16 bg-purple-500/10 text-purple-500 rounded-2xl flex items-center justify-center mb-4 border border-purple-500/20 shadow-md">
-              <ShoppingCart size={32} />
+        <div className="fixed inset-0 bg-slate-950/70 z-[999] flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-bg-primary border border-border/80 shadow-2xl rounded-2xl w-full max-w-md p-6 text-center animate-in zoom-in-95 duration-200 flex flex-col items-center relative overflow-hidden">
+            {/* Holographic glowing dots in background */}
+            <div className="absolute -top-12 -left-12 w-24 h-24 bg-purple-500/10 rounded-full blur-2xl pointer-events-none" />
+            <div className="absolute -bottom-12 -right-12 w-24 h-24 bg-cyan-500/10 rounded-full blur-2xl pointer-events-none" />
+
+            {/* 3D Holographic Processing Widget */}
+            <div className="relative w-20 h-20 mb-6 flex items-center justify-center">
+              <div className="absolute inset-0 border-2 border-dashed border-purple-500/30 rounded-full animate-[spin_8s_linear_infinite]" />
+              <div className="absolute inset-2 border border-dotted border-cyan-400/40 rounded-full animate-[spin_5s_linear_infinite_reverse]" />
+              <div className="absolute inset-4 bg-purple-500/5 rounded-full animate-ping duration-[2000ms]" />
+              <div className="relative z-10 w-12 h-12 bg-gradient-to-tr from-purple-600 to-cyan-500 text-white rounded-2xl flex items-center justify-center shadow-[0_0_15px_rgba(168,85,247,0.5)] border border-white/20">
+                <ShoppingCart size={22} className="animate-pulse" />
+              </div>
             </div>
-            <h3 className="text-lg font-extrabold text-text-primary">Inteligência de Compras com IA</h3>
-            <p className="text-xs text-text-secondary mt-2 leading-relaxed">
-              Estamos preparando uma experiência incrível para otimizar seus pedidos e prever demandas com Inteligência Artificial. Esta funcionalidade estará disponível em breve!
+
+            <h3 className="text-base font-black text-text-primary uppercase tracking-wide bg-clip-text text-transparent bg-gradient-to-r from-purple-500 via-[#4364F7] to-cyan-500">
+              Inteligência de Compras Preditiva
+            </h3>
+            <p className="text-xs text-text-secondary mt-3 leading-relaxed max-w-[320px]">
+              Estamos calibrando nossos modelos de IA para automatizar suas decisões de estoque, sugerir compras exatas e prever demandas futuras. Falta pouco!
             </p>
             <button 
               onClick={() => setIsComingSoonOpen(false)}
-              className="mt-6 px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl text-xs shadow-md transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+              className="mt-6 px-6 py-2 bg-gradient-to-r from-purple-600 to-cyan-500 hover:from-purple-700 hover:to-cyan-600 text-white font-black rounded-xl text-[10px] uppercase tracking-wider shadow-lg transition-all cursor-pointer hover:scale-[1.03] active:scale-[0.97]"
             >
               Entendido!
             </button>
