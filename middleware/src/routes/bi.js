@@ -1666,7 +1666,20 @@ router.get('/supplier/analytics', async (req, res, next) => {
 
         const salesFilter = cfopUtil.getSalesFilterClause('v');
 
-        let baseQuery = `
+        // Monta params base: $1=tenant, $2=start, $3=end, $4=depto(opcional)
+        let baseParams = [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params];
+
+        // Índice do próximo parâmetro — calculado dinamicamente para evitar conflito
+        let marcaIdx = baseParams.length + 1; // 4 sem depto, 5 com depto
+        let marcaClause = '';
+        let paramsWithMarca = [...baseParams];
+        if (marca) {
+            marcaClause = ` AND COALESCE(vi.marca, p.marca) = $${marcaIdx}`;
+            paramsWithMarca = [...baseParams, marca];
+        }
+
+        // ── KPIs gerais ───────────────────────────────────────────
+        const kpiQuery = `
             SELECT 
                 SUM(vi.valor_total) as receita,
                 SUM(vi.custo_unitario * vi.quantidade) as custo,
@@ -1675,52 +1688,55 @@ router.get('/supplier/analytics', async (req, res, next) => {
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
             LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
-            WHERE vi.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
+            WHERE vi.tenant_id = $1
+              AND COALESCE(v.data_hora_proc, v.data_venda) >= $2
+              AND COALESCE(v.data_hora_proc, v.data_venda) <= $3
               ${salesFilter}
               ${df.clause}
+              ${marcaClause}
         `;
-        let params = [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params];
-        
-        if (marca) {
-            baseQuery += ` AND COALESCE(vi.marca, p.marca) = $4`;
-            params.push(marca);
-        }
+        const { rows: kpis } = await db.query(kpiQuery, paramsWithMarca);
 
-        const { rows: kpis } = await db.query(baseQuery, params);
-
-        // Fetch top 3 products
-        let prodQuery = `
-            SELECT COALESCE(vi.produto, p.nome, 'S/ NOME') as nome, SUM(vi.quantidade) as qtde, SUM(vi.valor_total) as receita
+        // ── Top 30 Produtos ───────────────────────────────────────
+        const prodQuery = `
+            SELECT COALESCE(vi.produto, p.nome, 'S/ NOME') as nome,
+                   SUM(vi.quantidade) as qtde,
+                   SUM(vi.valor_total) as receita
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
             LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
-            WHERE vi.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
+            WHERE vi.tenant_id = $1
+              AND COALESCE(v.data_hora_proc, v.data_venda) >= $2
+              AND COALESCE(v.data_hora_proc, v.data_venda) <= $3
               ${salesFilter}
               ${df.clause}
+              ${marcaClause}
+            GROUP BY COALESCE(vi.produto, p.nome, 'S/ NOME')
+            ORDER BY receita DESC
+            LIMIT 30
         `;
-        if (marca) prodQuery += ` AND COALESCE(vi.marca, p.marca) = $4`;
-        prodQuery += ` GROUP BY COALESCE(vi.produto, p.nome, 'S/ NOME') ORDER BY receita DESC LIMIT 30`;
-        
-        const { rows: top_products } = await db.query(prodQuery, params);
+        const { rows: top_products } = await db.query(prodQuery, paramsWithMarca);
 
-        // Fetch Top Brands
-        let brandQuery = `
+        // ── Ranking de Marcas (sem filtro de marca — visão geral) ─
+        const brandQuery = `
             SELECT 
-                COALESCE(vi.marca, p.marca, 'S/ MARCA') as nome, 
-                SUM(vi.quantidade) as qtde, 
+                COALESCE(vi.marca, p.marca, 'S/ MARCA') as nome,
+                SUM(vi.quantidade) as qtde,
                 SUM(vi.valor_total) as receita,
                 RANK() OVER (ORDER BY SUM(vi.valor_total) DESC) as rank
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
             LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
-            WHERE vi.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
+            WHERE vi.tenant_id = $1
+              AND COALESCE(v.data_hora_proc, v.data_venda) >= $2
+              AND COALESCE(v.data_hora_proc, v.data_venda) <= $3
               ${salesFilter}
               ${df.clause}
             GROUP BY COALESCE(vi.marca, p.marca, 'S/ MARCA')
             ORDER BY receita DESC
         `;
-        const { rows: all_brands_ranked } = await db.query(brandQuery, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
-        
+        const { rows: all_brands_ranked } = await db.query(brandQuery, baseParams);
+
         let top_brands = all_brands_ranked.slice(0, 10).map(b => ({
             rank: parseInt(b.rank),
             name: b.nome,
@@ -1740,38 +1756,43 @@ router.get('/supplier/analytics', async (req, res, next) => {
             }
         }
 
-        // Fetch monthly performance
-        let monthlyQuery = `
+        // ── Evolução Mensal ───────────────────────────────────────
+        const monthlyQuery = `
             SELECT 
-                TO_CHAR(v.data_hora_proc, 'MM/YYYY') as mes_ano,
+                TO_CHAR(COALESCE(v.data_hora_proc, v.data_venda), 'MM/YYYY') as mes_ano,
+                DATE_TRUNC('month', COALESCE(v.data_hora_proc, v.data_venda)) as mes_trunc,
                 SUM(vi.valor_total) as receita,
                 SUM(vi.quantidade) as qtde
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
             LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
-            WHERE vi.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
+            WHERE vi.tenant_id = $1
+              AND COALESCE(v.data_hora_proc, v.data_venda) >= $2
+              AND COALESCE(v.data_hora_proc, v.data_venda) <= $3
               ${salesFilter}
               ${df.clause}
+              ${marcaClause}
+            GROUP BY mes_trunc, mes_ano
+            ORDER BY mes_trunc ASC
         `;
-        if (marca) monthlyQuery += ` AND COALESCE(vi.marca, p.marca) = $4`;
-        monthlyQuery += ` GROUP BY DATE_TRUNC('month', v.data_hora_proc), TO_CHAR(v.data_hora_proc, 'MM/YYYY') ORDER BY DATE_TRUNC('month', v.data_hora_proc) ASC`;
-        
-        const { rows: monthly } = await db.query(monthlyQuery, params);
+        const { rows: monthly } = await db.query(monthlyQuery, paramsWithMarca);
 
-        // Fetch all distinct brands for the dropdown filter
+        // ── Lista de marcas disponíveis para o dropdown ───────────
         const { rows: allBrands } = await db.query(`
             SELECT DISTINCT COALESCE(vi.marca, p.marca) as marca 
             FROM dash_vendas_itens vi
             LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
-            WHERE vi.tenant_id = $1 AND COALESCE(vi.marca, p.marca) IS NOT NULL AND COALESCE(vi.marca, p.marca) <> ''
+            WHERE vi.tenant_id = $1
+              AND COALESCE(vi.marca, p.marca) IS NOT NULL
+              AND COALESCE(vi.marca, p.marca) <> ''
             ORDER BY marca ASC
         `, [tenantId]);
 
         res.json({
             overview: {
                 receita: parseFloat(kpis[0]?.receita || 0),
-                custo: parseFloat(kpis[0]?.custo || 0),
-                pedidos: parseInt(kpis[0]?.pedidos || 0),
+                custo:   parseFloat(kpis[0]?.custo   || 0),
+                pedidos: parseInt(kpis[0]?.pedidos   || 0),
                 clientes: parseInt(kpis[0]?.clientes || 0)
             },
             top_products: top_products.map((p, i) => ({
@@ -1780,7 +1801,7 @@ router.get('/supplier/analytics', async (req, res, next) => {
                 volume: parseFloat(p.qtde || 0),
                 receita: parseFloat(p.receita || 0)
             })),
-            top_brands: top_brands,
+            top_brands,
             monthly_performance: monthly.map(m => ({
                 mes: m.mes_ano,
                 valor: parseFloat(m.receita || 0),
