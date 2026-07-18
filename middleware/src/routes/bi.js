@@ -1739,6 +1739,7 @@ router.get('/supplier/analytics', async (req, res, next) => {
             ORDER BY receita DESC
         `;
         const { rows: all_brands_ranked } = await db.query(brandQuery, baseParams);
+        const total_company_revenue = all_brands_ranked.reduce((sum, b) => sum + parseFloat(b.receita || 0), 0);
 
         let top_brands = all_brands_ranked.slice(0, 10).map(b => ({
             rank: parseInt(b.rank),
@@ -1847,6 +1848,7 @@ router.get('/supplier/analytics', async (req, res, next) => {
                 pedidos: parseInt(kpis[0]?.pedidos   || 0),
                 clientes: parseInt(kpis[0]?.clientes || 0)
             },
+            total_company_revenue,
             top_products: top_products.map((p, i) => ({
                 rank: i + 1,
                 name: p.nome,
