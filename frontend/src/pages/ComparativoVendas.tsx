@@ -235,76 +235,14 @@ export default function ComparativoVendas() {
     : `${customComparacaoStart?.split('-').reverse().join('/')} - ${customComparacaoEnd?.split('-').reverse().join('/')}`
 
   return (
-    <div className="space-y-6 pb-12 animate-in fade-in duration-300">
+    <div className="space-y-4 pb-6 animate-in fade-in duration-300">
       
 
 
       {/* FILTER PANEL */}
-      <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 space-y-4">
+      <div className="bg-bg-primary border border-border shadow-card rounded-xl p-3.5 space-y-3">
         {/* Top Dropdowns & Pill Mode Toggle */}
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-divider/40 pb-4">
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Empresa */}
-            <div className="flex flex-col gap-1">
-              <label htmlFor="select-empresa" className="text-[10px] text-text-secondary/70 font-bold uppercase tracking-wider pl-1">EMPRESA</label>
-              <div className="relative">
-                <select
-                  id="select-empresa"
-                  aria-label="Empresa"
-                  value={selectedBranch}
-                  onChange={(e) => {
-                    const val = e.target.value
-                    setSelectedBranch(val === 'todas' ? 'todas' : parseInt(val, 10))
-                  }}
-                  className="appearance-none bg-bg-secondary border border-border rounded-xl px-3 py-1.5 text-[11px] font-bold text-text-primary outline-none pr-8 cursor-pointer focus:border-brand-500"
-                >
-                  <option value="todas">Todas as Empresas</option>
-                  {filiais.map(f => <option key={f.depto_id} value={f.depto_id}>{f.nome}</option>)}
-                </select>
-                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
-              </div>
-            </div>
-
-            {/* Status */}
-            <div className="flex flex-col gap-1">
-              <label htmlFor="select-status" className="text-[10px] text-text-secondary/70 font-bold uppercase tracking-wider pl-1">STATUS</label>
-              <div className="relative">
-                <select
-                  id="select-status"
-                  aria-label="Status"
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value)}
-                  className="appearance-none bg-bg-secondary border border-border rounded-xl px-3 py-1.5 text-[11px] font-bold text-text-primary outline-none pr-8 cursor-pointer focus:border-brand-500"
-                >
-                  <option value="Todos">Todos os Status</option>
-                  <option value="Processado">Processado</option>
-                  <option value="Faturado">Faturado</option>
-                  <option value="Cancelado">Cancelado</option>
-                </select>
-                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
-              </div>
-            </div>
-
-            {/* Tipo */}
-            <div className="flex flex-col gap-1">
-              <label htmlFor="select-tipo" className="text-[10px] text-text-secondary/70 font-bold uppercase tracking-wider pl-1">TIPO</label>
-              <div className="relative">
-                <select
-                  id="select-tipo"
-                  aria-label="Tipo de Venda"
-                  value={tipo}
-                  onChange={(e) => setTipo(e.target.value)}
-                  className="appearance-none bg-bg-secondary border border-border rounded-xl px-3 py-1.5 text-[11px] font-bold text-text-primary outline-none pr-8 cursor-pointer focus:border-brand-500"
-                >
-                  <option value="Todos">Todos os Tipos</option>
-                  <option value="Venda - Devolucao">Venda - Devolucao</option>
-                  <option value="Apenas Venda">Apenas Venda</option>
-                  <option value="Apenas Devolucao">Apenas Devolucao</option>
-                </select>
-                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
-              </div>
-            </div>
-          </div>
+        <div className="flex flex-wrap items-center justify-end gap-4 border-b border-divider/40 pb-4">
 
           {/* Period Mode Toggle */}
           <div className="bg-bg-secondary p-0.5 rounded-lg flex items-center border border-border">

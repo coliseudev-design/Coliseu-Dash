@@ -170,29 +170,23 @@ export default function Header({ onMenuClick, activeRoute }: Props) {
         <Menu size={22} />
       </button>
 
-      <div className="flex items-center gap-3 ml-1 sm:ml-2 lg:ml-0 min-w-0 flex-shrink-0">
-        {/* Logo Coliseu */}
-        <div className="bg-white dark:bg-slate-900 p-1 rounded-xl border border-divider/40 shadow-sm flex items-center justify-center h-9 w-20 sm:w-24">
-          <img
-            src="/logo-coliseu.png"
-            alt="Coliseu Sistemas"
-            className="h-6 sm:h-7 w-auto object-contain"
-          />
-        </div>
+      <div className="flex flex-col items-start gap-0.5 ml-1 sm:ml-2 lg:ml-0 min-w-0 flex-shrink-0">
+        {/* Logo Coliseu (Maior) */}
+        <img
+          src="/logo-coliseu.png"
+          alt="Coliseu Sistemas"
+          className="h-7 sm:h-[30px] w-auto object-contain"
+        />
         
-        {/* Slogan */}
-        <div className="hidden xl:flex flex-col leading-none text-left border-l border-divider/40 pl-3">
-          <span className="text-[7px] font-black text-text-secondary/50 uppercase tracking-widest">
-            BUSINESS INTELLIGENCE
-          </span>
-          <span className="text-xs font-black text-text-primary mt-0.5">
-            Gerencie <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-cyan-400">tudo.</span>
-          </span>
+        {/* Frases Proporcionais Embaixo */}
+        <div className="hidden sm:flex flex-col text-[7px] leading-tight text-text-secondary/80 font-bold uppercase tracking-wider">
+          <span className="leading-none text-slate-500">Gerencie <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-cyan-500">tudo.</span></span>
+          <span className="leading-none text-[6.5px] mt-0.5 text-text-secondary/60">Cresça mais rápido.</span>
         </div>
       </div>
 
       {/* Menu Superior - Top Navigation Hub (Desktop) */}
-      <nav className="hidden lg:flex items-center gap-1.5 ml-8 h-full">
+      <nav className="hidden lg:flex items-center gap-1 ml-6 h-full">
         {allowedGroups.map(group => {
           const isHovered = activeHoverGroup === group.id
           const hasActiveRoute = group.items.some(item => location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to)))
@@ -207,15 +201,15 @@ export default function Header({ onMenuClick, activeRoute }: Props) {
               <button
                 type="button"
                 className={clsx(
-                  "px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-200 flex items-center gap-1.5 cursor-pointer border border-transparent",
+                  "px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-200 flex items-center gap-1 cursor-pointer border border-transparent",
                   hasActiveRoute
                     ? "bg-slate-100 dark:bg-slate-800 text-text-primary shadow-[0_4px_12px_rgba(0,0,0,0.03)] font-extrabold border-slate-200/40 dark:border-slate-700/40"
                     : "text-text-secondary hover:text-text-primary hover:bg-bg-secondary/40"
                 )}
               >
-                <group.icon size={14} style={{ color: group.color }} />
+                <group.icon size={13} style={{ color: group.color }} />
                 <span>{group.label}</span>
-                <ChevronDown size={12} className={clsx("transition-transform duration-200 text-text-muted", isHovered ? "rotate-180" : "")} />
+                <ChevronDown size={11} className={clsx("transition-transform duration-200 text-text-muted", isHovered ? "rotate-180" : "")} />
               </button>
 
               {/* Megamenu Dropdown Flutuante Glassmorphism */}
