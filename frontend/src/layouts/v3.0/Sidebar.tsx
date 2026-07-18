@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Wallet, LogOut, Shield,
   Settings, ChevronDown, ChevronUp, ChevronLeft, GitCompare,
   X, TrendingUp, Radar, UsersRound,
-  Factory, Banknote, CircleDollarSign, Boxes, BadgeCheck
+  Factory, Banknote, CircleDollarSign, Boxes, BadgeCheck, ShoppingCart
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useAuthStore } from '../../store/authStore'
@@ -17,20 +17,73 @@ interface Props {
   onToggleCollapse: () => void
 }
 
-const MODULES = [
-  { to: '/', label: 'Visão Estratégica', icon: LayoutDashboard, exact: true, id: 'inicio',   color: '#3B82F6' },
-  { to: '/comparativo-vendas', label: 'Comparativo',  icon: GitCompare,   exact: true, id: 'inicio',   color: '#10B981' },
-]
-
-const BI_MODULES = [
-  { to: '/hub-vendedor',            label: 'Hub do Vendedor',     icon: BadgeCheck,        exact: true, id: 'bi_sales',              color: '#F97316' },
-  { to: '/bi',                      label: 'Hub de Vendas',       icon: TrendingUp,        exact: true, id: 'bi_sales',              color: '#10B981' },
-  { to: '/bi/customer',             label: 'Radar 360',           icon: Radar,                          id: 'bi_customer',           color: '#EC4899' },
-  { to: '/bi/customer-analytics',   label: 'Análise de Clientes', icon: UsersRound,                     id: 'bi_customer_analytics', color: '#14B8A6' },
-  { to: '/bi/supplier',             label: 'Hub do Fornecedor',   icon: Factory,                        id: 'bi_supplier',           color: '#F59E0B' },
-  { to: '/bi/finance',              label: 'Financeiro',          icon: Banknote,                       id: 'bi_finance',            color: '#22C55E' },
-  { to: '/bi/comparative',          label: 'Lucratividade',       icon: CircleDollarSign,               id: 'bi_comparative',        color: '#84CC16' },
-  { to: '/bi/abc',                  label: 'Gestão de Inventário', icon: Boxes,                          id: 'bi_abc',                color: '#06B6D4' },
+const MENU_GROUPS = [
+  {
+    id: 'corporativas',
+    label: 'Visões Corporativas',
+    icon: LayoutDashboard,
+    color: '#3B82F6',
+    items: [
+      { to: '/', label: 'Visão Estratégica', icon: LayoutDashboard, exact: true, id: 'inicio', color: '#3B82F6' },
+      { to: '/comparativo-vendas', label: 'Análise Comparativa', icon: GitCompare, exact: true, id: 'inicio', color: '#10B981' },
+    ]
+  },
+  {
+    id: 'comercial',
+    label: 'Inteligência Comercial',
+    icon: TrendingUp,
+    color: '#F97316',
+    items: [
+      { to: '/bi', label: 'Inteligência de Vendas', icon: TrendingUp, exact: true, id: 'bi_sales', color: '#10B981' },
+      { to: '/hub-vendedor', label: 'Central do Vendedor', icon: BadgeCheck, exact: true, id: 'bi_sales', color: '#F97316' },
+    ]
+  },
+  {
+    id: 'clientes',
+    label: 'Clientes & Parceiros',
+    icon: UsersRound,
+    color: '#EC4899',
+    items: [
+      { to: '/bi/customer-analytics', label: 'Painel de Clientes', icon: UsersRound, id: 'bi_customer_analytics', color: '#14B8A6' },
+      { to: '/bi/customer', label: 'Perfil 360° do Cliente', icon: Radar, id: 'bi_customer', color: '#EC4899' },
+      { to: '/bi/supplier', label: 'Central do Fornecedor', icon: Factory, id: 'bi_supplier', color: '#F59E0B' },
+    ]
+  },
+  {
+    id: 'controladoria',
+    label: 'Controladoria & Performance',
+    icon: Banknote,
+    color: '#22C55E',
+    items: [
+      { to: '/bi/finance', label: 'Gestão Financeira', icon: Banknote, id: 'bi_finance', color: '#22C55E' },
+      { to: '/bi/comparative', label: 'Análise de Lucratividade', icon: CircleDollarSign, id: 'bi_comparative', color: '#84CC16' },
+    ]
+  },
+  {
+    id: 'operacoes',
+    label: 'Operações & Estoque',
+    icon: Boxes,
+    color: '#06B6D4',
+    items: [
+      { to: '/bi/abc', label: 'Inteligência de Estoque', icon: Boxes, id: 'bi_abc', color: '#06B6D4' },
+    ]
+  },
+  {
+    id: 'compras',
+    label: 'Inteligência de Compras',
+    icon: ShoppingCart,
+    color: '#A855F7',
+    items: [
+      { 
+        to: '/bi/compras-ia', 
+        label: 'Gestão de Compras & IA', 
+        icon: ShoppingCart, 
+        id: 'bi_compras_ia', 
+        color: '#A855F7', 
+        isComingSoon: true 
+      },
+    ]
+  }
 ]
 
 const CONFIG_MODULES = [
@@ -82,6 +135,15 @@ function IconBadge({
 export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }: Props) {
   const user = useAuthStore((s) => s.user)
   const [configOpen, setConfigOpen] = useState(false)
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
+    corporativas: true,
+    comercial: false,
+    clientes: false,
+    controladoria: false,
+    operacoes: false,
+    compras: false,
+  })
+  const [isComingSoonOpen, setIsComingSoonOpen] = useState(false)
   const location = useLocation()
   const navRef = useRef<HTMLElement>(null)
 
@@ -90,6 +152,19 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }: 
     const savedScroll = sessionStorage.getItem('sidebar-scroll')
     if (savedScroll && navRef.current) {
       navRef.current.scrollTop = Number(savedScroll)
+    }
+  }, [location.pathname])
+
+  // Auto-expandir grupo que possui a rota ativa
+  useEffect(() => {
+    const activeGroup = MENU_GROUPS.find(g => 
+      g.items.some(item => location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to)))
+    )
+    if (activeGroup) {
+      setExpandedGroups(prev => ({
+        ...prev,
+        [activeGroup.id]: true
+      }))
     }
   }, [location.pathname])
 
@@ -103,60 +178,92 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }: 
     return user?.permissions?.includes(moduleId) || false
   }
 
-  const allowedModules      = MODULES.filter((m) => hasAccess(m.id))
-  const allowedBiModules    = BI_MODULES.filter((m) => hasAccess(m.id))
+  const toggleGroup = (groupId: string) => {
+    setExpandedGroups(prev => ({
+      ...prev,
+      [groupId]: !prev[groupId]
+    }))
+  }
+
+  const groupsWithAccess = MENU_GROUPS.map(group => {
+    const allowedItems = group.items.filter(item => {
+      if (item.id === 'bi_compras_ia') return true
+      return hasAccess(item.id)
+    })
+    return { ...group, items: allowedItems }
+  }).filter(group => group.items.length > 0)
+
   const allowedConfigModules = CONFIG_MODULES.filter((m) => hasAccess(m.id))
 
-  const NavItem = ({ to, label, icon, exact, color }: { to: string; label: string; icon: React.ElementType; exact?: boolean; color: string }) => (
-    <NavLink
-      to={to}
-      end={exact}
-      onClick={onClose}
-      className={({ isActive }) =>
-        clsx(
-          'group flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 mb-0.5 hover:-translate-y-[1px] active:translate-y-[0.5px] border',
-          isActive 
-            ? 'bg-white text-text-primary border-slate-200/60 border-b-[3px] border-b-brand-500 shadow-[0_2px_4px_rgba(0,0,0,0.04)]' 
-            : 'text-text-secondary border-transparent hover:bg-bg-secondary/40 hover:text-text-primary hover:border-b-2 hover:border-b-divider/60',
-          collapsed ? 'lg:justify-center lg:px-0' : ''
-        )
+  const NavItem = ({ to, label, icon, exact, color, isComingSoon }: { to: string; label: string; icon: React.ElementType; exact?: boolean; color: string; isComingSoon?: boolean }) => {
+    const handleNavItemClick = (e: React.MouseEvent) => {
+      if (isComingSoon) {
+        e.preventDefault()
+        setIsComingSoonOpen(true)
+      } else {
+        onClose()
       }
-    >
-      {({ isActive }) => (
-        <>
-          <IconBadge icon={icon} color={color} isActive={isActive} />
-          <span
-            className={clsx(
-              'truncate transition-colors duration-150',
-              isActive
-                ? 'text-text-primary font-extrabold'
-                : 'text-text-secondary group-hover:text-text-primary',
-              collapsed ? 'lg:hidden block' : 'block'
-            )}
-          >
-            {label}
-          </span>
-          {isActive ? (
-            <div
-              className={clsx(
-                "ml-auto w-1.5 h-1.5 rounded-full flex-shrink-0",
-                collapsed ? "lg:hidden block" : "block"
+    }
+
+    return (
+      <NavLink
+        to={to}
+        end={exact}
+        onClick={handleNavItemClick}
+        className={({ isActive }) =>
+          clsx(
+            'group flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 mb-0.5 hover:-translate-y-[1px] active:translate-y-[0.5px] border w-full',
+            isActive && !isComingSoon
+              ? 'bg-white text-text-primary border-slate-200/60 border-b-[3px] border-b-brand-500 shadow-[0_2px_4px_rgba(0,0,0,0.04)]' 
+              : 'text-text-secondary border-transparent hover:bg-bg-secondary/40 hover:text-text-primary hover:border-b-2 hover:border-b-divider/60',
+            collapsed ? 'lg:justify-center lg:px-0' : ''
+          )
+        }
+      >
+        {({ isActive }) => {
+          const activeState = isActive && !isComingSoon
+          return (
+            <>
+              <IconBadge icon={icon} color={color} isActive={activeState} />
+              <span
+                className={clsx(
+                  'truncate transition-colors duration-150 flex items-center gap-1.5',
+                  activeState
+                    ? 'text-text-primary font-extrabold'
+                    : 'text-text-secondary group-hover:text-text-primary',
+                  collapsed ? 'lg:hidden block' : 'block'
+                )}
+              >
+                {label}
+                {isComingSoon && (
+                  <span className="bg-purple-500/10 text-purple-600 dark:text-purple-400 text-[8px] px-1.5 py-0.5 rounded-full font-black uppercase tracking-wider scale-90 border border-purple-500/20">
+                    IA
+                  </span>
+                )}
+              </span>
+              {activeState ? (
+                <div
+                  className={clsx(
+                    "ml-auto w-1.5 h-1.5 rounded-full flex-shrink-0",
+                    collapsed ? "lg:hidden block" : "block"
+                  )}
+                  style={{ backgroundColor: color }}
+                />
+              ) : (
+                <div
+                  className={clsx(
+                    "ml-auto w-1.5 h-1.5 rounded-full flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300",
+                    collapsed ? "lg:hidden block" : "block"
+                  )}
+                  style={{ backgroundColor: `${color}80` }}
+                />
               )}
-              style={{ backgroundColor: color }}
-            />
-          ) : (
-            <div
-              className={clsx(
-                "ml-auto w-1.5 h-1.5 rounded-full flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300",
-                collapsed ? "lg:hidden block" : "block"
-              )}
-              style={{ backgroundColor: `${color}80` }}
-            />
-          )}
-        </>
-      )}
-    </NavLink>
-  )
+            </>
+          )
+        }}
+      </NavLink>
+    )
+  }
 
   return (
     <>
@@ -230,21 +337,51 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }: 
           onScroll={handleScroll}
           className="flex-1 overflow-y-auto py-2 px-2 flex flex-col space-y-0.5"
         >
-          {/* Menu Principal */}
-          <div>
-            {allowedModules.map((m) => (
-              <NavItem key={m.to} {...m} />
-            ))}
-          </div>
+          {groupsWithAccess.map((group) => {
+            const isExpanded = expandedGroups[group.id]
+            const hasActiveRoute = group.items.some(item => location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to)))
+            
+            return (
+              <div key={group.id} className="mb-1">
+                {/* Header do Grupo Accordion */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (collapsed) {
+                      onToggleCollapse()
+                    } else {
+                      toggleGroup(group.id)
+                    }
+                  }}
+                  title={group.label}
+                  className={clsx(
+                    "w-full flex items-center px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-150 mb-0.5 group border border-transparent cursor-pointer",
+                    hasActiveRoute && !collapsed
+                      ? "text-text-primary bg-bg-secondary/40 font-extrabold"
+                      : "text-text-secondary hover:bg-bg-secondary/20 hover:text-text-primary",
+                    collapsed ? "lg:justify-center lg:px-0" : "justify-between"
+                  )}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <IconBadge icon={group.icon} color={group.color} isActive={hasActiveRoute} />
+                    <span className={clsx("truncate text-left font-black tracking-wide", collapsed ? "lg:hidden block" : "block")}>
+                      {group.label}
+                    </span>
+                  </div>
+                  {!collapsed && (isExpanded ? <ChevronUp size={12} className="text-text-muted" /> : <ChevronDown size={12} className="text-text-muted" />)}
+                </button>
 
-          {/* Business Intelligence */}
-          {allowedBiModules.length > 0 && (
-            <div className="mt-0.5">
-              {allowedBiModules.map((m) => (
-                <NavItem key={m.to} {...m} />
-              ))}
-            </div>
-          )}
+                {/* Submenus Retráteis */}
+                {!collapsed && isExpanded && (
+                  <div className="mt-0.5 pl-2.5 space-y-0.5 border-l border-divider/40 ml-4 animate-in slide-in-from-top-1 duration-150">
+                    {group.items.map((item) => (
+                      <NavItem key={item.to} {...item} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })}
 
           {/* Configurações */}
           {allowedConfigModules.length > 0 && (
@@ -259,7 +396,7 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }: 
                   }
                 }}
                 className={clsx(
-                  "w-full flex items-center px-2.5 py-2 rounded-xl text-sm font-medium text-text-secondary hover:bg-bg-secondary/60 hover:text-text-primary transition-all duration-150 mb-0.5 group",
+                  "w-full flex items-center px-2.5 py-2 rounded-xl text-sm font-medium text-text-secondary hover:bg-bg-secondary/60 hover:text-text-primary transition-all duration-150 mb-0.5 group cursor-pointer",
                   collapsed ? "lg:justify-center lg:px-0" : "justify-between"
                 )}
               >
@@ -345,6 +482,28 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }: 
           </div>
         </div>
       </aside>
+
+      {/* Modal / Popup Inteligência de Compras com IA */}
+      {isComingSoonOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 z-[999] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-bg-primary border border-border shadow-2xl rounded-2xl w-full max-w-md p-6 text-center animate-in zoom-in-95 duration-200 flex flex-col items-center">
+            {/* 3D Premium IA Icon badge */}
+            <div className="w-16 h-16 bg-purple-500/10 text-purple-500 rounded-2xl flex items-center justify-center mb-4 border border-purple-500/20 shadow-md">
+              <ShoppingCart size={32} />
+            </div>
+            <h3 className="text-lg font-extrabold text-text-primary">Inteligência de Compras com IA</h3>
+            <p className="text-xs text-text-secondary mt-2 leading-relaxed">
+              Estamos preparando uma experiência incrível para otimizar seus pedidos e prever demandas com Inteligência Artificial. Esta funcionalidade estará disponível em breve!
+            </p>
+            <button 
+              onClick={() => setIsComingSoonOpen(false)}
+              className="mt-6 px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl text-xs shadow-md transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+            >
+              Entendido!
+            </button>
+          </div>
+        </div>
+      )}
     </>
   )
 }
