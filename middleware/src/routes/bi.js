@@ -1788,6 +1788,57 @@ router.get('/supplier/analytics', async (req, res, next) => {
             ORDER BY marca ASC
         `, [tenantId]);
 
+        // ── KPIs de Estoque do Fornecedor/Marca ────────────────────
+        let stockKpiQuery = `
+            SELECT 
+                COALESCE(SUM(p.estoque * p.custo), 0) as custo_total,
+                COALESCE(SUM(p.estoque * p.preco), 0) as venda_total,
+                COALESCE(SUM(p.estoque), 0) as volume_total
+            FROM dash_produtos p
+            WHERE p.tenant_id = $1 AND p.ativo = true
+        `;
+        let stockKpiParams = [tenantId];
+        if (marca) {
+            stockKpiQuery += ` AND UPPER(p.marca) = UPPER($2)`;
+            stockKpiParams.push(marca);
+        } else {
+            stockKpiQuery += ` AND p.marca IS NOT NULL AND p.marca <> ''`;
+            stockKpiParams.push('');
+        }
+        const { rows: stockKpisRes } = await db.query(stockKpiQuery, stockKpiParams);
+        const stock_kpis = {
+            custo_total: parseFloat(stockKpisRes[0]?.custo_total || 0),
+            venda_total: parseFloat(stockKpisRes[0]?.venda_total || 0),
+            volume_total: parseFloat(stockKpisRes[0]?.volume_total || 0)
+        };
+
+        // ── Lista de Estoque (Produtos da Marca/Fornecedor) ───────
+        let inventoryQuery = `
+            SELECT 
+                p.codigo as cod,
+                p.nome as desc,
+                'UN' as un,
+                COALESCE(p.marca, $2) as marca,
+                p.estoque,
+                p.custo,
+                p.preco,
+                (p.estoque * p.custo) as valor_total,
+                p.estoque_minimo
+            FROM dash_produtos p
+            WHERE p.tenant_id = $1
+              AND p.ativo = true
+        `;
+        let invParams = [tenantId];
+        if (marca) {
+            inventoryQuery += ` AND UPPER(p.marca) = UPPER($2)`;
+            invParams.push(marca);
+        } else {
+            inventoryQuery += ` AND p.marca IS NOT NULL AND p.marca <> ''`;
+            invParams.push('');
+        }
+        inventoryQuery += ` ORDER BY p.estoque DESC LIMIT 150`;
+        const { rows: inventory } = await db.query(inventoryQuery, invParams);
+
         res.json({
             overview: {
                 receita: parseFloat(kpis[0]?.receita || 0),
@@ -1808,7 +1859,26 @@ router.get('/supplier/analytics', async (req, res, next) => {
                 qtde: parseFloat(m.qtde || 0),
                 margem: 30
             })),
-            available_brands: allBrands.map(b => b.marca)
+            available_brands: allBrands.map(b => b.marca),
+            stock_kpis,
+            inventory: inventory.map(item => {
+                const est = parseFloat(item.estoque || 0);
+                const min = parseFloat(item.estoque_minimo || 0);
+                let status = 'Ideal';
+                if (est <= 0) status = 'Ruptura';
+                else if (est < min) status = 'Critico';
+                return {
+                    cod: item.cod || '—',
+                    desc: item.desc || 'Sem descrição',
+                    un: item.un || 'UN',
+                    marca: item.marca || '—',
+                    estoque: est,
+                    custo: parseFloat(item.custo || 0),
+                    preco: parseFloat(item.preco || 0),
+                    valor_total: parseFloat(item.valor_total || 0),
+                    status
+                };
+            })
         });
     } catch (err) { next(err); }
 });

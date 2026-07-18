@@ -5,7 +5,7 @@ import { BIService } from '../../services/biApi';
 import { BiPeriodFilter } from '../../types/bi.types';
 import { 
   Building2, TrendingUp, TrendingDown, DollarSign, Target, Award, 
-  MapPin, Users, ShoppingCart, Activity, ShieldCheck, Box, ChevronDown, Search, AlertCircle, Trophy
+  MapPin, Users, ShoppingCart, Activity, ShieldCheck, Box, ChevronDown, Search, AlertCircle, Trophy, X, ShieldAlert
 } from 'lucide-react';
 import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { formatBRL, formatBRLCompact, formatNum } from '../../utils/format';
@@ -60,6 +60,8 @@ export default function SupplierAnalyticsDashboard() {
   const { filter } = useOutletContext<{ filter: BiPeriodFilter }>();
   const [activeTab, setActiveTab] = useState('Visão Geral de Vendas');
   const [selectedBrand, setSelectedBrand] = useState(''); // Default to empty (All Brands)
+  const [stockSearch, setStockSearch] = useState('');
+  const [stockSort, setStockSort] = useState('alto'); // 'alto', 'baixo', 'custo'
 
   const supplierFilter = { ...filter, marca: selectedBrand };
 
@@ -92,6 +94,30 @@ export default function SupplierAnalyticsDashboard() {
       };
     });
   }, [data?.monthly_performance]);
+
+  const stockKpis = data?.stock_kpis || { custo_total: 0, venda_total: 0, volume_total: 0 };
+  const rawInventory = data?.inventory || [];
+  const stockMargem = stockKpis.venda_total > 0 ? ((stockKpis.venda_total - stockKpis.custo_total) / stockKpis.venda_total) * 100 : 0;
+
+  const filteredInventory = useMemo(() => {
+    let result = [...rawInventory];
+    if (stockSearch) {
+      const q = stockSearch.toLowerCase();
+      result = result.filter(item => 
+        item.desc.toLowerCase().includes(q) || 
+        item.cod.toLowerCase().includes(q)
+      );
+    }
+    if (stockSort === 'alto') {
+      result.sort((a, b) => b.estoque - a.estoque);
+    } else if (stockSort === 'baixo') {
+      result.sort((a, b) => a.estoque - b.estoque);
+    } else if (stockSort === 'custo') {
+      result.sort((a, b) => b.valor_total - a.valor_total);
+    }
+    return result;
+  }, [rawInventory, stockSearch, stockSort]);
+
 
   const chartData = data?.monthly_performance || [];
   const overview = data?.overview || { receita: 0, custo: 0, pedidos: 0, clientes: 0 };
@@ -604,98 +630,185 @@ export default function SupplierAnalyticsDashboard() {
       {activeTab === 'Análise de Estoque' && (
         <div className="space-y-6 animate-in fade-in duration-300">
           
-          <div className="flex items-center gap-2 mb-4">
-            <div className="bg-brand-500 text-white p-2 rounded-lg"><Box size={24} /></div>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 p-2.5 rounded-xl"><Box size={20} /></div>
             <div>
-              <h3 className="font-bold text-text-primary text-lg">Diagnóstico Financeiro do Inventário</h3>
-              <p className="text-sm text-text-secondary">Visão quantitativa e alertas de capital imobilizado</p>
+              <h3 className="font-extrabold text-text-primary text-base">Diagnóstico Financeiro do Inventário</h3>
+              <p className="text-xs text-text-secondary">Visão quantitativa e custos de capital investido</p>
             </div>
           </div>
 
           {/* 1. Resumo Financeiro */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 hover:border-danger/40 transition-colors">
               <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">
-                <DollarSign size={14} className="text-danger" /> Custo do Estoque
+                <DollarSign size={14} className="text-danger" /> Custo Total em Estoque
               </div>
-              <div className="text-2xl font-extrabold text-text-primary mb-1">{formatBRL(overview.custo)}</div>
-              <div className="text-xs text-text-secondary">Capital aplicado</div>
+              <div className="text-2xl font-extrabold text-text-primary mb-1 font-mono">{formatBRL(stockKpis.custo_total)}</div>
+              <div className="text-[10px] text-text-secondary font-semibold">Capital imobilizado</div>
             </div>
             
-            <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5">
+            <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 hover:border-success/40 transition-colors">
               <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">
-                <DollarSign size={14} className="text-success" /> Receita Potencial
+                <DollarSign size={14} className="text-success" /> Preço Venda Total
               </div>
-              <div className="text-2xl font-extrabold text-text-primary mb-1">{formatBRL(overview.receita)}</div>
-              <div className="text-xs text-text-secondary">Valor total de venda</div>
+              <div className="text-2xl font-extrabold text-text-primary mb-1 font-mono">{formatBRL(stockKpis.venda_total)}</div>
+              <div className="text-[10px] text-text-secondary font-semibold">Valor potencial de venda</div>
             </div>
             
-            <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5">
+            <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 hover:border-brand-500/40 transition-colors">
               <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">
-                <Box size={14} className="text-brand-500" /> Volume Físico
+                <Box size={14} className="text-brand-500" /> Volume Total Físico
               </div>
-              <div className="text-2xl font-extrabold text-text-primary mb-1">
-                {topProducts.reduce((acc: number, p: any) => acc + p.volume, 0)} un.
+              <div className="text-2xl font-extrabold text-text-primary mb-1 font-mono">
+                {formatNum(stockKpis.volume_total)} un.
               </div>
-              <div className="text-xs text-text-secondary">Itens no inventário</div>
+              <div className="text-[10px] text-text-secondary font-semibold">Quantidade total em estoque</div>
             </div>
 
-            <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 border-l-4 border-l-brand-500">
+            <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 border-l-4 border-l-emerald-500 hover:shadow-md transition-all">
               <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">
-                <Target size={14} className="text-brand-500" /> Margem Bruta
+                <Target size={14} className="text-emerald-500" /> Margem Média
               </div>
-              <div className="text-2xl font-extrabold text-brand-500 mb-1">{margem.toFixed(1)}%</div>
-              <div className="text-xs text-text-secondary">Rentabilidade projetada</div>
+              <div className="text-2xl font-extrabold text-emerald-500 mb-1 font-mono">{stockMargem.toFixed(1)}%</div>
+              <div className="text-[10px] text-text-secondary font-semibold">Ganho médio planejado</div>
             </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* 2. Análise de Rentabilidade */}
-            <div className="bg-bg-primary border border-border shadow-card rounded-xl overflow-hidden flex flex-col">
-              <div className="p-4 border-b border-divider bg-bg-secondary/30">
-                <h3 className="font-bold text-text-primary text-sm flex items-center gap-2">
-                  <Activity size={16} className="text-success" /> Análise de Rentabilidade
+            <div className="bg-bg-primary border border-border shadow-card rounded-xl overflow-hidden flex flex-col hover:shadow-md transition-shadow">
+              <div className="p-4 border-b border-divider bg-bg-secondary/20">
+                <h3 className="font-bold text-text-primary text-xs uppercase tracking-wider flex items-center gap-2">
+                  <Activity size={15} className="text-success" /> Análise de Rentabilidade
                 </h3>
               </div>
               <div className="p-5 flex-1 flex flex-col justify-center space-y-4">
                 <p className="text-sm text-text-secondary leading-relaxed">
-                  Com base no custo total de <strong className="text-text-primary">{formatBRL(overview.custo)}</strong> e no valor potencial de venda de <strong className="text-text-primary">{formatBRL(overview.receita)}</strong>, a projeção aponta uma Margem Bruta de <strong className="text-brand-500">{margem.toFixed(1)}%</strong>.
+                  Com base no custo total de <strong className="text-text-primary font-mono">{formatBRL(stockKpis.custo_total)}</strong> e no valor potencial de venda de <strong className="text-text-primary font-mono">{formatBRL(stockKpis.venda_total)}</strong>, a operação projeta uma Margem Bruta de <strong className="text-success font-mono">{stockMargem.toFixed(1)}%</strong>.
                 </p>
-                <div className="bg-success/5 border border-success/20 rounded-lg p-4">
-                  <h4 className="font-bold text-success text-sm mb-1">Veredito do Sistema</h4>
-                  <p className="text-xs text-text-secondary">O estoque atual representa uma <strong>ótima oportunidade de lucro</strong>. A margem está acima da média de mercado para o segmento, permitindo fôlego para campanhas promocionais de giro rápido, se necessário.</p>
+                <div className="bg-success/5 border border-success/15 rounded-lg p-4">
+                  <h4 className="font-bold text-success text-xs uppercase tracking-wider mb-1">Veredito do Sistema</h4>
+                  <p className="text-xs text-text-secondary leading-relaxed">A margem do fornecedor apresenta rentabilidade saudável e margem positiva. Foco em ações de giro para evitar envelhecimento de estoque.</p>
                 </div>
               </div>
             </div>
 
-            {/* 3. Alertas e Otimizações */}
-            <div className="bg-bg-primary border border-border shadow-card rounded-xl overflow-hidden flex flex-col">
-              <div className="p-4 border-b border-divider bg-bg-secondary/30">
-                <h3 className="font-bold text-text-primary text-sm flex items-center gap-2">
-                  <ShieldCheck size={16} className="text-warning" /> Alertas e Otimizações
+            {/* 3. Alertas e recomendações */}
+            <div className="bg-bg-primary border border-border shadow-card rounded-xl overflow-hidden flex flex-col hover:shadow-md transition-shadow">
+              <div className="p-4 border-b border-divider bg-bg-secondary/20">
+                <h3 className="font-bold text-text-primary text-xs uppercase tracking-wider flex items-center gap-2">
+                  <ShieldAlert size={15} className="text-warning" /> Alertas e Recomendações
                 </h3>
               </div>
               <div className="p-5 space-y-4">
-                <div className="flex gap-3 items-start">
-                  <div className="bg-danger/10 text-danger p-2 rounded-full mt-0.5"><AlertCircle size={16} /></div>
+                <div className="flex gap-3 items-start bg-danger/5 border border-danger/10 p-3.5 rounded-xl">
+                  <div className="bg-danger/10 text-danger p-2 rounded-lg shrink-0"><AlertCircle size={16} /></div>
                   <div>
-                    <h4 className="text-sm font-bold text-text-primary mb-1">Risco de Capital Imobilizado</h4>
-                    <p className="text-xs text-text-secondary">
-                      Temos {topProducts.reduce((acc: number, p: any) => acc + p.volume, 0)} itens estocados. Monitore os produtos curva C que não giraram nos últimos 90 dias para evitar depreciação de caixa.
+                    <h4 className="text-xs font-bold text-text-primary uppercase tracking-wider mb-1">Risco de Capital Imobilizado</h4>
+                    <p className="text-[11px] text-text-secondary leading-relaxed">
+                      O fornecedor possui <strong className="text-danger font-mono">{formatBRL(stockKpis.custo_total)}</strong> imobilizados em estoque. Foco em produtos curva C que tenham baixo giro para otimização de caixa.
                     </p>
                   </div>
                 </div>
                 
-                <div className="flex gap-3 items-start">
-                  <div className="bg-warning/10 text-warning p-2 rounded-full mt-0.5"><TrendingUp size={16} /></div>
+                <div className="flex gap-3 items-start bg-warning/5 border border-warning/10 p-3.5 rounded-xl">
+                  <div className="bg-warning/10 text-warning p-2 rounded-lg shrink-0"><TrendingUp size={16} /></div>
                   <div>
-                    <h4 className="text-sm font-bold text-text-primary mb-1">Ação Sugerida: Aceleração de Giro</h4>
-                    <p className="text-xs text-text-secondary">
-                      Crie um combo de vendas unindo os produtos Top Sellers (como o <strong>{topProducts[0]?.name || 'principal item'}</strong>) com itens de alto estoque e baixo giro.
+                    <h4 className="text-xs font-bold text-text-primary uppercase tracking-wider mb-1">Ações Sugeridas: Negociação de Giro</h4>
+                    <p className="text-[11px] text-text-secondary leading-relaxed">
+                      Realizar ações promocionais ou prazos especiais para desovar itens sem giro.
                     </p>
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* 4. Rastreamento de Estoque */}
+          <div className="bg-bg-primary border border-border shadow-card rounded-xl overflow-hidden flex flex-col mt-6">
+            <div className="p-4 border-b border-divider flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-bg-secondary/30">
+              <h3 className="font-bold text-text-primary text-sm uppercase tracking-wider flex items-center gap-2">
+                <Box size={16} className="text-brand-500" />
+                Rastreamento de Estoque
+              </h3>
+              
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-2 bg-bg-primary border border-border rounded-lg px-3 py-1.5 shadow-sm min-w-[220px]">
+                  <Search size={14} className="text-text-muted shrink-0" />
+                  <input 
+                    type="text" 
+                    placeholder="Buscar produto por nome ou cod..."
+                    value={stockSearch}
+                    onChange={(e) => setStockSearch(e.target.value)}
+                    className="bg-transparent text-xs text-text-primary placeholder-text-muted outline-none w-full"
+                  />
+                  {stockSearch && (
+                    <button onClick={() => setStockSearch('')} className="text-text-muted hover:text-text-primary cursor-pointer">
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+                
+                <select 
+                  value={stockSort}
+                  onChange={(e) => setStockSort(e.target.value)}
+                  className="bg-bg-primary border border-border rounded-lg px-3 py-1.5 text-xs text-text-primary outline-none cursor-pointer"
+                >
+                  <option value="alto">Ordenar por: Estoque (Alto)</option>
+                  <option value="baixo">Ordenar por: Estoque (Baixo)</option>
+                  <option value="custo">Ordenar por: Valor de Custo (Alto)</option>
+                </select>
+              </div>
+            </div>
+            
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm whitespace-nowrap">
+                <thead>
+                  <tr className="bg-bg-secondary/30 text-[10px] text-text-muted uppercase font-bold tracking-wider border-b border-divider">
+                    <th className="px-5 py-3">CÓDIGO</th>
+                    <th className="px-5 py-3">PRODUTO</th>
+                    <th className="px-5 py-3 text-center">UN.</th>
+                    <th className="px-5 py-3">MARCA</th>
+                    <th className="px-5 py-3 text-right">ESTOQUE</th>
+                    <th className="px-5 py-3 text-right">CUSTO UN.</th>
+                    <th className="px-5 py-3 text-right">PREÇO UNIT.</th>
+                    <th className="px-5 py-3 text-right">VALOR TOTAL</th>
+                    <th className="px-5 py-3 text-center">STATUS</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-divider/30 text-xs">
+                  {filteredInventory.map((item, idx) => (
+                    <tr key={idx} className="hover:bg-bg-secondary/50 transition-colors">
+                      <td className="px-5 py-3 font-mono font-bold text-brand-500">{item.cod}</td>
+                      <td className="px-5 py-3 font-bold text-text-primary truncate max-w-[280px]" title={item.desc}>{item.desc}</td>
+                      <td className="px-5 py-3 text-center text-text-secondary">{item.un}</td>
+                      <td className="px-5 py-3 text-text-secondary">{item.marca}</td>
+                      <td className="px-5 py-3 text-right font-bold text-text-primary font-mono">{formatNum(item.estoque)}</td>
+                      <td className="px-5 py-3 text-right font-mono text-text-secondary">{formatBRL(item.custo)}</td>
+                      <td className="px-5 py-3 text-right font-mono text-text-secondary">{formatBRL(item.preco)}</td>
+                      <td className="px-5 py-3 text-right font-mono font-bold text-text-primary">{formatBRL(item.valor_total)}</td>
+                      <td className="px-5 py-3 text-center">
+                        <span className={clsx(
+                          "inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border",
+                          item.status === 'Ideal' && "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
+                          item.status === 'Critico' && "bg-amber-500/10 text-amber-500 border-amber-500/20",
+                          item.status === 'Ruptura' && "bg-red-500/10 text-red-500 border-red-500/20"
+                        )}>
+                          {item.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredInventory.length === 0 && (
+                    <tr>
+                      <td colSpan={9} className="px-5 py-12 text-center text-text-secondary font-semibold">
+                        Nenhum item em estoque para esta busca ou marca.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
 
