@@ -58,6 +58,11 @@ export const BIService = {
     return data.data || data;
   },
 
+  getProductDetail: async (codigo: string): Promise<any> => {
+    const { data } = await api.get<any>('/bi/supplier/product-detail', { params: { codigo } });
+    return data;
+  },
+
   // Análise Comparativa
   getComparativeAnalysis: async (filter: BiPeriodFilter): Promise<ComparativeAnalysisResponse> => {
     const { data } = await api.get<BiApiResponse<any>>('/bi/comparative/summary', { params: filter });

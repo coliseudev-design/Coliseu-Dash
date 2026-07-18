@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useBiPeriodQuery } from '../../hooks/useBiPeriodQuery';
+import { useQuery } from '@tanstack/react-query';
 import { BIService } from '../../services/biApi';
 import { BiPeriodFilter } from '../../types/bi.types';
 import { 
@@ -62,6 +63,7 @@ export default function SupplierAnalyticsDashboard() {
   const [selectedBrand, setSelectedBrand] = useState(''); // Default to empty (All Brands)
   const [stockSearch, setStockSearch] = useState('');
   const [stockSort, setStockSort] = useState('alto'); // 'alto', 'baixo', 'custo'
+  const [selectedProductCode, setSelectedProductCode] = useState<string | null>(null);
 
   const supplierFilter = { ...filter, marca: selectedBrand };
 
@@ -772,32 +774,41 @@ export default function SupplierAnalyticsDashboard() {
             </div>
             
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm whitespace-nowrap">
+              <table className="w-full text-left text-xs whitespace-nowrap">
                 <thead>
                   <tr className="bg-bg-secondary/30 text-[10px] text-text-muted uppercase font-bold tracking-wider border-b border-divider">
-                    <th className="px-5 py-3">CÓDIGO</th>
-                    <th className="px-5 py-3">PRODUTO</th>
-                    <th className="px-5 py-3 text-center">UN.</th>
-                    <th className="px-5 py-3">MARCA</th>
-                    <th className="px-5 py-3 text-right">ESTOQUE</th>
-                    <th className="px-5 py-3 text-right">CUSTO UN.</th>
-                    <th className="px-5 py-3 text-right">PREÇO UNIT.</th>
-                    <th className="px-5 py-3 text-right">VALOR TOTAL</th>
-                    <th className="px-5 py-3 text-center">STATUS</th>
+                    <th className="px-2 py-2">CÓDIGO</th>
+                    <th className="px-2 py-2">PRODUTO</th>
+                    <th className="px-2 py-2 text-center">UN.</th>
+                    <th className="px-2 py-2">MARCA</th>
+                    <th className="px-2 py-2 text-right">ESTOQUE</th>
+                    <th className="px-2 py-2 text-right">CUSTO UN.</th>
+                    <th className="px-2 py-2 text-right">PREÇO UNIT.</th>
+                    <th className="px-2 py-2 text-right">VALOR TOTAL</th>
+                    <th className="px-2 py-2 text-center">STATUS</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-divider/30 text-xs">
+                <tbody className="divide-y divide-divider/30 text-[11px]">
                   {filteredInventory.map((item, idx) => (
                     <tr key={idx} className="hover:bg-bg-secondary/50 transition-colors">
-                      <td className="px-5 py-3 font-mono font-bold text-brand-500">{item.cod}</td>
-                      <td className="px-5 py-3 font-bold text-text-primary truncate max-w-[280px]" title={item.desc}>{item.desc}</td>
-                      <td className="px-5 py-3 text-center text-text-secondary">{item.un}</td>
-                      <td className="px-5 py-3 text-text-secondary">{item.marca}</td>
-                      <td className="px-5 py-3 text-right font-bold text-text-primary font-mono">{formatNum(item.estoque)}</td>
-                      <td className="px-5 py-3 text-right font-mono text-text-secondary">{formatBRL(item.custo)}</td>
-                      <td className="px-5 py-3 text-right font-mono text-text-secondary">{formatBRL(item.preco)}</td>
-                      <td className="px-5 py-3 text-right font-mono font-bold text-text-primary">{formatBRL(item.valor_total)}</td>
-                      <td className="px-5 py-3 text-center">
+                      <td className="px-2 py-2 font-mono font-bold text-left">
+                        <button 
+                          onClick={() => setSelectedProductCode(item.cod)}
+                          className="inline-flex items-center gap-1 text-brand-500 hover:text-brand-600 hover:underline transition-all cursor-pointer text-left group"
+                          title="Clique para ver o Raio-X de vendas"
+                        >
+                          <Activity size={12} className="opacity-60 group-hover:opacity-100 transition-opacity" />
+                          {item.cod}
+                        </button>
+                      </td>
+                      <td className="px-2 py-2 font-bold text-text-primary truncate max-w-[200px]" title={item.desc}>{item.desc}</td>
+                      <td className="px-2 py-2 text-center text-text-secondary">{item.un}</td>
+                      <td className="px-2 py-2 text-text-secondary">{item.marca}</td>
+                      <td className="px-2 py-2 text-right font-bold text-text-primary font-mono">{formatNum(item.estoque)}</td>
+                      <td className="px-2 py-2 text-right font-mono text-text-secondary">{formatBRL(item.custo)}</td>
+                      <td className="px-2 py-2 text-right font-mono text-text-secondary">{formatBRL(item.preco)}</td>
+                      <td className="px-2 py-2 text-right font-mono font-bold text-text-primary">{formatBRL(item.valor_total)}</td>
+                      <td className="px-2 py-2 text-center">
                         <span className={clsx(
                           "inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border",
                           item.status === 'Ideal' && "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
@@ -835,19 +846,19 @@ export default function SupplierAnalyticsDashboard() {
             
             {/* Tabela — visível em sm+ */}
             <div className="hidden sm:block overflow-x-auto">
-              <table className="w-full text-left text-sm whitespace-nowrap">
+              <table className="w-full text-left text-xs whitespace-nowrap">
                 <thead>
                   <tr className="bg-bg-secondary/30 text-[10px] text-text-muted uppercase font-bold tracking-wider border-b border-divider">
-                    <th className="px-5 py-3 text-left">CÓDIGO</th>
-                    <th className="px-5 py-3 text-left">DESCRIÇÃO</th>
-                    <th className="px-5 py-3 text-right">PREÇO CUSTO (R$)</th>
-                    <th className="px-5 py-3 text-right">PREÇO VENDA (R$)</th>
-                    <th className="px-5 py-3 text-center">MARGEM (%)</th>
-                    <th className="px-5 py-3 text-right">ESTOQUE ATUAL</th>
-                    <th className="px-5 py-3 text-center">STATUS</th>
+                    <th className="px-2 py-2 text-left">CÓDIGO</th>
+                    <th className="px-2 py-2 text-left">DESCRIÇÃO</th>
+                    <th className="px-2 py-2 text-right">PREÇO CUSTO (R$)</th>
+                    <th className="px-2 py-2 text-right">PREÇO VENDA (R$)</th>
+                    <th className="px-2 py-2 text-center">MARGEM (%)</th>
+                    <th className="px-2 py-2 text-right">ESTOQUE ATUAL</th>
+                    <th className="px-2 py-2 text-center">STATUS</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-divider/30 text-xs">
+                <tbody className="divide-y divide-divider/30 text-[11px]">
                   {rawInventory.map((item: any, idx: number) => {
                     const preco = parseFloat(item.preco || 0);
                     const custo = parseFloat(item.custo || 0);
@@ -868,13 +879,22 @@ export default function SupplierAnalyticsDashboard() {
 
                     return (
                       <tr key={idx} className="hover:bg-bg-secondary/50 transition-colors">
-                        <td className="px-5 py-3 font-mono font-bold text-brand-500 text-left">{item.cod}</td>
-                        <td className="px-5 py-3 font-bold text-text-primary text-left truncate max-w-[280px]" title={item.desc}>{item.desc}</td>
-                        <td className="px-5 py-3 text-right font-mono font-bold text-text-secondary">{formatBRL(custo)}</td>
-                        <td className="px-5 py-3 text-right font-mono font-bold text-brand-500">{formatBRL(preco)}</td>
-                        <td className="px-5 py-3 text-center font-mono font-bold text-success">{margemLucro.toFixed(1)}%</td>
-                        <td className="px-5 py-3 text-right font-mono font-bold text-text-primary">{formatNum(item.estoque)} un.</td>
-                        <td className="px-5 py-3 text-center">
+                        <td className="px-2 py-2 font-mono font-bold text-left">
+                          <button 
+                            onClick={() => setSelectedProductCode(item.cod)}
+                            className="inline-flex items-center gap-1 text-brand-500 hover:text-brand-600 hover:underline transition-all cursor-pointer text-left group"
+                            title="Clique para ver o Raio-X de vendas"
+                          >
+                            <Activity size={12} className="opacity-60 group-hover:opacity-100 transition-opacity" />
+                            {item.cod}
+                          </button>
+                        </td>
+                        <td className="px-2 py-2 font-bold text-text-primary text-left truncate max-w-[200px]" title={item.desc}>{item.desc}</td>
+                        <td className="px-2 py-2 text-right font-mono font-bold text-text-secondary">{formatBRL(custo)}</td>
+                        <td className="px-2 py-2 text-right font-mono font-bold text-brand-500">{formatBRL(preco)}</td>
+                        <td className="px-2 py-2 text-center font-mono font-bold text-success">{margemLucro.toFixed(1)}%</td>
+                        <td className="px-2 py-2 text-right font-mono font-bold text-text-primary">{formatNum(item.estoque)} un.</td>
+                        <td className="px-2 py-2 text-center">
                           <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-bold border ${statusClass}`}>
                             {statusLabel}
                           </span>
@@ -962,6 +982,179 @@ export default function SupplierAnalyticsDashboard() {
           </div>
         </div>
       )}
+
+      {/* Product Detail Modal */}
+      {selectedProductCode && (
+        <ProductDetailModal
+          codigo={selectedProductCode}
+          onClose={() => setSelectedProductCode(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function ProductDetailModal({ codigo, onClose }: { codigo: string; onClose: () => void }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ['bi', 'product-detail', codigo],
+    queryFn: () => BIService.getProductDetail(codigo),
+    enabled: !!codigo
+  });
+
+  const [activeSubTab, setActiveSubTab] = useState<'mensal' | 'diario' | 'clientes'>('mensal');
+
+  if (isLoading || !data) {
+    return (
+      <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center backdrop-blur-sm">
+        <div className="bg-bg-primary border border-border shadow-2xl rounded-2xl p-6 w-full max-w-md text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-500 mx-auto mb-3"></div>
+          <p className="text-sm text-text-secondary font-bold">Carregando Raio-X do Produto...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const { product, kpis, monthly_performance } = data;
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm overflow-y-auto">
+      <div className="bg-bg-primary border border-border shadow-2xl rounded-2xl w-full max-w-2xl overflow-hidden flex flex-col my-8 animate-in zoom-in-95 duration-200">
+        
+        {/* Header */}
+        <div className="p-5 border-b border-divider flex justify-between items-start bg-gradient-to-r from-bg-secondary to-bg-primary">
+          <div>
+            <span className="text-[10px] font-black uppercase tracking-wider text-brand-500">Raio-X de Vendas (Últimos 6 Meses)</span>
+            <h3 className="font-extrabold text-text-primary text-base mt-0.5">{product.desc}</h3>
+          </div>
+          <button onClick={onClose} className="p-1.5 text-text-muted hover:text-text-primary hover:bg-bg-secondary rounded-lg transition-colors">
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Modal Scroll Container */}
+        <div className="p-5 space-y-6 overflow-y-auto max-h-[85vh]">
+          
+          {/* Card Select Period Row */}
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-bold text-text-secondary">PERÍODO:</span>
+            <select aria-label="Selecionar Período" className="bg-bg-secondary border border-border rounded-lg px-2.5 py-1 text-xs text-text-primary outline-none focus:border-brand-500 cursor-pointer font-semibold">
+              <option value="tudo">Tudo (6 meses)</option>
+            </select>
+          </div>
+
+          {/* KPI grid (4 cards) */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="bg-bg-secondary/40 border border-border/60 rounded-xl p-3.5 flex flex-col text-center">
+              <span className="text-[9px] font-bold text-text-muted uppercase">Faturamento</span>
+              <span className="text-sm font-extrabold text-text-primary mt-1 font-mono">{formatBRL(kpis.faturamento)}</span>
+            </div>
+            <div className="bg-bg-secondary/40 border border-border/60 rounded-xl p-3.5 flex flex-col text-center">
+              <span className="text-[9px] font-bold text-text-muted uppercase">Qtd Vendida</span>
+              <span className="text-sm font-extrabold text-text-primary mt-1 font-mono">{formatNum(kpis.qtd_vendida)} un.</span>
+            </div>
+            <div className="bg-bg-secondary/40 border border-border/60 rounded-xl p-3.5 flex flex-col text-center">
+              <span className="text-[9px] font-bold text-text-muted uppercase">% Marca</span>
+              <span className="text-sm font-extrabold text-success mt-1 font-mono">{kpis.pct_marca.toFixed(1)}%</span>
+            </div>
+            <div className="bg-bg-secondary/40 border border-border/60 rounded-xl p-3.5 flex flex-col text-center">
+              <span className="text-[9px] font-bold text-text-muted uppercase">Preço Unit.</span>
+              <span className="text-sm font-extrabold text-text-primary mt-1 font-mono">{formatBRL(kpis.preco_unit)}</span>
+            </div>
+          </div>
+
+          {/* Evolution Chart Area */}
+          <div className="border border-border/60 rounded-xl p-4 space-y-4">
+            <div className="flex justify-between items-center">
+              <span className="text-[10px] font-black uppercase tracking-wider text-text-secondary/80">Evolução Mensal do Faturamento</span>
+              
+              {/* Mini Tabs */}
+              <div className="flex bg-bg-secondary p-0.5 rounded-lg border border-border/50">
+                {(['mensal', 'diario', 'clientes'] as const).map(tab => (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveSubTab(tab)}
+                    className={clsx(
+                      "px-2.5 py-1 rounded-md text-[10px] font-bold capitalize transition-all cursor-pointer",
+                      activeSubTab === tab ? "bg-bg-primary text-text-primary shadow-sm" : "text-text-secondary hover:text-text-primary"
+                    )}
+                  >
+                    {tab === 'diario' ? 'Diário' : tab}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Chart */}
+            {activeSubTab === 'mensal' ? (
+              <div className="h-44 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={monthly_performance} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <XAxis dataKey="mes" stroke="#94a3b8" fontSize={9} tickLine={false} axisLine={false} />
+                    <YAxis stroke="#94a3b8" fontSize={9} tickLine={false} axisLine={false} tickFormatter={formatBRLCompact} />
+                    <Tooltip 
+                      formatter={(val: any) => [formatBRL(val), 'Faturamento']}
+                      contentStyle={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border)', borderRadius: '8px' }}
+                    />
+                    <Bar dataKey="valor" fill="#3B82F6" radius={[4, 4, 0, 0]} maxBarSize={28} />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="h-44 flex items-center justify-center text-xs text-text-secondary font-semibold italic bg-bg-secondary/20 rounded-lg border border-dashed border-border/50">
+                Detalhamento {activeSubTab} indisponível para este produto no momento.
+              </div>
+            )}
+          </div>
+
+          {/* Projeção de Estoque Section */}
+          <div className="border border-border/60 rounded-xl p-4 space-y-4">
+            <span className="text-[10px] font-black uppercase tracking-wider text-text-secondary/80 block">Valores & Projeção do Estoque Atual</span>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col">
+                <span className="text-[10px] font-medium text-text-secondary/60">Custo Unitário</span>
+                <span className="text-xs font-bold text-text-primary font-mono">{formatBRL(product.custo)}</span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-[10px] font-medium text-text-secondary/60">Preço de Venda</span>
+                <span className="text-xs font-bold text-brand-500 font-mono">{formatBRL(product.preco)}</span>
+              </div>
+            </div>
+
+            <div className="border-t border-divider/60 pt-3 grid grid-cols-3 gap-3">
+              <div className="flex flex-col">
+                <span className="text-[9px] font-bold text-text-secondary/50 uppercase">Custo Total Estoque</span>
+                <span className="text-xs font-extrabold text-text-primary font-mono mt-0.5">{formatBRL(product.estoque * product.custo)}</span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-[9px] font-bold text-text-secondary/50 uppercase">Venda Total Potencial</span>
+                <span className="text-xs font-extrabold text-brand-500 font-mono mt-0.5">{formatBRL(product.estoque * product.preco)}</span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-[9px] font-bold text-success/70 uppercase">Lucro Projetado</span>
+                <span className="text-xs font-extrabold text-success font-mono mt-0.5">{formatBRL((product.estoque * product.preco) - (product.estoque * product.custo))}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Group and Brand Details */}
+          <div className="bg-bg-secondary/30 border border-border/50 rounded-xl p-4 text-xs font-semibold space-y-2.5">
+            <div className="flex justify-between items-center">
+              <span className="text-text-secondary font-medium">Categoria / Grupo:</span>
+              <span className="text-text-primary font-bold">{product.categoria}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-text-secondary font-medium">Marca / Fornecedor:</span>
+              <span className="text-text-primary font-bold">{product.marca}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-text-secondary font-medium">Estoque Físico Atual:</span>
+              <span className="text-text-primary font-bold font-mono">{formatNum(product.estoque)} un.</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
     </div>
   );
 }

@@ -1818,7 +1818,7 @@ router.get('/supplier/analytics', async (req, res, next) => {
         // ── Lista de Estoque (Produtos da Marca/Fornecedor) ───────
         let inventoryQuery = `
             SELECT 
-                p.codigo as cod,
+                COALESCE(NULLIF(p.codigo, ''), NULLIF(p.referencia, ''), NULLIF(p.codigo_fabrica, ''), p.id_firebird::text) as cod,
                 p.nome as desc,
                 'UN' as un,
                 COALESCE(p.marca, 'S/ MARCA') as marca,
@@ -1882,6 +1882,130 @@ router.get('/supplier/analytics', async (req, res, next) => {
                     status
                 };
             })
+        });
+    } catch (err) { next(err); }
+});
+
+// GET /api/bi/supplier/product-detail
+router.get('/supplier/product-detail', async (req, res, next) => {
+    try {
+        const tenantId = req.tenant.id;
+        const { codigo } = req.query; // product code/barcode
+        if (!codigo) {
+            return res.status(400).json({ error: 'Código do produto é obrigatório' });
+        }
+
+        // 1. Buscar informações cadastrais e de estoque do produto
+        const prodQuery = `
+            SELECT 
+                p.id_firebird,
+                p.codigo as cod,
+                p.nome as desc,
+                p.categoria,
+                p.marca,
+                p.estoque,
+                p.custo,
+                p.preco,
+                p.estoque_minimo
+            FROM dash_produtos p
+            WHERE p.tenant_id = $1 AND (p.codigo = $2 OR p.referencia = $2 OR p.codigo_fabrica = $2 OR p.id_firebird::text = $2)
+            LIMIT 1
+        `;
+        const { rows: prodRows } = await db.query(prodQuery, [tenantId, codigo]);
+        if (prodRows.length === 0) {
+            return res.status(404).json({ error: 'Produto não encontrado' });
+        }
+        const product = prodRows[0];
+
+        // 2. Calcular KPIs de Vendas nos últimos 6 meses
+        const salesFilter = cfopUtil.getSalesFilterClause('v');
+        const salesQuery = `
+            SELECT 
+                SUM(vi.valor_total) as receita,
+                SUM(vi.quantidade) as qtde
+            FROM dash_vendas_itens vi
+            JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+            WHERE vi.tenant_id = $1
+              AND vi.produto_id_firebird = $2
+              AND COALESCE(v.data_hora_proc, v.data_venda) >= NOW() - INTERVAL '6 months'
+              ${salesFilter}
+        `;
+        const { rows: salesKpis } = await db.query(salesQuery, [tenantId, product.id_firebird]);
+        const faturamento = parseFloat(salesKpis[0]?.receita || 0);
+        const qtd_vendida = parseFloat(salesKpis[0]?.qtde || 0);
+        const preco_unit = qtd_vendida > 0 ? faturamento / qtd_vendida : parseFloat(product.preco || 0);
+
+        // 3. Porcentagem do faturamento do produto em relação ao faturamento total da sua marca nos últimos 6 meses
+        let pct_marca = 0;
+        if (product.marca) {
+            const brandSalesQuery = `
+                SELECT SUM(vi.valor_total) as receita
+                FROM dash_vendas_itens vi
+                JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+                LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
+                WHERE vi.tenant_id = $1
+                  AND UPPER(COALESCE(vi.marca, p.marca)) = UPPER($2)
+                  AND COALESCE(v.data_hora_proc, v.data_venda) >= NOW() - INTERVAL '6 months'
+                  ${salesFilter}
+            `;
+            const { rows: brandSales } = await db.query(brandSalesQuery, [tenantId, product.marca]);
+            const brandRevenue = parseFloat(brandSales[0]?.receita || 0);
+            if (brandRevenue > 0) {
+                pct_marca = (faturamento / brandRevenue) * 100;
+            }
+        }
+
+        // 4. Evolução mensal do faturamento nos últimos 6 meses (para o gráfico)
+        const monthlyQuery = `
+            SELECT 
+                TO_CHAR(COALESCE(v.data_hora_proc, v.data_venda), 'MM/YYYY') as mes_ano,
+                DATE_TRUNC('month', COALESCE(v.data_hora_proc, v.data_venda)) as mes_trunc,
+                SUM(vi.valor_total) as receita,
+                SUM(vi.quantidade) as qtde
+            FROM dash_vendas_itens vi
+            JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+            WHERE vi.tenant_id = $1
+              AND vi.produto_id_firebird = $2
+              AND COALESCE(v.data_hora_proc, v.data_venda) >= NOW() - INTERVAL '6 months'
+              ${salesFilter}
+            GROUP BY mes_trunc, mes_ano
+            ORDER BY mes_trunc ASC
+        `;
+        const { rows: monthlyRows } = await db.query(monthlyQuery, [tenantId, product.id_firebird]);
+
+        // 5. Preencher meses vazios nos últimos 6 meses
+        const monthly_performance = [];
+        for (let i = 5; i >= 0; i--) {
+            const d = new Date();
+            d.setMonth(d.getMonth() - i);
+            const label = `${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+            const match = monthlyRows.find(r => r.mes_ano === label);
+            monthly_performance.push({
+                mes: label,
+                valor: match ? parseFloat(match.receita || 0) : 0,
+                qtde: match ? parseInt(match.qtde || 0) : 0
+            });
+        }
+
+        res.json({
+            product: {
+                id_firebird: product.id_firebird,
+                cod: product.cod || '—',
+                desc: product.desc,
+                categoria: product.categoria || 'Geral',
+                marca: product.marca || 'Sem Marca',
+                estoque: parseFloat(product.estoque || 0),
+                custo: parseFloat(product.custo || 0),
+                preco: parseFloat(product.preco || 0),
+                estoque_minimo: parseFloat(product.estoque_minimo || 0)
+            },
+            kpis: {
+                faturamento,
+                qtd_vendida,
+                pct_marca,
+                preco_unit
+            },
+            monthly_performance
         });
     } catch (err) { next(err); }
 });
