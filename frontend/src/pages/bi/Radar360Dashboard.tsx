@@ -42,7 +42,13 @@ export default function Radar360Dashboard() {
   const [selectedPeriod, setSelectedPeriod] = useState<'TODOS' | 'MES_ATUAL' | '6_MESES' | 'PERSONALIZADO'>('TODOS');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
-  const [showAllOrders, setShowAllOrders] = useState(false);
+
+  // Orders table state
+  const [orderSearch, setOrderSearch] = useState('');
+  const [orderDateFrom, setOrderDateFrom] = useState('');
+  const [orderDateTo, setOrderDateTo] = useState('');
+  const [orderPage, setOrderPage] = useState(1);
+  const ORDER_PAGE_SIZE = 30;
 
   useEffect(() => {
     if (urlId) {
@@ -677,60 +683,214 @@ export default function Radar360Dashboard() {
 
       </div>
 
-      {/* HISTÓRICO DE ÚLTIMOS PEDIDOS */}
-      <div className="bg-bg-primary border border-divider shadow-card rounded-3xl overflow-hidden">
-        <div className="p-5 border-b border-divider/10 flex items-center justify-between flex-wrap gap-2">
-          <h3 className="text-sm font-black text-text-primary uppercase tracking-wider flex items-center gap-2">
-            <Calendar size={16} className="text-brand-500" />
-            Últimos Pedidos
-          </h3>
-          <button
-            onClick={() => setShowAllOrders(prev => !prev)}
-            className="px-3 py-1.5 bg-brand-500 hover:bg-brand-600 text-white text-[10px] font-black rounded-xl transition-all cursor-pointer shadow-sm uppercase tracking-wider"
-          >
-            {showAllOrders ? 'Ocultar' : `Ver Histórico Completo (${order_history?.length || 0})`}
-          </button>
-        </div>
+      {/* HISTÓRICO DE PEDIDOS COM BUSCA E PAGINAÇÃO */}
+      {(() => {
+        // Apply filters client-side
+        const filteredOrders = (order_history || []).filter((order: any) => {
+          const matchCode = !orderSearch || String(order.numero_nota).toLowerCase().includes(orderSearch.toLowerCase());
+          let matchDate = true;
+          if (orderDateFrom || orderDateTo) {
+            // data_emissao is formatted as dd/mm/yyyy in pt-BR
+            const parts = (order.data_emissao || '').split('/');
+            const orderDate = parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : '';
+            if (orderDateFrom && orderDate < orderDateFrom) matchDate = false;
+            if (orderDateTo && orderDate > orderDateTo) matchDate = false;
+          }
+          return matchCode && matchDate;
+        });
 
-        <div className={`overflow-x-auto text-[11px] font-medium text-text-primary transition-all duration-300 ${showAllOrders ? 'max-h-[600px] overflow-y-auto' : ''}`}>
-          <table className="w-full text-left">
-            <thead className="bg-bg-secondary/40 text-[9px] text-text-secondary uppercase font-black tracking-wider border-b border-divider/10 sticky top-0">
-              <tr>
-                <th className="px-6 py-3.5">Nota/Pedido</th>
-                <th className="px-6 py-3.5">Vendedor</th>
-                <th className="px-6 py-3.5">Emissão</th>
-                <th className="px-6 py-3.5 text-right">Valor Total</th>
-                <th className="px-6 py-3.5 text-center">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-divider/10">
-              {(showAllOrders ? order_history : order_history?.slice(0, 10))?.map((order: any) => (
-                <tr key={order.id} className="hover:bg-bg-secondary/20 transition-colors">
-                  <td className="px-6 py-3 font-mono font-bold">#{order.numero_nota}</td>
-                  <td className="px-6 py-3 text-text-secondary">{order.vendedor_nome}</td>
-                  <td className="px-6 py-3 text-text-secondary font-mono">{order.data_emissao}</td>
-                  <td className="px-6 py-3 text-right font-mono font-bold text-text-primary">{formatCurrency(order.valor_total)}</td>
-                  <td className="px-6 py-3 text-center">
-                    <span className={clsx(
-                      "px-2 py-0.5 text-[9px] font-black rounded-lg uppercase tracking-wider border",
-                      (order.status === 'FATURADO' || order.status === 'FINALIZADO') 
-                        ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" 
-                        : "bg-amber-500/10 text-amber-600 border-amber-500/20"
-                    )}>
-                      {order.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-              {(!order_history || order_history.length === 0) && (
-                <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-text-secondary font-bold">Nenhum pedido encontrado.</td>
-                </tr>
+        const totalPages = Math.max(1, Math.ceil(filteredOrders.length / ORDER_PAGE_SIZE));
+        const safePage = Math.min(orderPage, totalPages);
+        const pageOrders = filteredOrders.slice((safePage - 1) * ORDER_PAGE_SIZE, safePage * ORDER_PAGE_SIZE);
+
+        return (
+          <div className="bg-bg-primary border border-divider shadow-card rounded-3xl overflow-hidden">
+            {/* Header */}
+            <div className="p-5 border-b border-divider/10 flex items-center justify-between flex-wrap gap-3">
+              <h3 className="text-sm font-black text-text-primary uppercase tracking-wider flex items-center gap-2">
+                <Calendar size={16} className="text-brand-500" />
+                Histórico de Pedidos
+                <span className="text-[10px] font-bold text-text-secondary bg-bg-secondary px-2 py-0.5 rounded-lg border border-divider/20">
+                  {filteredOrders.length} de {order_history?.length || 0}
+                </span>
+              </h3>
+            </div>
+
+            {/* Filtros de busca */}
+            <div className="px-5 py-3 bg-bg-secondary/30 border-b border-divider/10 flex flex-wrap gap-3 items-center">
+              {/* Busca por código */}
+              <div className="flex items-center gap-2 flex-1 min-w-[180px] bg-bg-primary border border-divider rounded-xl px-3 py-2 shadow-sm">
+                <Search size={13} className="text-text-secondary shrink-0" />
+                <input
+                  type="text"
+                  placeholder="Buscar nº pedido..."
+                  value={orderSearch}
+                  onChange={e => { setOrderSearch(e.target.value); setOrderPage(1); }}
+                  className="bg-transparent text-xs font-medium text-text-primary placeholder-text-secondary/50 outline-none w-full"
+                />
+                {orderSearch && (
+                  <button onClick={() => { setOrderSearch(''); setOrderPage(1); }} className="text-text-secondary hover:text-text-primary transition-colors cursor-pointer">
+                    ×
+                  </button>
+                )}
+              </div>
+
+              {/* Data De */}
+              <div className="flex items-center gap-2 bg-bg-primary border border-divider rounded-xl px-3 py-2 shadow-sm">
+                <Calendar size={13} className="text-text-secondary shrink-0" />
+                <span className="text-[10px] font-black text-text-secondary uppercase tracking-wider">De:</span>
+                <input
+                  type="date"
+                  value={orderDateFrom}
+                  onChange={e => { setOrderDateFrom(e.target.value); setOrderPage(1); }}
+                  className="bg-transparent text-xs font-medium text-text-primary outline-none cursor-pointer"
+                />
+              </div>
+
+              {/* Data Até */}
+              <div className="flex items-center gap-2 bg-bg-primary border border-divider rounded-xl px-3 py-2 shadow-sm">
+                <Calendar size={13} className="text-text-secondary shrink-0" />
+                <span className="text-[10px] font-black text-text-secondary uppercase tracking-wider">Até:</span>
+                <input
+                  type="date"
+                  value={orderDateTo}
+                  onChange={e => { setOrderDateTo(e.target.value); setOrderPage(1); }}
+                  className="bg-transparent text-xs font-medium text-text-primary outline-none cursor-pointer"
+                />
+              </div>
+
+              {/* Limpar filtros */}
+              {(orderSearch || orderDateFrom || orderDateTo) && (
+                <button
+                  onClick={() => { setOrderSearch(''); setOrderDateFrom(''); setOrderDateTo(''); setOrderPage(1); }}
+                  className="text-[10px] font-black text-text-secondary hover:text-red-500 uppercase tracking-wider transition-colors cursor-pointer px-2"
+                >
+                  Limpar
+                </button>
               )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+            </div>
+
+            {/* Tabela */}
+            <div className="overflow-x-auto text-[11px] font-medium text-text-primary">
+              <table className="w-full text-left">
+                <thead className="bg-bg-secondary/40 text-[9px] text-text-secondary uppercase font-black tracking-wider border-b border-divider/10">
+                  <tr>
+                    <th className="px-6 py-3.5">Nº Pedido</th>
+                    <th className="px-6 py-3.5">Vendedor</th>
+                    <th className="px-6 py-3.5">Emissão</th>
+                    <th className="px-6 py-3.5 text-right">Valor Total</th>
+                    <th className="px-6 py-3.5 text-center">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-divider/10">
+                  {pageOrders.map((order: any) => (
+                    <tr key={order.id} className="hover:bg-bg-secondary/20 transition-colors">
+                      <td className="px-6 py-3 font-mono font-bold text-brand-500">#{order.numero_nota}</td>
+                      <td className="px-6 py-3 text-text-secondary">{order.vendedor_nome}</td>
+                      <td className="px-6 py-3 text-text-secondary font-mono">{order.data_emissao}</td>
+                      <td className="px-6 py-3 text-right font-mono font-bold text-text-primary">{formatCurrency(order.valor_total)}</td>
+                      <td className="px-6 py-3 text-center">
+                        <span className={clsx(
+                          "px-2 py-0.5 text-[9px] font-black rounded-lg uppercase tracking-wider border",
+                          (order.status === 'FATURADO' || order.status === 'FINALIZADO')
+                            ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                            : "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                        )}>
+                          {order.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                  {pageOrders.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-10 text-center text-text-secondary font-bold">
+                        {filteredOrders.length === 0 && (orderSearch || orderDateFrom || orderDateTo)
+                          ? 'Nenhum pedido encontrado para os filtros aplicados.'
+                          : 'Nenhum pedido encontrado.'}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Paginação */}
+            {filteredOrders.length > ORDER_PAGE_SIZE && (
+              <div className="p-4 border-t border-divider/10 flex items-center justify-between gap-4 flex-wrap">
+                <span className="text-[10px] font-bold text-text-secondary">
+                  Mostrando {(safePage - 1) * ORDER_PAGE_SIZE + 1}–{Math.min(safePage * ORDER_PAGE_SIZE, filteredOrders.length)} de {filteredOrders.length} pedidos
+                </span>
+
+                <div className="flex items-center gap-1.5">
+                  {/* Primeira página */}
+                  <button
+                    disabled={safePage === 1}
+                    onClick={() => setOrderPage(1)}
+                    className="w-7 h-7 flex items-center justify-center rounded-lg border border-divider text-[10px] font-black text-text-secondary hover:bg-bg-secondary disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+                  >
+                    «
+                  </button>
+
+                  {/* Anterior */}
+                  <button
+                    disabled={safePage === 1}
+                    onClick={() => setOrderPage(p => Math.max(1, p - 1))}
+                    className="w-7 h-7 flex items-center justify-center rounded-lg border border-divider text-[10px] font-black text-text-secondary hover:bg-bg-secondary disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+                  >
+                    ‹
+                  </button>
+
+                  {/* Pages */}
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter(p => p === 1 || p === totalPages || Math.abs(p - safePage) <= 2)
+                    .reduce((acc: (number | string)[], p, idx, arr) => {
+                      if (idx > 0 && (p as number) - (arr[idx - 1] as number) > 1) acc.push('...');
+                      acc.push(p);
+                      return acc;
+                    }, [])
+                    .map((p, idx) =>
+                      p === '...' ? (
+                        <span key={`ellipsis-${idx}`} className="w-7 h-7 flex items-center justify-center text-[10px] text-text-secondary">…</span>
+                      ) : (
+                        <button
+                          key={p}
+                          onClick={() => setOrderPage(p as number)}
+                          className={clsx(
+                            "w-7 h-7 flex items-center justify-center rounded-lg border text-[10px] font-black transition-all cursor-pointer",
+                            safePage === p
+                              ? "bg-brand-500 text-white border-brand-500 shadow-sm"
+                              : "border-divider text-text-secondary hover:bg-bg-secondary"
+                          )}
+                        >
+                          {p}
+                        </button>
+                      )
+                    )
+                  }
+
+                  {/* Próxima */}
+                  <button
+                    disabled={safePage === totalPages}
+                    onClick={() => setOrderPage(p => Math.min(totalPages, p + 1))}
+                    className="w-7 h-7 flex items-center justify-center rounded-lg border border-divider text-[10px] font-black text-text-secondary hover:bg-bg-secondary disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+                  >
+                    ›
+                  </button>
+
+                  {/* Última página */}
+                  <button
+                    disabled={safePage === totalPages}
+                    onClick={() => setOrderPage(totalPages)}
+                    className="w-7 h-7 flex items-center justify-center rounded-lg border border-divider text-[10px] font-black text-text-secondary hover:bg-bg-secondary disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+                  >
+                    »
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
     </div>
   );
