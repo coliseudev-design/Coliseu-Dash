@@ -340,11 +340,10 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }: 
       )}
       <aside
         className={clsx(
-          'fixed lg:sticky top-0 left-0 h-screen bg-bg-primary/95 backdrop-blur-xl border-r border-divider/40 z-40',
-          'transform transition-transform duration-200 ease-out lg:translate-x-0',
-          'flex flex-col shadow-card lg:shadow-none transition-all duration-300 ease-in-out',
-          open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
-          collapsed ? 'lg:w-20' : 'lg:w-64 w-64'
+          'fixed top-0 left-0 h-screen bg-bg-primary/95 backdrop-blur-xl border-r border-divider/40 z-40 lg:hidden w-64',
+          'transform transition-transform duration-200 ease-out',
+          'flex flex-col shadow-card transition-all duration-300 ease-in-out',
+          open ? 'translate-x-0' : '-translate-x-full'
         )}
       >
         {/* Logo */}
