@@ -1,8 +1,9 @@
 import { NavLink } from 'react-router-dom'
 import {
-  LayoutDashboard, Wallet,
-  Trophy, BarChart3, Users, X, LogOut, Shield, DollarSign,
-  Truck, Map, BrainCircuit, Package, Settings, ChevronDown, ChevronUp, ChevronLeft, GitCompare
+  LayoutDashboard, Wallet, LogOut, Shield,
+  Settings, ChevronDown, ChevronUp, ChevronLeft, GitCompare,
+  X, TrendingUp, Radar, UsersRound,
+  Factory, Banknote, CircleDollarSign, Boxes, BadgeCheck
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useAuthStore } from '../../store/authStore'
@@ -16,22 +17,19 @@ interface Props {
 }
 
 const MODULES = [
-  { to: '/', label: 'Visão Estratégica', icon: LayoutDashboard, exact: true, id: 'inicio', color: '#3B82F6' },
-  { to: '/comparativo-vendas', label: 'Comparativo', icon: GitCompare, exact: true, id: 'inicio', color: '#10B981' },
-  { to: '/hub-vendedor', label: 'Hub do Vendedor', icon: Trophy, exact: true, id: 'bi_sales', color: '#F97316' },
+  { to: '/', label: 'Visão Estratégica', icon: LayoutDashboard, exact: true, id: 'inicio',   color: '#3B82F6' },
+  { to: '/comparativo-vendas', label: 'Comparativo',  icon: GitCompare,   exact: true, id: 'inicio',   color: '#10B981' },
 ]
 
 const BI_MODULES = [
-  { to: '/bi',                       label: 'Hub de Vendas',          icon: BarChart3,     exact: true,  id: 'bi_sales',               color: '#10B981' },
-  { to: '/bi/supplier',              label: 'Hub do Fornecedor',      icon: Truck,                       id: 'bi_supplier',            color: '#F59E0B' },
-  { to: '/bi/abc',                   label: 'Gestão de Inventário',   icon: Package,                     id: 'bi_abc',                 color: '#06B6D4' },
-  { to: '/bi/finance',               label: 'Financeiro',             icon: Wallet,                      id: 'bi_finance',             color: '#22C55E' },
-  { to: '/bi/customer',              label: 'Radar 360',              icon: Users,                       id: 'bi_customer',            color: '#EC4899' },
-  { to: '/bi/comparative',           label: 'Lucratividade',          icon: DollarSign,                  id: 'bi_comparative',         color: '#84CC16' },
-  { to: '/bi/customer-analytics',    label: 'Análise de Clientes',    icon: Users,                       id: 'bi_customer_analytics',  color: '#14B8A6' },
-  { to: '/bi/goals',                 label: 'Análise de Metas',       icon: Trophy,                      id: 'bi_goals',               color: '#EAB308' },
-  { to: '/bi/heatmap',               label: 'Mapa de Calor',          icon: Map,                         id: 'bi_heatmap',             color: '#0EA5E9' },
-  { to: '/bi/ai-insights',           label: 'Coliseu AI',             icon: BrainCircuit,                id: 'bi_ai_insights',         color: '#00A896' },
+  { to: '/hub-vendedor',            label: 'Hub do Vendedor',     icon: BadgeCheck,        exact: true, id: 'bi_sales',              color: '#F97316' },
+  { to: '/bi',                      label: 'Hub de Vendas',       icon: TrendingUp,        exact: true, id: 'bi_sales',              color: '#10B981' },
+  { to: '/bi/customer',             label: 'Radar 360',           icon: Radar,                          id: 'bi_customer',           color: '#EC4899' },
+  { to: '/bi/customer-analytics',   label: 'Análise de Clientes', icon: UsersRound,                     id: 'bi_customer_analytics', color: '#14B8A6' },
+  { to: '/bi/supplier',             label: 'Hub do Fornecedor',   icon: Factory,                        id: 'bi_supplier',           color: '#F59E0B' },
+  { to: '/bi/finance',              label: 'Financeiro',          icon: Banknote,                       id: 'bi_finance',            color: '#22C55E' },
+  { to: '/bi/comparative',          label: 'Lucratividade',       icon: CircleDollarSign,               id: 'bi_comparative',        color: '#84CC16' },
+  { to: '/bi/abc',                  label: 'Gestão de Inventário', icon: Boxes,                          id: 'bi_abc',                color: '#06B6D4' },
 ]
 
 const CONFIG_MODULES = [
@@ -39,7 +37,7 @@ const CONFIG_MODULES = [
   { to: '/grupos',   label: 'Grupos de Acesso', icon: Shield, id: 'usuarios', color: '#EC4899' },
 ]
 
-/** Ícone com badge colorido — padrão premium */
+/** Ícone com badge 3D premium */
 function IconBadge({
   icon: Icon,
   color,
@@ -53,15 +51,27 @@ function IconBadge({
 }) {
   return (
     <div
-      className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all duration-200"
+      className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-200 relative overflow-hidden"
       style={{
-        backgroundColor: isActive ? `${color}22` : `${color}10`,
-        boxShadow: isActive ? `0 1px 6px ${color}25` : 'none',
+        background: isActive
+          ? `linear-gradient(145deg, ${color}35 0%, ${color}15 100%)`
+          : `linear-gradient(145deg, ${color}18 0%, ${color}08 100%)`,
+        boxShadow: isActive
+          ? `0 2px 8px ${color}40, 0 1px 0 rgba(255,255,255,0.15) inset, 0 -1px 0 ${color}30 inset`
+          : `0 1px 3px rgba(0,0,0,0.06), 0 1px 0 rgba(255,255,255,0.12) inset`,
+        border: `1px solid ${isActive ? color + '30' : color + '12'}`,
       }}
     >
+      {/* Inner top-left highlight for 3D depth */}
+      <div
+        className="absolute inset-0 opacity-40 rounded-xl pointer-events-none"
+        style={{
+          background: 'linear-gradient(135deg, rgba(255,255,255,0.25) 0%, transparent 60%)',
+        }}
+      />
       <Icon
         size={size}
-        style={{ color: isActive ? color : `${color}cc` }}
+        style={{ color: isActive ? color : `${color}bb`, position: 'relative' }}
         strokeWidth={isActive ? 2.2 : 1.8}
       />
     </div>
