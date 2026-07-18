@@ -159,16 +159,20 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }: 
     }
   }, [location.pathname])
 
-  // Auto-expandir grupo que possui a rota ativa
+  // Auto-expandir apenas o grupo que possui a rota ativa (e fechar todos os outros)
   useEffect(() => {
     const activeGroup = MENU_GROUPS.find(g => 
       g.items.some(item => location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to)))
     )
     if (activeGroup) {
-      setExpandedGroups(prev => ({
-        ...prev,
-        [activeGroup.id]: true
-      }))
+      setExpandedGroups({
+        corporativas: activeGroup.id === 'corporativas',
+        comercial: activeGroup.id === 'comercial',
+        clientes: activeGroup.id === 'clientes',
+        controladoria: activeGroup.id === 'controladoria',
+        operacoes: activeGroup.id === 'operacoes',
+        compras: activeGroup.id === 'compras',
+      })
     }
   }, [location.pathname])
 
@@ -182,11 +186,19 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }: 
     return user?.permissions?.includes(moduleId) || false
   }
 
+  // Alterna o grupo clicado e fecha todos os demais para manter a tela limpa e sem rolagens
   const toggleGroup = (groupId: string) => {
-    setExpandedGroups(prev => ({
-      ...prev,
-      [groupId]: !prev[groupId]
-    }))
+    setExpandedGroups(prev => {
+      const isAlreadyExpanded = prev[groupId]
+      return {
+        corporativas: !isAlreadyExpanded && groupId === 'corporativas',
+        comercial: !isAlreadyExpanded && groupId === 'comercial',
+        clientes: !isAlreadyExpanded && groupId === 'clientes',
+        controladoria: !isAlreadyExpanded && groupId === 'controladoria',
+        operacoes: !isAlreadyExpanded && groupId === 'operacoes',
+        compras: !isAlreadyExpanded && groupId === 'compras',
+      }
+    })
   }
 
   const groupsWithAccess = MENU_GROUPS.map(group => {
