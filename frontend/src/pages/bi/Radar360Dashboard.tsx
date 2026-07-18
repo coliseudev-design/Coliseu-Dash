@@ -26,6 +26,10 @@ import {
   ChevronRight 
 } from 'lucide-react';
 import clsx from 'clsx';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, Cell
+} from 'recharts';
 
 // CommandCenter (Busca Preditiva Flutuante)
 import { CommandCenter } from '../../components/bi/Radar360/CommandCenter';
@@ -528,7 +532,7 @@ export default function Radar360Dashboard() {
 
       </div>
 
-      {/* SAZONALIDADE DE COMPRAS (MENSAL) */}
+      {/* SAZONALIDADE DE COMPRAS (MENSAL) — Recharts */}
       <div className="bg-bg-primary border border-divider shadow-card rounded-3xl p-6 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-divider/10 pb-4">
           <h3 className="text-sm font-black text-text-primary uppercase tracking-wider flex items-center gap-2">
@@ -541,33 +545,81 @@ export default function Radar360Dashboard() {
           </div>
         </div>
 
-        {/* Gráfico de Barras Customizado */}
-        <div className="pt-6">
-          <div className="flex items-end justify-between h-40 gap-2 border-b border-divider pb-2 px-2">
-            {behavior.sazonalidade?.map((m: any, idx: number) => {
-              // Calcula altura base proporcional
-              const maxVal = Math.max(...behavior.sazonalidade.map((x: any) => x.total)) || 1;
-              const heightPct = Math.max(12, (m.total / maxVal) * 100);
-              return (
-                <div key={idx} className="flex-1 flex flex-col items-center justify-end h-full">
-                  <div 
-                    className="w-full max-w-[34px] bg-brand-500/80 hover:bg-brand-500 rounded-t-md transition-all duration-300 relative group cursor-pointer shadow-sm"
-                    style={{ height: `${heightPct}%` }}
-                  >
-                    {/* Tooltip Hover */}
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 bg-black/90 backdrop-blur-sm text-white text-[9px] font-mono px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity z-50 shadow-md pointer-events-none whitespace-nowrap">
-                      {formatCurrency(m.total)}
-                    </div>
-                  </div>
-                  <span className="text-[10px] text-text-secondary/80 font-black mt-2 uppercase tracking-wide">{m.mes}</span>
-                </div>
-              );
-            })}
-          </div>
-          <span className="text-[9px] text-text-secondary/50 font-bold block mt-2 text-center italic">
-            * O gráfico representa a distribuição cronológica acumulada de vendas nos meses de Janeiro a Dezembro.
-          </span>
+        {/* Recharts BarChart — substitui o gráfico customizado instável */}
+        <div className="w-full" style={{ height: 200 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={behavior.sazonalidade || []}
+              margin={{ top: 10, right: 8, left: 0, bottom: 4 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" opacity={0.3} />
+              <XAxis
+                dataKey="mes"
+                tick={{ fontSize: 10, fill: 'var(--color-text-muted)', fontWeight: 700 }}
+                tickLine={false}
+                axisLine={false}
+              />
+              <YAxis
+                tickFormatter={(v: number) =>
+                  v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)}M` :
+                  v >= 1_000 ? `${(v / 1_000).toFixed(0)}K` : String(v)
+                }
+                tick={{ fontSize: 9, fill: 'var(--color-text-muted)' }}
+                tickLine={false}
+                axisLine={false}
+                width={48}
+              />
+              <Tooltip
+                formatter={(value: number) => [formatCurrency(value), 'Faturamento']}
+                cursor={{ fill: 'rgba(99,102,241,0.06)', radius: 6 } as any}
+                contentStyle={{
+                  background: 'rgba(15,23,42,0.92)',
+                  border: '1px solid rgba(99,102,241,0.3)',
+                  borderRadius: 10,
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: '#e2e8f0',
+                  backdropFilter: 'blur(12px)',
+                }}
+                labelStyle={{ color: '#94a3b8', fontSize: 10, fontWeight: 700, marginBottom: 2 }}
+              />
+              <Bar dataKey="total" name="Faturamento" radius={[6, 6, 0, 0]} maxBarSize={36}>
+                {(behavior.sazonalidade || []).map((entry: any, idx: number) => {
+                  const maxVal = Math.max(...(behavior.sazonalidade || []).map((x: any) => x.total), 1);
+                  const ratio = maxVal > 0 ? entry.total / maxVal : 0;
+                  // Gradiente de cor: baixo = índigo apagado, alto = brand vibrante
+                  const alpha = Math.round(80 + ratio * 175);
+                  const hexAlpha = alpha.toString(16).padStart(2, '0');
+                  const isMaior = entry.mes === behavior.mes_maior_volume;
+                  const isMenor = entry.mes === behavior.mes_menor_volume;
+                  const fill = isMaior ? '#10B981' : isMenor ? '#EF4444' : `#4F46E5${hexAlpha}`;
+                  return <Cell key={idx} fill={fill} />;
+                })}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
         </div>
+
+        {/* Legenda */}
+        <div className="flex items-center gap-5 text-[10px] font-bold text-text-secondary flex-wrap">
+          <div className="flex items-center gap-1.5">
+            <span className="w-3 h-3 rounded-sm bg-emerald-500" />
+            Mês de maior volume
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-3 h-3 rounded-sm" style={{ background: '#4F46E5' }} />
+            Meses normais
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-3 h-3 rounded-sm bg-red-500" />
+            Mês de menor volume
+          </div>
+        </div>
+
+        <span className="text-[9px] text-text-secondary/50 font-bold block text-center italic">
+          * Distribuição cronológica acumulada de vendas — Janeiro a Dezembro (histórico completo).
+        </span>
       </div>
 
       {/* TOP 5 LISTS (PRODUTOS, CATEGORIAS, MARCAS) */}
