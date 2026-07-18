@@ -1662,7 +1662,10 @@ router.get('/supplier/analytics', async (req, res, next) => {
         const { start, end } = await getBiDateRange(req, tenantId);
         const deptoId = req.query.depto_id;
         const df = buildDeptoFilter(deptoId, 4, 'v');
-        const { marca } = req.query;
+        let marca = req.query.marca;
+        if (!marca || marca === 'all' || marca === 'undefined' || marca === 'null') {
+            marca = null;
+        }
 
         const salesFilter = cfopUtil.getSalesFilterClause('v');
 
@@ -1803,7 +1806,6 @@ router.get('/supplier/analytics', async (req, res, next) => {
             stockKpiParams.push(marca);
         } else {
             stockKpiQuery += ` AND p.marca IS NOT NULL AND p.marca <> ''`;
-            stockKpiParams.push('');
         }
         const { rows: stockKpisRes } = await db.query(stockKpiQuery, stockKpiParams);
         const stock_kpis = {
@@ -1818,7 +1820,7 @@ router.get('/supplier/analytics', async (req, res, next) => {
                 p.codigo as cod,
                 p.nome as desc,
                 'UN' as un,
-                COALESCE(p.marca, $2) as marca,
+                COALESCE(p.marca, 'S/ MARCA') as marca,
                 p.estoque,
                 p.custo,
                 p.preco,
@@ -1834,7 +1836,6 @@ router.get('/supplier/analytics', async (req, res, next) => {
             invParams.push(marca);
         } else {
             inventoryQuery += ` AND p.marca IS NOT NULL AND p.marca <> ''`;
-            invParams.push('');
         }
         inventoryQuery += ` ORDER BY p.estoque DESC LIMIT 150`;
         const { rows: inventory } = await db.query(inventoryQuery, invParams);
