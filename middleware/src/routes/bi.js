@@ -1818,7 +1818,7 @@ router.get('/supplier/analytics', async (req, res, next) => {
         // ── Lista de Estoque (Produtos da Marca/Fornecedor) ───────
         let inventoryQuery = `
             SELECT 
-                COALESCE(NULLIF(p.codigo, ''), NULLIF(p.referencia, ''), NULLIF(p.codigo_fabrica, ''), p.id_firebird::text) as cod,
+                COALESCE(NULLIF(p.referencia, ''), NULLIF(p.codigo_fabrica, ''), p.id_firebird::text, NULLIF(p.codigo, '')) as cod,
                 p.nome as desc,
                 'UN' as un,
                 COALESCE(p.marca, 'S/ MARCA') as marca,

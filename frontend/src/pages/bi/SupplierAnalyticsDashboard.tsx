@@ -791,17 +791,19 @@ export default function SupplierAnalyticsDashboard() {
                 <tbody className="divide-y divide-divider/30 text-[11px]">
                   {filteredInventory.map((item, idx) => (
                     <tr key={idx} className="hover:bg-bg-secondary/50 transition-colors">
-                      <td className="px-2 py-2 font-mono font-bold text-left">
-                        <button 
-                          onClick={() => setSelectedProductCode(item.cod)}
-                          className="inline-flex items-center gap-1 text-brand-500 hover:text-brand-600 hover:underline transition-all cursor-pointer text-left group"
-                          title="Clique para ver o Raio-X de vendas"
-                        >
-                          <Activity size={12} className="opacity-60 group-hover:opacity-100 transition-opacity" />
-                          {item.cod}
-                        </button>
+                      <td className="px-2 py-2 font-mono font-semibold text-text-secondary text-left">{item.cod}</td>
+                      <td className="px-2 py-2 font-bold text-text-primary truncate max-w-[200px]" title={item.desc}>
+                        <div className="flex items-center justify-between w-full">
+                          <span className="truncate">{item.desc}</span>
+                          <button 
+                            onClick={() => setSelectedProductCode(item.cod)}
+                            className="text-brand-500 hover:text-brand-600 transition-colors p-0.5 rounded hover:bg-brand-500/10 cursor-pointer flex-shrink-0 ml-1.5"
+                            title="Ver Raio-X de vendas"
+                          >
+                            <Search size={13} />
+                          </button>
+                        </div>
                       </td>
-                      <td className="px-2 py-2 font-bold text-text-primary truncate max-w-[200px]" title={item.desc}>{item.desc}</td>
                       <td className="px-2 py-2 text-center text-text-secondary">{item.un}</td>
                       <td className="px-2 py-2 text-text-secondary">{item.marca}</td>
                       <td className="px-2 py-2 text-right font-bold text-text-primary font-mono">{formatNum(item.estoque)}</td>
@@ -879,17 +881,19 @@ export default function SupplierAnalyticsDashboard() {
 
                     return (
                       <tr key={idx} className="hover:bg-bg-secondary/50 transition-colors">
-                        <td className="px-2 py-2 font-mono font-bold text-left">
-                          <button 
-                            onClick={() => setSelectedProductCode(item.cod)}
-                            className="inline-flex items-center gap-1 text-brand-500 hover:text-brand-600 hover:underline transition-all cursor-pointer text-left group"
-                            title="Clique para ver o Raio-X de vendas"
-                          >
-                            <Activity size={12} className="opacity-60 group-hover:opacity-100 transition-opacity" />
-                            {item.cod}
-                          </button>
+                        <td className="px-2 py-2 font-mono font-semibold text-text-secondary text-left">{item.cod}</td>
+                        <td className="px-2 py-2 font-bold text-text-primary text-left truncate max-w-[200px]" title={item.desc}>
+                          <div className="flex items-center justify-between w-full">
+                            <span className="truncate">{item.desc}</span>
+                            <button 
+                              onClick={() => setSelectedProductCode(item.cod)}
+                              className="text-brand-500 hover:text-brand-600 transition-colors p-0.5 rounded hover:bg-brand-500/10 cursor-pointer flex-shrink-0 ml-1.5"
+                              title="Ver Raio-X de vendas"
+                            >
+                              <Search size={13} />
+                            </button>
+                          </div>
                         </td>
-                        <td className="px-2 py-2 font-bold text-text-primary text-left truncate max-w-[200px]" title={item.desc}>{item.desc}</td>
                         <td className="px-2 py-2 text-right font-mono font-bold text-text-secondary">{formatBRL(custo)}</td>
                         <td className="px-2 py-2 text-right font-mono font-bold text-brand-500">{formatBRL(preco)}</td>
                         <td className="px-2 py-2 text-center font-mono font-bold text-success">{margemLucro.toFixed(1)}%</td>
@@ -1017,142 +1021,152 @@ function ProductDetailModal({ codigo, onClose }: { codigo: string; onClose: () =
   const { product, kpis, monthly_performance } = data;
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm overflow-y-auto">
-      <div className="bg-bg-primary border border-border shadow-2xl rounded-2xl w-full max-w-2xl overflow-hidden flex flex-col my-8 animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+      <div className="bg-bg-primary border border-border shadow-2xl rounded-2xl w-full max-w-4xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
         
         {/* Header */}
-        <div className="p-5 border-b border-divider flex justify-between items-start bg-gradient-to-r from-bg-secondary to-bg-primary">
+        <div className="px-4 py-3 border-b border-divider flex justify-between items-center bg-gradient-to-r from-bg-secondary to-bg-primary">
           <div>
-            <span className="text-[10px] font-black uppercase tracking-wider text-brand-500">Raio-X de Vendas (Últimos 6 Meses)</span>
-            <h3 className="font-extrabold text-text-primary text-base mt-0.5">{product.desc}</h3>
+            <span className="text-[9px] font-black uppercase tracking-wider text-brand-500">Raio-X de Vendas (Últimos 6 Meses)</span>
+            <h3 className="font-extrabold text-text-primary text-sm mt-0.5">{product.desc}</h3>
           </div>
-          <button onClick={onClose} className="p-1.5 text-text-muted hover:text-text-primary hover:bg-bg-secondary rounded-lg transition-colors">
-            <X size={18} />
+          <button onClick={onClose} className="p-1 text-text-muted hover:text-text-primary hover:bg-bg-secondary rounded-lg transition-colors cursor-pointer">
+            <X size={16} />
           </button>
         </div>
 
-        {/* Modal Scroll Container */}
-        <div className="p-5 space-y-6 overflow-y-auto max-h-[85vh]">
+        {/* Modal 2-Column Grid */}
+        <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
           
-          {/* Card Select Period Row */}
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-bold text-text-secondary">PERÍODO:</span>
-            <select aria-label="Selecionar Período" className="bg-bg-secondary border border-border rounded-lg px-2.5 py-1 text-xs text-text-primary outline-none focus:border-brand-500 cursor-pointer font-semibold">
-              <option value="tudo">Tudo (6 meses)</option>
-            </select>
+          {/* Left Column: Sales and Chart */}
+          <div className="space-y-3 flex flex-col justify-between">
+            {/* Top row: period selection & KPI cards */}
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold text-text-secondary">PERÍODO:</span>
+                  <select aria-label="Selecionar Período" className="bg-bg-secondary border border-border rounded px-2 py-0.5 text-[10px] text-text-primary outline-none focus:border-brand-500 cursor-pointer font-bold">
+                    <option value="tudo">Tudo (6 meses)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* KPIs (4 cards in a 2x2 grid) */}
+              <div className="grid grid-cols-4 gap-2">
+                <div className="bg-bg-secondary/40 border border-border/50 rounded-lg p-2 flex flex-col text-center">
+                  <span className="text-[8px] font-bold text-text-muted uppercase">Faturamento</span>
+                  <span className="text-[11px] font-extrabold text-text-primary mt-0.5 font-mono">{formatBRL(kpis.faturamento)}</span>
+                </div>
+                <div className="bg-bg-secondary/40 border border-border/50 rounded-lg p-2 flex flex-col text-center">
+                  <span className="text-[8px] font-bold text-text-muted uppercase">Qtd Vendida</span>
+                  <span className="text-[11px] font-extrabold text-text-primary mt-0.5 font-mono">{formatNum(kpis.qtd_vendida)} un.</span>
+                </div>
+                <div className="bg-bg-secondary/40 border border-border/50 rounded-lg p-2 flex flex-col text-center">
+                  <span className="text-[8px] font-bold text-text-muted uppercase">% Marca</span>
+                  <span className="text-[11px] font-extrabold text-success mt-0.5 font-mono">{kpis.pct_marca.toFixed(1)}%</span>
+                </div>
+                <div className="bg-bg-secondary/40 border border-border/50 rounded-lg p-2 flex flex-col text-center">
+                  <span className="text-[8px] font-bold text-text-muted uppercase">Preço Unit.</span>
+                  <span className="text-[11px] font-extrabold text-text-primary mt-0.5 font-mono">{formatBRL(kpis.preco_unit)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Evolution Chart Area */}
+            <div className="border border-border/50 rounded-xl p-3 space-y-2 flex-1 flex flex-col justify-between">
+              <div className="flex justify-between items-center">
+                <span className="text-[9px] font-black uppercase tracking-wider text-text-secondary/70">Evolução Mensal</span>
+                
+                {/* Mini Tabs */}
+                <div className="flex bg-bg-secondary p-0.5 rounded border border-border/40">
+                  {(['mensal', 'diario', 'clientes'] as const).map(tab => (
+                    <button
+                      key={tab}
+                      onClick={() => setActiveSubTab(tab)}
+                      className={clsx(
+                        "px-2 py-0.5 rounded text-[9px] font-bold capitalize transition-all cursor-pointer",
+                        activeSubTab === tab ? "bg-bg-primary text-text-primary shadow-sm" : "text-text-secondary hover:text-text-primary"
+                      )}
+                    >
+                      {tab === 'diario' ? 'Diário' : tab}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Chart container */}
+              <div className="h-32 w-full mt-2">
+                {activeSubTab === 'mensal' ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={monthly_performance} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+                      <XAxis dataKey="mes" stroke="#94a3b8" fontSize={8} tickLine={false} axisLine={false} />
+                      <YAxis stroke="#94a3b8" fontSize={8} tickLine={false} axisLine={false} tickFormatter={formatBRLCompact} />
+                      <Tooltip 
+                        formatter={(val: any) => [formatBRL(val), 'Faturamento']}
+                        contentStyle={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border)', borderRadius: '6px', fontSize: '10px' }}
+                      />
+                      <Bar dataKey="valor" fill="#3B82F6" radius={[3, 3, 0, 0]} maxBarSize={20} />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-full flex items-center justify-center text-[10px] text-text-secondary font-semibold italic bg-bg-secondary/15 rounded border border-dashed border-border/40">
+                    Detalhamento {activeSubTab} indisponível.
+                  </div>
+                )}
+              </div>
+            </div>
+
           </div>
 
-          {/* KPI grid (4 cards) */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="bg-bg-secondary/40 border border-border/60 rounded-xl p-3.5 flex flex-col text-center">
-              <span className="text-[9px] font-bold text-text-muted uppercase">Faturamento</span>
-              <span className="text-sm font-extrabold text-text-primary mt-1 font-mono">{formatBRL(kpis.faturamento)}</span>
-            </div>
-            <div className="bg-bg-secondary/40 border border-border/60 rounded-xl p-3.5 flex flex-col text-center">
-              <span className="text-[9px] font-bold text-text-muted uppercase">Qtd Vendida</span>
-              <span className="text-sm font-extrabold text-text-primary mt-1 font-mono">{formatNum(kpis.qtd_vendida)} un.</span>
-            </div>
-            <div className="bg-bg-secondary/40 border border-border/60 rounded-xl p-3.5 flex flex-col text-center">
-              <span className="text-[9px] font-bold text-text-muted uppercase">% Marca</span>
-              <span className="text-sm font-extrabold text-success mt-1 font-mono">{kpis.pct_marca.toFixed(1)}%</span>
-            </div>
-            <div className="bg-bg-secondary/40 border border-border/60 rounded-xl p-3.5 flex flex-col text-center">
-              <span className="text-[9px] font-bold text-text-muted uppercase">Preço Unit.</span>
-              <span className="text-sm font-extrabold text-text-primary mt-1 font-mono">{formatBRL(kpis.preco_unit)}</span>
-            </div>
-          </div>
-
-          {/* Evolution Chart Area */}
-          <div className="border border-border/60 rounded-xl p-4 space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-[10px] font-black uppercase tracking-wider text-text-secondary/80">Evolução Mensal do Faturamento</span>
+          {/* Right Column: Inventory Projections and Details */}
+          <div className="space-y-3 flex flex-col justify-between">
+            {/* Projeção de Estoque Section */}
+            <div className="border border-border/50 rounded-xl p-3 space-y-3">
+              <span className="text-[9px] font-black uppercase tracking-wider text-text-secondary/70 block">Valores & Projeção do Estoque Atual</span>
               
-              {/* Mini Tabs */}
-              <div className="flex bg-bg-secondary p-0.5 rounded-lg border border-border/50">
-                {(['mensal', 'diario', 'clientes'] as const).map(tab => (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveSubTab(tab)}
-                    className={clsx(
-                      "px-2.5 py-1 rounded-md text-[10px] font-bold capitalize transition-all cursor-pointer",
-                      activeSubTab === tab ? "bg-bg-primary text-text-primary shadow-sm" : "text-text-secondary hover:text-text-primary"
-                    )}
-                  >
-                    {tab === 'diario' ? 'Diário' : tab}
-                  </button>
-                ))}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col bg-bg-secondary/20 p-2 rounded-lg border border-border/30">
+                  <span className="text-[9px] font-medium text-text-secondary/60">Custo Unitário</span>
+                  <span className="text-[11px] font-bold text-text-primary font-mono mt-0.5">{formatBRL(product.custo)}</span>
+                </div>
+                <div className="flex flex-col bg-bg-secondary/20 p-2 rounded-lg border border-border/30">
+                  <span className="text-[9px] font-medium text-text-secondary/60">Preço de Venda</span>
+                  <span className="text-[11px] font-bold text-brand-500 font-mono mt-0.5">{formatBRL(product.preco)}</span>
+                </div>
+              </div>
+
+              <div className="border-t border-divider/60 pt-2 grid grid-cols-3 gap-2">
+                <div className="flex flex-col text-center">
+                  <span className="text-[8px] font-bold text-text-secondary/60 uppercase">Custo Total</span>
+                  <span className="text-[10px] font-black text-text-primary font-mono mt-0.5">{formatBRL(product.estoque * product.custo)}</span>
+                </div>
+                <div className="flex flex-col text-center">
+                  <span className="text-[8px] font-bold text-text-secondary/60 uppercase">Venda Total</span>
+                  <span className="text-[10px] font-black text-brand-500 font-mono mt-0.5">{formatBRL(product.estoque * product.preco)}</span>
+                </div>
+                <div className="flex flex-col text-center">
+                  <span className="text-[8px] font-bold text-success/80 uppercase">Lucro Proj.</span>
+                  <span className="text-[10px] font-black text-success font-mono mt-0.5">{formatBRL((product.estoque * product.preco) - (product.estoque * product.custo))}</span>
+                </div>
               </div>
             </div>
 
-            {/* Chart */}
-            {activeSubTab === 'mensal' ? (
-              <div className="h-44 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={monthly_performance} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <XAxis dataKey="mes" stroke="#94a3b8" fontSize={9} tickLine={false} axisLine={false} />
-                    <YAxis stroke="#94a3b8" fontSize={9} tickLine={false} axisLine={false} tickFormatter={formatBRLCompact} />
-                    <Tooltip 
-                      formatter={(val: any) => [formatBRL(val), 'Faturamento']}
-                      contentStyle={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border)', borderRadius: '8px' }}
-                    />
-                    <Bar dataKey="valor" fill="#3B82F6" radius={[4, 4, 0, 0]} maxBarSize={28} />
-                  </ComposedChart>
-                </ResponsiveContainer>
+            {/* Group and Brand Details */}
+            <div className="bg-bg-secondary/30 border border-border/40 rounded-xl p-3 text-[11px] font-semibold space-y-2 flex-1 flex flex-col justify-center">
+              <div className="flex justify-between items-center border-b border-divider/40 pb-1.5">
+                <span className="text-text-secondary font-medium">Categoria / Grupo:</span>
+                <span className="text-text-primary font-bold">{product.categoria}</span>
               </div>
-            ) : (
-              <div className="h-44 flex items-center justify-center text-xs text-text-secondary font-semibold italic bg-bg-secondary/20 rounded-lg border border-dashed border-border/50">
-                Detalhamento {activeSubTab} indisponível para este produto no momento.
+              <div className="flex justify-between items-center border-b border-divider/40 pb-1.5">
+                <span className="text-text-secondary font-medium">Marca / Fornecedor:</span>
+                <span className="text-text-primary font-bold">{product.marca}</span>
               </div>
-            )}
-          </div>
-
-          {/* Projeção de Estoque Section */}
-          <div className="border border-border/60 rounded-xl p-4 space-y-4">
-            <span className="text-[10px] font-black uppercase tracking-wider text-text-secondary/80 block">Valores & Projeção do Estoque Atual</span>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col">
-                <span className="text-[10px] font-medium text-text-secondary/60">Custo Unitário</span>
-                <span className="text-xs font-bold text-text-primary font-mono">{formatBRL(product.custo)}</span>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[10px] font-medium text-text-secondary/60">Preço de Venda</span>
-                <span className="text-xs font-bold text-brand-500 font-mono">{formatBRL(product.preco)}</span>
-              </div>
-            </div>
-
-            <div className="border-t border-divider/60 pt-3 grid grid-cols-3 gap-3">
-              <div className="flex flex-col">
-                <span className="text-[9px] font-bold text-text-secondary/50 uppercase">Custo Total Estoque</span>
-                <span className="text-xs font-extrabold text-text-primary font-mono mt-0.5">{formatBRL(product.estoque * product.custo)}</span>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[9px] font-bold text-text-secondary/50 uppercase">Venda Total Potencial</span>
-                <span className="text-xs font-extrabold text-brand-500 font-mono mt-0.5">{formatBRL(product.estoque * product.preco)}</span>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[9px] font-bold text-success/70 uppercase">Lucro Projetado</span>
-                <span className="text-xs font-extrabold text-success font-mono mt-0.5">{formatBRL((product.estoque * product.preco) - (product.estoque * product.custo))}</span>
+              <div className="flex justify-between items-center pt-0.5">
+                <span className="text-text-secondary font-medium">Estoque Físico Atual:</span>
+                <span className="text-text-primary font-bold font-mono text-xs">{formatNum(product.estoque)} un.</span>
               </div>
             </div>
           </div>
-
-          {/* Group and Brand Details */}
-          <div className="bg-bg-secondary/30 border border-border/50 rounded-xl p-4 text-xs font-semibold space-y-2.5">
-            <div className="flex justify-between items-center">
-              <span className="text-text-secondary font-medium">Categoria / Grupo:</span>
-              <span className="text-text-primary font-bold">{product.categoria}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-text-secondary font-medium">Marca / Fornecedor:</span>
-              <span className="text-text-primary font-bold">{product.marca}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-text-secondary font-medium">Estoque Físico Atual:</span>
-              <span className="text-text-primary font-bold font-mono">{formatNum(product.estoque)} un.</span>
-            </div>
-          </div>
-
         </div>
       </div>
     </div>
