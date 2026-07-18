@@ -131,11 +131,14 @@ export default function SupplierAnalyticsDashboard() {
   const totalCompanyRevenue = data?.total_company_revenue || 0;
   const currentBrandData = selectedBrand ? topBrands.find((b: any) => b.name === selectedBrand) : null;
   const currentRank = currentBrandData ? `${currentBrandData.rank}º` : '-';
-  const currentShare = selectedBrand 
-    ? (currentBrandData && totalCompanyRevenue > 0 
-        ? ((currentBrandData.receita / totalCompanyRevenue) * 100).toFixed(1) + '%' 
-        : '0.0%')
-    : '100.0%';
+  const currentShare = (() => {
+    if (!selectedBrand) return '100.0%';
+    if (!currentBrandData || totalCompanyRevenue <= 0) return '0.0%';
+    const pct = (currentBrandData.receita / totalCompanyRevenue) * 100;
+    if (pct < 0.01) return pct.toFixed(3) + '%';
+    if (pct < 0.1) return pct.toFixed(2) + '%';
+    return pct.toFixed(1) + '%';
+  })();
 
   return (
     <div aria-label="Fornecedores Dashboard" className="space-y-6 animate-in fade-in duration-300 pb-10">
