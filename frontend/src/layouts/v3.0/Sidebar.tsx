@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import {
-  LayoutDashboard, ShoppingCart, Wallet,
+  LayoutDashboard, Wallet,
   Trophy, BarChart3, Users, X, LogOut, Shield, DollarSign,
   Truck, Map, BrainCircuit, Package, Settings, ChevronDown, ChevronUp, ChevronLeft, GitCompare
 } from 'lucide-react'
@@ -22,8 +22,7 @@ const MODULES = [
 ]
 
 const BI_MODULES = [
-  { to: '/bi',                       label: 'Inteligência de Vendas', icon: BarChart3,     exact: true,  id: 'bi_sales',               color: '#10B981' },
-  { to: '/bi/hub',                   label: 'Hub de Vendas',          icon: ShoppingCart,               id: 'bi_hub',                 color: '#F97316' },
+  { to: '/bi',                       label: 'Hub de Vendas',          icon: BarChart3,     exact: true,  id: 'bi_sales',               color: '#10B981' },
   { to: '/bi/supplier',              label: 'Hub do Fornecedor',      icon: Truck,                       id: 'bi_supplier',            color: '#F59E0B' },
   { to: '/bi/abc',                   label: 'Gestão de Inventário',   icon: Package,                     id: 'bi_abc',                 color: '#06B6D4' },
   { to: '/bi/finance',               label: 'Financeiro',             icon: Wallet,                      id: 'bi_finance',             color: '#22C55E' },
