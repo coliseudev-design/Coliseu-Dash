@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { useApiQuery, useBranchPeriodQuery } from '../hooks/useApi'
 import { useBranch } from '../contexts/BranchContext'
+import { PageFilters } from '../components/PageFilters'
 import { formatBRL, formatBRLCompact, formatNum } from '../utils/format'
 import clsx from 'clsx'
 
@@ -236,267 +237,196 @@ export default function ComparativoVendas() {
 
   return (
     <div className="space-y-4 pb-6 animate-in fade-in duration-300">
-      
-
-
-      {/* FILTER PANEL */}
-      <div className="bg-bg-primary border border-border shadow-card rounded-xl p-3.5 space-y-3">
-        {/* Top Dropdowns & Pill Mode Toggle */}
-        <div className="flex flex-wrap items-center justify-end gap-4 border-b border-divider/40 pb-4">
-
-          {/* Period Mode Toggle */}
-          <div className="bg-bg-secondary p-0.5 rounded-lg flex items-center border border-border">
+      {/* Teleportamos todos os filtros da página para o cabeçalho superior unificado */}
+      <PageFilters>
+        <div className="flex flex-wrap items-center gap-2 bg-bg-secondary/40 border border-border/40 p-1.5 rounded-xl text-xs shadow-sm">
+          {/* Mode Toggle */}
+          <div className="bg-bg-primary p-0.5 rounded-lg flex items-center border border-border shrink-0">
             <button
               onClick={() => setTipoPeriodo('mes')}
               className={clsx(
-                "px-3.5 py-1.5 text-[10px] font-bold rounded-md uppercase tracking-wider transition-all duration-200 cursor-pointer",
-                tipoPeriodo === 'mes'
-                  ? "bg-brand-600 text-white shadow-sm"
-                  : "text-text-secondary hover:text-text-primary"
+                "px-2 py-1 text-[9px] font-bold rounded-md uppercase tracking-wider transition-all duration-200 cursor-pointer",
+                tipoPeriodo === 'mes' ? "bg-brand-600 text-white shadow-sm" : "text-text-secondary hover:text-text-primary"
               )}
             >
-              POR MÊS
+              MÊS
             </button>
             <button
               onClick={() => setTipoPeriodo('personalizado')}
               className={clsx(
-                "px-3.5 py-1.5 text-[10px] font-bold rounded-md uppercase tracking-wider transition-all duration-200 cursor-pointer",
-                tipoPeriodo === 'personalizado'
-                  ? "bg-brand-600 text-white shadow-sm"
-                  : "text-text-secondary hover:text-text-primary"
+                "px-2 py-1 text-[9px] font-bold rounded-md uppercase tracking-wider transition-all duration-200 cursor-pointer",
+                tipoPeriodo === 'personalizado' ? "bg-brand-600 text-white shadow-sm" : "text-text-secondary hover:text-text-primary"
               )}
             >
-              PERSONALIZADO
+              PERS.
             </button>
           </div>
-        </div>
 
-        {/* Comparison Period Selection Row (Análise vs Comparação) */}
-        <div className="flex flex-col lg:flex-row items-center justify-between gap-4 py-2">
-          {/* Análise Card */}
-          <div className="flex-1 w-full bg-bg-secondary border border-border/80 rounded-2xl p-4 flex flex-col gap-3 relative">
-            <div className="flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
-              <label className="text-xs font-bold text-text-primary uppercase tracking-widest">PERÍODO DE ANÁLISE</label>
-              <span className="text-[10px] text-text-secondary">({tipoPeriodo === 'mes' ? labelAnalise : 'Personalizado'})</span>
-            </div>
-            
+          {/* Análise Period */}
+          <div className="flex items-center gap-1.5 border-r border-divider/40 pr-2 pl-0.5">
+            <span className="text-[9px] text-blue-500 font-bold uppercase tracking-wider">ANÁLISE:</span>
             {tipoPeriodo === 'mes' ? (
-              <div className="grid grid-cols-2 gap-3 animate-in fade-in duration-200">
-                <div className="flex flex-col gap-1">
-                  <label htmlFor="select-analise-mes" className="text-[9px] text-text-secondary/70 font-semibold pl-0.5">MÊS</label>
-                  <div className="relative">
-                    <select
-                      id="select-analise-mes"
-                      aria-label="Mês de Análise"
-                      value={analiseMes}
-                      onChange={(e) => setAnaliseMes(Number(e.target.value))}
-                      className="w-full appearance-none bg-bg-primary border border-border rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-text-primary outline-none pr-7 cursor-pointer focus:border-brand-500"
-                    >
-                      {MONTHS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-                    </select>
-                    <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
-                  </div>
+              <div className="flex items-center gap-1">
+                <div className="relative">
+                  <select
+                    value={analiseMes}
+                    onChange={(e) => setAnaliseMes(Number(e.target.value))}
+                    className="bg-bg-primary border border-border rounded-lg px-1.5 py-0.5 text-[10px] font-semibold text-text-primary outline-none cursor-pointer pr-4"
+                  >
+                    {MONTHS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                  </select>
+                  <ChevronDown size={8} className="absolute right-1 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
                 </div>
-                <div className="flex flex-col gap-1">
-                  <label htmlFor="select-analise-ano" className="text-[9px] text-text-secondary/70 font-semibold pl-0.5">ANO</label>
-                  <div className="relative">
-                    <select
-                      id="select-analise-ano"
-                      aria-label="Ano de Análise"
-                      value={analiseAno}
-                      onChange={(e) => setAnaliseAno(Number(e.target.value))}
-                      className="w-full appearance-none bg-bg-primary border border-border rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-text-primary outline-none pr-7 cursor-pointer focus:border-brand-500"
-                    >
-                      {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-                    </select>
-                    <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
-                  </div>
+                <div className="relative">
+                  <select
+                    value={analiseAno}
+                    onChange={(e) => setAnaliseAno(Number(e.target.value))}
+                    className="bg-bg-primary border border-border rounded-lg px-1.5 py-0.5 text-[10px] font-semibold text-text-primary outline-none cursor-pointer pr-4"
+                  >
+                    {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+                  </select>
+                  <ChevronDown size={8} className="absolute right-1 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-3 animate-in fade-in duration-200">
-                <div className="flex flex-col gap-1">
-                  <label htmlFor="input-analise-de" className="text-[9px] text-text-secondary/70 font-semibold pl-0.5">DE</label>
-                  <input
-                    id="input-analise-de"
-                    type="date"
-                    value={customAnaliseStart}
-                    onChange={(e) => setCustomAnaliseStart(e.target.value)}
-                    className="w-full bg-bg-primary border border-border rounded-lg px-3 py-1.5 text-xs font-medium text-text-primary outline-none cursor-pointer focus:border-brand-500"
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label htmlFor="input-analise-ate" className="text-[9px] text-text-secondary/70 font-semibold pl-0.5">ATÉ</label>
-                  <input
-                    id="input-analise-ate"
-                    type="date"
-                    value={customAnaliseEnd}
-                    onChange={(e) => setCustomAnaliseEnd(e.target.value)}
-                    className="w-full bg-bg-primary border border-border rounded-lg px-3 py-1.5 text-xs font-medium text-text-primary outline-none cursor-pointer focus:border-brand-500"
-                  />
-                </div>
+              <div className="flex items-center gap-1">
+                <input
+                  type="date"
+                  value={customAnaliseStart}
+                  onChange={(e) => setCustomAnaliseStart(e.target.value)}
+                  className="bg-bg-primary border border-border rounded-lg px-1 py-0.5 text-[9px] font-semibold text-text-primary outline-none max-w-[85px]"
+                />
+                <span className="text-[9px] text-text-muted">a</span>
+                <input
+                  type="date"
+                  value={customAnaliseEnd}
+                  onChange={(e) => setCustomAnaliseEnd(e.target.value)}
+                  className="bg-bg-primary border border-border rounded-lg px-1 py-0.5 text-[9px] font-semibold text-text-primary outline-none max-w-[85px]"
+                />
               </div>
             )}
           </div>
 
-          {/* VS Circle Badge */}
-          <div className="w-10 h-10 rounded-full border border-border bg-bg-primary text-text-secondary font-black text-xs flex items-center justify-center shadow-sm select-none shrink-0 lg:my-0 my-2">
-            VS
-          </div>
-
-          {/* Comparação Card */}
-          <div className="flex-1 w-full bg-bg-secondary border border-border/80 rounded-2xl p-4 flex flex-col gap-3 relative">
-            <div className="flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-full bg-orange-500" />
-              <label className="text-xs font-bold text-text-primary uppercase tracking-widest">PERÍODO DE COMPARAÇÃO</label>
-              <span className="text-[10px] text-text-secondary">({tipoPeriodo === 'mes' ? labelComparacao : 'Personalizado'})</span>
-            </div>
-
+          {/* Comparação Period */}
+          <div className="flex items-center gap-1.5 border-r border-divider/40 pr-2">
+            <span className="text-[9px] text-orange-500 font-bold uppercase tracking-wider">COMPARAÇÃO:</span>
             {tipoPeriodo === 'mes' ? (
-              <div className="grid grid-cols-2 gap-3 animate-in fade-in duration-200">
-                <div className="flex flex-col gap-1">
-                  <label htmlFor="select-comparacao-mes" className="text-[9px] text-text-secondary/70 font-semibold pl-0.5">MÊS</label>
-                  <div className="relative">
-                    <select
-                      id="select-comparacao-mes"
-                      aria-label="Mês de Comparação"
-                      value={comparacaoMes}
-                      onChange={(e) => setComparacaoMes(Number(e.target.value))}
-                      className="w-full appearance-none bg-bg-primary border border-border rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-text-primary outline-none pr-7 cursor-pointer focus:border-brand-500"
-                    >
-                      {MONTHS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-                    </select>
-                    <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
-                  </div>
+              <div className="flex items-center gap-1">
+                <div className="relative">
+                  <select
+                    value={comparacaoMes}
+                    onChange={(e) => setComparacaoMes(Number(e.target.value))}
+                    className="bg-bg-primary border border-border rounded-lg px-1.5 py-0.5 text-[10px] font-semibold text-text-primary outline-none cursor-pointer pr-4"
+                  >
+                    {MONTHS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                  </select>
+                  <ChevronDown size={8} className="absolute right-1 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
                 </div>
-                <div className="flex flex-col gap-1">
-                  <label htmlFor="select-comparacao-ano" className="text-[9px] text-text-secondary/70 font-semibold pl-0.5">ANO</label>
-                  <div className="relative">
-                    <select
-                      id="select-comparacao-ano"
-                      aria-label="Ano de Comparação"
-                      value={comparacaoAno}
-                      onChange={(e) => setComparacaoAno(Number(e.target.value))}
-                      className="w-full appearance-none bg-bg-primary border border-border rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-text-primary outline-none pr-7 cursor-pointer focus:border-brand-500"
-                    >
-                      {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-                    </select>
-                    <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
-                  </div>
+                <div className="relative">
+                  <select
+                    value={comparacaoAno}
+                    onChange={(e) => setComparacaoAno(Number(e.target.value))}
+                    className="bg-bg-primary border border-border rounded-lg px-1.5 py-0.5 text-[10px] font-semibold text-text-primary outline-none cursor-pointer pr-4"
+                  >
+                    {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+                  </select>
+                  <ChevronDown size={8} className="absolute right-1 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-3 animate-in fade-in duration-200">
-                <div className="flex flex-col gap-1">
-                  <label htmlFor="input-comparacao-de" className="text-[9px] text-text-secondary/70 font-semibold pl-0.5">DE</label>
-                  <input
-                    id="input-comparacao-de"
-                    type="date"
-                    value={customComparacaoStart}
-                    onChange={(e) => setCustomComparacaoStart(e.target.value)}
-                    className="w-full bg-bg-primary border border-border rounded-lg px-3 py-1.5 text-xs font-medium text-text-primary outline-none cursor-pointer focus:border-brand-500"
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label htmlFor="input-comparacao-ate" className="text-[9px] text-text-secondary/70 font-semibold pl-0.5">ATÉ</label>
-                  <input
-                    id="input-comparacao-ate"
-                    type="date"
-                    value={customComparacaoEnd}
-                    onChange={(e) => setCustomComparacaoEnd(e.target.value)}
-                    className="w-full bg-bg-primary border border-border rounded-lg px-3 py-1.5 text-xs font-medium text-text-primary outline-none cursor-pointer focus:border-brand-500"
-                  />
-                </div>
+              <div className="flex items-center gap-1">
+                <input
+                  type="date"
+                  value={customComparacaoStart}
+                  onChange={(e) => setCustomComparacaoStart(e.target.value)}
+                  className="bg-bg-primary border border-border rounded-lg px-1 py-0.5 text-[9px] font-semibold text-text-primary outline-none max-w-[85px]"
+                />
+                <span className="text-[9px] text-text-muted">a</span>
+                <input
+                  type="date"
+                  value={customComparacaoEnd}
+                  onChange={(e) => setCustomComparacaoEnd(e.target.value)}
+                  className="bg-bg-primary border border-border rounded-lg px-1 py-0.5 text-[9px] font-semibold text-text-primary outline-none max-w-[85px]"
+                />
               </div>
             )}
           </div>
-        </div>
 
-        {/* Bottom Filter Row & "COMPARAR" Button */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 pt-3 border-t border-divider/40 items-end">
-          {/* Vendedor */}
-          <div className="flex flex-col gap-1">
-            <label htmlFor="select-vendedor" className="text-[10px] text-text-secondary/70 font-bold uppercase tracking-wider pl-1">VENDEDOR</label>
-            <div className="relative">
-              <select
-                id="select-vendedor"
-                aria-label="Vendedor"
-                value={vendedor}
-                onChange={(e) => setVendedor(e.target.value)}
-                className="w-full appearance-none bg-bg-secondary border border-border rounded-xl px-2.5 py-1.5 text-[11px] font-bold text-text-primary outline-none pr-7 cursor-pointer focus:border-brand-500 text-left capitalize"
-              >
-                <option value="todas">Todos os Vendedores</option>
-                {sellersDropdown.data?.data?.map((s: any) => (
-                  <option key={s.id || s.nome} value={s.id}>{s.nome.toLowerCase()}</option>
-                ))}
-              </select>
-              <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+          {/* Outros Filtros */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {/* Vendedor */}
+            <div className="flex items-center gap-1.5 border-r border-divider/40 pr-2">
+              <span className="text-[9px] text-text-secondary font-bold uppercase tracking-wider">Vend:</span>
+              <div className="relative">
+                <select
+                  value={vendedor}
+                  onChange={(e) => setVendedor(e.target.value)}
+                  className="bg-bg-primary border border-border rounded-lg px-1.5 py-0.5 text-[10px] font-semibold text-text-primary outline-none max-w-[100px] truncate pr-4"
+                >
+                  <option value="todas">Todos</option>
+                  {sellersDropdown.data?.data?.map((s: any) => (
+                    <option key={s.id || s.nome} value={s.id}>{s.nome}</option>
+                  ))}
+                </select>
+                <ChevronDown size={8} className="absolute right-1 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+              </div>
             </div>
-          </div>
 
-          {/* Cidade */}
-          <div className="flex flex-col gap-1">
-            <label htmlFor="select-cidade" className="text-[10px] text-text-secondary/70 font-bold uppercase tracking-wider pl-1">CIDADE</label>
-            <div className="relative">
-              <select
-                id="select-cidade"
-                aria-label="Cidade"
-                value={cidade}
-                onChange={(e) => setCidade(e.target.value)}
-                className="w-full appearance-none bg-bg-secondary border border-border rounded-xl px-2.5 py-1.5 text-[11px] font-bold text-text-primary outline-none pr-7 cursor-pointer focus:border-brand-500 uppercase"
-              >
-                <option value="todas">Todas as Cidades</option>
-                {citiesDropdown.data?.data?.map((c: any) => (
-                  <option key={c.nome || c.cidade} value={c.nome || c.cidade}>{c.nome || c.cidade}</option>
-                ))}
-              </select>
-              <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+            {/* Cidade */}
+            <div className="flex items-center gap-1.5 border-r border-divider/40 pr-2">
+              <span className="text-[9px] text-text-secondary font-bold uppercase tracking-wider">Cid:</span>
+              <div className="relative">
+                <select
+                  value={cidade}
+                  onChange={(e) => setCidade(e.target.value)}
+                  className="bg-bg-primary border border-border rounded-lg px-1.5 py-0.5 text-[10px] font-semibold text-text-primary outline-none max-w-[90px] truncate pr-4"
+                >
+                  <option value="todas">Todas</option>
+                  {citiesDropdown.data?.data?.map((c: any) => (
+                    <option key={c.nome || c.cidade} value={c.nome || c.cidade}>{c.nome || c.cidade}</option>
+                  ))}
+                </select>
+                <ChevronDown size={8} className="absolute right-1 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+              </div>
             </div>
-          </div>
 
-          {/* Marca */}
-          <div className="flex flex-col gap-1">
-            <label htmlFor="select-marca" className="text-[10px] text-text-secondary/70 font-bold uppercase tracking-wider pl-1">MARCA</label>
-            <div className="relative">
-              <select
-                id="select-marca"
-                aria-label="Marca"
-                value={marca}
-                onChange={(e) => setMarca(e.target.value)}
-                className="w-full appearance-none bg-bg-secondary border border-border rounded-xl px-2.5 py-1.5 text-[11px] font-bold text-text-primary outline-none pr-7 cursor-pointer focus:border-brand-500 uppercase"
-              >
-                <option value="todas">Todas as Marcas</option>
-                {brandsDropdown.data?.data?.map((m: any) => (
-                  <option key={m.nome || m.marca} value={m.nome || m.marca}>{m.nome || m.marca}</option>
-                ))}
-              </select>
-              <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+            {/* Marca */}
+            <div className="flex items-center gap-1.5 border-r border-divider/40 pr-2">
+              <span className="text-[9px] text-text-secondary font-bold uppercase tracking-wider">Marca:</span>
+              <div className="relative">
+                <select
+                  value={marca}
+                  onChange={(e) => setMarca(e.target.value)}
+                  className="bg-bg-primary border border-border rounded-lg px-1.5 py-0.5 text-[10px] font-semibold text-text-primary outline-none max-w-[100px] truncate pr-4"
+                >
+                  <option value="todas">Todas</option>
+                  {brandsDropdown.data?.data?.map((m: any) => (
+                    <option key={m.nome || m.marca} value={m.nome || m.marca}>{m.nome || m.marca}</option>
+                  ))}
+                </select>
+                <ChevronDown size={8} className="absolute right-1 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+              </div>
             </div>
-          </div>
 
-          {/* Grupo (Categoria) */}
-          <div className="flex flex-col gap-1">
-            <label htmlFor="select-categoria" className="text-[10px] text-text-secondary/70 font-bold uppercase tracking-wider pl-1">CATEGORIA</label>
-            <div className="relative">
-              <select
-                id="select-categoria"
-                aria-label="Categoria"
-                value={categoria}
-                onChange={(e) => setCategoria(e.target.value)}
-                className="w-full appearance-none bg-bg-secondary border border-border rounded-xl px-2.5 py-1.5 text-[11px] font-bold text-text-primary outline-none pr-7 cursor-pointer focus:border-brand-500 uppercase"
-              >
-                <option value="todas">Todas as Categorias</option>
-                {categoriesDropdown.data?.data?.map((c: any) => (
-                  <option key={c.nome || c.categoria} value={c.nome || c.categoria}>{c.nome || c.categoria}</option>
-                ))}
-              </select>
-              <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+            {/* Categoria */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-[9px] text-text-secondary font-bold uppercase tracking-wider">Cat:</span>
+              <div className="relative">
+                <select
+                  value={categoria}
+                  onChange={(e) => setCategoria(e.target.value)}
+                  className="bg-bg-primary border border-border rounded-lg px-1.5 py-0.5 text-[10px] font-semibold text-text-primary outline-none max-w-[100px] truncate pr-4"
+                >
+                  <option value="todas">Todas</option>
+                  {categoriesDropdown.data?.data?.map((c: any) => (
+                    <option key={c.nome || c.categoria} value={c.nome || c.categoria}>{c.nome || c.categoria}</option>
+                  ))}
+                </select>
+                <ChevronDown size={8} className="absolute right-1 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+              </div>
             </div>
-          </div>
 
-          {/* Green Comparar Button */}
-          <div className="col-span-2 md:col-span-1 h-[36px]">
+            {/* Compare Button */}
             <button
               onClick={() => {
                 ovAnalise.refetch();
@@ -504,14 +434,14 @@ export default function ComparativoVendas() {
                 rankAnalise.refetch();
                 rankComparacao.refetch();
               }}
-              className="w-full h-full bg-[#10B981] hover:bg-emerald-600 text-white font-bold rounded-xl flex items-center justify-center gap-2 text-xs shadow-sm hover:shadow-md transition-all active:scale-[0.98] cursor-pointer select-none"
+              className="bg-[#10B981] hover:bg-emerald-600 text-white font-black px-2.5 py-1 rounded-lg text-[10px] uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1 shrink-0 ml-1"
             >
-              <Play size={14} fill="white" />
+              <Play size={10} fill="white" />
               Comparar
             </button>
           </div>
         </div>
-      </div>
+      </PageFilters>
 
       {/* TIER 3: COMPARISON KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

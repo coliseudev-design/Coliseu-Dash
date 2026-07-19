@@ -11,6 +11,7 @@ import {
 import { useBranchPeriodQuery } from '../hooks/useApi'
 import { useAuthStore } from '../store/authStore'
 import PeriodFilter from '../components/PeriodFilter'
+import { PageFilters } from '../components/PageFilters'
 import { usePeriodStore } from '../store/periodStore'
 import { useBranch } from '../contexts/BranchContext'
 import { formatBRL, formatBRLCompact, formatNum } from '../utils/format'
@@ -173,54 +174,54 @@ export default function VisaoEstrategicaV3() {
   ];
 
   return (
-    <div className={clsx("space-y-5", isMobile ? "pb-28" : "pb-4")} aria-label="Visão Estratégica">
+    <div className={clsx("space-y-3", isMobile ? "pb-28" : "pb-4")} aria-label="Visão Estratégica">
       
-      {/* HEADER SECTION WITH PERIOD FILTER */}
-      <div className="bg-bg-primary border border-border rounded-xl p-3 px-4 flex items-center justify-between shadow-sm flex-wrap gap-4 animate-in slide-in-from-top duration-200">
-        <span className="text-[10px] font-bold text-text-secondary/80 uppercase tracking-widest pl-1">Período de Análise</span>
-        
-        {/* Desktop Filter */}
-        <div className="hidden md:flex items-center min-w-0">
-          <PeriodFilter />
-        </div>
-      </div>
+      {/* Teleportamos todos os filtros da página para o cabeçalho superior unificado */}
+      <PageFilters>
+        <div className="flex flex-wrap items-center gap-2 bg-bg-secondary/40 border border-border/40 p-1.5 rounded-xl text-xs shadow-sm">
+          {/* Período */}
+          <div className="flex items-center gap-1.5 border-r border-divider/40 pr-2">
+            <span className="text-[9px] font-bold text-text-secondary uppercase tracking-widest">Período:</span>
+            <PeriodFilter />
+          </div>
 
-      {/* TIER 0: DROPDOWN FILTERS (VENDEDOR & MARCA) */}
-      <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-wrap gap-4 items-center">
-        <div className="flex flex-col gap-1 w-full sm:w-64">
-          <span className="text-[10px] text-text-secondary/70 font-bold uppercase tracking-wider pl-1">Vendedor</span>
-          <div className="relative">
-            <select
-              value={selectedVendedor}
-              onChange={(e) => setSelectedVendedor(e.target.value)}
-              className="w-full bg-bg-secondary border border-border rounded-xl px-4 py-2 text-xs font-semibold text-text-primary outline-none appearance-none pr-8 cursor-pointer focus:border-brand-500"
-            >
-              <option value="todas">Todos os Vendedores</option>
-              {vd.data?.data?.map((v: any) => (
-                <option key={v.id || v.nome} value={v.nome}>{v.nome}</option>
-              ))}
-            </select>
-            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+          {/* Vendedor */}
+          <div className="flex items-center gap-1.5 border-r border-divider/40 pr-2">
+            <span className="text-[9px] text-text-secondary font-bold uppercase tracking-wider">Vendedor:</span>
+            <div className="relative">
+              <select
+                value={selectedVendedor}
+                onChange={(e) => setSelectedVendedor(e.target.value)}
+                className="bg-bg-primary border border-border rounded-lg px-2 py-1 text-[10px] font-semibold text-text-primary outline-none cursor-pointer focus:border-brand-500 pr-5"
+              >
+                <option value="todas">Todos os Vendedores</option>
+                {vd.data?.data?.map((v: any) => (
+                  <option key={v.id || v.nome} value={v.nome}>{v.nome}</option>
+                ))}
+              </select>
+              <ChevronDown size={10} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+            </div>
+          </div>
+
+          {/* Marca */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[9px] text-text-secondary font-bold uppercase tracking-wider">Marca:</span>
+            <div className="relative">
+              <select
+                value={selectedMarca}
+                onChange={(e) => setSelectedMarca(e.target.value)}
+                className="bg-bg-primary border border-border rounded-lg px-2 py-1 text-[10px] font-semibold text-text-primary outline-none cursor-pointer focus:border-brand-500 pr-5"
+              >
+                <option value="todas">Todas as Marcas</option>
+                {marcas.data?.data?.map((m: any) => (
+                  <option key={m.marca || m.nome} value={m.marca || m.nome}>{m.marca || m.nome}</option>
+                ))}
+              </select>
+              <ChevronDown size={10} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+            </div>
           </div>
         </div>
-
-        <div className="flex flex-col gap-1 w-full sm:w-64">
-          <span className="text-[10px] text-text-secondary/70 font-bold uppercase tracking-wider pl-1">Marca</span>
-          <div className="relative">
-            <select
-              value={selectedMarca}
-              onChange={(e) => setSelectedMarca(e.target.value)}
-              className="w-full bg-bg-secondary border border-border rounded-xl px-4 py-2 text-xs font-semibold text-text-primary outline-none appearance-none pr-8 cursor-pointer focus:border-brand-500"
-            >
-              <option value="todas">Todas as Marcas</option>
-              {marcas.data?.data?.map((m: any) => (
-                <option key={m.marca || m.nome} value={m.marca || m.nome}>{m.marca || m.nome}</option>
-              ))}
-            </select>
-            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
-          </div>
-        </div>
-      </div>
+      </PageFilters>
 
       {/* TIER 1: unified "RESULTADOS DE VENDAS" CARD */}
       <div className="bg-bg-primary rounded-xl p-5 border border-border shadow-card flex flex-col md:flex-row justify-between items-center gap-6 relative overflow-hidden animate-in fade-in duration-300">

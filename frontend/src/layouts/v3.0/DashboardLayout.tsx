@@ -55,22 +55,27 @@ export default function DashboardLayout() {
       />
       <div className="flex-1 flex flex-col min-w-0">
         <Header onMenuClick={() => setMenuOpen(true)} activeRoute={activeRoute} />
-        <main className="flex-1 p-2 sm:p-3 md:p-4 max-w-[1600px] w-full mx-auto flex flex-col gap-2.5">
-          {/* Título do Menu/Rota Ativa - Posicionado conforme solicitado no conteúdo da página */}
-          <div className="flex items-center gap-2 flex-shrink-0 animate-in fade-in duration-200">
-            <div
-              className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-              style={{
-                backgroundColor: `${activeRoute.color}15`,
-                boxShadow: `0 1px 4px ${activeRoute.color}15`,
-                border: `1px solid ${activeRoute.color}20`
-              }}
-            >
-              <activeRoute.icon size={13} style={{ color: activeRoute.color }} strokeWidth={2.2} />
+        <main className="flex-1 p-2 md:p-3 max-w-[1600px] w-full mx-auto flex flex-col gap-2.5">
+          {/* Título do Menu/Rota Ativa e Filtros Acoplados */}
+          <div className="flex flex-wrap items-center justify-between gap-3 flex-shrink-0 border-b border-divider/40 pb-2">
+            <div className="flex items-center gap-2 animate-in fade-in duration-200">
+              <div
+                className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{
+                  backgroundColor: `${activeRoute.color}15`,
+                  boxShadow: `0 1px 4px ${activeRoute.color}15`,
+                  border: `1px solid ${activeRoute.color}20`
+                }}
+              >
+                <activeRoute.icon size={13} style={{ color: activeRoute.color }} strokeWidth={2.2} />
+              </div>
+              <h2 className="font-heading text-xs sm:text-sm font-extrabold text-text-primary uppercase tracking-wide">
+                {activeRoute.label}
+              </h2>
             </div>
-            <h2 className="font-heading text-xs sm:text-sm font-extrabold text-text-primary uppercase tracking-wide">
-              {activeRoute.label}
-            </h2>
+            
+            {/* Contêiner de Filtros Teleportados das Páginas */}
+            <div id="page-filters-container" className="flex flex-wrap items-center gap-2" />
           </div>
 
           <Outlet />

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import PeriodFilter from '../../components/PeriodFilter';
+import { PageFilters } from '../../components/PageFilters';
 import { usePeriodStore, PERIOD_OPTIONS, periodToParams } from '../../store/periodStore';
 import { BiPeriodFilter } from '../../types/bi.types';
 import { useBranchParam } from '../../contexts/BranchContext';
@@ -37,17 +38,15 @@ export default function BiDashboard() {
   ) && !isRadar360;
 
   return (
-    <div className="flex flex-col h-full space-y-4">
-      {/* Filtros Globais do BI */}
+    <div className="flex flex-col h-full space-y-3">
+      {/* Filtros Globais do BI teleportados para a linha do título */}
       {showFilter && (
-        <div className="bg-bg-primary border border-border-primary rounded-lg p-3 px-4 flex items-center justify-between shadow-sm flex-wrap gap-4 animate-in slide-in-from-top duration-200">
-          <span className="text-[10px] font-bold text-text-secondary/80 uppercase tracking-widest pl-1">Período de Análise</span>
-          
-          {/* Desktop Filter */}
-          <div className="hidden lg:flex items-center min-w-0">
+        <PageFilters>
+          <div className="flex items-center gap-1.5 bg-bg-secondary/40 border border-border/40 p-1 rounded-xl text-xs shadow-sm">
+            <span className="text-[9px] font-bold text-text-secondary/80 uppercase tracking-widest pl-1">Período:</span>
             <PeriodFilter excludePeriods={['yesterday']} />
           </div>
-        </div>
+        </PageFilters>
       )}
 
       {/* Mobile Sticky Bar trigger */}
