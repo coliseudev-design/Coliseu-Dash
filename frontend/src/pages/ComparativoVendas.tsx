@@ -239,13 +239,13 @@ export default function ComparativoVendas() {
     <div className="space-y-4 pb-6 animate-in fade-in duration-300">
       {/* Teleportamos todos os filtros da página para o cabeçalho superior unificado */}
       <PageFilters>
-        <div className="flex flex-wrap items-center gap-2 bg-bg-secondary/40 border border-border/40 p-1.5 rounded-xl text-xs shadow-sm">
+        <div className="flex flex-nowrap items-center gap-1.5 bg-bg-secondary/40 border border-border/40 p-1 rounded-lg text-[10px] shadow-sm whitespace-nowrap overflow-x-auto max-w-[80vw]">
           {/* Mode Toggle */}
           <div className="bg-bg-primary p-0.5 rounded-lg flex items-center border border-border shrink-0">
             <button
               onClick={() => setTipoPeriodo('mes')}
               className={clsx(
-                "px-2 py-1 text-[9px] font-bold rounded-md uppercase tracking-wider transition-all duration-200 cursor-pointer",
+                "px-1.5 py-0.5 text-[8px] font-black rounded uppercase tracking-wider transition-all duration-200 cursor-pointer",
                 tipoPeriodo === 'mes' ? "bg-brand-600 text-white shadow-sm" : "text-text-secondary hover:text-text-primary"
               )}
             >
@@ -254,24 +254,24 @@ export default function ComparativoVendas() {
             <button
               onClick={() => setTipoPeriodo('personalizado')}
               className={clsx(
-                "px-2 py-1 text-[9px] font-bold rounded-md uppercase tracking-wider transition-all duration-200 cursor-pointer",
+                "px-1.5 py-0.5 text-[8px] font-black rounded uppercase tracking-wider transition-all duration-200 cursor-pointer",
                 tipoPeriodo === 'personalizado' ? "bg-brand-600 text-white shadow-sm" : "text-text-secondary hover:text-text-primary"
               )}
             >
-              PERS.
+              PERS
             </button>
           </div>
 
           {/* Análise Period */}
-          <div className="flex items-center gap-1.5 border-r border-divider/40 pr-2 pl-0.5">
-            <span className="text-[9px] text-blue-500 font-bold uppercase tracking-wider">ANÁLISE:</span>
+          <div className="flex items-center gap-1 border-r border-divider/40 pr-1.5 pl-0.5 shrink-0">
+            <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" title="Análise" />
             {tipoPeriodo === 'mes' ? (
               <div className="flex items-center gap-1">
                 <div className="relative">
                   <select
                     value={analiseMes}
                     onChange={(e) => setAnaliseMes(Number(e.target.value))}
-                    className="bg-bg-primary border border-border rounded-lg px-1.5 py-0.5 text-[10px] font-semibold text-text-primary outline-none cursor-pointer pr-4"
+                    className="bg-bg-primary border border-blue-500/20 rounded-md px-1 py-0.5 text-[9px] font-bold text-text-primary outline-none cursor-pointer pr-3.5"
                   >
                     {MONTHS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                   </select>
@@ -281,7 +281,7 @@ export default function ComparativoVendas() {
                   <select
                     value={analiseAno}
                     onChange={(e) => setAnaliseAno(Number(e.target.value))}
-                    className="bg-bg-primary border border-border rounded-lg px-1.5 py-0.5 text-[10px] font-semibold text-text-primary outline-none cursor-pointer pr-4"
+                    className="bg-bg-primary border border-blue-500/20 rounded-md px-1 py-0.5 text-[9px] font-bold text-text-primary outline-none cursor-pointer pr-3.5"
                   >
                     {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
                   </select>
@@ -294,29 +294,29 @@ export default function ComparativoVendas() {
                   type="date"
                   value={customAnaliseStart}
                   onChange={(e) => setCustomAnaliseStart(e.target.value)}
-                  className="bg-bg-primary border border-border rounded-lg px-1 py-0.5 text-[9px] font-semibold text-text-primary outline-none max-w-[85px]"
+                  className="bg-bg-primary border border-blue-500/20 rounded-md px-1 py-0.5 text-[9px] font-medium text-text-primary outline-none max-w-[80px]"
                 />
                 <span className="text-[9px] text-text-muted">a</span>
                 <input
                   type="date"
                   value={customAnaliseEnd}
                   onChange={(e) => setCustomAnaliseEnd(e.target.value)}
-                  className="bg-bg-primary border border-border rounded-lg px-1 py-0.5 text-[9px] font-semibold text-text-primary outline-none max-w-[85px]"
+                  className="bg-bg-primary border border-blue-500/20 rounded-md px-1 py-0.5 text-[9px] font-medium text-text-primary outline-none max-w-[80px]"
                 />
               </div>
             )}
           </div>
 
           {/* Comparação Period */}
-          <div className="flex items-center gap-1.5 border-r border-divider/40 pr-2">
-            <span className="text-[9px] text-orange-500 font-bold uppercase tracking-wider">COMPARAÇÃO:</span>
+          <div className="flex items-center gap-1 border-r border-divider/40 pr-1.5 shrink-0">
+            <div className="w-1.5 h-1.5 rounded-full bg-orange-500 shrink-0" title="Comparação" />
             {tipoPeriodo === 'mes' ? (
               <div className="flex items-center gap-1">
                 <div className="relative">
                   <select
                     value={comparacaoMes}
                     onChange={(e) => setComparacaoMes(Number(e.target.value))}
-                    className="bg-bg-primary border border-border rounded-lg px-1.5 py-0.5 text-[10px] font-semibold text-text-primary outline-none cursor-pointer pr-4"
+                    className="bg-bg-primary border border-orange-500/20 rounded-md px-1 py-0.5 text-[9px] font-bold text-text-primary outline-none cursor-pointer pr-3.5"
                   >
                     {MONTHS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                   </select>
@@ -326,7 +326,7 @@ export default function ComparativoVendas() {
                   <select
                     value={comparacaoAno}
                     onChange={(e) => setComparacaoAno(Number(e.target.value))}
-                    className="bg-bg-primary border border-border rounded-lg px-1.5 py-0.5 text-[10px] font-semibold text-text-primary outline-none cursor-pointer pr-4"
+                    className="bg-bg-primary border border-orange-500/20 rounded-md px-1 py-0.5 text-[9px] font-bold text-text-primary outline-none cursor-pointer pr-3.5"
                   >
                     {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
                   </select>
@@ -339,91 +339,79 @@ export default function ComparativoVendas() {
                   type="date"
                   value={customComparacaoStart}
                   onChange={(e) => setCustomComparacaoStart(e.target.value)}
-                  className="bg-bg-primary border border-border rounded-lg px-1 py-0.5 text-[9px] font-semibold text-text-primary outline-none max-w-[85px]"
+                  className="bg-bg-primary border border-orange-500/20 rounded-md px-1 py-0.5 text-[9px] font-medium text-text-primary outline-none max-w-[80px]"
                 />
                 <span className="text-[9px] text-text-muted">a</span>
                 <input
                   type="date"
                   value={customComparacaoEnd}
                   onChange={(e) => setCustomComparacaoEnd(e.target.value)}
-                  className="bg-bg-primary border border-border rounded-lg px-1 py-0.5 text-[9px] font-semibold text-text-primary outline-none max-w-[85px]"
+                  className="bg-bg-primary border border-orange-500/20 rounded-md px-1 py-0.5 text-[9px] font-medium text-text-primary outline-none max-w-[80px]"
                 />
               </div>
             )}
           </div>
 
           {/* Outros Filtros */}
-          <div className="flex items-center gap-1.5 flex-wrap">
+          <div className="flex items-center gap-1 shrink-0">
             {/* Vendedor */}
-            <div className="flex items-center gap-1.5 border-r border-divider/40 pr-2">
-              <span className="text-[9px] text-text-secondary font-bold uppercase tracking-wider">Vend:</span>
-              <div className="relative">
-                <select
-                  value={vendedor}
-                  onChange={(e) => setVendedor(e.target.value)}
-                  className="bg-bg-primary border border-border rounded-lg px-1.5 py-0.5 text-[10px] font-semibold text-text-primary outline-none max-w-[100px] truncate pr-4"
-                >
-                  <option value="todas">Todos</option>
-                  {sellersDropdown.data?.data?.map((s: any) => (
-                    <option key={s.id || s.nome} value={s.id}>{s.nome}</option>
-                  ))}
-                </select>
-                <ChevronDown size={8} className="absolute right-1 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
-              </div>
+            <div className="relative">
+              <select
+                value={vendedor}
+                onChange={(e) => setVendedor(e.target.value)}
+                className="bg-bg-primary border border-border rounded-md px-1.5 py-0.5 text-[9px] font-semibold text-text-primary outline-none max-w-[90px] truncate pr-4 cursor-pointer"
+              >
+                <option value="todas">Vend: Todos</option>
+                {sellersDropdown.data?.data?.map((s: any) => (
+                  <option key={s.id || s.nome} value={s.id}>{s.nome}</option>
+                ))}
+              </select>
+              <ChevronDown size={8} className="absolute right-1 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
             </div>
 
             {/* Cidade */}
-            <div className="flex items-center gap-1.5 border-r border-divider/40 pr-2">
-              <span className="text-[9px] text-text-secondary font-bold uppercase tracking-wider">Cid:</span>
-              <div className="relative">
-                <select
-                  value={cidade}
-                  onChange={(e) => setCidade(e.target.value)}
-                  className="bg-bg-primary border border-border rounded-lg px-1.5 py-0.5 text-[10px] font-semibold text-text-primary outline-none max-w-[90px] truncate pr-4"
-                >
-                  <option value="todas">Todas</option>
-                  {citiesDropdown.data?.data?.map((c: any) => (
-                    <option key={c.nome || c.cidade} value={c.nome || c.cidade}>{c.nome || c.cidade}</option>
-                  ))}
-                </select>
-                <ChevronDown size={8} className="absolute right-1 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
-              </div>
+            <div className="relative">
+              <select
+                value={cidade}
+                onChange={(e) => setCidade(e.target.value)}
+                className="bg-bg-primary border border-border rounded-md px-1.5 py-0.5 text-[9px] font-semibold text-text-primary outline-none max-w-[85px] truncate pr-4 cursor-pointer"
+              >
+                <option value="todas">Cid: Todas</option>
+                {citiesDropdown.data?.data?.map((c: any) => (
+                  <option key={c.nome || c.cidade} value={c.nome || c.cidade}>{c.nome || c.cidade}</option>
+                ))}
+              </select>
+              <ChevronDown size={8} className="absolute right-1 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
             </div>
 
             {/* Marca */}
-            <div className="flex items-center gap-1.5 border-r border-divider/40 pr-2">
-              <span className="text-[9px] text-text-secondary font-bold uppercase tracking-wider">Marca:</span>
-              <div className="relative">
-                <select
-                  value={marca}
-                  onChange={(e) => setMarca(e.target.value)}
-                  className="bg-bg-primary border border-border rounded-lg px-1.5 py-0.5 text-[10px] font-semibold text-text-primary outline-none max-w-[100px] truncate pr-4"
-                >
-                  <option value="todas">Todas</option>
-                  {brandsDropdown.data?.data?.map((m: any) => (
-                    <option key={m.nome || m.marca} value={m.nome || m.marca}>{m.nome || m.marca}</option>
-                  ))}
-                </select>
-                <ChevronDown size={8} className="absolute right-1 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
-              </div>
+            <div className="relative">
+              <select
+                value={marca}
+                onChange={(e) => setMarca(e.target.value)}
+                className="bg-bg-primary border border-border rounded-md px-1.5 py-0.5 text-[9px] font-semibold text-text-primary outline-none max-w-[90px] truncate pr-4 cursor-pointer"
+              >
+                <option value="todas">Marca: Todas</option>
+                {brandsDropdown.data?.data?.map((m: any) => (
+                  <option key={m.nome || m.marca} value={m.nome || m.marca}>{m.nome || m.marca}</option>
+                ))}
+              </select>
+              <ChevronDown size={8} className="absolute right-1 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
             </div>
 
             {/* Categoria */}
-            <div className="flex items-center gap-1.5">
-              <span className="text-[9px] text-text-secondary font-bold uppercase tracking-wider">Cat:</span>
-              <div className="relative">
-                <select
-                  value={categoria}
-                  onChange={(e) => setCategoria(e.target.value)}
-                  className="bg-bg-primary border border-border rounded-lg px-1.5 py-0.5 text-[10px] font-semibold text-text-primary outline-none max-w-[100px] truncate pr-4"
-                >
-                  <option value="todas">Todas</option>
-                  {categoriesDropdown.data?.data?.map((c: any) => (
-                    <option key={c.nome || c.categoria} value={c.nome || c.categoria}>{c.nome || c.categoria}</option>
-                  ))}
-                </select>
-                <ChevronDown size={8} className="absolute right-1 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
-              </div>
+            <div className="relative">
+              <select
+                value={categoria}
+                onChange={(e) => setCategoria(e.target.value)}
+                className="bg-bg-primary border border-border rounded-md px-1.5 py-0.5 text-[9px] font-semibold text-text-primary outline-none max-w-[90px] truncate pr-4 cursor-pointer"
+              >
+                <option value="todas">Cat: Todas</option>
+                {categoriesDropdown.data?.data?.map((c: any) => (
+                  <option key={c.nome || c.categoria} value={c.nome || c.categoria}>{c.nome || c.categoria}</option>
+                ))}
+              </select>
+              <ChevronDown size={8} className="absolute right-1 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
             </div>
 
             {/* Compare Button */}
@@ -434,9 +422,9 @@ export default function ComparativoVendas() {
                 rankAnalise.refetch();
                 rankComparacao.refetch();
               }}
-              className="bg-[#10B981] hover:bg-emerald-600 text-white font-black px-2.5 py-1 rounded-lg text-[10px] uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1 shrink-0 ml-1"
+              className="bg-[#10B981] hover:bg-emerald-600 text-white font-black px-2 py-0.5 rounded text-[9px] uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1 shrink-0 ml-0.5"
             >
-              <Play size={10} fill="white" />
+              <Play size={8} fill="white" />
               Comparar
             </button>
           </div>
