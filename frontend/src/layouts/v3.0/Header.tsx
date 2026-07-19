@@ -170,16 +170,18 @@ export default function Header({ onMenuClick, activeRoute }: Props) {
         <Menu size={22} />
       </button>
 
-      <div className="flex flex-col items-start gap-0.5 ml-1 sm:ml-2 lg:ml-0 min-w-0 flex-shrink-0">
-        {/* Logo Coliseu (Maior) */}
-        <img
-          src="/logo-coliseu.png"
-          alt="Coliseu Sistemas"
-          className="h-7 sm:h-[30px] w-auto object-contain"
-        />
+      <div className="flex flex-col items-start gap-1 ml-1 sm:ml-2 lg:ml-0 min-w-0 flex-shrink-0">
+        {/* Logo Coliseu (Idêntica ao menu lateral anterior) */}
+        <div className="bg-white dark:bg-slate-950 p-1.5 px-3 rounded-2xl border border-slate-200/60 dark:border-slate-800/60 shadow-[0_4px_18px_rgba(0,0,0,0.04)] flex items-center justify-center h-10 transition-all duration-300 shrink-0">
+          <img
+            src="/logo-coliseu.png"
+            alt="Coliseu Sistemas"
+            className="h-7 w-auto object-contain"
+          />
+        </div>
         
         {/* Frases Proporcionais Embaixo */}
-        <div className="hidden sm:flex flex-col text-[7px] leading-tight text-text-secondary/80 font-bold uppercase tracking-wider">
+        <div className="hidden sm:flex flex-col text-[7px] leading-tight text-text-secondary/80 font-bold uppercase tracking-wider pl-1">
           <span className="leading-none text-slate-500">Gerencie <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-cyan-500">tudo.</span></span>
           <span className="leading-none text-[6.5px] mt-0.5 text-text-secondary/60">Cresça mais rápido.</span>
         </div>
@@ -265,43 +267,6 @@ export default function Header({ onMenuClick, activeRoute }: Props) {
           <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${agentStatus === 'ONLINE' ? 'bg-success' : 'bg-danger'}`} />
         </div>
 
-        {/* Status sync (desktop) */}
-        <div className="hidden md:flex items-center gap-2 text-xs text-text-secondary border-l border-[#E0E0E0] pl-3">
-          {status === 'ok' ? (
-            <CheckCircle2 size={14} className="text-success" />
-          ) : (
-            <AlertCircle size={14} className="text-warning" />
-          )}
-          <span className="flex flex-col text-[10px] leading-tight">
-            <span>Última Sync:</span>
-            <span className="mono font-medium">{lastSync ? formatDateTime(lastSync) : 'nunca'}</span>
-          </span>
-        </div>
-
-        {/* Sync indicator mobile (só o ícone) */}
-        <div className="md:hidden flex items-center relative">
-          <div className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border-2 border-white ${agentStatus === 'ONLINE' ? 'bg-success' : 'bg-danger animate-pulse'}`} />
-          {status === 'ok' ? (
-            <CheckCircle2 size={18} className="text-text-primary" />
-          ) : (
-            <AlertCircle size={18} className="text-warning" />
-          )}
-        </div>
-
-        <button
-          className="p-2 text-text-secondary hover:bg-bg-secondary rounded-lg active:bg-bg-tertiary"
-          onClick={triggerSync}
-          disabled={isSyncing}
-          title="Forçar sincronização"
-        >
-          <RefreshCw size={16} className={isSyncing ? 'animate-spin' : ''} />
-        </button>
-
-        {/* Separador */}
-        <div className="w-px h-6 bg-divider mx-1"></div>
-
-        {/* Layout Version Switcher is removed */}
-
         {empresaNome && (
           <div className="hidden xl:flex items-center px-2 border-r border-[#E0E0E0] mr-1 pr-3">
             <span className="text-xs font-bold text-slate-600 uppercase tracking-wide">
@@ -310,9 +275,12 @@ export default function Header({ onMenuClick, activeRoute }: Props) {
           </div>
         )}
 
-        <BranchSelector />
-
-        <ThemeToggle />
+        <div className="flex flex-col items-end shrink-0">
+          <BranchSelector />
+          <span className="text-[7.5px] font-bold text-text-secondary/60 uppercase tracking-wider leading-none mt-0.5 mr-1">
+            Sync: {lastSync ? formatDateTime(lastSync) : 'nunca'}
+          </span>
+        </div>
 
         {/* Usuário */}
         <div className="relative">

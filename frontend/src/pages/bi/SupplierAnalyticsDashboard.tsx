@@ -145,29 +145,6 @@ export default function SupplierAnalyticsDashboard() {
   return (
     <div aria-label="Fornecedores Dashboard" className="space-y-6 animate-in fade-in duration-300 pb-10">
       
-      {/* HEADER ACTIONS */}
-      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 mb-2 w-full">
-        <div className="flex items-center gap-4 text-xs font-semibold text-text-muted">
-           <div className="flex items-center gap-1"><span className="text-brand-500">🏢</span> Marca Analisada: <span className="text-brand-500">{selectedBrand || 'Todas'}</span></div>
-        </div>
-        <div className="flex items-center gap-3">
-          <select 
-            aria-label="Selecionar Marca"
-            className="bg-bg-primary border border-border rounded-lg px-3 py-2 text-sm text-text-primary outline-none focus:border-brand-500 max-w-[250px]"
-            value={selectedBrand}
-            onChange={(e) => setSelectedBrand(e.target.value)}
-          >
-            <option value="">Todas as Marcas</option>
-            {availableBrands.map((b: string) => (
-              <option key={b} value={b}>{b}</option>
-            ))}
-          </select>
-          <button className="bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 transition-colors">
-            <Search size={16} /> Analisar
-          </button>
-        </div>
-      </div>
-
       {/* ORANGE BANNER */}
       <div className="bg-gradient-to-r from-orange-500 to-amber-600 rounded-xl p-5 shadow-lg flex flex-col md:flex-row items-center justify-between gap-6 text-white relative overflow-hidden">
         {/* Subtle background decoration */}
@@ -177,9 +154,33 @@ export default function SupplierAnalyticsDashboard() {
           <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl">
             <Target size={32} className="text-white" />
           </div>
-          <div>
-            <h2 className="text-2xl font-extrabold tracking-tight">{selectedBrand || 'Todas as Marcas'}</h2>
-            <p className="text-orange-100 font-medium text-sm">Raio-X de Performance no Período</p>
+          <div className="flex flex-col gap-1.5">
+            <div>
+              <h2 className="text-2xl font-extrabold tracking-tight">{selectedBrand || 'Todas as Marcas'}</h2>
+              <p className="text-orange-100 font-medium text-sm leading-none mt-0.5">Raio-X de Performance no Período</p>
+            </div>
+            
+            {/* Filtro de Marca e Botão Analisar em Linha (Movidos conforme solicitado) */}
+            <div className="flex items-center gap-2 mt-1">
+              <select 
+                aria-label="Selecionar Marca"
+                className="bg-white/10 hover:bg-white/20 border border-white/25 rounded-lg px-2.5 py-1 text-xs text-white outline-none focus:border-white/50 max-w-[200px] cursor-pointer"
+                value={selectedBrand}
+                onChange={(e) => setSelectedBrand(e.target.value)}
+                style={{ colorScheme: 'dark' }}
+              >
+                <option value="" className="text-slate-900 bg-white">Todas as Marcas</option>
+                {availableBrands.map((b: string) => (
+                  <option key={b} value={b} className="text-slate-900 bg-white">{b}</option>
+                ))}
+              </select>
+              <button 
+                type="button"
+                className="bg-white text-orange-600 hover:bg-orange-50 font-black px-3.5 py-1 rounded-lg text-xs flex items-center gap-1.5 transition-all shadow-sm active:scale-[0.97] cursor-pointer border border-transparent"
+              >
+                <Search size={12} className="text-orange-600" /> Analisar
+              </button>
+            </div>
           </div>
         </div>
 
