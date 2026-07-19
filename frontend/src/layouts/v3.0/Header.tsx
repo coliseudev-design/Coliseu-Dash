@@ -170,92 +170,23 @@ export default function Header({ onMenuClick, activeRoute }: Props) {
         <Menu size={22} />
       </button>
 
-      <div className="flex flex-col items-start gap-1 ml-1 sm:ml-2 lg:ml-0 min-w-0 flex-shrink-0">
-        {/* Logo Coliseu (Idêntica ao menu lateral anterior) */}
-        <div className="bg-white dark:bg-slate-950 p-1.5 px-3 rounded-2xl border border-slate-200/60 dark:border-slate-800/60 shadow-[0_4px_18px_rgba(0,0,0,0.04)] flex items-center justify-center h-10 transition-all duration-300 shrink-0">
-          <img
-            src="/logo-coliseu.png"
-            alt="Coliseu Sistemas"
-            className="h-7 w-auto object-contain"
-          />
+      <div className="flex items-center gap-2.5 ml-1 sm:ml-2 lg:ml-0 min-w-0 flex-shrink-0">
+        <div
+          className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+          style={{
+            backgroundColor: `${activeRoute.color}15`,
+            boxShadow: `0 2px 8px ${activeRoute.color}20`,
+          }}
+        >
+          <activeRoute.icon size={16} style={{ color: activeRoute.color }} strokeWidth={2.2} />
         </div>
-        
-        {/* Frases Proporcionais Embaixo */}
-        <div className="hidden sm:flex flex-col text-[7px] leading-tight text-text-secondary/80 font-bold uppercase tracking-wider pl-1">
-          <span className="leading-none text-slate-500">Gerencie <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-cyan-500">tudo.</span></span>
-          <span className="leading-none text-[6.5px] mt-0.5 text-text-secondary/60">Cresça mais rápido.</span>
-        </div>
+        <h1 className="font-heading text-xs sm:text-sm md:text-base font-extrabold text-text-primary uppercase tracking-wider truncate whitespace-nowrap">
+          {activeRoute.label}
+        </h1>
       </div>
 
-      {/* Menu Superior - Top Navigation Hub (Desktop) */}
-      <nav className="hidden lg:flex items-center gap-1 ml-6 h-full">
-        {allowedGroups.map(group => {
-          const isHovered = activeHoverGroup === group.id
-          const hasActiveRoute = group.items.some(item => location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to)))
-
-          return (
-            <div 
-              key={group.id} 
-              className="relative h-full flex items-center"
-              onMouseEnter={() => setActiveHoverGroup(group.id)}
-              onMouseLeave={() => setActiveHoverGroup(null)}
-            >
-              <button
-                type="button"
-                className={clsx(
-                  "px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-200 flex items-center gap-1 cursor-pointer border border-transparent",
-                  hasActiveRoute
-                    ? "bg-slate-100 dark:bg-slate-800 text-text-primary shadow-[0_4px_12px_rgba(0,0,0,0.03)] font-extrabold border-slate-200/40 dark:border-slate-700/40"
-                    : "text-text-secondary hover:text-text-primary hover:bg-bg-secondary/40"
-                )}
-              >
-                <group.icon size={13} style={{ color: group.color }} />
-                <span>{group.label}</span>
-                <ChevronDown size={11} className={clsx("transition-transform duration-200 text-text-muted", isHovered ? "rotate-180" : "")} />
-              </button>
-
-              {/* Megamenu Dropdown Flutuante Glassmorphism */}
-              {isHovered && (
-                <div className="absolute top-[80%] left-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200/50 dark:border-slate-800/50 shadow-2xl rounded-2xl p-2 min-w-[240px] animate-in fade-in slide-in-from-top-2 duration-150 z-[9999] flex flex-col gap-0.5">
-                  {group.items.map(item => {
-                    const isActive = location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to))
-                    
-                    const handleItemClick = (e: React.MouseEvent) => {
-                      if (item.isComingSoon) {
-                        e.preventDefault()
-                        setIsComingSoonOpen(true)
-                      }
-                      setActiveHoverGroup(null)
-                    }
-
-                    return (
-                      <NavLink
-                        key={item.to}
-                        to={item.to}
-                        onClick={handleItemClick}
-                        className={clsx(
-                          "flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all duration-200 w-full hover:-translate-y-[1px] active:translate-y-[0.5px] border",
-                          isActive && !item.isComingSoon
-                            ? "bg-gradient-to-r from-[#0052D4] via-[#4364F7] to-[#6FB1FC] text-white border-transparent shadow-[0_4px_12px_rgba(67,100,247,0.25)]"
-                            : "text-text-secondary border-transparent hover:bg-bg-secondary/50 hover:text-text-primary"
-                        )}
-                      >
-                        <IconBadge icon={item.icon} color={isActive && !item.isComingSoon ? '#ffffff' : item.color} isActive={isActive && !item.isComingSoon} />
-                        <span className="truncate">{item.label}</span>
-                        {item.isComingSoon && (
-                          <span className="bg-gradient-to-r from-purple-500 via-[#4364F7] to-cyan-400 text-white text-[7px] px-1.5 py-0.5 rounded-full font-black uppercase tracking-wider scale-90 border border-purple-400/40 shadow-[0_0_8px_rgba(168,85,247,0.5)] animate-pulse ml-auto flex-shrink-0">
-                            PREDITIVO
-                          </span>
-                        )}
-                      </NavLink>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          )
-        })}
-      </nav>
+      {/* Contêiner de Filtros Teleportados ao lado do título da tela */}
+      <div id="page-filters-container" className="hidden lg:flex items-center gap-2 text-xs ml-4" />
 
       <div className="ml-auto flex items-center gap-1 sm:gap-2.5">
         {/* Glowing Agente status dot (no text to save space) */}
