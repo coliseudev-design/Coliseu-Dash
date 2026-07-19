@@ -239,127 +239,132 @@ export default function ComparativoVendas() {
     <div className="space-y-4 pb-6 animate-in fade-in duration-300">
       {/* Teleportamos todos os filtros da página para o cabeçalho superior unificado */}
       {/* Painel de Filtros da Página - Posicionado abaixo do título da tela */}
-      <div className="bg-bg-primary border border-border shadow-sm rounded-xl p-2.5 flex flex-wrap items-center gap-3 text-xs w-full animate-in slide-in-from-top-3 duration-250">
-        {/* Mode Toggle */}
-        <div className="bg-bg-secondary p-0.5 rounded-lg flex items-center border border-border shrink-0">
-          <button
-            onClick={() => setTipoPeriodo('mes')}
-            className={clsx(
-              "px-2.5 py-1 text-[10px] font-black rounded-md uppercase tracking-wider transition-all duration-200 cursor-pointer",
-              tipoPeriodo === 'mes' ? "bg-brand-600 text-white shadow-sm" : "text-text-secondary hover:text-text-primary"
+      {/* Painel de Filtros da Página - Estrutura organizada em 2 linhas distribuídas */}
+      <div className="bg-bg-primary border border-border shadow-sm rounded-xl p-3.5 flex flex-col gap-3.5 text-xs w-full animate-in slide-in-from-top-3 duration-250">
+        
+        {/* LINHA 1: PERÍODOS DE COMPARAÇÃO */}
+        <div className="flex flex-wrap items-center gap-4 w-full border-b border-divider/45 pb-3">
+          {/* Mode Toggle */}
+          <div className="bg-bg-secondary p-0.5 rounded-lg flex items-center border border-border shrink-0">
+            <button
+              onClick={() => setTipoPeriodo('mes')}
+              className={clsx(
+                "px-2.5 py-1 text-[10px] font-black rounded-md uppercase tracking-wider transition-all duration-200 cursor-pointer",
+                tipoPeriodo === 'mes' ? "bg-brand-600 text-white shadow-sm" : "text-text-secondary hover:text-text-primary"
+              )}
+            >
+              MÊS
+            </button>
+            <button
+              onClick={() => setTipoPeriodo('personalizado')}
+              className={clsx(
+                "px-2.5 py-1 text-[10px] font-black rounded-md uppercase tracking-wider transition-all duration-200 cursor-pointer",
+                tipoPeriodo === 'personalizado' ? "bg-brand-600 text-white shadow-sm" : "text-text-secondary hover:text-text-primary"
+              )}
+            >
+              PERS
+            </button>
+          </div>
+
+          {/* Análise Period */}
+          <div className="flex items-center gap-2 border-r border-divider/40 pr-4 pl-1 shrink-0">
+            <span className="text-[10px] text-blue-500 font-bold uppercase tracking-wider">ANÁLISE</span>
+            {tipoPeriodo === 'mes' ? (
+              <div className="flex items-center gap-1.5">
+                <div className="relative">
+                  <select
+                    value={analiseMes}
+                    onChange={(e) => setAnaliseMes(Number(e.target.value))}
+                    className="bg-bg-secondary border border-border rounded-lg px-2.5 py-1.5 text-xs font-semibold text-text-primary outline-none cursor-pointer pr-7"
+                  >
+                    {MONTHS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                  </select>
+                  <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+                </div>
+                <div className="relative">
+                  <select
+                    value={analiseAno}
+                    onChange={(e) => setAnaliseAno(Number(e.target.value))}
+                    className="bg-bg-secondary border border-border rounded-lg px-2.5 py-1.5 text-xs font-semibold text-text-primary outline-none cursor-pointer pr-7"
+                  >
+                    {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+                  </select>
+                  <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="date"
+                  value={customAnaliseStart}
+                  onChange={(e) => setCustomAnaliseStart(e.target.value)}
+                  className="bg-bg-secondary border border-border rounded-lg px-2 py-1 text-xs font-semibold text-text-primary outline-none max-w-[110px]"
+                />
+                <span className="text-xs text-text-muted">a</span>
+                <input
+                  type="date"
+                  value={customAnaliseEnd}
+                  onChange={(e) => setCustomAnaliseEnd(e.target.value)}
+                  className="bg-bg-secondary border border-border rounded-lg px-2 py-1 text-xs font-semibold text-text-primary outline-none max-w-[110px]"
+                />
+              </div>
             )}
-          >
-            MÊS
-          </button>
-          <button
-            onClick={() => setTipoPeriodo('personalizado')}
-            className={clsx(
-              "px-2.5 py-1 text-[10px] font-black rounded-md uppercase tracking-wider transition-all duration-200 cursor-pointer",
-              tipoPeriodo === 'personalizado' ? "bg-brand-600 text-white shadow-sm" : "text-text-secondary hover:text-text-primary"
+          </div>
+
+          {/* Comparação Period */}
+          <div className="flex items-center gap-2 pr-4 shrink-0">
+            <span className="text-[10px] text-orange-500 font-bold uppercase tracking-wider">COMPARAÇÃO</span>
+            {tipoPeriodo === 'mes' ? (
+              <div className="flex items-center gap-1.5">
+                <div className="relative">
+                  <select
+                    value={comparacaoMes}
+                    onChange={(e) => setComparacaoMes(Number(e.target.value))}
+                    className="bg-bg-secondary border border-border rounded-lg px-2.5 py-1.5 text-xs font-semibold text-text-primary outline-none cursor-pointer pr-7"
+                  >
+                    {MONTHS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                  </select>
+                  <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+                </div>
+                <div className="relative">
+                  <select
+                    value={comparacaoAno}
+                    onChange={(e) => setComparacaoAno(Number(e.target.value))}
+                    className="bg-bg-secondary border border-border rounded-lg px-2.5 py-1.5 text-xs font-semibold text-text-primary outline-none cursor-pointer pr-7"
+                  >
+                    {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+                  </select>
+                  <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="date"
+                  value={customComparacaoStart}
+                  onChange={(e) => setCustomComparacaoStart(e.target.value)}
+                  className="bg-bg-secondary border border-border rounded-lg px-2 py-1 text-xs font-semibold text-text-primary outline-none max-w-[110px]"
+                />
+                <span className="text-xs text-text-muted">a</span>
+                <input
+                  type="date"
+                  value={customComparacaoEnd}
+                  onChange={(e) => setCustomComparacaoEnd(e.target.value)}
+                  className="bg-bg-secondary border border-border rounded-lg px-2 py-1 text-xs font-semibold text-text-primary outline-none max-w-[110px]"
+                />
+              </div>
             )}
-          >
-            PERS
-          </button>
+          </div>
         </div>
 
-        {/* Análise Period */}
-        <div className="flex items-center gap-2 border-r border-divider/40 pr-3 pl-1 shrink-0">
-          <span className="text-[10px] text-blue-500 font-bold uppercase tracking-wider">ANÁLISE</span>
-          {tipoPeriodo === 'mes' ? (
-            <div className="flex items-center gap-1.5">
-              <div className="relative">
-                <select
-                  value={analiseMes}
-                  onChange={(e) => setAnaliseMes(Number(e.target.value))}
-                  className="bg-bg-secondary border border-border rounded-lg px-2.5 py-1.5 text-xs font-semibold text-text-primary outline-none cursor-pointer pr-7"
-                >
-                  {MONTHS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-                </select>
-                <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
-              </div>
-              <div className="relative">
-                <select
-                  value={analiseAno}
-                  onChange={(e) => setAnaliseAno(Number(e.target.value))}
-                  className="bg-bg-secondary border border-border rounded-lg px-2.5 py-1.5 text-xs font-semibold text-text-primary outline-none cursor-pointer pr-7"
-                >
-                  {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-                </select>
-                <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center gap-1.5">
-              <input
-                type="date"
-                value={customAnaliseStart}
-                onChange={(e) => setCustomAnaliseStart(e.target.value)}
-                className="bg-bg-secondary border border-border rounded-lg px-2 py-1 text-xs font-semibold text-text-primary outline-none max-w-[110px]"
-              />
-              <span className="text-xs text-text-muted">a</span>
-              <input
-                type="date"
-                value={customAnaliseEnd}
-                onChange={(e) => setCustomAnaliseEnd(e.target.value)}
-                className="bg-bg-secondary border border-border rounded-lg px-2 py-1 text-xs font-semibold text-text-primary outline-none max-w-[110px]"
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Comparação Period */}
-        <div className="flex items-center gap-2 border-r border-divider/40 pr-3 shrink-0">
-          <span className="text-[10px] text-orange-500 font-bold uppercase tracking-wider">COMPARAÇÃO</span>
-          {tipoPeriodo === 'mes' ? (
-            <div className="flex items-center gap-1.5">
-              <div className="relative">
-                <select
-                  value={comparacaoMes}
-                  onChange={(e) => setComparacaoMes(Number(e.target.value))}
-                  className="bg-bg-secondary border border-border rounded-lg px-2.5 py-1.5 text-xs font-semibold text-text-primary outline-none cursor-pointer pr-7"
-                >
-                  {MONTHS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-                </select>
-                <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
-              </div>
-              <div className="relative">
-                <select
-                  value={comparacaoAno}
-                  onChange={(e) => setComparacaoAno(Number(e.target.value))}
-                  className="bg-bg-secondary border border-border rounded-lg px-2.5 py-1.5 text-xs font-semibold text-text-primary outline-none cursor-pointer pr-7"
-                >
-                  {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-                </select>
-                <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center gap-1.5">
-              <input
-                type="date"
-                value={customComparacaoStart}
-                onChange={(e) => setCustomComparacaoStart(e.target.value)}
-                className="bg-bg-secondary border border-border rounded-lg px-2 py-1 text-xs font-semibold text-text-primary outline-none max-w-[110px]"
-              />
-              <span className="text-xs text-text-muted">a</span>
-              <input
-                type="date"
-                value={customComparacaoEnd}
-                onChange={(e) => setCustomComparacaoEnd(e.target.value)}
-                className="bg-bg-secondary border border-border rounded-lg px-2 py-1 text-xs font-semibold text-text-primary outline-none max-w-[110px]"
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Outros Filtros */}
-        <div className="flex items-center gap-2 flex-wrap">
+        {/* LINHA 2: CONTEXTOS DE FILTRAGEM (DISTRIBUÍDO EM GRID) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 w-full items-center pt-1">
           {/* Vendedor */}
-          <div className="relative">
+          <div className="relative w-full">
             <select
               value={vendedor}
               onChange={(e) => setVendedor(e.target.value)}
-              className="bg-bg-secondary border border-border rounded-lg px-3 py-1.5 text-xs font-bold text-text-primary outline-none max-w-[130px] truncate pr-7 cursor-pointer"
+              className="bg-bg-secondary border border-border rounded-lg px-3 py-2 text-xs font-bold text-text-primary outline-none w-full cursor-pointer pr-8"
             >
               <option value="todas">Vendedor: Todos</option>
               {sellersDropdown.data?.data?.map((s: any) => (
@@ -370,11 +375,11 @@ export default function ComparativoVendas() {
           </div>
 
           {/* Cidade */}
-          <div className="relative">
+          <div className="relative w-full">
             <select
               value={cidade}
               onChange={(e) => setCidade(e.target.value)}
-              className="bg-bg-secondary border border-border rounded-lg px-3 py-1.5 text-xs font-bold text-text-primary outline-none max-w-[120px] truncate pr-7 cursor-pointer"
+              className="bg-bg-secondary border border-border rounded-lg px-3 py-2 text-xs font-bold text-text-primary outline-none w-full cursor-pointer pr-8"
             >
               <option value="todas">Cidade: Todas</option>
               {citiesDropdown.data?.data?.map((c: any) => (
@@ -385,11 +390,11 @@ export default function ComparativoVendas() {
           </div>
 
           {/* Marca */}
-          <div className="relative">
+          <div className="relative w-full">
             <select
               value={marca}
               onChange={(e) => setMarca(e.target.value)}
-              className="bg-bg-secondary border border-border rounded-lg px-3 py-1.5 text-xs font-bold text-text-primary outline-none max-w-[130px] truncate pr-7 cursor-pointer"
+              className="bg-bg-secondary border border-border rounded-lg px-3 py-2 text-xs font-bold text-text-primary outline-none w-full cursor-pointer pr-8"
             >
               <option value="todas">Marca: Todas</option>
               {brandsDropdown.data?.data?.map((m: any) => (
@@ -400,11 +405,11 @@ export default function ComparativoVendas() {
           </div>
 
           {/* Categoria */}
-          <div className="relative">
+          <div className="relative w-full">
             <select
               value={categoria}
               onChange={(e) => setCategoria(e.target.value)}
-              className="bg-bg-secondary border border-border rounded-lg px-3 py-1.5 text-xs font-bold text-text-primary outline-none max-w-[130px] truncate pr-7 cursor-pointer"
+              className="bg-bg-secondary border border-border rounded-lg px-3 py-2 text-xs font-bold text-text-primary outline-none w-full cursor-pointer pr-8"
             >
               <option value="todas">Categoria: Todas</option>
               {categoriesDropdown.data?.data?.map((c: any) => (
@@ -422,7 +427,7 @@ export default function ComparativoVendas() {
               rankAnalise.refetch();
               rankComparacao.refetch();
             }}
-            className="bg-[#10B981] hover:bg-emerald-600 text-white font-black px-4 py-1.5 rounded-lg text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shrink-0 shadow-sm hover:shadow active:scale-[0.97] border border-transparent"
+            className="bg-[#10B981] hover:bg-emerald-600 text-white font-black px-4 py-2 rounded-lg text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 w-full shadow-sm hover:shadow active:scale-[0.97] border border-transparent h-full min-h-[36px]"
           >
             <Play size={12} fill="white" />
             Comparar
