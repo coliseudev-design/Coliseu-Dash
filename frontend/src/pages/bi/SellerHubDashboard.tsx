@@ -268,10 +268,10 @@ export default function SellerHubDashboard() {
 
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
+    <div className="space-y-3 animate-in fade-in duration-300">
       
       {/* CARD 1: PERÍODO DE ANÁLISE */}
-      <div className="bg-bg-primary border border-divider rounded-2xl p-4 flex items-center justify-between shadow-card animate-in slide-in-from-top duration-200">
+      <div className="bg-bg-primary border border-divider rounded-xl p-2.5 px-4 flex items-center justify-between shadow-sm animate-in slide-in-from-top duration-200">
         <span className="text-[10px] font-bold text-text-secondary/80 uppercase tracking-widest pl-1">Período de Análise</span>
         <div className="flex items-center min-w-0">
           <PeriodFilter />
@@ -279,7 +279,7 @@ export default function SellerHubDashboard() {
       </div>
 
       {/* CARD 2: FILTROS DE SELEÇÃO */}
-      <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 flex flex-wrap gap-4 items-center">
+      <div className="bg-bg-primary border border-divider shadow-sm rounded-xl p-3.5 flex flex-wrap gap-3 items-center">
         {sellerId ? (
           <button
             onClick={() => navigate('/comercial/equipe')}
@@ -289,15 +289,15 @@ export default function SellerHubDashboard() {
             Voltar para Equipe
           </button>
         ) : (
-          <div className="flex flex-wrap gap-4 items-center w-full">
+          <div className="flex flex-wrap gap-3 items-center w-full">
             {/* Vendedor */}
-            <div className="flex flex-col gap-1 w-full sm:w-64">
+            <div className="flex flex-col gap-0.5 w-full sm:w-56">
               <span className="text-[10px] font-bold text-text-secondary/70 uppercase tracking-wider pl-1">Vendedor</span>
               <div className="relative w-full">
                 <select
                   value={selectedVendedor}
                   onChange={(e) => setSelectedVendedor(e.target.value)}
-                  className="appearance-none h-10 px-4 bg-bg-secondary border border-divider text-text-primary rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all duration-300 w-full cursor-pointer pr-10 shadow-sm"
+                  className="appearance-none h-9 px-3 bg-bg-secondary border border-divider text-text-primary rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all duration-300 w-full cursor-pointer pr-10 shadow-sm"
                 >
                   <option value="">Selecione um vendedor...</option>
                   {vdFull.data?.data?.map((v: any) => (
@@ -309,13 +309,13 @@ export default function SellerHubDashboard() {
             </div>
 
             {/* Cidade */}
-            <div className="flex flex-col gap-1 w-full sm:w-64">
+            <div className="flex flex-col gap-0.5 w-full sm:w-56">
               <span className="text-[10px] font-bold text-text-secondary/70 uppercase tracking-wider pl-1">Cidade</span>
               <div className="relative w-full">
                 <select
                   value={selectedCidade}
                   onChange={(e) => setSelectedCidade(e.target.value)}
-                  className="appearance-none h-10 px-4 bg-bg-secondary border border-divider text-text-primary rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all duration-300 w-full cursor-pointer pr-10 shadow-sm uppercase"
+                  className="appearance-none h-9 px-3 bg-bg-secondary border border-divider text-text-primary rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all duration-300 w-full cursor-pointer pr-10 shadow-sm uppercase"
                 >
                   <option value="todas">Todas as Cidades</option>
                   {cidadesDropdown.data?.data?.map((c: any) => (
@@ -327,13 +327,13 @@ export default function SellerHubDashboard() {
             </div>
 
             {/* Marca */}
-            <div className="flex flex-col gap-1 w-full sm:w-64">
+            <div className="flex flex-col gap-0.5 w-full sm:w-56">
               <span className="text-[10px] font-bold text-text-secondary/70 uppercase tracking-wider pl-1">Marca</span>
               <div className="relative w-full">
                 <select
                   value={selectedMarca}
                   onChange={(e) => setSelectedMarca(e.target.value)}
-                  className="appearance-none h-10 px-4 bg-bg-secondary border border-divider text-text-primary rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all duration-300 w-full cursor-pointer pr-10 shadow-sm uppercase"
+                  className="appearance-none h-9 px-3 bg-bg-secondary border border-divider text-text-primary rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all duration-300 w-full cursor-pointer pr-10 shadow-sm uppercase"
                 >
                   <option value="todas">Todas as Marcas</option>
                   {marcasDropdown.data?.data?.map((m: any) => (
@@ -347,21 +347,21 @@ export default function SellerHubDashboard() {
         )}
       </div>
 
-      {/* HIGHLIGHTED FATURAMENTO & METAS GRID */}
-      <div className="grid grid-cols-1 gap-6">
+       {/* HIGHLIGHTED FATURAMENTO & METAS GRID */}
+      <div className="grid grid-cols-1 gap-3.5">
         {/* Faturamento Comparison Card */}
-        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-6 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6 hover:shadow-card-hover transition-all duration-300">
+        <div className="bg-bg-primary border border-divider shadow-sm rounded-xl p-4.5 px-6 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-4 hover:shadow-card-hover transition-all duration-300">
           {/* Left teal border decoration */}
           <div className="absolute top-0 bottom-0 left-0 w-[6px] bg-brand-500"></div>
 
           {/* Current Faturamento Card Content */}
-          <div className="flex items-center gap-5 flex-1 w-full">
-            <div className="p-4 bg-brand-500/10 text-brand-500 rounded-2xl shrink-0 shadow-sm">
-              <DollarSign size={32} className="stroke-[2.5]" />
+          <div className="flex items-center gap-4 flex-1 w-full">
+            <div className="p-3 bg-brand-500/10 text-brand-500 rounded-2xl shrink-0 shadow-sm">
+              <DollarSign size={28} className="stroke-[2.5]" />
             </div>
-            <div className="space-y-1">
+            <div className="space-y-0.5">
               <span className="text-xs font-bold text-text-secondary uppercase tracking-widest block">Faturamento Atual</span>
-              <div className="text-2xl sm:text-3xl md:text-4xl font-black text-text-primary tracking-tight leading-none">
+              <div className="text-2xl sm:text-3xl font-black text-text-primary tracking-tight leading-none">
                 {formatBRL(faturamento)}
               </div>
               <span className="text-xs text-text-muted font-medium block">Período selecionado</span>
@@ -369,40 +369,40 @@ export default function SellerHubDashboard() {
           </div>
 
           {/* Center: Comparison Arrow & Percentage Inline */}
-          <div className="flex flex-col items-center justify-center shrink-0 py-3 px-5 rounded-2xl bg-bg-secondary border border-divider shadow-sm w-full md:w-auto">
+          <div className="flex flex-col items-center justify-center shrink-0 py-2 px-4 rounded-xl bg-bg-secondary border border-divider shadow-sm w-full md:w-auto">
             <span className={clsx(
-              "text-sm font-black flex items-center gap-1.5",
+              "text-xs font-black flex items-center gap-1",
               crescimentoPct >= 0 ? "text-success" : "text-danger"
             )}>
-              {crescimentoPct >= 0 ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
+              {crescimentoPct >= 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
               {crescimentoPct >= 0 ? "+" : ""}{crescimentoPct.toFixed(1)}%
             </span>
-            <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider mt-0.5">vs. mês anterior</span>
+            <span className="text-[9px] text-text-muted font-bold uppercase tracking-wider mt-0.5">vs. mês anterior</span>
           </div>
 
           {/* Previous Month Faturamento Card Content */}
-          <div className="flex items-center gap-5 flex-1 md:justify-end text-left md:text-right w-full">
-            <div className="space-y-1 md:order-1 order-2 flex-1 md:flex-initial">
+          <div className="flex items-center gap-4 flex-1 md:justify-end text-left md:text-right w-full">
+            <div className="space-y-0.5 md:order-1 order-2 flex-1 md:flex-initial">
               <span className="text-xs font-bold text-text-secondary uppercase tracking-widest block">Faturamento Anterior</span>
-              <div className="text-xl sm:text-2xl font-extrabold text-text-primary tracking-tight leading-none">
+              <div className="text-xl font-extrabold text-text-primary tracking-tight leading-none">
                 {formatBRL(faturamentoAnterior)}
               </div>
               <span className="text-xs text-text-muted font-medium block">Mês completo anterior</span>
             </div>
-            <div className="p-3.5 bg-text-muted/10 text-text-muted rounded-2xl shrink-0 md:order-2 order-1 shadow-sm">
-              <DollarSign size={24} />
+            <div className="p-3 bg-text-muted/10 text-text-muted rounded-2xl shrink-0 md:order-2 order-1 shadow-sm">
+              <DollarSign size={22} />
             </div>
           </div>
         </div>
       </div>
 
-      {/* 6 OPERATIONAL KPI CARDS - GRID IN SMALLER SIZES (3 CARDS PER ROW ON DESKTOP, 2 ON TABLET, 1 ON MOBILE) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* 6 OPERATIONAL KPI CARDS */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
         {/* Card 1: Ticket Médio */}
-        <div className="bg-bg-primary border border-divider/60 shadow-card hover:shadow-card-hover rounded-2xl p-6 flex items-center gap-4 transition-all duration-300 relative overflow-hidden">
+        <div className="bg-bg-primary border border-divider/60 shadow-sm hover:shadow-card-hover rounded-xl p-4 px-5 flex items-center gap-4 transition-all duration-300 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-[3px] bg-brand-500"></div>
-          <div className="p-3.5 bg-brand-500/10 text-brand-500 rounded-2xl shrink-0">
-            <Trophy size={26} />
+          <div className="p-3 bg-brand-500/10 text-brand-500 rounded-xl shrink-0">
+            <Trophy size={24} />
           </div>
           <div className="min-w-0 flex-1">
             <span className="text-xs font-bold text-text-secondary uppercase tracking-wider block">Ticket Médio</span>
@@ -414,10 +414,10 @@ export default function SellerHubDashboard() {
         </div>
 
         {/* Card 2: Notas Emitidas */}
-        <div className="bg-bg-primary border border-divider/60 shadow-card hover:shadow-card-hover rounded-2xl p-6 flex items-center gap-4 transition-all duration-300 relative overflow-hidden">
+        <div className="bg-bg-primary border border-divider/60 shadow-sm hover:shadow-card-hover rounded-xl p-4 px-5 flex items-center gap-4 transition-all duration-300 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-[3px] bg-brand-500"></div>
-          <div className="p-3.5 bg-brand-500/10 text-brand-500 rounded-2xl shrink-0">
-            <FileText size={26} />
+          <div className="p-3 bg-brand-500/10 text-brand-500 rounded-xl shrink-0">
+            <FileText size={24} />
           </div>
           <div className="min-w-0 flex-1">
             <span className="text-xs font-bold text-text-secondary uppercase tracking-wider block">Notas Emitidas</span>
@@ -429,10 +429,10 @@ export default function SellerHubDashboard() {
         </div>
 
         {/* Card 3: Clientes Atendidos */}
-        <div className="bg-bg-primary border border-divider/60 shadow-card hover:shadow-card-hover rounded-2xl p-6 flex items-center gap-4 transition-all duration-300 relative overflow-hidden">
+        <div className="bg-bg-primary border border-divider/60 shadow-sm hover:shadow-card-hover rounded-xl p-4 px-5 flex items-center gap-4 transition-all duration-300 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-[3px] bg-brand-500"></div>
-          <div className="p-3.5 bg-brand-500/10 text-brand-500 rounded-2xl shrink-0">
-            <Users size={26} />
+          <div className="p-3 bg-brand-500/10 text-brand-500 rounded-xl shrink-0">
+            <Users size={24} />
           </div>
           <div className="min-w-0 flex-1">
             <span className="text-xs font-bold text-text-secondary uppercase tracking-wider block">Clientes Atendidos</span>
@@ -446,10 +446,10 @@ export default function SellerHubDashboard() {
         </div>
 
         {/* Card 4: Cidade Top */}
-        <div className="bg-bg-primary border border-divider/60 shadow-card hover:shadow-card-hover rounded-2xl p-6 flex items-center gap-4 transition-all duration-300 relative overflow-hidden">
+        <div className="bg-bg-primary border border-divider/60 shadow-sm hover:shadow-card-hover rounded-xl p-4 px-5 flex items-center gap-4 transition-all duration-300 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-[3px] bg-brand-500"></div>
-          <div className="p-3.5 bg-brand-500/10 text-brand-500 rounded-2xl shrink-0">
-            <MapPin size={26} />
+          <div className="p-3 bg-brand-500/10 text-brand-500 rounded-xl shrink-0">
+            <MapPin size={24} />
           </div>
           <div className="min-w-0 flex-1">
             <span className="text-xs font-bold text-text-secondary uppercase tracking-wider block">Cidade Top</span>
@@ -463,10 +463,10 @@ export default function SellerHubDashboard() {
         </div>
 
         {/* Card 5: Principal Cliente */}
-        <div className="bg-bg-primary border border-divider/60 shadow-card hover:shadow-card-hover rounded-2xl p-6 flex items-center gap-4 transition-all duration-300 relative overflow-hidden">
+        <div className="bg-bg-primary border border-divider/60 shadow-sm hover:shadow-card-hover rounded-xl p-4 px-5 flex items-center gap-4 transition-all duration-300 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-[3px] bg-brand-500"></div>
-          <div className="p-3.5 bg-brand-500/10 text-brand-500 rounded-2xl shrink-0">
-            <Award size={26} />
+          <div className="p-3 bg-brand-500/10 text-brand-500 rounded-xl shrink-0">
+            <Award size={24} />
           </div>
           <div className="min-w-0 flex-1">
             <span className="text-xs font-bold text-text-secondary uppercase tracking-wider block">Principal Cliente</span>
@@ -480,10 +480,10 @@ export default function SellerHubDashboard() {
         </div>
 
         {/* Card 6: Melhor Mês */}
-        <div className="bg-bg-primary border border-divider/60 shadow-card hover:shadow-card-hover rounded-2xl p-6 flex items-center gap-4 transition-all duration-300 relative overflow-hidden">
+        <div className="bg-bg-primary border border-divider/60 shadow-sm hover:shadow-card-hover rounded-xl p-4 px-5 flex items-center gap-4 transition-all duration-300 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-[3px] bg-brand-500"></div>
-          <div className="p-3.5 bg-brand-500/10 text-brand-500 rounded-2xl shrink-0">
-            <Calendar size={26} />
+          <div className="p-3 bg-brand-500/10 text-brand-500 rounded-xl shrink-0">
+            <Calendar size={24} />
           </div>
           <div className="min-w-0 flex-1">
             <span className="text-xs font-bold text-text-secondary uppercase tracking-wider block">Melhor Mês (12m)</span>
@@ -498,11 +498,11 @@ export default function SellerHubDashboard() {
       </div>
 
       {/* SECTION: RANKINGS DE DESEMPENHO EM DUAS COLUNAS/LINHAS */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-3.5">
         
         {/* CARD 1: TOP 10 MARCAS */}
-        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-6 flex flex-col min-h-[380px] transition-all">
-          <div className="flex justify-between items-center border-b border-divider/20 pb-3 mb-4">
+        <div className="bg-bg-primary border border-divider shadow-sm rounded-xl p-4.5 flex flex-col min-h-[380px] transition-all">
+          <div className="flex justify-between items-center border-b border-divider/20 pb-2 mb-3">
             <div className="flex items-center gap-2">
               <Award className="text-brand-500" size={18} />
               <h3 className="text-sm font-extrabold text-text-primary uppercase tracking-wider">Top 10 Marcas</h3>
@@ -602,8 +602,8 @@ export default function SellerHubDashboard() {
         </div>
 
         {/* CARD 2: TOP 10 GRUPOS */}
-        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-6 flex flex-col min-h-[380px] transition-all">
-          <div className="flex justify-between items-center border-b border-divider/20 pb-3 mb-4">
+        <div className="bg-bg-primary border border-divider shadow-sm rounded-xl p-4.5 flex flex-col min-h-[380px] transition-all">
+          <div className="flex justify-between items-center border-b border-divider/20 pb-2 mb-3">
             <div className="flex items-center gap-2">
               <Box className="text-brand-500" size={18} />
               <h3 className="text-sm font-extrabold text-text-primary uppercase tracking-wider">Top 10 Grupos</h3>
@@ -703,8 +703,8 @@ export default function SellerHubDashboard() {
         </div>
 
         {/* CARD 3: TOP 10 CLIENTES */}
-        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-6 flex flex-col min-h-[380px] transition-all">
-          <div className="flex justify-between items-center border-b border-divider/20 pb-3 mb-4">
+        <div className="bg-bg-primary border border-divider shadow-sm rounded-xl p-4.5 flex flex-col min-h-[380px] transition-all">
+          <div className="flex justify-between items-center border-b border-divider/20 pb-2 mb-3">
             <div className="flex items-center gap-2">
               <Users className="text-brand-500" size={18} />
               <h3 className="text-sm font-extrabold text-text-primary uppercase tracking-wider">Top 10 Clientes</h3>
@@ -804,8 +804,8 @@ export default function SellerHubDashboard() {
         </div>
 
         {/* CARD 4: TOP 10 PRODUTOS */}
-        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-6 flex flex-col min-h-[380px] transition-all">
-          <div className="flex justify-between items-center border-b border-divider/20 pb-3 mb-4">
+        <div className="bg-bg-primary border border-divider shadow-sm rounded-xl p-4.5 flex flex-col min-h-[380px] transition-all">
+          <div className="flex justify-between items-center border-b border-divider/20 pb-2 mb-3">
             <div className="flex items-center gap-2">
               <Trophy className="text-brand-500" size={18} />
               <h3 className="text-sm font-extrabold text-text-primary uppercase tracking-wider">Top 10 Produtos</h3>
