@@ -555,7 +555,7 @@ export default function ComparativoVendas() {
         <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 mb-6 border-b border-divider/40 pb-4">
           <div>
             <h3 className="font-extrabold text-text-primary text-xs uppercase tracking-widest">
-              Variação de Faturamento ({tipoPeriodo === 'mes' ? `${labelAnalise.toUpperCase()} VS ${labelComparacao.toUpperCase()}` : 'Período Personalizado'})
+              Faturamento ({tipoPeriodo === 'mes' ? `${labelAnalise.toUpperCase()} VS ${labelComparacao.toUpperCase()}` : 'Período Personalizado'})
             </h3>
           </div>
           
@@ -609,7 +609,7 @@ export default function ComparativoVendas() {
                   tipoGrafico === 'barras' ? "bg-bg-primary text-brand-600 dark:text-brand-400 shadow-sm" : "text-text-secondary hover:text-text-primary"
                 )}
               >
-                GRÁFICO DE BARRAS
+                BARRAS
               </button>
               <button
                 onClick={() => setTipoGrafico('linhas')}
@@ -618,7 +618,7 @@ export default function ComparativoVendas() {
                   tipoGrafico === 'linhas' ? "bg-bg-primary text-brand-600 dark:text-brand-400 shadow-sm" : "text-text-secondary hover:text-text-primary"
                 )}
               >
-                GRÁFICO DE LINHAS
+                LINHAS
               </button>
             </div>
             
