@@ -23,6 +23,7 @@ import Estoque from './pages/Estoque'
 import Vendas from './pages/Vendas'
 import Usuarios from './pages/Usuarios'
 import Grupos from './pages/Grupos'
+import GerenciadorMetas from './components/GerenciadorMetas'
 
 // BI Modules
 import BiDashboard from './pages/bi/BiDashboard'
@@ -129,6 +130,7 @@ export default function App() {
           <Route path="comparative" element={<ProtectedRoute permission="bi_comparative"><ComparativeAnalysisDashboard /></ProtectedRoute>} />
           <Route path="customer-analytics" element={<ProtectedRoute permission="bi_customer_analytics"><CustomerAnalyticsDashboard /></ProtectedRoute>} />
           <Route path="goals" element={<ProtectedRoute permission="bi_goals"><GoalsPerformanceDashboard /></ProtectedRoute>} />
+          <Route path="goals/manage" element={<ProtectedRoute permission="cadastro_metas"><GerenciadorMetas /></ProtectedRoute>} />
           <Route path="supplier" element={<ProtectedRoute permission="bi_supplier"><SupplierAnalyticsDashboard /></ProtectedRoute>} />
           <Route path="heatmap" element={<ProtectedRoute permission="bi_heatmap"><HeatmapDashboard /></ProtectedRoute>} />
           <Route path="ai-insights" element={<ProtectedRoute permission="bi_ai_insights"><AIInsightsDashboard /></ProtectedRoute>} />

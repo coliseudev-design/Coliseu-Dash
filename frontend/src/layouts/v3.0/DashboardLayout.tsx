@@ -4,7 +4,7 @@ import Sidebar from './Sidebar'
 import Header from './Header'
 import {
   LayoutDashboard, GitCompare, BarChart3, ShoppingCart, Truck,
-  Package, Wallet, Users, DollarSign, Trophy, Map, BrainCircuit, Shield
+  Package, Wallet, Users, DollarSign, Trophy, Map, BrainCircuit, Shield, Target
 } from 'lucide-react'
 
 const ROUTE_CONFIGS: Record<string, { label: string; icon: React.ElementType; color: string }> = {
@@ -21,6 +21,7 @@ const ROUTE_CONFIGS: Record<string, { label: string; icon: React.ElementType; co
   '/bi/comparative': { label: 'Lucratividade', icon: DollarSign, color: '#84CC16' },
   '/bi/customer-analytics': { label: 'Análise Geral', icon: Users, color: '#14B8A6' },
   '/bi/goals': { label: 'Análise de Metas', icon: Trophy, color: '#EAB308' },
+  '/bi/goals/manage': { label: 'Gestão de Metas', icon: Target, color: '#10B981' },
   '/bi/heatmap': { label: 'Mapa de Calor', icon: Map, color: '#0EA5E9' },
   '/bi/ai-insights': { label: 'Coliseu AI', icon: BrainCircuit, color: '#00A896' },
   '/usuarios': { label: 'Usuários', icon: Shield, color: '#EF4444' },

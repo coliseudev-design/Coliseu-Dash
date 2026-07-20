@@ -36,6 +36,7 @@ const BI_IA_MODULES = [
   { id: 'bi_comparative', label: 'Lucratividade' },
   { id: 'bi_customer_analytics', label: 'Análise de Clientes' },
   { id: 'bi_goals', label: 'Análise de Metas' },
+  { id: 'cadastro_metas', label: 'Cadastro de Metas' },
   { id: 'bi_heatmap', label: 'Mapa de Calor' },
   { id: 'bi_ai_insights', label: 'Coliseu AI' },
   { id: 'usuarios', label: 'Usuários & Configurações' }

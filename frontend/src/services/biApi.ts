@@ -79,5 +79,127 @@ export const BIService = {
   getSellerSummary: async (filter: BiPeriodFilter & { mes?: number; ano?: number; vendedor_id?: string }): Promise<any> => {
     const { data } = await api.get<any>('/bi/seller/summary', { params: filter });
     return data;
+  },
+
+  getSellerGoalsDetails: async (vendedorId: number, ano: number): Promise<any[]> => {
+    const { data } = await api.get<any[]>(`/bi/goals/seller-details`, { params: { vendedor_id: vendedorId, ano } });
+    return data;
+  },
+  getPromotoraGoalsDetails: async (promotoraId: number, ano: number, params?: { vendedor_id?: number; marca_nome?: string }): Promise<any[]> => {
+    const { data } = await api.get<any[]>(`/bi/goals/promotora-details`, { 
+      params: { 
+        promotora_id: promotoraId, 
+        ano,
+        vendedor_id: params?.vendedor_id,
+        marca_nome: params?.marca_nome
+      } 
+    });
+    return data;
+  },
+
+  // Metas Editor CRUD Endpoints
+  getGoalsList: async (filter: { tipo_entidade: string; metric: string; month?: number; year?: number }) => {
+    const { data } = await api.get('/goals/list', { params: filter });
+    return data;
+  },
+  saveSellerGoal: async (payload: {
+    vendedor_id: number;
+    mes: number;
+    ano: number;
+    valor_meta_total: number | null;
+    metas_por_marca: { marca_id: number; valor_meta: number }[];
+    tipo_meta: string;
+  }) => {
+    const { data } = await api.post('/goals/seller', payload);
+    return data;
+  },
+  savePromotoraGoal: async (payload: {
+    vendedor_id: number;
+    mes: number;
+    ano: number;
+    valor_meta_total: number | null;
+    metas_por_marca?: { marca_id: number; valor_meta: number }[];
+    metas_por_grupo?: { grupo_id: number; valor_meta: number }[];
+  }) => {
+    const { data } = await api.post('/goals/promotora', payload);
+    return data;
+  },
+  batchUpsertGoals: async (payload: {
+    tipo_meta: string;
+    tipo_entidade: string;
+    data_referencia: string;
+    periodo: string;
+    metas: { referencia_id: number; valor: number }[];
+  }) => {
+    const { data } = await api.post('/goals/batch', payload);
+    return data;
+  },
+  replicateGoal: async (payload: {
+    vendedor_id: number;
+    mes_origem: number;
+    ano_origem: number;
+    mes_destino: number;
+    ano_destino: number;
+    percentual_ajuste: number;
+    tipo_meta: string;
+  }) => {
+    const { data } = await api.post('/goals/replicate', payload);
+    return data;
+  },
+  bulkReplicateGoals: async (payload: any) => {
+    const { data } = await api.post('/goals/bulk-replicate', payload);
+    return data;
+  },
+  zeroGoals: async (payload: any) => {
+    const { data } = await api.post('/goals/zero', payload);
+    return data;
+  },
+  getSellerBrandGoals: async (vendedorId: number, params: { mes: number; ano: number; tipo_meta: string }) => {
+    const { data } = await api.get(`/goals/seller-brands/${vendedorId}`, { params });
+    return data;
+  },
+  getPromotoraBrandGoals: async (promotoraId: number, params: { mes: number; ano: number }) => {
+    const { data } = await api.get(`/goals/promotora-brands/${promotoraId}`, { params });
+    return data;
+  },
+  deleteGoal: async (id: number) => {
+    const { data } = await api.delete(`/goals/${id}`);
+    return data;
+  },
+  getBrandsList: async () => {
+    const { data } = await api.get('/goals/brands');
+    return data;
+  },
+  getSellersList: async () => {
+    const { data } = await api.get('/goals/sellers');
+    return data;
+  },
+  getLojasList: async () => {
+    const { data } = await api.get('/goals/lojas');
+    return data;
+  },
+  getGroupsList: async (): Promise<any[]> => {
+    const { data } = await api.get('/goals/groups');
+    return data;
+  },
+  saveGroup: async (payload: { id?: number; nome: string; marcas_ids: number[]; produtos_ids: string[] }) => {
+    const { data } = await api.post('/goals/groups', payload);
+    return data;
+  },
+  deleteGroup: async (id: number) => {
+    const { data } = await api.delete(`/goals/groups/${id}`);
+    return data;
+  },
+  getProductsByBrand: async (marcaId: number): Promise<any[]> => {
+    const { data } = await api.get(`/goals/products-by-brand/${marcaId}`);
+    return data;
+  },
+  getPromotoraGroupGoals: async (promotoraId: number, params: { mes: number; ano: number }) => {
+    const { data } = await api.get(`/goals/promotora-groups/${promotoraId}`, { params });
+    return data;
+  },
+  getSellerBrandProducts: async (vendedorId: number, brandName: string, mes: number, ano: number): Promise<any[]> => {
+    const { data } = await api.get('/goals/seller-brand-products', { params: { vendedor_id: vendedorId, brand: brandName, mes, ano } });
+    return data;
   }
 };

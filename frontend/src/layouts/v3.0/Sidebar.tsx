@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Wallet, LogOut, Shield,
   Settings, ChevronDown, ChevronUp, ChevronLeft, GitCompare,
   X, TrendingUp, Radar, UsersRound,
-  Factory, Banknote, CircleDollarSign, Boxes, BadgeCheck, ShoppingCart
+  Factory, Banknote, CircleDollarSign, Boxes, BadgeCheck, ShoppingCart, Target
 } from 'lucide-react'
 import clsx from 'clsx'
 import { useAuthStore } from '../../store/authStore'
@@ -88,6 +88,7 @@ const MENU_GROUPS = [
 ]
 
 const CONFIG_MODULES = [
+  { to: '/bi/goals/manage', label: 'Cadastro de Metas', icon: Target, id: 'cadastro_metas', color: '#10B981' },
   { to: '/usuarios', label: 'Usuários',         icon: Shield, id: 'usuarios', color: '#EF4444' },
   { to: '/grupos',   label: 'Grupos de Acesso', icon: Shield, id: 'usuarios', color: '#EC4899' },
 ]
