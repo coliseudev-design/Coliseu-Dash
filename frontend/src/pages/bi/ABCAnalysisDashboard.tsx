@@ -159,8 +159,8 @@ export default function InventoryManagementDashboard() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 text-text-secondary gap-3">
-        <Loader2 className="animate-spin text-brand-500" size={24} />
+      <div className="flex items-center justify-center h-64 gap-3 text-text-secondary">
+        <div className="w-9 h-9 rounded-full border-[3px] border-indigo-500 border-t-transparent animate-spin" />
         <span className="text-sm font-semibold">Carregando Dinâmica de Inventário...</span>
       </div>
     );
