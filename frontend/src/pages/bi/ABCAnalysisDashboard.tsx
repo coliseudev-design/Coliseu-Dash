@@ -6,7 +6,7 @@ import { BiPeriodFilter } from '../../types/bi.types';
 import {
   DollarSign, Box, AlertTriangle, Search, X, Eye, EyeOff,
   Boxes, TrendingUp, TrendingDown, Clock, Layers, BarChart2,
-  Package2, ChevronLeft, ChevronRight, Filter
+  Package2, ChevronLeft, ChevronRight, Filter, CircleDollarSign
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
