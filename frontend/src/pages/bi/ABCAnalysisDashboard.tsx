@@ -159,9 +159,9 @@ export default function InventoryManagementDashboard() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64 gap-3 text-text-secondary">
-        <div className="w-9 h-9 rounded-full border-[3px] border-indigo-500 border-t-transparent animate-spin" />
-        <span className="text-sm font-semibold">Carregando Gestão de Inventário...</span>
+      <div className="flex flex-col items-center justify-center h-64 text-text-secondary gap-3">
+        <Loader2 className="animate-spin text-brand-500" size={24} />
+        <span className="text-sm font-semibold">Carregando Dinâmica de Inventário...</span>
       </div>
     );
   }
@@ -172,7 +172,7 @@ export default function InventoryManagementDashboard() {
       {/* ══ HEADER ══════════════════════════════════════════ */}
       <div className="flex flex-wrap gap-4 items-start justify-between">
         <div>
-          <h1 className="text-xl font-black text-text-primary tracking-tight">Gestão de Inventário</h1>
+          <h1 className="text-xl font-black text-text-primary tracking-tight">DINÂMICA E SAÚDE DO INVENTÁRIO</h1>
           <p className="text-sm text-text-secondary mt-0.5">Capital, giro e saúde do portfólio de produtos</p>
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -197,8 +197,8 @@ export default function InventoryManagementDashboard() {
             Icon: DollarSign, color: '#10B981', trend: +2.4, alert: false
           },
           {
-            label: 'Valor a Venda', value: fmtCompact(kpis.valor_estoque_venda), sub: 'Preço de venda',
-            Icon: TrendingUp, color: '#4F46E5', trend: +1.8, alert: false
+            label: 'Receita Potencial em Estoque', value: fmtCompact(kpis.valor_estoque_venda), sub: 'Preço de venda',
+            Icon: CircleDollarSign, color: '#4F46E5', trend: +1.8, alert: false
           },
           {
             label: 'Itens em Estoque', value: formatNum(kpis.total_volume), sub: 'Unidades físicas',
@@ -468,7 +468,7 @@ export default function InventoryManagementDashboard() {
               <Boxes size={15} className="text-indigo-500" />
             </div>
             <div>
-              <h3 className="text-sm font-black text-text-primary">Listagem Detalhada de Produtos</h3>
+              <h3 className="text-sm font-black text-text-primary">Análise Estratégica: Curva ABC</h3>
               <p className="text-[10px] text-text-secondary">{filteredData.length} itens encontrados</p>
             </div>
           </div>

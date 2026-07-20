@@ -46,7 +46,7 @@ export default function FinancialIntelligenceDashboard() {
     return (
       <div className="flex items-center justify-center h-64 text-text-secondary">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-500 mr-3"></div>
-        Carregando Inteligência Financeira...
+        Carregando Gestão de Caixa...
       </div>
     );
   }
@@ -106,8 +106,8 @@ export default function FinancialIntelligenceDashboard() {
         {/* Saldo Real */}
         <div className="bg-brand-500/[0.04] border-2 border-brand-500/80 shadow-[0_8px_30px_rgba(13,148,136,0.08)] rounded-2xl p-5 flex flex-col justify-between hover:scale-[1.01] transition-transform duration-300 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-16 h-16 bg-brand-500/10 rounded-full -mr-6 -mt-6"></div>
-          <div className="flex items-center gap-2 text-brand-600 dark:text-brand-400 mb-3 text-[10px] font-black uppercase tracking-widest relative z-10">
-            <Wallet size={16} className="text-brand-500 stroke-[2.5]" /> Saldo Real
+          <div className="flex items-center gap-2 text-brand-600 dark:text-brand-400 mb-3 text-[10px] font-black tracking-widest relative z-10">
+            <Wallet size={16} className="text-brand-500 stroke-[2.5]" /> Disponibilidade em Caixa
           </div>
           <div className="relative z-10">
             <div
@@ -273,7 +273,7 @@ export default function FinancialIntelligenceDashboard() {
       {/* EVOLUÇÃO MENSAL */}
       <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5">
         <h3 className="font-bold text-text-primary text-sm flex items-center gap-2 mb-6">
-          <BarChart3 size={16} className="text-brand-500"/> Evolução Mensal (Recebido vs Pago)
+          <BarChart3 size={16} className="text-brand-500"/> Fluxo Realizado: Entradas vs Saídas
         </h3>
         <div className="h-[220px] sm:h-[280px] lg:h-[320px] w-full">
           <ResponsiveContainer width="100%" height="100%">

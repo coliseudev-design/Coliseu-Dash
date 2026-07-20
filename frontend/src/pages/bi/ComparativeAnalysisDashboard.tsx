@@ -61,7 +61,7 @@ export default function ProfitabilityDashboard() {
       <div className="flex flex-col items-center justify-center min-h-[50vh] text-brand-500 space-y-4">
         <LoaderSpinner />
         <div className="text-center">
-          <p className="text-text-primary text-sm font-black uppercase tracking-widest animate-pulse">Carregando Painel de Lucratividade...</p>
+          <p className="text-text-primary text-sm font-black uppercase tracking-widest animate-pulse">Carregando Painel de Rentabilidade...</p>
           <p className="text-xs text-text-secondary mt-1">Processando margens e faturamentos da empresa...</p>
         </div>
       </div>
@@ -221,10 +221,10 @@ export default function ProfitabilityDashboard() {
           <div className="text-[9px] text-text-secondary font-bold">Custo dos produtos vendidos</div>
         </div>
 
-        {/* Card 3: Lucro Bruto */}
+        {/* Card 3: Resultado Operacional */}
         <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-4 sm:p-5 flex flex-col justify-between overflow-hidden">
           <div className="flex items-center gap-2 text-[9px] font-black text-text-secondary/70 uppercase tracking-widest mb-3">
-            <div className="p-1.5 bg-amber-500/10 text-amber-500 rounded-lg"><TrendingUp size={14} /></div> LUCRO BRUTO (RB)
+            <div className="p-1.5 bg-amber-500/10 text-amber-500 rounded-lg"><TrendingUp size={14} /></div> RESULTADO OPERACIONAL
           </div>
           <div 
             className="text-lg xl:text-xl font-black text-text-primary mb-0.5 font-mono truncate"
@@ -253,7 +253,7 @@ export default function ProfitabilityDashboard() {
         {/* Tabela de Marcas (7/12) */}
         <div className="bg-bg-primary border border-divider shadow-card rounded-3xl p-5 flex flex-col lg:col-span-7">
           <div className="mb-4">
-            <h3 className="font-black text-text-primary text-xs uppercase tracking-wider">Resultados por Marca</h3>
+            <h3 className="font-black text-text-primary text-xs tracking-wider">Rentabilidade por Fabricante</h3>
             <p className="text-[9px] text-text-secondary/60 font-bold uppercase mt-0.5">Top 15 marcas por rentabilidade comercial.</p>
           </div>
           <div className="overflow-x-auto">
@@ -292,7 +292,7 @@ export default function ProfitabilityDashboard() {
         {/* Gráfico de Barras Horizontais Customizado por Marca (5/12) */}
         <div className="bg-bg-primary border border-divider shadow-card rounded-3xl p-5 flex flex-col lg:col-span-5 justify-between">
           <div className="mb-4">
-            <h3 className="font-black text-text-primary text-xs uppercase tracking-wider">Lucratividade por Marca</h3>
+            <h3 className="font-black text-text-primary text-xs tracking-wider">Rentabilidade por Fabricante</h3>
             <p className="text-[9px] text-text-secondary/60 font-bold uppercase mt-0.5">Margem de contribuição por fabricante</p>
           </div>
 
@@ -332,7 +332,7 @@ export default function ProfitabilityDashboard() {
         {/* Tabela de Grupos (7/12) */}
         <div className="bg-bg-primary border border-divider shadow-card rounded-3xl p-5 flex flex-col lg:col-span-7">
           <div className="mb-4">
-            <h3 className="font-black text-text-primary text-xs uppercase tracking-wider">Resultados por Grupo</h3>
+            <h3 className="font-black text-text-primary text-xs tracking-wider">Desempenho por Categoria</h3>
             <p className="text-[9px] text-text-secondary/60 font-bold uppercase mt-0.5">Top 15 grupos com maior margem de vendas.</p>
           </div>
           <div className="overflow-x-auto">
@@ -371,7 +371,7 @@ export default function ProfitabilityDashboard() {
         {/* Gráfico de Barras Horizontais Customizado por Grupo (5/12) */}
         <div className="bg-bg-primary border border-divider shadow-card rounded-3xl p-5 flex flex-col lg:col-span-5 justify-between">
           <div className="mb-4">
-            <h3 className="font-black text-text-primary text-xs uppercase tracking-wider">Lucratividade por Grupo</h3>
+            <h3 className="font-black text-text-primary text-xs tracking-wider">Desempenho por Categoria</h3>
             <p className="text-[9px] text-text-secondary/60 font-bold uppercase mt-0.5">Margem de contribuição por grupo (Top 15)</p>
           </div>
 
@@ -411,7 +411,7 @@ export default function ProfitabilityDashboard() {
         {/* Tabela de Vendedores (7/12) */}
         <div className="bg-bg-primary border border-divider shadow-card rounded-3xl p-5 flex flex-col lg:col-span-7">
           <div className="mb-4">
-            <h3 className="font-black text-text-primary text-xs uppercase tracking-wider">Resultados por Vendedor</h3>
+            <h3 className="font-black text-text-primary text-xs tracking-wider">Contribuição por Executivo</h3>
             <p className="text-[9px] text-text-secondary/60 font-bold uppercase mt-0.5">Desempenho financeiro e rentabilidade comercial.</p>
           </div>
           <div className="overflow-x-auto">
@@ -450,7 +450,7 @@ export default function ProfitabilityDashboard() {
         {/* Gráfico de Barras Horizontais Customizado por Vendedor (5/12) */}
         <div className="bg-bg-primary border border-divider shadow-card rounded-3xl p-5 flex flex-col lg:col-span-5 justify-between">
           <div className="mb-4">
-            <h3 className="font-black text-text-primary text-xs uppercase tracking-wider">Lucratividade por Vendedor</h3>
+            <h3 className="font-black text-text-primary text-xs tracking-wider">Contribuição por Executivo</h3>
             <p className="text-[9px] text-text-secondary/60 font-bold uppercase mt-0.5">Desempenho de margem e faturamento de vendas</p>
           </div>
 
@@ -490,7 +490,7 @@ export default function ProfitabilityDashboard() {
         {/* Tabela de Cidades (7/12) */}
         <div className="bg-bg-primary border border-divider shadow-card rounded-3xl p-5 flex flex-col lg:col-span-7">
           <div className="mb-4">
-            <h3 className="font-black text-text-primary text-xs uppercase tracking-wider">Resultados por Cidade</h3>
+            <h3 className="font-black text-text-primary text-xs tracking-wider">Resultados por Cidade</h3>
             <p className="text-[9px] text-text-secondary/60 font-bold uppercase mt-0.5">Faturamento e margens de vendas por município.</p>
           </div>
           <div className="overflow-x-auto">
@@ -529,7 +529,7 @@ export default function ProfitabilityDashboard() {
         {/* Gráfico de Barras Horizontais Customizado por Cidade (5/12) */}
         <div className="bg-bg-primary border border-divider shadow-card rounded-3xl p-5 flex flex-col lg:col-span-5 justify-between">
           <div className="mb-4">
-            <h3 className="font-black text-text-primary text-xs uppercase tracking-wider">Lucratividade por Cidade</h3>
+            <h3 className="font-black text-text-primary text-xs tracking-wider">Rentabilidade por Cidade</h3>
             <p className="text-[9px] text-text-secondary/60 font-bold uppercase mt-0.5">Margem de contribuição por município</p>
           </div>
 
@@ -565,7 +565,7 @@ export default function ProfitabilityDashboard() {
 
       {/* ANÁLISE DE LUCRATIVIDADE (RODAPÉ DO MODELO) */}
       <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 animate-in fade-in duration-300">
-        <h3 className="font-black text-text-primary text-xs uppercase tracking-wider mb-2">Análise de Lucratividade</h3>
+        <h3 className="font-black text-text-primary text-xs tracking-wider mb-2">Análise de Rentabilidade</h3>
         <p className="text-xs text-text-secondary leading-relaxed font-semibold">
           A lucratividade de <span className="font-black text-text-primary font-mono">{overview.margem_pct.toFixed(2)}%</span> indica que para cada R$ 100,00 vendidos, a empresa retém <span className="font-black text-emerald-500 font-mono">R$ {overview.margem_pct.toFixed(2)}</span> após cobrir todos os custos diretos dos produtos.
         </p>

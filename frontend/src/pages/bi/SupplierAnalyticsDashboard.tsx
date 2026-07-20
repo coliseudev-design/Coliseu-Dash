@@ -115,7 +115,7 @@ export default function SupplierAnalyticsDashboard() {
     return (
       <div className="flex items-center justify-center h-64 text-text-secondary">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-500 mr-3"></div>
-        Carregando Hub do Fornecedor...
+        Carregando Performance de Parceiros...
       </div>
     );
   }
@@ -307,7 +307,7 @@ export default function SupplierAnalyticsDashboard() {
         </div>
         <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between">
           <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">
-            <ShoppingCart size={14} className="text-cyan-500" /> Ticket Médio
+            <ShoppingCart size={14} className="text-cyan-500" /> Valor Médio de Compra
           </div>
           <div>
             <div className="text-xl font-extrabold text-text-primary mb-1">{formatBRL(ticketMedio)}</div>
@@ -474,12 +474,12 @@ export default function SupplierAnalyticsDashboard() {
       {/* INTELIGÊNCIA DE NEGOCIAÇÃO */}
       <div className="mt-8">
         <h3 className="font-bold text-text-primary text-base flex items-center gap-2 mb-4">
-          <ShieldCheck size={20} className="text-brand-500" /> Inteligência de Negociação
+          <ShieldCheck size={20} className="text-brand-500" /> Insights de Negociação (IA)
         </h3>
         
         <div className="bg-bg-primary border border-border shadow-card rounded-xl overflow-hidden flex flex-col">
           <div className="p-4 border-b border-divider">
-            <h3 className="font-bold text-text-primary text-sm uppercase tracking-wider">Recomendações Estratégicas</h3>
+            <h3 className="font-bold text-text-primary text-sm tracking-wider">Insights de Negociação (IA)</h3>
           </div>
           <div className="p-5 space-y-4">
             <div className="bg-success/5 border border-success/20 rounded-lg p-4 flex gap-4">
@@ -605,11 +605,11 @@ export default function SupplierAnalyticsDashboard() {
               </div>
             </div>
 
-            {/* 3. Recomendações Estratégicas */}
+            {/* 3. Insights de Negociação */}
             <div className="bg-bg-primary border border-border shadow-card rounded-xl overflow-hidden flex flex-col">
-              <div className="p-4 border-b border-divider bg-bg-secondary/30">
+               <div className="p-4 border-b border-divider bg-bg-secondary/30">
                 <h3 className="font-bold text-text-primary text-sm flex items-center gap-2">
-                  <ShieldCheck size={16} className="text-warning" /> 💡 Recomendações Estratégicas
+                  <ShieldCheck size={16} className="text-warning" /> 💡 Insights de Negociação (IA)
                 </h3>
               </div>
               <div className="p-5 space-y-4">
@@ -709,8 +709,8 @@ export default function SupplierAnalyticsDashboard() {
             {/* 3. Alertas e recomendações */}
             <div className="bg-bg-primary border border-border shadow-card rounded-xl overflow-hidden flex flex-col hover:shadow-md transition-shadow">
               <div className="p-4 border-b border-divider bg-bg-secondary/20">
-                <h3 className="font-bold text-text-primary text-xs uppercase tracking-wider flex items-center gap-2">
-                  <ShieldAlert size={15} className="text-warning" /> Alertas e Recomendações
+                <h3 className="font-bold text-text-primary text-xs tracking-wider flex items-center gap-2">
+                  <ShieldAlert size={15} className="text-warning" /> Alertas e Insights
                 </h3>
               </div>
               <div className="p-5 space-y-4">

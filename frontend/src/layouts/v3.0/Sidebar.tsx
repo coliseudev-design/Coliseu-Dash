@@ -20,63 +20,71 @@ interface Props {
 const MENU_GROUPS = [
   {
     id: 'corporativas',
-    label: 'Corporativo',
+    label: 'Visão Executiva',
     icon: LayoutDashboard,
     color: '#3B82F6',
     items: [
-      { to: '/', label: 'Painel Geral', icon: LayoutDashboard, exact: true, id: 'inicio', color: '#3B82F6', iconClass: 'icon-corporativo' },
-      { to: '/comparativo-vendas', label: 'Comparativos', icon: GitCompare, exact: true, id: 'inicio', color: '#10B981', iconClass: 'icon-corporativo' },
+      { to: '/', label: 'Cockpit de Resultados', icon: LayoutDashboard, exact: true, id: 'inicio', color: '#3B82F6', iconClass: 'icon-corporativo' },
+      { to: '/comparativo-vendas', label: 'Análise Comparativa', icon: GitCompare, exact: true, id: 'inicio', color: '#10B981', iconClass: 'icon-corporativo' },
     ]
   },
   {
     id: 'comercial',
-    label: 'Comercial',
+    label: 'Performance Comercial',
     icon: TrendingUp,
     color: '#F97316',
     items: [
-      { to: '/bi', label: 'Vendas', icon: TrendingUp, exact: true, id: 'bi_sales', color: '#10B981', iconClass: 'icon-comercial' },
-      { to: '/hub-vendedor', label: 'Vendedores', icon: BadgeCheck, exact: true, id: 'bi_sales', color: '#F97316', iconClass: 'icon-comercial' },
+      { to: '/bi', label: 'Monitor de Vendas', icon: TrendingUp, exact: true, id: 'bi_sales', color: '#10B981', iconClass: 'icon-comercial' },
+      { to: '/hub-vendedor', label: 'Desempenho da Equipe', icon: BadgeCheck, exact: true, id: 'bi_sales', color: '#F97316', iconClass: 'icon-comercial' },
     ]
   },
   {
     id: 'clientes',
-    label: 'Clientes',
+    label: 'Inteligência de Clientes',
     icon: UsersRound,
     color: '#EC4899',
     items: [
-      { to: '/bi/customer-analytics', label: 'Análise Geral', icon: UsersRound, id: 'bi_customer_analytics', color: '#14B8A6', iconClass: 'icon-clientes' },
-      { to: '/bi/customer', label: 'Perfil 360°', icon: Radar, id: 'bi_customer', color: '#EC4899', iconClass: 'icon-clientes' },
-      { to: '/bi/supplier', label: 'Fornecedores', icon: Factory, id: 'bi_supplier', color: '#F59E0B', iconClass: 'icon-clientes' },
+      { to: '/bi/customer-analytics', label: 'Visão Geral da Carteira', icon: UsersRound, id: 'bi_customer_analytics', color: '#14B8A6', iconClass: 'icon-clientes' },
+      { to: '/bi/customer', label: 'Customer 360', icon: Radar, id: 'bi_customer', color: '#EC4899', iconClass: 'icon-clientes' },
+    ]
+  },
+  {
+    id: 'fornecedores',
+    label: 'Gestão de Fornecedores',
+    icon: Factory,
+    color: '#F59E0B',
+    items: [
+      { to: '/bi/supplier', label: 'Performance de Parceiros', icon: Factory, id: 'bi_supplier', color: '#F59E0B', iconClass: 'icon-fornecedores' },
     ]
   },
   {
     id: 'controladoria',
-    label: 'Finanças',
+    label: 'Saúde Financeira',
     icon: Banknote,
     color: '#22C55E',
     items: [
-      { to: '/bi/finance', label: 'Fluxo de Caixa', icon: Banknote, id: 'bi_finance', color: '#22C55E', iconClass: 'icon-financas' },
-      { to: '/bi/comparative', label: 'Lucratividade', icon: CircleDollarSign, id: 'bi_comparative', color: '#84CC16', iconClass: 'icon-financas' },
+      { to: '/bi/finance', label: 'Gestão de Caixa', icon: Banknote, id: 'bi_finance', color: '#22C55E', iconClass: 'icon-financas' },
+      { to: '/bi/comparative', label: 'Análise de Rentabilidade', icon: CircleDollarSign, id: 'bi_comparative', color: '#84CC16', iconClass: 'icon-financas' },
     ]
   },
   {
     id: 'operacoes',
-    label: 'Operações',
+    label: 'Supply Chain & Estoque',
     icon: Boxes,
     color: '#06B6D4',
     items: [
-      { to: '/bi/abc', label: 'Giro de Estoque', icon: Boxes, id: 'bi_abc', color: '#06B6D4', iconClass: 'icon-operacoes' },
+      { to: '/bi/abc', label: 'Dinâmica de Inventário', icon: Boxes, id: 'bi_abc', color: '#06B6D4', iconClass: 'icon-operacoes' },
     ]
   },
   {
     id: 'compras',
-    label: 'Compras (IA)',
+    label: 'Compras Inteligentes (IA)',
     icon: ShoppingCart,
     color: '#A855F7',
     items: [
       { 
         to: '/bi/compras-ia', 
-        label: 'Compras (IA)', 
+        label: 'Recomendações de Compra', 
         icon: ShoppingCart, 
         id: 'bi_compras_ia', 
         color: '#A855F7', 
