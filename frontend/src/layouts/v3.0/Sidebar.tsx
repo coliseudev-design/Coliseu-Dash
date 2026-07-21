@@ -147,15 +147,6 @@ function IconBadge({
 
 export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }: Props) {
   const user = useAuthStore((s) => s.user)
-  const [configOpen, setConfigOpen] = useState(false)
-  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
-    corporativas: true,
-    comercial: false,
-    clientes: false,
-    controladoria: false,
-    operacoes: false,
-    compras: false,
-  })
   const [isComingSoonOpen, setIsComingSoonOpen] = useState(false)
   const location = useLocation()
   const navRef = useRef<HTMLElement>(null)
@@ -168,23 +159,6 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }: 
     }
   }, [location.pathname])
 
-  // Auto-expandir apenas o grupo que possui a rota ativa (e fechar todos os outros)
-  useEffect(() => {
-    const activeGroup = MENU_GROUPS.find(g => 
-      g.items.some(item => location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to)))
-    )
-    if (activeGroup) {
-      setExpandedGroups({
-        corporativas: activeGroup.id === 'corporativas',
-        comercial: activeGroup.id === 'comercial',
-        clientes: activeGroup.id === 'clientes',
-        controladoria: activeGroup.id === 'controladoria',
-        operacoes: activeGroup.id === 'operacoes',
-        compras: activeGroup.id === 'compras',
-      })
-    }
-  }, [location.pathname])
-
   // Salvar posição de scroll ao rolar
   const handleScroll = (e: React.UIEvent<HTMLElement>) => {
     sessionStorage.setItem('sidebar-scroll', String(e.currentTarget.scrollTop))
@@ -193,21 +167,6 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }: 
   const hasAccess = (moduleId: string) => {
     if (user?.role === 'master') return true
     return user?.permissions?.includes(moduleId) || false
-  }
-
-  // Alterna o grupo clicado e fecha todos os demais para manter a tela limpa e sem rolagens
-  const toggleGroup = (groupId: string) => {
-    setExpandedGroups(prev => {
-      const isAlreadyExpanded = prev[groupId]
-      return {
-        corporativas: !isAlreadyExpanded && groupId === 'corporativas',
-        comercial: !isAlreadyExpanded && groupId === 'comercial',
-        clientes: !isAlreadyExpanded && groupId === 'clientes',
-        controladoria: !isAlreadyExpanded && groupId === 'controladoria',
-        operacoes: !isAlreadyExpanded && groupId === 'operacoes',
-        compras: !isAlreadyExpanded && groupId === 'compras',
-      }
-    })
   }
 
   const groupsWithAccess = MENU_GROUPS.map(group => {
@@ -408,89 +367,38 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }: 
         <nav 
           ref={navRef}
           onScroll={handleScroll}
-          className="flex-1 overflow-y-auto py-2 px-2 flex flex-col space-y-0.5"
+          className="flex-1 overflow-y-auto py-2 px-2 flex flex-col space-y-1.5"
         >
-          {groupsWithAccess.map((group) => {
-            const isExpanded = expandedGroups[group.id]
-            const hasActiveRoute = group.items.some(item => location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to)))
-            
-            return (
-              <div key={group.id} className="mb-1">
-                {/* Header do Grupo Accordion */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (collapsed) {
-                      onToggleCollapse()
-                    } else {
-                      toggleGroup(group.id)
-                    }
-                  }}
-                  title={group.label}
-                  className={clsx(
-                    "w-full flex items-center px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-150 mb-0.5 group border cursor-pointer",
-                    hasActiveRoute && !collapsed
-                      ? "text-text-primary bg-white dark:bg-slate-900/60 font-extrabold shadow-[0_10px_30px_-5px_rgba(0,0,0,0.05),_0_5px_15px_-3px_rgba(0,0,0,0.02)] border-slate-200/40 dark:border-slate-800/40"
-                      : isExpanded && !collapsed
-                        ? "text-text-primary bg-bg-secondary/40 border-transparent shadow-[0_4px_12px_rgba(0,0,0,0.02)] font-extrabold"
-                        : "text-text-secondary border-transparent hover:bg-bg-secondary/20 hover:text-text-primary",
-                    collapsed ? "lg:justify-center lg:px-0" : "justify-between"
-                  )}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <IconBadge icon={group.icon} color={group.color} isActive={hasActiveRoute} />
-                    <span className={clsx("truncate text-left font-black tracking-wide", collapsed ? "lg:hidden block" : "block")}>
-                      {group.label}
-                    </span>
-                  </div>
-                  {!collapsed && (isExpanded ? <ChevronUp size={12} className="text-text-muted" /> : <ChevronDown size={12} className="text-text-muted" />)}
-                </button>
-
-                {/* Submenus Retráteis com Efeito de Vidro (Glassmorphism) */}
-                {!collapsed && isExpanded && (
-                  <div className="mt-1 pl-1.5 pr-1.5 py-1.5 space-y-0.5 ml-4 mr-1 bg-white/20 dark:bg-slate-900/25 backdrop-blur-md border border-white/10 dark:border-white/5 shadow-[0_4px_15px_rgba(0,0,0,0.03)] rounded-xl animate-in slide-in-from-top-1 duration-150">
-                    {group.items.map((item) => (
-                      <NavItem key={item.to} {...item} />
-                    ))}
-                  </div>
-                )}
+          {groupsWithAccess.map((group) => (
+            <div key={group.id} className="mb-1">
+              {!collapsed && (
+                <div className="px-2.5 pt-2 pb-1 text-[9px] font-black text-text-secondary/60 uppercase tracking-widest flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: group.color }} />
+                  {group.label}
+                </div>
+              )}
+              <div className="space-y-0.5">
+                {group.items.map((item) => (
+                  <NavItem key={item.to} {...item} />
+                ))}
               </div>
-            )
-          })}
+            </div>
+          ))}
 
           {/* Configurações */}
           {allowedConfigModules.length > 0 && (
             <div className="mt-auto pt-3 border-t border-divider/40">
-              <button
-                type="button"
-                onClick={() => {
-                  if (collapsed) {
-                    onToggleCollapse()
-                  } else {
-                    setConfigOpen(!configOpen)
-                  }
-                }}
-                className={clsx(
-                  "w-full flex items-center px-2.5 py-2 rounded-xl text-sm font-medium text-text-secondary hover:bg-bg-secondary/60 hover:text-text-primary transition-all duration-150 mb-0.5 group cursor-pointer",
-                  collapsed ? "lg:justify-center lg:px-0" : "justify-between"
-                )}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-text-secondary/8 group-hover:bg-text-secondary/15 transition-colors">
-                    <Settings size={16} className="text-text-secondary" strokeWidth={1.8} />
-                  </div>
-                  <span className={clsx("truncate", collapsed ? "lg:hidden block" : "block")}>Configurações</span>
-                </div>
-                {!collapsed && (configOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}
-              </button>
-
-              {configOpen && !collapsed && (
-                <div className="mt-1 space-y-0.5 pl-2">
-                  {allowedConfigModules.map((m) => (
-                    <NavItem key={m.to} {...m} />
-                  ))}
+              {!collapsed && (
+                <div className="px-2.5 pb-1 text-[9px] font-black text-text-secondary/60 uppercase tracking-widest flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                  CONFIGURAÇÕES
                 </div>
               )}
+              <div className="space-y-0.5">
+                {allowedConfigModules.map((m) => (
+                  <NavItem key={m.to} {...m} />
+                ))}
+              </div>
             </div>
           )}
         </nav>
