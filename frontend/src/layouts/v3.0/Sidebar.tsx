@@ -54,7 +54,7 @@ const MENU_GROUPS = [
     icon: Factory,
     color: '#F59E0B',
     items: [
-      { to: '/bi/supplier', label: 'Performance de Parceiros', icon: Factory, id: 'bi_supplier', color: '#F59E0B', iconClass: 'icon-fornecedores' },
+      { to: '/bi/supplier', label: 'Hub do Fornecedor', icon: Factory, id: 'bi_supplier', color: '#F59E0B', iconClass: 'icon-fornecedores' },
     ]
   },
   {
