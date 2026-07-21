@@ -168,7 +168,7 @@ export default function Login() {
     <div className="min-h-screen flex w-full">
       
       {/* Esquerda: Showcase / Criativo com Dash e Imagens (Escondido no Mobile) */}
-      <div className="hidden lg:flex w-3/5 bg-gradient-to-br from-slate-900 via-brand-900 to-slate-900 relative overflow-hidden flex-col justify-between p-12">
+      <div className="hidden lg:flex w-1/2 bg-gradient-to-br from-slate-900 via-brand-900 to-slate-900 relative overflow-hidden flex-col justify-between p-12">
         {/* Efeitos de fundo (Círculos desfocados) */}
         <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-brand-500/30 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-blue-500/20 rounded-full blur-3xl pointer-events-none" />
@@ -250,7 +250,7 @@ export default function Login() {
       </div>
 
       {/* Direita: Formulário de Login Atualizado / Alteração de Senha */}
-      <div className="w-full lg:w-2/5 bg-white dark:bg-slate-950 flex flex-col justify-center px-6 sm:px-12 lg:px-14 xl:px-16 relative overflow-y-auto py-8">
+      <div className="w-full lg:w-1/2 bg-white dark:bg-slate-950 flex flex-col justify-center px-6 sm:px-12 lg:px-14 xl:px-16 relative overflow-y-auto py-8">
         
         {/* Mobile Header */}
         <div className="lg:hidden flex items-center gap-2 mb-8">
@@ -260,17 +260,17 @@ export default function Login() {
           <span className="text-text-primary font-heading font-bold text-lg">Coliseu Dash</span>
         </div>
 
-        <div className="w-full max-w-sm mx-auto flex flex-col items-center">
+        <div className="w-full max-w-md mx-auto flex flex-col items-center">
           {!requiresPasswordChange ? (
             <>
               {/* Header do Formulário: Logo, Headline, Social Links */}
-              <div className="text-center mb-6 flex flex-col items-center w-full">
-                {/* Logo */}
-                <div className="mb-4 flex items-center justify-center">
+              <div className="text-center mb-8 flex flex-col items-center w-full">
+                {/* Logo Ampliado e Estruturado */}
+                <div className="mb-6 flex items-center justify-center">
                   <img 
                     src="/logo-coliseu.png" 
                     alt="Coliseu Sistemas" 
-                    className="h-14 sm:h-16 w-auto object-contain"
+                    className="h-20 sm:h-24 lg:h-28 w-auto max-w-[320px] object-contain"
                     onError={(e) => {
                       e.currentTarget.style.display = 'none';
                     }}
@@ -278,19 +278,19 @@ export default function Login() {
                 </div>
 
                 {/* Headline */}
-                <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-tight mb-2">
+                <h2 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight leading-[1.15] mb-3">
                   Gerencie <span className="text-[#0d9488]">tudo.</span> Cresça<br />mais rápido.
                 </h2>
 
                 {/* Links Row: Site & Instagram */}
-                <div className="flex items-center justify-center gap-3 text-xs font-medium text-slate-500 dark:text-slate-400 mt-1">
+                <div className="flex items-center justify-center gap-4 text-xs font-semibold text-slate-500 dark:text-slate-400 mt-1">
                   <a 
                     href="https://www.coliseusistemas.com.br" 
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 hover:text-[#0d9488] transition-colors"
                   >
-                    <Globe className="w-3.5 h-3.5 text-[#0d9488]" />
+                    <Globe className="w-4 h-4 text-[#0d9488]" />
                     <span>www.coliseusistemas.com.br</span>
                   </a>
                   <a 
@@ -299,7 +299,7 @@ export default function Login() {
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 hover:text-pink-600 transition-colors"
                   >
-                    <Instagram className="w-3.5 h-3.5 text-pink-500" />
+                    <Instagram className="w-4 h-4 text-pink-500" />
                     <span>Instagram</span>
                   </a>
                 </div>
