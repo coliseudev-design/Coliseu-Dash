@@ -8,7 +8,7 @@ import {
 } from 'lucide-react'
 
 const ROUTE_CONFIGS: Record<string, { label: string; icon: React.ElementType; color: string }> = {
-  '/': { label: 'COCKPIT DE RESULTADOS', icon: LayoutDashboard, color: '#3B82F6' },
+  '/': { label: 'VISÃO ESTRATÉGICA', icon: LayoutDashboard, color: '#3B82F6' },
   '/comparativo-vendas': { label: 'ANÁLISE COMPARATIVA', icon: GitCompare, color: '#10B981' },
   '/hub-vendedor': { label: 'DESEMPENHO DA EQUIPE', icon: Trophy, color: '#F97316' },
   '/bi': { label: 'MONITOR DE VENDAS', icon: BarChart3, color: '#10B981' },

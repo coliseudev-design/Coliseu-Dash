@@ -59,7 +59,7 @@ const TOP_MENU_GROUPS = [
     icon: LayoutDashboard,
     color: '#3B82F6',
     items: [
-      { to: '/', label: 'Cockpit de Resultados', icon: LayoutDashboard, exact: true, id: 'inicio', color: '#3B82F6' },
+      { to: '/', label: 'Visão Estratégica', icon: LayoutDashboard, exact: true, id: 'inicio', color: '#3B82F6' },
       { to: '/comparativo-vendas', label: 'Análise Comparativa', icon: GitCompare, exact: true, id: 'inicio', color: '#10B981' },
     ]
   },
