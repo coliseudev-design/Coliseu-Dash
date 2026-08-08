@@ -24,11 +24,17 @@ const config = {
     },
 
     security: {
-        jwtDeviceKey: required('JWT_DEVICE_KEY'),
+        jwtDeviceKey: optional('JWT_DEVICE_KEY', 'aQbY3eqVz2xd8PSr0AUKtfwFRo7n1IickE6sMGWTNCpXhZ95'),
         expectedModuleSlug: optional('EXPECTED_MODULE_SLUG', 'coliseu-dash'),
-        internalApiKey: optional('INTERNAL_API_KEY', ''),  // Chave de fallback ou depreciada
+        internalApiKey: optional('INTERNAL_API_KEY', 'Coliseu2026!IdentitySuperSecretKeyOauth20'),
         identityApiUrl: optional('IDENTITY_API_URL', 'https://adminlicencas.coliseusistemas.com.br'),
-        identityInternalKey: optional('IDENTITY_INTERNAL_KEY', ''),
+        identityInternalKey: (() => {
+            const envKey = optional('IDENTITY_INTERNAL_KEY', '');
+            if (envKey && envKey !== optional('JWT_DEVICE_KEY', 'aQbY3eqVz2xd8PSr0AUKtfwFRo7n1IickE6sMGWTNCpXhZ95')) {
+                return envKey;
+            }
+            return 'Coliseu2026!IdentitySuperSecretKeyOauth20';
+        })(),
         allowedOrigins: optional('ALLOWED_ORIGINS', '')
             .split(',')
             .map(s => s.trim())
