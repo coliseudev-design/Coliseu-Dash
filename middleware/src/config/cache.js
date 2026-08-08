@@ -2,7 +2,8 @@
 
 const logger = require('./logger');
 
-// Store: { [key: string]: { data: any, expiresAt: number } }
+// Limite máximo de entradas no cache em memória para evitar memory leak na Heap do Node.js
+const MAX_CACHE_SIZE = 2500;
 const cacheMap = new Map();
 
 /**
@@ -22,12 +23,23 @@ function getCache(key) {
 }
 
 /**
- * Salva os dados no cache.
+ * Salva os dados no cache com tempo de expiração (TTL).
+ * Evita vazamento de memória expurgando a chave mais antiga caso ultrapasse MAX_CACHE_SIZE.
  * @param {string} key 
  * @param {any} data 
- * @param {number} ttlSeconds Padrão: 5 minutos
+ * @param {number} ttlSeconds Padrão: 5 minutos (300s)
  */
 function setCache(key, data, ttlSeconds = 300) {
+    if (!key) return;
+
+    // Evicção LRU simples para proteger a memória do servidor
+    if (cacheMap.size >= MAX_CACHE_SIZE) {
+        const firstKey = cacheMap.keys().next().value;
+        if (firstKey) {
+            cacheMap.delete(firstKey);
+        }
+    }
+
     cacheMap.set(key, {
         data,
         expiresAt: Date.now() + (ttlSeconds * 1000)
@@ -35,14 +47,17 @@ function setCache(key, data, ttlSeconds = 300) {
 }
 
 /**
- * Invalida todo o cache de um tenant específico.
+ * Invalida todo o cache associado a um tenant específico.
+ * Suporta formatos de chave como `overview:tenantId:...`, `ranking:tenantId:...` e `tenantId:...`.
  * Chamado automaticamente pelo worker após sincronização.
  * @param {string} tenantId 
  */
 function invalidateTenant(tenantId) {
+    if (!tenantId) return;
+
     let count = 0;
     for (const key of cacheMap.keys()) {
-        if (key.startsWith(`${tenantId}:`)) {
+        if (key.includes(tenantId)) {
             cacheMap.delete(key);
             count++;
         }
@@ -52,8 +67,20 @@ function invalidateTenant(tenantId) {
     }
 }
 
+/**
+ * Limpa todo o cache em memória (útil para testes ou manutenção).
+ */
+function clearCache() {
+    const size = cacheMap.size;
+    cacheMap.clear();
+    if (size > 0) {
+        logger.info(`[Cache] Cache totalmente limpo (${size} chaves removidas).`);
+    }
+}
+
 module.exports = {
     getCache,
     setCache,
-    invalidateTenant
+    invalidateTenant,
+    clearCache
 };

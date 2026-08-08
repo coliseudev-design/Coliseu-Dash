@@ -158,8 +158,30 @@ function getPeriodRange(period, startDate, endDate, anchorDate) {
     };
 }
 
+/**
+ * Dado um período (strings no formato SQL seguro), calcula o período equivalente imediatamente anterior.
+ */
+function getPreviousPeriodRange(startSqlStr, endSqlStr) {
+    const startDateObj = parseDateString(startSqlStr, 'T00:00:00Z');
+    const endDateObj = parseDateString(endSqlStr, 'T23:59:59Z');
+
+    if (!startDateObj || !endDateObj) {
+        return { prevStart: startSqlStr, prevEnd: endSqlStr };
+    }
+
+    const diffTime = Math.abs(endDateObj.getTime() - startDateObj.getTime());
+    const prevEndObj = new Date(startDateObj.getTime() - 1);
+    const prevStartObj = new Date(prevEndObj.getTime() - diffTime);
+
+    return {
+        prevStart: toSafeSqlString(prevStartObj),
+        prevEnd: toSafeSqlString(prevEndObj)
+    };
+}
+
 module.exports = {
     getPeriodRange,
+    getPreviousPeriodRange,
     toBrazilTZString,
     toSafeSqlString,
     parseDateString
