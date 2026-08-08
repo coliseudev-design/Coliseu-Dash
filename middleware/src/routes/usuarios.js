@@ -6,6 +6,7 @@ const bcrypt = require('bcryptjs');
 const db = require('../db/postgres');
 const config = require('../config/env');
 const logger = require('../config/logger');
+const { getUserPermissions } = require('../utils/rbac');
 
 /**
  * GET /api/usuarios
@@ -578,6 +579,57 @@ router.put('/:id/grupos', async (req, res) => {
         await db.query('ROLLBACK');
         logger.error('[Usuarios] Erro ao alterar grupo_ids', err);
         res.status(500).json({ error: 'Erro interno ao atualizar grupos de acesso do usuário.' });
+    }
+});
+
+/**
+ * POST /api/usuarios/:id/reset-password
+ * Reseta a senha do usuário para a senha padrão "123456"
+ */
+router.post('/:id/reset-password', async (req, res) => {
+    try {
+        const targetId = req.params.id;
+
+        // Verificar permissão
+        const permissions = await getUserPermissions(req.user.sub, req.tenant.id);
+        const canReset = req.user.role === 'master' || req.user.role === 'admin' || permissions.includes('reset_senha');
+
+        if (!canReset) {
+            return res.status(403).json({ error: 'Você não tem permissão para resetar senhas de usuários.' });
+        }
+
+        // Buscar usuário para validação de tenant
+        const userRes = await db.query(
+            'SELECT id, email, tenant_id FROM dash_usuarios WHERE id = $1',
+            [targetId]
+        );
+
+        if (userRes.rowCount === 0) {
+            return res.status(404).json({ error: 'Usuário não encontrado.' });
+        }
+
+        const targetUser = userRes.rows[0];
+
+        // Segurança de Tenant
+        if (req.tenant.id !== '00000000-0000-0000-0000-000000000000' && targetUser.tenant_id !== req.tenant.id) {
+            return res.status(403).json({ error: 'Você não tem permissão para resetar a senha deste usuário.' });
+        }
+
+        // Criar hash da senha padrão "123456"
+        const salt = await bcrypt.genSalt(10);
+        const defaultHash = await bcrypt.hash('123456', salt);
+
+        await db.query(
+            'UPDATE dash_usuarios SET senha_hash = $1 WHERE id = $2',
+            [defaultHash, targetId]
+        );
+
+        logger.info('[Usuarios] Senha resetada para o padrão 123456', { targetId, targetEmail: targetUser.email, by: req.user.email });
+
+        res.json({ message: 'Senha resetada para "123456" com sucesso! O usuário precisará alterá-la no próximo acesso.' });
+    } catch (err) {
+        logger.error('[Usuarios] Erro ao resetar senha', err);
+        res.status(500).json({ error: 'Erro ao resetar senha do usuário.' });
     }
 });
 

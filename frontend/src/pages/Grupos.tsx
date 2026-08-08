@@ -22,7 +22,8 @@ const DASH_1_0_MODULES = [
   { id: 'bi_sales', label: 'Comercial' },
   { id: 'bi_finance', label: 'Financeiro' },
   { id: 'bi_abc', label: 'Gestão de Inventário' },
-  { id: 'usuarios', label: 'Usuários & Configurações' }
+  { id: 'usuarios', label: 'Usuários & Configurações' },
+  { id: 'reset_senha', label: 'Resetar Senhas de Usuários' }
 ]
 
 const BI_IA_MODULES = [
@@ -39,7 +40,8 @@ const BI_IA_MODULES = [
   { id: 'cadastro_metas', label: 'Cadastro de Metas' },
   { id: 'bi_heatmap', label: 'Mapa de Calor' },
   { id: 'bi_ai_insights', label: 'Coliseu AI' },
-  { id: 'usuarios', label: 'Usuários & Configurações' }
+  { id: 'usuarios', label: 'Usuários & Configurações' },
+  { id: 'reset_senha', label: 'Resetar Senhas de Usuários' }
 ]
 
 function getAvailableModules(version: string) {

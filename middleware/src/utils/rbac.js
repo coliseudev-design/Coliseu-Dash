@@ -23,7 +23,7 @@ async function getUserPermissions(userId, tenantId) {
         return [
             'inicio', 'financeiro', 'fluxo-caixa', 'estoque', 'comissoes', 
             'ranking', 'estatisticas', 'inteligencia', 'produtos', 
-            'clientes', 'vendas', 'usuarios', 'layout_1', 'layout_2', 'layout_3'
+            'clientes', 'vendas', 'usuarios', 'reset_senha', 'layout_1', 'layout_2', 'layout_3'
         ];
     }
 
@@ -55,7 +55,7 @@ async function getUserPermissions(userId, tenantId) {
         return [
             'inicio', 'financeiro', 'fluxo-caixa', 'estoque', 'comissoes', 
             'ranking', 'estatisticas', 'inteligencia', 'produtos', 
-            'clientes', 'vendas', 'usuarios', 'layout_1', 'layout_2', 'layout_3'
+            'clientes', 'vendas', 'usuarios', 'reset_senha', 'layout_1', 'layout_2', 'layout_3'
         ];
     }
 

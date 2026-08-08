@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '../services/api'
 import DataTable from '../components/DataTable'
-import { Shield, UserPlus, CheckCircle, XCircle, Lock, Building2 } from 'lucide-react'
+import { Shield, UserPlus, CheckCircle, XCircle, Lock, Building2, KeyRound } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import { useBranch } from '../contexts/BranchContext'
 
@@ -36,12 +36,31 @@ const AVAILABLE_MODULES = [
 export default function Usuarios() {
   const queryClient = useQueryClient()
   const { filiais } = useBranch()
+  const activeUser = useAuthStore((s) => s.user)
+  const canResetPassword = activeUser?.role === 'master' || activeUser?.role === 'admin' || (activeUser?.permissions || []).includes('reset_senha')
+
   const [modalOpen, setModalOpen] = useState(false)
   const [permissionsModalOpen, setPermissionsModalOpen] = useState(false)
   const [filialModalOpen, setFilialModalOpen] = useState(false)
+  const [resetModalUser, setResetModalUser] = useState<UserRow | null>(null)
   const [selectedUser, setSelectedUser] = useState<UserRow | null>(null)
   const [selectedGroupIds, setSelectedGroupIds] = useState<number[]>([])
   const [selectedFilialAcesso, setSelectedFilialAcesso] = useState<string>('todas')
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await api.post(`/usuarios/${id}/reset-password`)
+      return res.data
+    },
+    onSuccess: (data) => {
+      alert(data.message || 'Senha resetada para "123456" com sucesso!')
+      setResetModalUser(null)
+      queryClient.invalidateQueries({ queryKey: ['usuarios'] })
+    },
+    onError: (err: any) => {
+      alert(err.response?.data?.error || 'Erro ao resetar senha')
+    }
+  })
 
   const { data: allGroups } = useQuery<any[]>({
     queryKey: ['grupos', 'all'],
@@ -305,6 +324,16 @@ export default function Usuarios() {
                       <span>Filiais</span>
                     </button>
                   )}
+                  {canResetPassword && (
+                    <button
+                      onClick={() => setResetModalUser(r)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-500/10 transition-colors"
+                      title="Resetar Senha para 123456"
+                    >
+                      <KeyRound size={16} />
+                      <span>Resetar Senha</span>
+                    </button>
+                  )}
                   <button
                     onClick={() => toggleStatus.mutate({ id: r.id, ativo: !r.ativo })}
                     disabled={toggleStatus.isPending}
@@ -562,6 +591,48 @@ export default function Usuarios() {
                   {updateFilialAcesso.isPending ? 'Salvando...' : 'Salvar Acesso'}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Reset de Senha */}
+      {resetModalUser && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-bg-primary rounded-2xl shadow-xl border border-border w-full max-w-md p-6 animate-fade-in space-y-4">
+            <div className="flex items-center gap-3 text-amber-600 dark:text-amber-400">
+              <div className="p-3 bg-amber-50 dark:bg-amber-500/10 rounded-xl">
+                <KeyRound size={24} />
+              </div>
+              <div>
+                <h3 className="font-bold text-lg text-text-primary">Resetar Senha</h3>
+                <p className="text-xs text-text-secondary">Confirmar redefinição de acesso</p>
+              </div>
+            </div>
+
+            <p className="text-sm text-text-secondary leading-relaxed">
+              Tem certeza que deseja resetar a senha de <strong className="text-text-primary">{resetModalUser.nome}</strong> ({resetModalUser.email})?
+              <br /><br />
+              A senha será alterada para a senha padrão <code className="bg-bg-secondary border border-border px-2 py-0.5 rounded font-mono text-amber-600 font-bold">123456</code>. No próximo login, o usuário será obrigado a cadastrar uma nova senha.
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setResetModalUser(null)}
+                className="px-4 py-2 text-sm font-medium text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
+                disabled={resetPasswordMutation.isPending}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => resetPasswordMutation.mutate(resetModalUser.id)}
+                disabled={resetPasswordMutation.isPending}
+                className="px-4 py-2 bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white font-medium text-sm rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer"
+              >
+                {resetPasswordMutation.isPending ? 'Resetando...' : 'Confirmar Reset'}
+              </button>
             </div>
           </div>
         </div>
