@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '../services/api'
 import DataTable from '../components/DataTable'
-import { Shield, UserPlus, CheckCircle, XCircle, Lock, Building2, KeyRound } from 'lucide-react'
+import { Shield, UserPlus, CheckCircle, XCircle, Lock, Building2, KeyRound, ChevronDown } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import { useBranch } from '../contexts/BranchContext'
 
@@ -44,6 +44,7 @@ export default function Usuarios() {
   const [permissionsModalOpen, setPermissionsModalOpen] = useState(false)
   const [filialModalOpen, setFilialModalOpen] = useState(false)
   const [resetModalUser, setResetModalUser] = useState<UserRow | null>(null)
+  const [openDropdownId, setOpenDropdownId] = useState<number | null>(null)
   const [selectedUser, setSelectedUser] = useState<UserRow | null>(null)
   const [selectedGroupIds, setSelectedGroupIds] = useState<number[]>([])
   const [selectedFilialAcesso, setSelectedFilialAcesso] = useState<string>('todas')
@@ -307,51 +308,108 @@ export default function Usuarios() {
               key: 'actions',
               label: 'AÇÕES',
               align: 'right',
-              render: (r: UserRow) => (
-                <div className="flex items-center justify-end gap-1.5 flex-wrap sm:flex-nowrap">
-                  <button
-                    onClick={() => openPermissionsModal(r)}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-brand-600 hover:bg-brand-50 border border-brand-200 dark:text-brand-400 dark:border-brand-500/20 dark:hover:bg-brand-500/10 transition-colors whitespace-nowrap"
-                    title="Grupos de Acesso"
-                  >
-                    <Shield size={14} />
-                    <span>Grupo</span>
-                  </button>
-                  {filiais.length > 0 && (
+              render: (r: UserRow) => {
+                const isOpen = openDropdownId === r.id
+                return (
+                  <div className="relative inline-block text-left">
                     <button
-                      onClick={() => openFilialModal(r)}
-                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-indigo-600 hover:bg-indigo-50 border border-indigo-200 dark:text-indigo-400 dark:border-indigo-500/20 dark:hover:bg-indigo-500/10 transition-colors whitespace-nowrap"
-                      title="Filiais de Acesso"
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setOpenDropdownId(isOpen ? null : r.id)
+                      }}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                        isOpen
+                          ? 'bg-brand-50 text-brand-700 border-brand-300 dark:bg-brand-500/20 dark:text-brand-300 dark:border-brand-500/40 shadow-sm'
+                          : 'bg-bg-secondary hover:bg-bg-tertiary text-text-primary border-border hover:border-border/80'
+                      }`}
+                      title="Opções de Ação"
                     >
-                      <Building2 size={14} />
-                      <span>Filiais</span>
+                      <span>Ações</span>
+                      <ChevronDown size={14} className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
                     </button>
-                  )}
-                  {canResetPassword && (
-                    <button
-                      onClick={() => setResetModalUser(r)}
-                      className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-300 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/30 dark:hover:bg-amber-500/25 transition-colors whitespace-nowrap"
-                      title="Resetar Senha para 123456"
-                    >
-                      <KeyRound size={14} />
-                      <span>Resetar Senha</span>
-                    </button>
-                  )}
-                  <button
-                    onClick={() => toggleStatus.mutate({ id: r.id, ativo: !r.ativo })}
-                    disabled={toggleStatus.isPending}
-                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors whitespace-nowrap ${
-                      r.ativo 
-                        ? 'text-red-600 bg-red-50 hover:bg-red-100 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20' 
-                        : 'text-green-600 bg-green-50 hover:bg-green-100 border-green-200 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/20'
-                    }`}
-                    title={r.ativo ? "Inativar Usuário" : "Ativar Usuário"}
-                  >
-                    {r.ativo ? <XCircle size={14} /> : <CheckCircle size={14} />}
-                    <span>{r.ativo ? 'Inativar' : 'Ativar'}</span>
-                  </button>
-                </div>
-              )
+
+                    {isOpen && (
+                      <>
+                        {/* Overlay invisível para fechar o menu ao clicar fora */}
+                        <div
+                          className="fixed inset-0 z-20"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setOpenDropdownId(null)
+                          }}
+                        />
+
+                        {/* Menu Dropdown Suspenso para Baixo */}
+                        <div className="absolute right-0 top-full mt-1.5 w-48 bg-bg-primary rounded-2xl shadow-xl border border-border z-30 py-1.5 overflow-hidden animate-fade-in text-left">
+                          <div className="px-3.5 py-1.5 text-[10px] font-bold text-text-muted uppercase tracking-wider border-b border-border/50 mb-1">
+                            Ações para {r.nome.split(' ')[0]}
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOpenDropdownId(null)
+                              openPermissionsModal(r)
+                            }}
+                            className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-semibold text-text-primary hover:bg-bg-secondary transition-colors cursor-pointer"
+                          >
+                            <Shield size={15} className="text-brand-500 flex-shrink-0" />
+                            <span>Grupos de Acesso</span>
+                          </button>
+
+                          {filiais.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenDropdownId(null)
+                                openFilialModal(r)
+                              }}
+                              className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-semibold text-text-primary hover:bg-bg-secondary transition-colors cursor-pointer"
+                            >
+                              <Building2 size={15} className="text-indigo-500 flex-shrink-0" />
+                              <span>Filiais de Acesso</span>
+                            </button>
+                          )}
+
+                          {canResetPassword && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenDropdownId(null)
+                                setResetModalUser(r)
+                              }}
+                              className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors cursor-pointer"
+                            >
+                              <KeyRound size={15} className="text-amber-500 flex-shrink-0" />
+                              <span>Resetar Senha</span>
+                            </button>
+                          )}
+
+                          <div className="my-1 border-t border-border/50" />
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOpenDropdownId(null)
+                              toggleStatus.mutate({ id: r.id, ativo: !r.ativo })
+                            }}
+                            disabled={toggleStatus.isPending}
+                            className={`w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-semibold transition-colors cursor-pointer ${
+                              r.ativo
+                                ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10'
+                                : 'text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-500/10'
+                            }`}
+                          >
+                            {r.ativo ? <XCircle size={15} className="text-red-500 flex-shrink-0" /> : <CheckCircle size={15} className="text-green-500 flex-shrink-0" />}
+                            <span>{r.ativo ? 'Inativar Usuário' : 'Ativar Usuário'}</span>
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )
+              }
             }
           ]}
         />
