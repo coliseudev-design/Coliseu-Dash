@@ -178,20 +178,34 @@ export default function Grupos() {
 
   const openPermissionsModal = async (group: GroupRow) => {
     setSelectedGroup(group)
+    const groupModules = getAvailableModules(group.versao || activeTab)
     try {
       const res = await api.get(`/grupos/${group.id}/permissions`)
       const data = res.data
       const perms: PermissionRow[] = data.permissions || []
-      setSelectedPermissions(
-        perms
-          .filter(p => p.pode_acessar && !['layout_1', 'layout_2', 'layout_3'].includes(p.recurso))
-          .map(p => p.recurso)
-      )
+      let activeRecursos = perms
+        .filter(p => p.pode_acessar && !['layout_1', 'layout_2', 'layout_3'].includes(p.recurso))
+        .map(p => p.recurso)
+
+      // Se for o grupo Administrador e não tiver registros salvos ainda, marcar tudo por padrão
+      if (group.nome.toLowerCase() === 'administrador' && activeRecursos.length === 0) {
+        activeRecursos = groupModules.map(m => m.id)
+      }
+
+      setSelectedPermissions(activeRecursos)
       setVendedoresTodos(data.vendedores_todos !== false)
       setSelectedVendedores(data.vendedores || [])
       setPermissionsModalOpen(true)
-    } catch {
-      alert('Erro ao carregar permissões do grupo.')
+    } catch (err) {
+      console.warn('Falha ao obter permissões do grupo, abrindo modal com valores padrão', err)
+      if (group.nome.toLowerCase() === 'administrador') {
+        setSelectedPermissions(groupModules.map(m => m.id))
+      } else {
+        setSelectedPermissions([])
+      }
+      setVendedoresTodos(true)
+      setSelectedVendedores([])
+      setPermissionsModalOpen(true)
     }
   }
 

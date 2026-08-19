@@ -1,16 +1,24 @@
-'use strict';
-
 const express = require('express');
 const router = express.Router();
 const db = require('../db/postgres');
 const logger = require('../config/logger');
+const { getUserPermissions } = require('../utils/rbac');
 
-// Apenas administradores do tenant (ou master) podem gerenciar grupos
-const requireAdmin = (req, res, next) => {
-    if (req.user.role === 'admin' || req.user.role === 'master') {
-        return next();
+// Administradores do tenant (ou master) ou usuários com permissão de grupos
+const requireAdmin = async (req, res, next) => {
+    try {
+        const role = (req.user?.role || '').toLowerCase();
+        if (role === 'admin' || role === 'master') {
+            return next();
+        }
+        const permissions = await getUserPermissions(req.user?.id || req.user?.sub, req.tenant?.id);
+        if (permissions.includes('usuarios_grupos') || permissions.includes('usuarios')) {
+            return next();
+        }
+        return res.status(403).json({ error: 'Acesso restrito a administradores', code: 'FORBIDDEN' });
+    } catch (err) {
+        return res.status(500).json({ error: 'Erro ao verificar permissões' });
     }
-    return res.status(403).json({ error: 'Acesso restrito a administradores', code: 'FORBIDDEN' });
 };
 
 /**
