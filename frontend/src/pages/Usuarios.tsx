@@ -35,10 +35,18 @@ const AVAILABLE_MODULES = [
 
 export default function Usuarios() {
   const queryClient = useQueryClient()
-  const { filiais } = useBranch()
   const activeUser = useAuthStore((s) => s.user)
   const userRoleLower = (activeUser?.role || '').toLowerCase()
-  const canResetPassword = userRoleLower === 'master' || userRoleLower === 'admin' || (activeUser?.permissions || []).includes('reset_senha')
+  const isMasterOrAdmin = userRoleLower === 'master' || userRoleLower === 'admin'
+  const userPermissions = activeUser?.permissions || []
+
+  // Permissões granulares de Ações
+  const canCreateUser = isMasterOrAdmin || userPermissions.includes('usuarios_criar') || userPermissions.includes('usuarios')
+  const canManageGroups = isMasterOrAdmin || userPermissions.includes('usuarios_grupos')
+  const canManageBranches = isMasterOrAdmin || userPermissions.includes('usuarios_filiais')
+  const canResetPassword = isMasterOrAdmin || userPermissions.includes('reset_senha')
+  const canToggleStatus = isMasterOrAdmin || userPermissions.includes('usuarios_status')
+  const canChangeVersion = isMasterOrAdmin || userPermissions.includes('usuarios_versao')
 
   const [modalOpen, setModalOpen] = useState(false)
   const [permissionsModalOpen, setPermissionsModalOpen] = useState(false)
@@ -209,10 +217,20 @@ export default function Usuarios() {
           <p className="text-text-secondary text-sm">Controle de acessos e permissões do sistema.</p>
         </div>
         <button
-          onClick={() => setModalOpen(true)}
-          className="btn-primary flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl shadow-sm hover:shadow-md transition-all font-semibold"
+          onClick={() => {
+            if (canCreateUser) {
+              setModalOpen(true)
+            }
+          }}
+          disabled={!canCreateUser}
+          className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-semibold transition-all ${
+            canCreateUser
+              ? 'btn-primary shadow-sm hover:shadow-md cursor-pointer'
+              : 'bg-bg-secondary text-text-muted border border-border opacity-60 cursor-not-allowed select-none'
+          }`}
+          title={canCreateUser ? 'Cadastrar novo usuário' : 'Sem permissão para cadastrar novos usuários'}
         >
-          <UserPlus size={18} />
+          {canCreateUser ? <UserPlus size={18} /> : <Lock size={16} />}
           <span>Novo Usuário</span>
         </button>
       </div>
@@ -268,10 +286,15 @@ export default function Usuarios() {
               render: (r: UserRow) => (
                 <div className="flex items-center">
                   <select
-                    className="bg-bg-secondary text-text-primary border border-border rounded-lg px-2 py-1 text-sm outline-none focus:border-brand-500 transition-colors"
+                    className={`border border-border rounded-lg px-2 py-1 text-sm outline-none transition-colors ${
+                      canChangeVersion
+                        ? 'bg-bg-secondary text-text-primary focus:border-brand-500 cursor-pointer'
+                        : 'bg-bg-secondary/40 text-text-muted opacity-60 cursor-not-allowed'
+                    }`}
                     value={r.versao || r.layout_version || 'Dash 1.0'}
-                    onChange={(e) => updateLayout.mutate({ id: r.id, versao: e.target.value })}
-                    disabled={updateLayout.isPending}
+                    onChange={(e) => canChangeVersion && updateLayout.mutate({ id: r.id, versao: e.target.value })}
+                    disabled={!canChangeVersion || updateLayout.isPending}
+                    title={canChangeVersion ? 'Alterar versão ativa do usuário' : 'Sem permissão para alterar versão'}
                   >
                     <option value="Dash 1.0">Dash 1.0</option>
                     <option value="B.I IA.">B.I IA.</option>
@@ -341,38 +364,78 @@ export default function Usuarios() {
                         />
 
                         {/* Menu Dropdown Suspenso para Baixo */}
-                        <div className="absolute right-0 top-full mt-1.5 w-48 bg-bg-primary rounded-2xl shadow-xl border border-border z-30 py-1.5 overflow-hidden animate-fade-in text-left">
+                        <div className="absolute right-0 top-full mt-1.5 w-52 bg-bg-primary rounded-2xl shadow-xl border border-border z-30 py-1.5 overflow-hidden animate-fade-in text-left">
                           <div className="px-3.5 py-1.5 text-[10px] font-bold text-text-muted uppercase tracking-wider border-b border-border/50 mb-1">
                             Ações para {r.nome.split(' ')[0]}
                           </div>
 
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setOpenDropdownId(null)
-                              openPermissionsModal(r)
-                            }}
-                            className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-semibold text-text-primary hover:bg-bg-secondary transition-colors cursor-pointer"
-                          >
-                            <Shield size={15} className="text-brand-500 flex-shrink-0" />
-                            <span>Grupos de Acesso</span>
-                          </button>
-
-                          {filiais.length > 0 && (
+                          {/* Ação 1: Grupos de Acesso */}
+                          {canManageGroups ? (
                             <button
                               type="button"
                               onClick={() => {
                                 setOpenDropdownId(null)
-                                openFilialModal(r)
+                                openPermissionsModal(r)
                               }}
                               className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-semibold text-text-primary hover:bg-bg-secondary transition-colors cursor-pointer"
                             >
-                              <Building2 size={15} className="text-indigo-500 flex-shrink-0" />
-                              <span>Filiais de Acesso</span>
+                              <Shield size={15} className="text-brand-500 flex-shrink-0" />
+                              <span>Grupos de Acesso</span>
                             </button>
+                          ) : (
+                            <div
+                              className="w-full flex items-center justify-between px-3.5 py-2 text-xs font-semibold text-text-muted opacity-50 cursor-not-allowed select-none"
+                              title="Sem permissão para alterar Grupos de Acesso"
+                            >
+                              <div className="flex items-center gap-2.5">
+                                <Shield size={15} className="text-text-muted flex-shrink-0" />
+                                <span>Grupos de Acesso</span>
+                              </div>
+                              <Lock size={12} className="text-text-muted" />
+                            </div>
                           )}
 
-                          {canResetPassword && (
+                          {/* Ação 2: Filiais de Acesso */}
+                          {filiais.length > 0 ? (
+                            canManageBranches ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setOpenDropdownId(null)
+                                  openFilialModal(r)
+                                }}
+                                className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-semibold text-text-primary hover:bg-bg-secondary transition-colors cursor-pointer"
+                              >
+                                <Building2 size={15} className="text-indigo-500 flex-shrink-0" />
+                                <span>Filiais de Acesso</span>
+                              </button>
+                            ) : (
+                              <div
+                                className="w-full flex items-center justify-between px-3.5 py-2 text-xs font-semibold text-text-muted opacity-50 cursor-not-allowed select-none"
+                                title="Sem permissão para alterar Filiais de Acesso"
+                              >
+                                <div className="flex items-center gap-2.5">
+                                  <Building2 size={15} className="text-text-muted flex-shrink-0" />
+                                  <span>Filiais de Acesso</span>
+                                </div>
+                                <Lock size={12} className="text-text-muted" />
+                              </div>
+                            )
+                          ) : (
+                            <div
+                              className="w-full flex items-center justify-between px-3.5 py-2 text-xs font-semibold text-text-muted opacity-40 cursor-not-allowed select-none"
+                              title="Projeto/Empresa sem múltiplas filiais cadastradas"
+                            >
+                              <div className="flex items-center gap-2.5">
+                                <Building2 size={15} className="text-text-muted flex-shrink-0" />
+                                <span>Filiais de Acesso</span>
+                              </div>
+                              <span className="text-[10px] italic">Única</span>
+                            </div>
+                          )}
+
+                          {/* Ação 3: Resetar Senha */}
+                          {canResetPassword ? (
                             <button
                               type="button"
                               onClick={() => {
@@ -384,26 +447,51 @@ export default function Usuarios() {
                               <KeyRound size={15} className="text-amber-500 flex-shrink-0" />
                               <span>Resetar Senha</span>
                             </button>
+                          ) : (
+                            <div
+                              className="w-full flex items-center justify-between px-3.5 py-2 text-xs font-bold text-text-muted opacity-50 cursor-not-allowed select-none"
+                              title="Sem permissão para resetar senhas"
+                            >
+                              <div className="flex items-center gap-2.5">
+                                <KeyRound size={15} className="text-text-muted flex-shrink-0" />
+                                <span>Resetar Senha</span>
+                              </div>
+                              <Lock size={12} className="text-text-muted" />
+                            </div>
                           )}
 
                           <div className="my-1 border-t border-border/50" />
 
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setOpenDropdownId(null)
-                              toggleStatus.mutate({ id: r.id, ativo: !r.ativo })
-                            }}
-                            disabled={toggleStatus.isPending}
-                            className={`w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-semibold transition-colors cursor-pointer ${
-                              r.ativo
-                                ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10'
-                                : 'text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-500/10'
-                            }`}
-                          >
-                            {r.ativo ? <XCircle size={15} className="text-red-500 flex-shrink-0" /> : <CheckCircle size={15} className="text-green-500 flex-shrink-0" />}
-                            <span>{r.ativo ? 'Inativar Usuário' : 'Ativar Usuário'}</span>
-                          </button>
+                          {/* Ação 4: Inativar / Ativar Usuário */}
+                          {canToggleStatus ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenDropdownId(null)
+                                toggleStatus.mutate({ id: r.id, ativo: !r.ativo })
+                              }}
+                              disabled={toggleStatus.isPending}
+                              className={`w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-semibold transition-colors cursor-pointer ${
+                                r.ativo
+                                  ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10'
+                                  : 'text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-500/10'
+                              }`}
+                            >
+                              {r.ativo ? <XCircle size={15} className="text-red-500 flex-shrink-0" /> : <CheckCircle size={15} className="text-green-500 flex-shrink-0" />}
+                              <span>{r.ativo ? 'Inativar Usuário' : 'Ativar Usuário'}</span>
+                            </button>
+                          ) : (
+                            <div
+                              className="w-full flex items-center justify-between px-3.5 py-2 text-xs font-semibold text-text-muted opacity-50 cursor-not-allowed select-none"
+                              title="Sem permissão para alterar status de usuários"
+                            >
+                              <div className="flex items-center gap-2.5">
+                                {r.ativo ? <XCircle size={15} className="text-text-muted flex-shrink-0" /> : <CheckCircle size={15} className="text-text-muted flex-shrink-0" />}
+                                <span>{r.ativo ? 'Inativar Usuário' : 'Ativar Usuário'}</span>
+                              </div>
+                              <Lock size={12} className="text-text-muted" />
+                            </div>
+                          )}
                         </div>
                       </>
                     )}

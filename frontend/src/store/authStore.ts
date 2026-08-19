@@ -143,19 +143,26 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
   logout: async () => {
-    try {
-      // Rotas internas que precisem de limpeza (se houver)
-      await api.post('/auth/logout').catch(() => {})
-    } catch { /* ignore */ }
+    // 1. Limpeza imediata síncrona dos dados de sessão
     localStorage.removeItem('coliseu_token')
     localStorage.removeItem('coliseu_user')
-    // Para o worker e limpa o token
+    
+    // Para o worker de sincronização
     const w = (window as any).__syncWorker
     if (w) {
-      w.postMessage({ type: 'STOP' })
+      try {
+        w.postMessage({ type: 'STOP' })
+      } catch { /* ignore */ }
       ;(window as any).__syncWorker = null
     }
+    
+    // Zera o estado no store
     set({ user: null, token: null })
+
+    // 2. Notifica o backend em background
+    try {
+      await api.post('/auth/logout').catch(() => {})
+    } catch { /* ignore */ }
   },
   updateUserVersion: (versao) => {
     set((state) => {

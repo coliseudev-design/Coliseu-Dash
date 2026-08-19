@@ -18,13 +18,19 @@ async function getUserPermissions(userId, tenantId) {
 
     const user = userRes.rows[0];
 
+    const allAdminPermissions = [
+        'inicio', 'financeiro', 'fluxo-caixa', 'estoque', 'comissoes', 
+        'ranking', 'estatisticas', 'inteligencia', 'produtos', 
+        'clientes', 'vendas', 'usuarios', 
+        'usuarios_criar', 'usuarios_grupos', 'usuarios_filiais', 'usuarios_status', 'usuarios_versao',
+        'reset_senha', 'cadastro_metas', 'layout_1', 'layout_2', 'layout_3',
+        'bi_sales', 'bi_hub', 'bi_supplier', 'bi_abc', 'bi_finance', 'bi_customer', 
+        'bi_comparative', 'bi_customer_analytics', 'bi_goals', 'bi_heatmap', 'bi_ai_insights'
+    ];
+
     // Se for master, tem acesso irrestrito a todos os layouts e abas
     if (user.role === 'master') {
-        return [
-            'inicio', 'financeiro', 'fluxo-caixa', 'estoque', 'comissoes', 
-            'ranking', 'estatisticas', 'inteligencia', 'produtos', 
-            'clientes', 'vendas', 'usuarios', 'reset_senha', 'layout_1', 'layout_2', 'layout_3'
-        ];
+        return allAdminPermissions;
     }
 
     // Buscar permissões do grupo correspondente à versão ativa na tabela associativa
@@ -52,11 +58,7 @@ async function getUserPermissions(userId, tenantId) {
 
     // Se for administrador do tenant e não tiver grupo associado, libera todos os acessos do layout dele por padrão
     if (user.role === 'admin') {
-        return [
-            'inicio', 'financeiro', 'fluxo-caixa', 'estoque', 'comissoes', 
-            'ranking', 'estatisticas', 'inteligencia', 'produtos', 
-            'clientes', 'vendas', 'usuarios', 'reset_senha', 'layout_1', 'layout_2', 'layout_3'
-        ];
+        return allAdminPermissions;
     }
 
     // Fallback: permissões estáticas do campo antigo

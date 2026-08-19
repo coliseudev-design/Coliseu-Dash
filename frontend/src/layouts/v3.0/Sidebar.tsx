@@ -413,11 +413,11 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }: 
             {collapsed ? (
               <button
                 type="button"
-                onClick={() => {
-                  useAuthStore.getState().logout()
+                onClick={async () => {
+                  await useAuthStore.getState().logout()
                   window.location.href = '/login'
                 }}
-                className="p-2.5 text-text-secondary hover:text-danger hover:bg-danger/10 rounded-xl transition-colors flex items-center justify-center"
+                className="p-2.5 text-text-secondary hover:text-danger hover:bg-danger/10 rounded-xl transition-colors flex items-center justify-center cursor-pointer"
                 title="Sair do sistema"
               >
                 <LogOut size={16} />
@@ -433,11 +433,11 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }: 
                 </div>
                 <button
                   type="button"
-                  onClick={() => {
-                    useAuthStore.getState().logout()
+                  onClick={async () => {
+                    await useAuthStore.getState().logout()
                     window.location.href = '/login'
                   }}
-                  className="p-2.5 text-text-secondary hover:text-danger hover:bg-danger/10 border border-divider/60 rounded-xl transition-colors flex-shrink-0 flex items-center justify-center bg-bg-primary"
+                  className="p-2.5 text-text-secondary hover:text-danger hover:bg-danger/10 border border-divider/60 rounded-xl transition-colors flex-shrink-0 flex items-center justify-center bg-bg-primary cursor-pointer"
                   title="Sair do sistema"
                 >
                   <LogOut size={18} />

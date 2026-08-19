@@ -76,6 +76,13 @@ router.post('/', async (req, res) => {
             return res.status(400).json({ error: 'Nome, email, senha e CompanyKey são obrigatórios' });
         }
 
+        // Checar permissão de criação de usuário
+        const permissions = await getUserPermissions(req.user.sub || req.user.id, req.tenant.id);
+        const canCreate = req.user.role === 'master' || req.user.role === 'admin' || permissions.includes('usuarios_criar') || permissions.includes('usuarios');
+        if (!canCreate) {
+            return res.status(403).json({ error: 'Você não tem permissão para cadastrar novos usuários.' });
+        }
+
         // Segurança: Se não for master, só pode criar usuário para a própria empresa
         if (req.tenant.id !== '00000000-0000-0000-0000-000000000000' && companyKey !== req.tenant.id) {
             return res.status(403).json({ error: 'Você só pode criar usuários para a sua própria empresa.' });
@@ -194,6 +201,13 @@ router.put('/:id/status', async (req, res) => {
         const { ativo } = req.body;
         const targetId = req.params.id;
 
+        // Checar permissão
+        const permissions = await getUserPermissions(req.user.sub || req.user.id, req.tenant.id);
+        const canToggle = req.user.role === 'master' || req.user.role === 'admin' || permissions.includes('usuarios_status');
+        if (!canToggle) {
+            return res.status(403).json({ error: 'Você não tem permissão para inativar ou ativar usuários.' });
+        }
+
         if (typeof ativo !== 'boolean') {
             return res.status(400).json({ error: 'O campo "ativo" deve ser booleano (true/false).' });
         }
@@ -280,6 +294,13 @@ router.put('/:id/layout', async (req, res) => {
         const { layout_version, versao } = req.body;
         const targetVersion = versao || layout_version;
         const targetId = req.params.id;
+
+        // Checar permissão
+        const permissions = await getUserPermissions(req.user.sub || req.user.id, req.tenant.id);
+        const canChangeVersion = req.user.role === 'master' || req.user.role === 'admin' || permissions.includes('usuarios_versao');
+        if (!canChangeVersion) {
+            return res.status(403).json({ error: 'Você não tem permissão para alterar a versão ativa dos usuários.' });
+        }
 
         if (!['Dash 1.0', 'B.I IA.'].includes(targetVersion)) {
             return res.status(400).json({ error: 'Versão de layout inválida. Opções: Dash 1.0, B.I IA.' });
@@ -380,6 +401,13 @@ router.put('/:id/filial-acesso', async (req, res) => {
         const { filial_acesso } = req.body;
         const targetId = req.params.id;
 
+        // Checar permissão
+        const permissions = await getUserPermissions(req.user.sub || req.user.id, req.tenant.id);
+        const canManageBranches = req.user.role === 'master' || req.user.role === 'admin' || permissions.includes('usuarios_filiais');
+        if (!canManageBranches) {
+            return res.status(403).json({ error: 'Você não tem permissão para alterar o acesso de filiais dos usuários.' });
+        }
+
         // Validar formato: 'todas' ou lista de números separados por vírgula
         const validFormat = /^(todas|\d+(,\d+)*)$/.test(String(filial_acesso || 'todas').trim());
         if (!validFormat) {
@@ -418,6 +446,13 @@ router.put('/:id/grupo', async (req, res) => {
     try {
         const { grupo_id } = req.body;
         const targetId = req.params.id;
+
+        // Checar permissão
+        const permissions = await getUserPermissions(req.user.sub || req.user.id, req.tenant.id);
+        const canManageGroups = req.user.role === 'master' || req.user.role === 'admin' || permissions.includes('usuarios_grupos');
+        if (!canManageGroups) {
+            return res.status(403).json({ error: 'Você não tem permissão para alterar os grupos de acesso dos usuários.' });
+        }
 
         // Se for passado grupo_id, verificar se o grupo existe e pertence ao mesmo tenant
         if (grupo_id !== null && grupo_id !== undefined) {
@@ -495,6 +530,13 @@ router.put('/:id/grupos', async (req, res) => {
     try {
         const { grupo_ids } = req.body;
         const targetId = req.params.id;
+
+        // Checar permissão
+        const permissions = await getUserPermissions(req.user.sub || req.user.id, req.tenant.id);
+        const canManageGroups = req.user.role === 'master' || req.user.role === 'admin' || permissions.includes('usuarios_grupos');
+        if (!canManageGroups) {
+            return res.status(403).json({ error: 'Você não tem permissão para alterar os grupos de acesso dos usuários.' });
+        }
 
         if (!Array.isArray(grupo_ids)) {
             return res.status(400).json({ error: 'O campo "grupo_ids" deve ser um array.' });

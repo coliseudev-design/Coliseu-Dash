@@ -17,34 +17,55 @@ interface PermissionRow {
   pode_acessar: boolean
 }
 
-const DASH_1_0_MODULES = [
-  { id: 'inicio', label: 'Visão Geral (Início)' },
-  { id: 'bi_sales', label: 'Comercial' },
-  { id: 'bi_finance', label: 'Financeiro' },
-  { id: 'bi_abc', label: 'Gestão de Inventário' },
-  { id: 'usuarios', label: 'Usuários & Configurações' },
-  { id: 'reset_senha', label: 'Resetar Senhas de Usuários' }
+interface PermissionModule {
+  id: string
+  label: string
+  category: string
+  description?: string
+}
+
+const DASH_1_0_MODULES: PermissionModule[] = [
+  { id: 'inicio', label: 'Visão Estratégica (Início)', category: 'Módulos do Sistema' },
+  { id: 'bi_sales', label: 'Visão Consolidada & Comercial', category: 'Módulos do Sistema' },
+  { id: 'bi_finance', label: 'Financeiro', category: 'Módulos do Sistema' },
+  { id: 'bi_abc', label: 'Gestão de Inventário', category: 'Módulos do Sistema' },
+  
+  // Ações de Usuários
+  { id: 'usuarios', label: 'Acessar Tela de Usuários', category: 'Gestão de Usuários & Ações', description: 'Permite visualizar o menu e a lista de usuários' },
+  { id: 'usuarios_criar', label: 'Ação: Novo Usuário', category: 'Gestão de Usuários & Ações', description: 'Permite cadastrar novos acessos no sistema' },
+  { id: 'usuarios_grupos', label: 'Ação: Grupos de Acesso', category: 'Gestão de Usuários & Ações', description: 'Permite alterar os grupos de acesso dos usuários' },
+  { id: 'usuarios_filiais', label: 'Ação: Filiais de Acesso', category: 'Gestão de Usuários & Ações', description: 'Permite definir filiais visíveis para o usuário' },
+  { id: 'reset_senha', label: 'Ação: Resetar Senha', category: 'Gestão de Usuários & Ações', description: 'Permite redefinir a senha do usuário para 123456' },
+  { id: 'usuarios_status', label: 'Ação: Inativar / Ativar', category: 'Gestão de Usuários & Ações', description: 'Permite inativar ou reativar contas de usuários' },
+  { id: 'usuarios_versao', label: 'Ação: Alterar Versão Ativa', category: 'Gestão de Usuários & Ações', description: 'Permite trocar o layout (Dash 1.0 / B.I IA.) do usuário' }
 ]
 
-const BI_IA_MODULES = [
-  { id: 'inicio', label: 'Visão Estratégica' },
-  { id: 'bi_sales', label: 'Inteligência de Vendas' },
-  { id: 'bi_hub', label: 'Hub de Vendas' },
-  { id: 'bi_supplier', label: 'Hub do Fornecedor' },
-  { id: 'bi_abc', label: 'Gestão de Inventário' },
-  { id: 'bi_finance', label: 'Financeiro' },
-  { id: 'bi_customer', label: 'Radar 360' },
-  { id: 'bi_comparative', label: 'Lucratividade' },
-  { id: 'bi_customer_analytics', label: 'Análise de Clientes' },
-  { id: 'bi_goals', label: 'Análise de Metas' },
-  { id: 'cadastro_metas', label: 'Cadastro de Metas' },
-  { id: 'bi_heatmap', label: 'Mapa de Calor' },
-  { id: 'bi_ai_insights', label: 'Coliseu AI' },
-  { id: 'usuarios', label: 'Usuários & Configurações' },
-  { id: 'reset_senha', label: 'Resetar Senhas de Usuários' }
+const BI_IA_MODULES: PermissionModule[] = [
+  { id: 'inicio', label: 'Visão Estratégica', category: 'Módulos do Sistema' },
+  { id: 'bi_sales', label: 'Inteligência de Vendas', category: 'Módulos do Sistema' },
+  { id: 'bi_hub', label: 'Hub de Vendas', category: 'Módulos do Sistema' },
+  { id: 'bi_supplier', label: 'Hub do Fornecedor', category: 'Módulos do Sistema' },
+  { id: 'bi_abc', label: 'Gestão de Inventário', category: 'Módulos do Sistema' },
+  { id: 'bi_finance', label: 'Financeiro', category: 'Módulos do Sistema' },
+  { id: 'bi_customer', label: 'Radar 360', category: 'Módulos do Sistema' },
+  { id: 'bi_comparative', label: 'Lucratividade', category: 'Módulos do Sistema' },
+  { id: 'bi_customer_analytics', label: 'Análise de Clientes', category: 'Módulos do Sistema' },
+  { id: 'bi_goals', label: 'Análise de Metas', category: 'Módulos do Sistema' },
+  { id: 'cadastro_metas', label: 'Cadastro de Metas', category: 'Módulos do Sistema' },
+  { id: 'bi_heatmap', label: 'Mapa de Calor', category: 'Módulos do Sistema' },
+  { id: 'bi_ai_insights', label: 'Coliseu AI', category: 'Módulos do Sistema' },
+
+  // Ações de Usuários
+  { id: 'usuarios', label: 'Acessar Tela de Usuários', category: 'Gestão de Usuários & Ações', description: 'Permite visualizar o menu e a lista de usuários' },
+  { id: 'usuarios_criar', label: 'Ação: Novo Usuário', category: 'Gestão de Usuários & Ações', description: 'Permite cadastrar novos acessos no sistema' },
+  { id: 'usuarios_grupos', label: 'Ação: Grupos de Acesso', category: 'Gestão de Usuários & Ações', description: 'Permite alterar os grupos de acesso dos usuários' },
+  { id: 'usuarios_filiais', label: 'Ação: Filiais de Acesso', category: 'Gestão de Usuários & Ações', description: 'Permite definir filiais visíveis para o usuário' },
+  { id: 'reset_senha', label: 'Ação: Resetar Senha', category: 'Gestão de Usuários & Ações', description: 'Permite redefinir a senha do usuário para 123456' },
+  { id: 'usuarios_status', label: 'Ação: Inativar / Ativar', category: 'Gestão de Usuários & Ações', description: 'Permite inativar ou reativar contas de usuários' },
+  { id: 'usuarios_versao', label: 'Ação: Alterar Versão Ativa', category: 'Gestão de Usuários & Ações', description: 'Permite trocar o layout (Dash 1.0 / B.I IA.) do usuário' }
 ]
 
-function getAvailableModules(version: string) {
+function getAvailableModules(version: string): PermissionModule[] {
   if (version === 'Dash 1.0') return DASH_1_0_MODULES
   return BI_IA_MODULES
 }
@@ -332,17 +353,31 @@ export default function Grupos() {
 
               <div className="pt-2">
                 <label className="block text-sm font-medium text-text-primary mb-2">Permissões Iniciais</label>
-                <div className="space-y-2 max-h-48 overflow-y-auto border border-divider rounded-xl p-3">
-                  {availableModules.map(mod => (
-                    <label key={mod.id} className="flex items-center gap-2 cursor-pointer py-1.5">
-                      <input
-                        type="checkbox"
-                        checked={selectedPermissions.includes(mod.id)}
-                        onChange={() => togglePermission(mod.id)}
-                        className="rounded border-gray-300 text-brand-500 focus:ring-brand-500 w-4.5 h-4.5"
-                      />
-                      <span className="text-sm text-text-secondary">{mod.label}</span>
-                    </label>
+                <div className="space-y-4 max-h-60 overflow-y-auto border border-divider rounded-xl p-3 bg-bg-secondary/10">
+                  {Array.from(new Set(availableModules.map(m => m.category))).map(category => (
+                    <div key={category} className="space-y-1.5">
+                      <div className="text-[10px] font-bold text-text-muted uppercase tracking-wider px-1 border-b border-border/40 pb-1">
+                        {category}
+                      </div>
+                      <div className="space-y-1 pl-1">
+                        {availableModules.filter(m => m.category === category).map(mod => (
+                          <label key={mod.id} className="flex items-start gap-2.5 cursor-pointer py-1.5 px-1 hover:bg-bg-secondary/40 rounded-lg transition-colors">
+                            <input
+                              type="checkbox"
+                              checked={selectedPermissions.includes(mod.id)}
+                              onChange={() => togglePermission(mod.id)}
+                              className="rounded border-gray-300 text-brand-500 focus:ring-brand-500 w-4 h-4 mt-0.5"
+                            />
+                            <div className="flex flex-col">
+                              <span className="text-xs font-semibold text-text-primary">{mod.label}</span>
+                              {mod.description && (
+                                <span className="text-[11px] text-text-muted leading-tight">{mod.description}</span>
+                              )}
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -384,20 +419,34 @@ export default function Grupos() {
             
             <div className="p-6 space-y-4">
               <p className="text-sm text-text-secondary">
-                Configure os recursos e páginas que os membros deste grupo têm acesso.
+                Configure os recursos, páginas e ações permitidas para os membros deste grupo.
               </p>
 
-              <div className="space-y-2.5 max-h-80 overflow-y-auto border border-divider rounded-xl p-3">
-                {availableModules.map(mod => (
-                  <label key={mod.id} className="flex items-center gap-3 p-2 hover:bg-bg-secondary rounded-lg cursor-pointer transition-colors">
-                    <input
-                      type="checkbox"
-                      checked={selectedPermissions.includes(mod.id)}
-                      onChange={() => togglePermission(mod.id)}
-                      className="w-5 h-5 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
-                    />
-                    <span className="text-sm font-medium text-text-primary">{mod.label}</span>
-                  </label>
+              <div className="space-y-4 max-h-80 overflow-y-auto border border-divider rounded-xl p-3 bg-bg-secondary/10">
+                {Array.from(new Set(availableModules.map(m => m.category))).map(category => (
+                  <div key={category} className="space-y-1.5">
+                    <div className="text-[10px] font-bold text-text-muted uppercase tracking-wider px-1 border-b border-border/40 pb-1">
+                      {category}
+                    </div>
+                    <div className="space-y-1 pl-1">
+                      {availableModules.filter(m => m.category === category).map(mod => (
+                        <label key={mod.id} className="flex items-start gap-2.5 p-1.5 hover:bg-bg-secondary rounded-lg cursor-pointer transition-colors">
+                          <input
+                            type="checkbox"
+                            checked={selectedPermissions.includes(mod.id)}
+                            onChange={() => togglePermission(mod.id)}
+                            className="w-4 h-4 mt-0.5 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
+                          />
+                          <div className="flex flex-col">
+                            <span className="text-xs font-semibold text-text-primary">{mod.label}</span>
+                            {mod.description && (
+                              <span className="text-[11px] text-text-muted leading-tight">{mod.description}</span>
+                            )}
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
 
