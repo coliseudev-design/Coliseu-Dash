@@ -35,6 +35,7 @@ const AVAILABLE_MODULES = [
 
 export default function Usuarios() {
   const queryClient = useQueryClient()
+  const { filiais = [] } = useBranch()
   const activeUser = useAuthStore((s) => s.user)
   const userRoleLower = (activeUser?.role || '').toLowerCase()
   const isMasterOrAdmin = userRoleLower === 'master' || userRoleLower === 'admin'

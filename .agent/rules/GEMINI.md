@@ -103,6 +103,13 @@ When user's prompt is NOT in English:
 2. **Respond in user's language** - match their communication
 3. **Code comments/variables** remain in English
 
+### 🚀 Auto Git Push (Global Mandatory)
+
+**Sempre que qualquer alteração de código, correção de bug ou funcionalidade for finalizada:**
+1. Validar integridade e compilação do projeto.
+2. Executar `git add .` e criar commit semântico descritivo.
+3. Executar `git push` imediatamente para a branch atual sem necessidade de intervenção do usuário.
+
 ### 🧹 Clean Code (Global Mandatory)
 
 **ALL code MUST follow `@[skills/clean-code]` rules. No exceptions.**

@@ -404,51 +404,53 @@ export default function Grupos() {
       )}
 
       {/* Modal de Permissões */}
-      {permissionsModalOpen && selectedGroup && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-bg-primary rounded-2xl shadow-xl border border-border w-full max-w-md overflow-hidden animate-fade-in">
-            <div className="p-5 border-b border-border flex justify-between items-center bg-bg-secondary/50">
-              <h3 className="font-semibold text-lg text-text-primary flex items-center gap-2">
-                <Shield className="text-brand-500" />
-                Permissões: <span className="font-bold text-text-primary">{selectedGroup.nome}</span>
-              </h3>
-              <button onClick={() => setPermissionsModalOpen(false)} className="text-text-secondary hover:text-text-primary">
-                <X size={24} />
-              </button>
-            </div>
-            
-            <div className="p-6 space-y-4">
-              <p className="text-sm text-text-secondary">
-                Configure os recursos, páginas e ações permitidas para os membros deste grupo.
-              </p>
-
-              <div className="space-y-4 max-h-80 overflow-y-auto border border-divider rounded-xl p-3 bg-bg-secondary/10">
-                {Array.from(new Set(availableModules.map(m => m.category))).map(category => (
-                  <div key={category} className="space-y-1.5">
-                    <div className="text-[10px] font-bold text-text-muted uppercase tracking-wider px-1 border-b border-border/40 pb-1">
-                      {category}
-                    </div>
-                    <div className="space-y-1 pl-1">
-                      {availableModules.filter(m => m.category === category).map(mod => (
-                        <label key={mod.id} className="flex items-start gap-2.5 p-1.5 hover:bg-bg-secondary rounded-lg cursor-pointer transition-colors">
-                          <input
-                            type="checkbox"
-                            checked={selectedPermissions.includes(mod.id)}
-                            onChange={() => togglePermission(mod.id)}
-                            className="w-4 h-4 mt-0.5 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
-                          />
-                          <div className="flex flex-col">
-                            <span className="text-xs font-semibold text-text-primary">{mod.label}</span>
-                            {mod.description && (
-                              <span className="text-[11px] text-text-muted leading-tight">{mod.description}</span>
-                            )}
-                          </div>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                ))}
+      {permissionsModalOpen && selectedGroup && (() => {
+        const modalModules = getAvailableModules(selectedGroup.versao || activeTab);
+        return (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-bg-primary rounded-2xl shadow-xl border border-border w-full max-w-md overflow-hidden animate-fade-in">
+              <div className="p-5 border-b border-border flex justify-between items-center bg-bg-secondary/50">
+                <h3 className="font-semibold text-lg text-text-primary flex items-center gap-2">
+                  <Shield className="text-brand-500" />
+                  Permissões: <span className="font-bold text-text-primary">{selectedGroup.nome}</span>
+                </h3>
+                <button onClick={() => setPermissionsModalOpen(false)} className="text-text-secondary hover:text-text-primary">
+                  <X size={24} />
+                </button>
               </div>
+              
+              <div className="p-6 space-y-4">
+                <p className="text-sm text-text-secondary">
+                  Configure os recursos, páginas e ações permitidas para os membros deste grupo ({selectedGroup.versao}).
+                </p>
+
+                <div className="space-y-4 max-h-80 overflow-y-auto border border-divider rounded-xl p-3 bg-bg-secondary/10">
+                  {Array.from(new Set(modalModules.map(m => m.category))).map(category => (
+                    <div key={category} className="space-y-1.5">
+                      <div className="text-[10px] font-bold text-text-muted uppercase tracking-wider px-1 border-b border-border/40 pb-1">
+                        {category}
+                      </div>
+                      <div className="space-y-1 pl-1">
+                        {modalModules.filter(m => m.category === category).map(mod => (
+                          <label key={mod.id} className="flex items-start gap-2.5 p-1.5 hover:bg-bg-secondary rounded-lg cursor-pointer transition-colors">
+                            <input
+                              type="checkbox"
+                              checked={selectedPermissions.includes(mod.id)}
+                              onChange={() => togglePermission(mod.id)}
+                              className="w-4 h-4 mt-0.5 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
+                            />
+                            <div className="flex flex-col">
+                              <span className="text-xs font-semibold text-text-primary">{mod.label}</span>
+                              {mod.description && (
+                                <span className="text-[11px] text-text-muted leading-tight">{mod.description}</span>
+                              )}
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
 
               <div className="border-t border-border pt-4">
                 <h4 className="font-semibold text-sm text-text-primary mb-2">Controle de Acesso de Vendedores</h4>
@@ -508,7 +510,7 @@ export default function Grupos() {
             </div>
           </div>
         </div>
-      )}
+      )})}
     </div>
   )
 }
