@@ -17,6 +17,25 @@ const queryClient = new QueryClient({
   },
 })
 
+// Auto reload when dynamic import fails after a new deployment
+window.addEventListener('vite:preloadError', () => {
+  window.location.reload()
+})
+
+window.addEventListener('error', (event) => {
+  if (
+    event?.message?.includes('Failed to fetch dynamically imported module') ||
+    event?.message?.includes('Expected a JavaScript-or-Wasm module script')
+  ) {
+    const lastReload = sessionStorage.getItem('last_chunk_reload')
+    const now = Date.now()
+    if (!lastReload || now - parseInt(lastReload, 10) > 10000) {
+      sessionStorage.setItem('last_chunk_reload', String(now))
+      window.location.reload()
+    }
+  }
+})
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
