@@ -105,13 +105,6 @@ export default function SellerHubDashboard() {
     marca: selectedMarca !== 'todas' && selectedMarca !== 'all' ? selectedMarca : undefined
   }), [globalFilter, selectedVendedor, selectedCidade, selectedMarca]);
 
-  const selectedSellerName = useMemo(() => {
-    if (data?.vendedor_nome) return data.vendedor_nome;
-    if (!selectedVendedor || !vdFull.data?.data) return '';
-    const seller = vdFull.data.data.find((v: any) => String(v.id) === String(selectedVendedor));
-    return seller ? seller.nome : '';
-  }, [selectedVendedor, vdFull.data, data?.vendedor_nome]);
-
   const { data, isLoading, isError } = useBiPeriodQuery<any>(
     ['bi', 'seller-summary', activeFilter],
     async (f) => {
@@ -120,6 +113,13 @@ export default function SellerHubDashboard() {
     },
     activeFilter
   );
+
+  const selectedSellerName = useMemo(() => {
+    if (data?.vendedor_nome) return data.vendedor_nome;
+    if (!selectedVendedor || !vdFull.data?.data) return '';
+    const seller = vdFull.data.data.find((v: any) => String(v.id) === String(selectedVendedor));
+    return seller ? seller.nome : '';
+  }, [selectedVendedor, vdFull.data, data?.vendedor_nome]);
 
   // Reset pagination limit when selected vendor, query, or filters change
   useEffect(() => {
