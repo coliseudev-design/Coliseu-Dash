@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { usePeriodStore, periodToParams } from '../../store/periodStore';
 import { useBranchParam } from '../../contexts/BranchContext';
 import PeriodFilter from '../../components/PeriodFilter';
@@ -55,6 +55,8 @@ export default function SellerHubDashboard() {
   }), [periodState, branchParam]);
   const { sellerId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const isInsideComercial = location.pathname.includes('/comercial');
 
   // Fetch list of sellers dynamically
   const vdFull = useBranchPeriodQuery<any>('/ranking/vendedores', { limit: 100 });
@@ -271,13 +273,15 @@ export default function SellerHubDashboard() {
   return (
     <div className="space-y-3 animate-in fade-in duration-300">
       
-      {/* CARD 1: PERÍODO DE ANÁLISE */}
-      <div className="bg-bg-primary border border-divider rounded-xl p-2.5 px-4 flex items-center justify-between shadow-sm animate-in slide-in-from-top duration-200">
-        <span className="text-[10px] font-bold text-text-secondary/80 uppercase tracking-widest pl-1">Período de Análise</span>
-        <div className="flex items-center min-w-0">
-          <PeriodFilter />
+      {/* CARD 1: PERÍODO DE ANÁLISE (Renderiza apenas fora do Módulo Comercial) */}
+      {!isInsideComercial && (
+        <div className="bg-bg-primary border border-divider rounded-xl p-2.5 px-4 flex items-center justify-between shadow-sm animate-in slide-in-from-top duration-200">
+          <span className="text-[10px] font-bold text-text-secondary/80 uppercase tracking-widest pl-1">Período de Análise</span>
+          <div className="flex items-center min-w-0">
+            <PeriodFilter />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* CARD 2: FILTROS DE SELEÇÃO */}
       <div className="bg-bg-primary border border-divider shadow-sm rounded-xl p-3.5 flex flex-wrap gap-3 items-center">
