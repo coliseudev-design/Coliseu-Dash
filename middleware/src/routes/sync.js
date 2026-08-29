@@ -194,24 +194,42 @@ router.post('/:tabela', async (req, res) => {
                     row['data_venda'] = faturamentoDate;
                     row['data_vencimento'] = faturamentoDate;
 
-                    // Ajustar valor_total no Postgres para ser bruto (total + desconto)
-                    // para manter a consistência com as consultas do dashboard que subtraem valor_desconto.
-                    if (row['valor_total'] !== undefined && row['valor_total'] !== null) {
-                        let total = parseFloat(row['valor_total']) || 0;
-                        let desc = parseFloat(row['valor_desconto']) || 0;
-                        let custo = parseFloat(row['valor_custo']) || 0;
-
-                        const isDevolucao = parseInt(row['es']) === 2 || (parseInt(row['processo']) === 2 && ['DEVOLUCAO DE CLIENTE', 'GARANTIA'].includes(String(row['especie']).toUpperCase().trim()));
-                        if (isDevolucao) {
-                            total = -Math.abs(total);
-                            desc = -Math.abs(desc);
-                            custo = -Math.abs(custo);
+                    // Alinhamento de Valor Real do Pedido (Documentos Financeiros / Especie):
+                    // Em Firebird, PEDIDOS_DOCS (especie) contem o valor liquido final exato do pedido faturado.
+                    let realVal = 0;
+                    if (row['especie'] && typeof row['especie'] === 'string' && row['especie'].includes(':')) {
+                        const tokens = row['especie'].split('|');
+                        let docSum = 0;
+                        let hasDocs = false;
+                        for (const t of tokens) {
+                            const parts = t.split(':');
+                            if (parts.length >= 2) {
+                                const num = parseFloat(parts[parts.length - 1]);
+                                if (!isNaN(num) && num > 0) {
+                                    docSum += num;
+                                    hasDocs = true;
+                                }
+                            }
                         }
-
-                        row['valor_total'] = total + desc;
-                        row['valor_desconto'] = desc;
-                        row['valor_custo'] = custo;
+                        if (hasDocs && docSum > 0) {
+                            realVal = docSum;
+                        }
                     }
+
+                    if (!realVal) {
+                        realVal = parseFloat(row['valor_total']) || 0;
+                    }
+
+                    let custo = parseFloat(row['valor_custo']) || 0;
+                    const isDevolucao = parseInt(row['es']) === 2 || parseInt(row['processo']) === 2 || ['DEVOLUCAO DE CLIENTE', 'GARANTIA'].includes(String(row['especie']).toUpperCase().trim());
+                    if (isDevolucao) {
+                        realVal = -Math.abs(realVal);
+                        custo = -Math.abs(custo);
+                    }
+
+                    row['valor_total'] = realVal;
+                    row['valor_desconto'] = 0;
+                    row['valor_custo'] = custo;
                 }
 
                 if (tabela === 'dash_vendas_itens') {
