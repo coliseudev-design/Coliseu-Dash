@@ -887,8 +887,8 @@ router.get('/financial/summary', async (req, res, next) => {
                 COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'PAGAR' AND TRIM(f.status_pagamento) = 'ABERTO' AND f.data_vencimento >= $2 AND f.data_vencimento <= $3 THEN f.valor - (CASE WHEN f.valor_pago = 0 THEN 0 ELSE f.valor_pago END) ELSE 0 END), 0) AS contas_pagar,
                 COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'RECEBER' AND TRIM(f.status_pagamento) = 'ABERTO' AND f.data_vencimento < NOW() THEN f.valor - (CASE WHEN f.valor_pago = 0 THEN 0 ELSE f.valor_pago END) ELSE 0 END), 0) AS receber_vencido,
                 COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'PAGAR' AND TRIM(f.status_pagamento) = 'ABERTO' AND f.data_vencimento < NOW() THEN f.valor - (CASE WHEN f.valor_pago = 0 THEN 0 ELSE f.valor_pago END) ELSE 0 END), 0) AS pagar_vencido,
-                COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'RECEBER' AND f.data_pagamento >= $2 AND f.data_pagamento <= $3 THEN (CASE WHEN f.valor_pago > 0 THEN f.valor_pago ELSE f.valor END) ELSE 0 END), 0) AS recebimentos_realizados,
-                COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'PAGAR' AND f.data_pagamento >= $2 AND f.data_pagamento <= $3 THEN (CASE WHEN f.valor_pago > 0 THEN f.valor_pago ELSE f.valor END) ELSE 0 END), 0) AS pagamentos_realizados
+                COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'RECEBER' AND f.data_pagamento >= $2 AND f.data_pagamento <= $3 AND (TRIM(f.status_pagamento) = 'PAGO' OR f.valor_pago > 0) THEN (CASE WHEN TRIM(f.status_pagamento) = 'PAGO' THEN (CASE WHEN f.valor_pago > 0 THEN f.valor_pago ELSE f.valor END) ELSE f.valor_pago END) ELSE 0 END), 0) AS recebimentos_realizados,
+                COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'PAGAR' AND f.data_pagamento >= $2 AND f.data_pagamento <= $3 AND (TRIM(f.status_pagamento) = 'PAGO' OR f.valor_pago > 0) THEN (CASE WHEN TRIM(f.status_pagamento) = 'PAGO' THEN (CASE WHEN f.valor_pago > 0 THEN f.valor_pago ELSE f.valor END) ELSE f.valor_pago END) ELSE 0 END), 0) AS pagamentos_realizados
             FROM dash_financeiro f
             WHERE f.tenant_id = $1
             ${cf.clause}

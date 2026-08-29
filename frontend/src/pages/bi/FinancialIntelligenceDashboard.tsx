@@ -150,90 +150,39 @@ export default function FinancialIntelligenceDashboard() {
         </div>
       </div>
 
-      {/* INADIMPLÊNCIA & PROJEÇÃO */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-        {/* Inadimplência */}
-        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex flex-col justify-between">
-          <h3 className="font-bold text-text-primary text-sm flex items-center gap-2 mb-6">
-            <AlertTriangle size={16} className="text-warning"/> Inadimplência
-          </h3>
-          
-          <div className="flex-1 flex flex-col items-center justify-center">
-            {/* Custom SVG Donut Gauge */}
-            <div className="relative w-32 sm:w-40 md:w-48 h-32 sm:h-40 md:h-48 mb-4 sm:mb-6">
-              <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                {/* Background Ring */}
-                <circle cx="50" cy="50" r="40" fill="none" stroke="var(--color-bg-tertiary)" strokeWidth="10" />
-                {/* Value Ring (inadimplencia) */}
-                <circle 
-                  cx="50" cy="50" r="40" fill="none" stroke="#EF4444" strokeWidth="10" 
-                  strokeDasharray={`${(data?.inadimplencia_pct || 0) * 2.51} ${100 * 2.51}`} 
-                  strokeLinecap="round"
-                />
-              </svg>
-              <div className="absolute top-0 left-0 w-full h-full flex flex-col items-center justify-center">
-                <span className="text-3xl font-black text-danger tracking-tighter">{data?.inadimplencia_pct || 0}%</span>
-                <span className="text-[9px] text-text-muted font-bold uppercase tracking-wider mt-0.5">Taxa de Atraso</span>
-              </div>
-            </div>
-
-            <div className="w-full space-y-3">
-              <div className="flex justify-between items-center bg-bg-secondary/30 p-3 rounded-lg border border-danger/20">
-                <div>
-                  <div className="text-xs font-bold text-danger">Receber Vencido</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm font-extrabold text-danger">{formatBRL(data?.receber_vencido || 0)}</div>
-                  <div className="text-[10px] text-text-muted">Títulos vencidos</div>
-                </div>
-              </div>
-              <div className="flex justify-between items-center bg-bg-secondary/30 p-3 rounded-lg border border-warning/20">
-                <div>
-                  <div className="text-xs font-bold text-warning">Pagar Vencido</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm font-extrabold text-warning">{formatBRL(data?.pagar_vencido || 0)}</div>
-                  <div className="text-[10px] text-text-muted">Títulos vencidos</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Projeção de Fluxo de Caixa */}
-        <div className="lg:col-span-2 bg-bg-primary border border-border shadow-card rounded-xl p-5 flex flex-col">
-          <h3 className="font-bold text-text-primary text-sm flex items-center gap-2 mb-6">
-            <TrendingUp size={16} className="text-blue-500"/> Projeção de Fluxo de Caixa
-          </h3>
-          
-          <div className="flex-1 overflow-x-auto">
-            <table className="w-full text-left text-sm whitespace-nowrap">
-              <thead>
-                <tr className="border-b border-divider text-[10px] text-text-muted uppercase font-bold tracking-wider">
-                  <th className="pb-3 px-2">PERÍODO</th>
-                  <th className="pb-3 px-2 text-right">ENTRADAS PREVISTAS</th>
-                  <th className="pb-3 px-2 text-right">SAÍDAS PREVISTAS</th>
-                  <th className="pb-3 px-2 text-right">SALDO PROJETADO</th>
+      {/* PROJEÇÃO DE FLUXO DE CAIXA */}
+      <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex flex-col">
+        <h3 className="font-bold text-text-primary text-sm flex items-center gap-2 mb-6">
+          <TrendingUp size={16} className="text-blue-500"/> Projeção de Fluxo de Caixa
+        </h3>
+        
+        <div className="flex-1 overflow-x-auto">
+          <table className="w-full text-left text-sm whitespace-nowrap">
+            <thead>
+              <tr className="border-b border-divider text-[10px] text-text-muted uppercase font-bold tracking-wider">
+                <th className="pb-3 px-2">PERÍODO</th>
+                <th className="pb-3 px-2 text-right">ENTRADAS PREVISTAS</th>
+                <th className="pb-3 px-2 text-right">SAÍDAS PREVISTAS</th>
+                <th className="pb-3 px-2 text-right">SALDO PROJETADO</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-divider/30 text-xs">
+              {projecaoData.map((row, i) => (
+                <tr key={i} className="hover:bg-bg-secondary/50 transition-colors">
+                  <td className="py-4 px-2 font-bold text-text-primary flex items-center gap-2">
+                    <Clock size={14} className="text-text-muted" /> {row.periodo}
+                  </td>
+                  <td className="py-4 px-2 text-right font-mono font-bold text-success">{formatBRL(row.entradas)}</td>
+                  <td className="py-4 px-2 text-right font-mono font-bold text-danger">{formatBRL(row.saidas)}</td>
+                  <td className="py-4 px-2 text-right">
+                    <div className="inline-flex items-center gap-1 font-mono font-bold text-success bg-success/10 px-2 py-1 rounded">
+                      <ArrowUpRight size={12} /> {formatBRL(row.saldo)}
+                    </div>
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-divider/30 text-xs">
-                {projecaoData.map((row, i) => (
-                  <tr key={i} className="hover:bg-bg-secondary/50 transition-colors">
-                    <td className="py-4 px-2 font-bold text-text-primary flex items-center gap-2">
-                      <Clock size={14} className="text-text-muted" /> {row.periodo}
-                    </td>
-                    <td className="py-4 px-2 text-right font-mono font-bold text-success">{formatBRL(row.entradas)}</td>
-                    <td className="py-4 px-2 text-right font-mono font-bold text-danger">{formatBRL(row.saidas)}</td>
-                    <td className="py-4 px-2 text-right">
-                      <div className="inline-flex items-center gap-1 font-mono font-bold text-success bg-success/10 px-2 py-1 rounded">
-                        <ArrowUpRight size={12} /> {formatBRL(row.saldo)}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 
