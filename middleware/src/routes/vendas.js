@@ -5,7 +5,7 @@ const router = express.Router();
 const db = require('../db/postgres');
 const { getPeriodRange } = require('../utils/period');
 const cfopUtil = require('../utils/cfop');
-const { buildVendedorFilter } = require('./filiais');
+const { buildVendedorFilter, buildDeptoFilter } = require('./filiais');
 
 // GET /api/vendas/faturadas?period=today
 router.get('/faturadas', async (req, res, next) => {
@@ -13,6 +13,7 @@ router.get('/faturadas', async (req, res, next) => {
         const period = req.query.period || '7d';
         const tenantId = req.tenant.id;
         const vendedorId = req.query.vendedor_id;
+        const deptoId = req.query.depto_id;
         const { start_date, end_date } = req.query;
 
         const store = db.dbContext.getStore();
@@ -21,22 +22,24 @@ router.get('/faturadas', async (req, res, next) => {
         const { start, end } = getPeriodRange(period, start_date, end_date, anchorDate);
 
         const salesFilter = cfopUtil.getSalesFilterClause('v');
-        const vf = buildVendedorFilter(vendedorId, 4, 'v', req.user?.allowedSellers);
+        const df = buildDeptoFilter(deptoId, 4, 'v');
+        const vf = buildVendedorFilter(vendedorId, 4 + df.params.length, 'v', req.user?.allowedSellers);
 
         const { rows } = await db.query(`
             SELECT 
-                TO_CHAR(COALESCE(v.data_vencimento, v.data_venda), 'YYYY-MM-DD') AS data,
+                TO_CHAR(COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda), 'YYYY-MM-DD') AS data,
                 SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) AS total,
                 COUNT(*) AS quantidade
             FROM dash_vendas v
             WHERE v.tenant_id = $1 
-              AND COALESCE(v.data_vencimento, v.data_venda) >= $2 
-              AND COALESCE(v.data_vencimento, v.data_venda) <= $3
+              AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 
+              AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
               ${salesFilter}
+              ${df.clause}
               ${vf.clause}
-            GROUP BY TO_CHAR(COALESCE(v.data_vencimento, v.data_venda), 'YYYY-MM-DD')
+            GROUP BY TO_CHAR(COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda), 'YYYY-MM-DD')
             ORDER BY data
-        `, [tenantId, start, end, ...vf.params]);
+        `, [tenantId, start, end, ...df.params, ...vf.params]);
 
         // Retorna numbers para o frontend em total e quantidade
         const formatted = rows.map(r => ({

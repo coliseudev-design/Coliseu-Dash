@@ -37,14 +37,14 @@ router.get('/kpis', async (req, res, next) => {
                 SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) AS total_produzido,
                 COUNT(DISTINCT v.id_firebird) AS qtd_vendas
             FROM dash_vendas v
-            WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3 ${salesFilter} ${df.clause} ${vf.clause}
+            WHERE v.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3 ${salesFilter} ${df.clause} ${vf.clause}
         `, [tenantId, start, end, ...df.params, ...vf.params]);
 
         const { rows: grouped } = await db.query(`
             SELECT 
                 v.vendedor_id_firebird, SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) AS total
             FROM dash_vendas v
-            WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3 ${salesFilter} ${df.clause} ${vf.clause}
+            WHERE v.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3 ${salesFilter} ${df.clause} ${vf.clause}
             GROUP BY v.vendedor_id_firebird
         `, [tenantId, start, end, ...df.params, ...vf.params]);
 
@@ -86,7 +86,7 @@ router.get('/vendedores', async (req, res, next) => {
                 AVG(v.valor_total - COALESCE(v.valor_desconto, 0)) AS ticket_medio
             FROM dash_vendas v
             LEFT JOIN dash_vendedores vd ON vd.id_firebird = v.vendedor_id_firebird AND vd.tenant_id = v.tenant_id
-            WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3 ${salesFilter} ${df.clause} ${vf.clause}
+            WHERE v.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3 ${salesFilter} ${df.clause} ${vf.clause}
             GROUP BY v.vendedor_id_firebird, vd.nome
             ORDER BY total DESC LIMIT $${4 + df.params.length + vf.params.length}
         `, [tenantId, start, end, ...df.params, ...vf.params, limit]);
