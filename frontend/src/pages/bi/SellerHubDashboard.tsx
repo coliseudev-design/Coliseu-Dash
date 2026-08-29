@@ -82,7 +82,7 @@ export default function SellerHubDashboard() {
     grupos: 'list',
     produtos: 'list'
   });
-  const [evolucaoPeriodType, setEvolucaoPeriodType] = useState<'months' | 'days'>('months');
+  const [evolucaoPeriodType, setEvolucaoPeriodType] = useState<'months' | 'days'>('days');
 
   // Table filtering and sorting states
   const [clientQuery, setClientQuery] = useState('');
