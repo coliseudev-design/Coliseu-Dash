@@ -102,26 +102,7 @@ export default function FinancialIntelligenceDashboard() {
 
 
       {/* TOP KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
-        {/* Saldo Real */}
-        <div className="bg-brand-500/[0.04] border-2 border-brand-500/80 shadow-[0_8px_30px_rgba(13,148,136,0.08)] rounded-2xl p-5 flex flex-col justify-between hover:scale-[1.01] transition-transform duration-300 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-16 h-16 bg-brand-500/10 rounded-full -mr-6 -mt-6"></div>
-          <div className="flex items-center gap-2 text-brand-600 dark:text-brand-400 mb-3 text-[10px] font-black tracking-widest relative z-10">
-            <Wallet size={16} className="text-brand-500 stroke-[2.5]" /> Disponibilidade em Caixa
-          </div>
-          <div className="relative z-10">
-            <div
-              className="text-2xl font-black text-brand-600 dark:text-brand-400 mb-1 tracking-tight truncate"
-              title={formatBRL(data?.saldo_atual || 0)}
-            >
-              {formatBRLCompact(data?.saldo_atual || 0)}
-            </div>
-            <div className="text-[10px] text-success font-extrabold flex items-center gap-1">
-              <ArrowUpRight size={13} className="stroke-[2.5]" /> Recebido: {formatBRLCompact(data?.recebimentos_realizados || 0)}
-            </div>
-          </div>
-        </div>
-
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Total Recebido */}
         <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between">
           <div className="flex items-center gap-2 text-text-muted mb-2 text-[10px] font-bold uppercase tracking-wider">

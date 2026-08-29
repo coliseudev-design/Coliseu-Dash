@@ -36,62 +36,45 @@ export default function FinanceiroConsolidado() {
   return (
     <div className="flex flex-col h-full space-y-3 md:space-y-4 animate-in fade-in duration-300" aria-label="Módulo Financeiro">
       
-      {/* Header do Módulo Financeiro */}
+      {/* Header do Módulo Financeiro com Tabs integradas */}
       <div className="bg-bg-primary border border-divider rounded-2xl p-4 sm:p-5 flex flex-col gap-4 shadow-card">
-        {/* Line 1: Title */}
-        <div>
+        {/* Line 1: Title + Tabs */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <h1 className="text-xl sm:text-2xl font-black text-text-primary tracking-tight flex items-center gap-2 whitespace-nowrap">
             <Wallet className="text-brand-500" size={24} />
             Módulo Financeiro
           </h1>
+
+          {/* Desktop Navigation Tabs */}
+          <div className="hidden md:flex bg-bg-secondary p-1 rounded-xl border border-divider shadow-xs">
+            {tabs.map((tab) => {
+              const isActive = 
+                tab.path === '/financeiro-consolidado'
+                  ? location.pathname === '/financeiro-consolidado' || location.pathname === '/financeiro-consolidado/gestao'
+                  : location.pathname.startsWith(tab.path);
+                  
+              return (
+                <button
+                  key={tab.path}
+                  onClick={() => navigate(tab.path)}
+                  className={clsx(
+                    "flex items-center justify-center gap-2 py-1.5 px-4 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                    isActive
+                      ? "bg-brand-500 text-white shadow-sm"
+                      : "text-text-secondary hover:bg-bg-tertiary hover:text-text-primary"
+                  )}
+                >
+                  <tab.icon size={14} />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Line 2: Desktop Period Filter */}
         <div className="hidden md:flex items-center w-full">
           <PeriodFilter excludePeriods={['yesterday', 'lastMonth', 'last12m']} />
-        </div>
-      </div>
-
-      {/* Tabs de Navegação + Filtros Mês/Ano */}
-      <div className="hidden md:flex items-center justify-between gap-4 w-full">
-        {/* Tabs de Navegação Financeira */}
-        <div className="bg-bg-primary/80 backdrop-blur-md p-1 rounded-2xl border border-divider shadow-sm max-w-md w-full flex">
-          {tabs.map((tab) => {
-            const isActive = 
-              tab.path === '/financeiro-consolidado'
-                ? location.pathname === '/financeiro-consolidado' || location.pathname === '/financeiro-consolidado/gestao'
-                : location.pathname.startsWith(tab.path);
-                
-            return (
-              <button
-                key={tab.path}
-                onClick={() => navigate(tab.path)}
-                className={clsx(
-                  "flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer",
-                  isActive
-                    ? "bg-brand-500 text-white shadow-md"
-                    : "text-text-secondary hover:bg-bg-secondary hover:text-text-primary"
-                )}
-              >
-                <tab.icon size={14} />
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Mês / Ano Filters next to tabs */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 bg-bg-primary border border-border rounded-xl px-3 py-1.5 shadow-sm text-xs font-bold text-text-primary">
-            <span className="text-text-muted">Mês:</span>
-            <span>Mês Atual</span>
-            <ChevronDown size={14} className="text-text-muted" />
-          </div>
-          <div className="flex items-center gap-2 bg-bg-primary border border-border rounded-xl px-3 py-1.5 shadow-sm text-xs font-bold text-text-primary">
-            <span className="text-text-muted">Ano:</span>
-            <span>2026</span>
-            <ChevronDown size={14} className="text-text-muted" />
-          </div>
         </div>
       </div>
 
