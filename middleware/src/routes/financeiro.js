@@ -5,6 +5,7 @@ const router = express.Router();
 const db = require('../db/postgres');
 const { getPeriodRange } = require('../utils/period');
 const cfopUtil = require('../utils/cfop');
+const { buildDeptoFilter } = require('./filiais');
 
 /**
  * Usa MAX(data_emissao) do financeiro como âncora para filtros de período.
@@ -43,19 +44,22 @@ router.get('/contas-receber', async (req, res, next) => {
     try {
         const tenantId = req.tenant.id;
         const caixaId = req.query.caixa_id;
-        const filterCaixa = caixaId ? ` AND caixa_id_firebird = ${parseInt(caixaId)}` : '';
+        const filterCaixa = caixaId ? ` AND f.caixa_id_firebird = ${parseInt(caixaId)}` : '';
+        const deptoId = req.query.depto_id || req.query.centro_custo;
+        const df = buildDeptoFilter(deptoId, 2, 'f');
         const { rows } = await db.query(`
             SELECT 
                 ${CAT_SQL} AS status,
                 COUNT(*) AS quantidade,
-                SUM(valor) AS total
-            FROM dash_financeiro
-            WHERE tenant_id = $1 
-              AND TRIM(tipo) = 'RECEBER'
+                SUM(f.valor) AS total
+            FROM dash_financeiro f
+            WHERE f.tenant_id = $1 
+              AND TRIM(f.tipo) = 'RECEBER'
               ${filterCaixa}
+              ${df.clause}
             GROUP BY 1
             ORDER BY 1
-        `, [tenantId]);
+        `, [tenantId, ...df.params]);
 
         const formatted = rows.map(r => ({
             status: r.status,
@@ -74,19 +78,22 @@ router.get('/contas-pagar', async (req, res, next) => {
     try {
         const tenantId = req.tenant.id;
         const caixaId = req.query.caixa_id;
-        const filterCaixa = caixaId ? ` AND caixa_id_firebird = ${parseInt(caixaId)}` : '';
+        const filterCaixa = caixaId ? ` AND f.caixa_id_firebird = ${parseInt(caixaId)}` : '';
+        const deptoId = req.query.depto_id || req.query.centro_custo;
+        const df = buildDeptoFilter(deptoId, 2, 'f');
         const { rows } = await db.query(`
             SELECT 
                 ${CAT_SQL} AS status,
                 COUNT(*) AS quantidade,
-                SUM(valor) AS total
-            FROM dash_financeiro
-            WHERE tenant_id = $1 
-              AND TRIM(tipo) = 'PAGAR'
+                SUM(f.valor) AS total
+            FROM dash_financeiro f
+            WHERE f.tenant_id = $1 
+              AND TRIM(f.tipo) = 'PAGAR'
               ${filterCaixa}
+              ${df.clause}
             GROUP BY 1
             ORDER BY 1
-        `, [tenantId]);
+        `, [tenantId, ...df.params]);
 
         const formatted = rows.map(r => ({
             status: r.status,
@@ -105,23 +112,26 @@ router.get('/fluxo-caixa', async (req, res, next) => {
     try {
         const tenantId = req.tenant.id;
         const caixaId = req.query.caixa_id;
-        const filterCaixa = caixaId ? ` AND caixa_id_firebird = ${parseInt(caixaId)}` : '';
+        const filterCaixa = caixaId ? ` AND f.caixa_id_firebird = ${parseInt(caixaId)}` : '';
         const period = req.query.period || 'last12m';
         const { start, end } = await getFinanceiroAnchor(tenantId, period, req.query.start_date, req.query.end_date);
+        const deptoId = req.query.depto_id || req.query.centro_custo;
+        const df = buildDeptoFilter(deptoId, 4, 'f');
 
         const { rows } = await db.query(`
             SELECT 
-                TO_CHAR(COALESCE(data_pagamento, data_vencimento), 'YYYY-MM-DD') AS data,
-                SUM(CASE WHEN TRIM(tipo) = 'RECEBER' AND TRIM(status_pagamento) = 'PAGO' THEN (CASE WHEN valor_pago = 0 THEN valor ELSE valor_pago END) ELSE 0 END) AS entradas,
-                SUM(CASE WHEN TRIM(tipo) = 'PAGAR' AND TRIM(status_pagamento) = 'PAGO' THEN (CASE WHEN valor_pago = 0 THEN valor ELSE valor_pago END) ELSE 0 END) AS saidas
-            FROM dash_financeiro
-            WHERE tenant_id = $1
-              AND COALESCE(data_pagamento, data_vencimento) >= $2
-              AND COALESCE(data_pagamento, data_vencimento) <= $3
+                TO_CHAR(COALESCE(f.data_pagamento, f.data_vencimento), 'YYYY-MM-DD') AS data,
+                SUM(CASE WHEN TRIM(f.tipo) = 'RECEBER' AND TRIM(f.status_pagamento) = 'PAGO' THEN (CASE WHEN f.valor_pago = 0 THEN f.valor ELSE f.valor_pago END) ELSE 0 END) AS entradas,
+                SUM(CASE WHEN TRIM(f.tipo) = 'PAGAR' AND TRIM(f.status_pagamento) = 'PAGO' THEN (CASE WHEN f.valor_pago = 0 THEN f.valor ELSE f.valor_pago END) ELSE 0 END) AS saidas
+            FROM dash_financeiro f
+            WHERE f.tenant_id = $1
+              AND COALESCE(f.data_pagamento, f.data_vencimento) >= $2
+              AND COALESCE(f.data_pagamento, f.data_vencimento) <= $3
               ${filterCaixa}
-            GROUP BY TO_CHAR(COALESCE(data_pagamento, data_vencimento), 'YYYY-MM-DD')
+              ${df.clause}
+            GROUP BY TO_CHAR(COALESCE(f.data_pagamento, f.data_vencimento), 'YYYY-MM-DD')
             ORDER BY data
-        `, [tenantId, start, end]);
+        `, [tenantId, start, end, ...df.params]);
 
         let acc = 0;
         const data = rows.map((r) => {
@@ -147,14 +157,16 @@ router.get('/kpis', async (req, res, next) => {
     try {
         const tenantId = req.tenant.id;
         const caixaId = req.query.caixa_id;
-        const filterCaixa = caixaId ? ` AND caixa_id_firebird = ${parseInt(caixaId)}` : '';
+        const filterCaixa = caixaId ? ` AND f.caixa_id_firebird = ${parseInt(caixaId)}` : '';
+        const deptoId = req.query.depto_id || req.query.centro_custo;
+        const df = buildDeptoFilter(deptoId, 2, 'f');
 
         const [rReceber, rPagar, rVencidas, rGeral, rDmp] = await Promise.all([
-            db.query(`SELECT COALESCE(SUM(valor - valor_pago), 0) AS v FROM dash_financeiro WHERE tenant_id = $1 AND TRIM(tipo) = 'RECEBER' AND TRIM(status_pagamento) = 'ABERTO' ${filterCaixa}`, [tenantId]),
-            db.query(`SELECT COALESCE(SUM(valor - valor_pago), 0) AS v FROM dash_financeiro WHERE tenant_id = $1 AND TRIM(tipo) = 'PAGAR' AND TRIM(status_pagamento) = 'ABERTO' ${filterCaixa}`, [tenantId]),
-            db.query(`SELECT COALESCE(SUM(valor - valor_pago), 0) AS vencidas_valor, COUNT(*) AS vencidas_qtd FROM dash_financeiro WHERE tenant_id = $1 AND TRIM(tipo) = 'RECEBER' AND TRIM(status_pagamento) = 'ABERTO' AND data_vencimento < NOW() ${filterCaixa}`, [tenantId]),
-            db.query(`SELECT COALESCE(SUM(valor), 0) AS total_geral FROM dash_financeiro WHERE tenant_id = $1 AND TRIM(tipo) = 'RECEBER' ${filterCaixa}`, [tenantId]),
-            db.query(`SELECT AVG(EXTRACT(EPOCH FROM (data_pagamento - data_emissao))/86400) AS dias FROM dash_financeiro WHERE tenant_id = $1 AND TRIM(tipo) = 'RECEBER' AND TRIM(status_pagamento) = 'PAGO' AND data_pagamento IS NOT NULL AND data_emissao IS NOT NULL ${filterCaixa}`, [tenantId])
+            db.query(`SELECT COALESCE(SUM(f.valor - f.valor_pago), 0) AS v FROM dash_financeiro f WHERE f.tenant_id = $1 AND TRIM(f.tipo) = 'RECEBER' AND TRIM(f.status_pagamento) = 'ABERTO' ${filterCaixa} ${df.clause}`, [tenantId, ...df.params]),
+            db.query(`SELECT COALESCE(SUM(f.valor - f.valor_pago), 0) AS v FROM dash_financeiro f WHERE f.tenant_id = $1 AND TRIM(f.tipo) = 'PAGAR' AND TRIM(f.status_pagamento) = 'ABERTO' ${filterCaixa} ${df.clause}`, [tenantId, ...df.params]),
+            db.query(`SELECT COALESCE(SUM(f.valor - f.valor_pago), 0) AS vencidas_valor, COUNT(*) AS vencidas_qtd FROM dash_financeiro f WHERE f.tenant_id = $1 AND TRIM(f.tipo) = 'RECEBER' AND TRIM(f.status_pagamento) = 'ABERTO' AND f.data_vencimento < NOW() ${filterCaixa} ${df.clause}`, [tenantId, ...df.params]),
+            db.query(`SELECT COALESCE(SUM(f.valor), 0) AS total_geral FROM dash_financeiro f WHERE f.tenant_id = $1 AND TRIM(f.tipo) = 'RECEBER' ${filterCaixa} ${df.clause}`, [tenantId, ...df.params]),
+            db.query(`SELECT AVG(EXTRACT(EPOCH FROM (f.data_pagamento - f.data_emissao))/86400) AS dias FROM dash_financeiro f WHERE f.tenant_id = $1 AND TRIM(f.tipo) = 'RECEBER' AND TRIM(f.status_pagamento) = 'PAGO' AND f.data_pagamento IS NOT NULL AND f.data_emissao IS NOT NULL ${filterCaixa} ${df.clause}`, [tenantId, ...df.params])
         ]);
 
         const totalReceberGeral = parseFloat(rGeral.rows[0]?.total_geral || 0);
@@ -187,6 +199,8 @@ router.get('/caixa', async (req, res, next) => {
         const filterCaixa = caixaId ? ` AND f.caixa_id_firebird = ${parseInt(caixaId)}` : '';
         const period = req.query.period || 'last12m';
         const { start, end } = await getFinanceiroAnchor(tenantId, period, req.query.start_date, req.query.end_date);
+        const deptoId = req.query.depto_id || req.query.centro_custo;
+        const df = buildDeptoFilter(deptoId, 4, 'f');
 
         const totP = await db.query(`
             SELECT
@@ -197,7 +211,8 @@ router.get('/caixa', async (req, res, next) => {
             FROM dash_financeiro f
             WHERE f.tenant_id = $1
               ${filterCaixa}
-        `, [tenantId, start, end]);
+              ${df.clause}
+        `, [tenantId, start, end, ...df.params]);
 
         // Entradas em espécie (DINHEIRO) do caixa (por junção com vendas)
         const totDinP = await db.query(`
@@ -208,7 +223,8 @@ router.get('/caixa', async (req, res, next) => {
               AND v.id_firebird = f.venda_id_firebird
             WHERE f.tenant_id = $1
               ${filterCaixa}
-        `, [tenantId, start, end]);
+              ${df.clause}
+        `, [tenantId, start, end, ...df.params]);
 
         const movP = await db.query(`
             SELECT 
@@ -221,9 +237,10 @@ router.get('/caixa', async (req, res, next) => {
               AND COALESCE(f.data_pagamento, f.data_vencimento) >= $2 
               AND COALESCE(f.data_pagamento, f.data_vencimento) <= $3
               ${filterCaixa}
+              ${df.clause}
             GROUP BY TO_CHAR(COALESCE(f.data_pagamento, f.data_vencimento), 'YYYY-MM-DD')
             ORDER BY data
-        `, [tenantId, start, end]);
+        `, [tenantId, start, end, ...df.params]);
 
         const showEspecies = true;
 
@@ -390,6 +407,14 @@ router.get('/contas', async (req, res, next) => {
         } else if (statusPg) {
             where.push(`TRIM(f.status_pagamento) = $${pIndex++}`);
             binds.push(statusPg.trim());
+        }
+
+        const deptoId = req.query.depto_id || req.query.centro_custo;
+        const df = buildDeptoFilter(deptoId, pIndex, 'f');
+        if (df.clause) {
+            where.push(df.clause.replace(/^\s*AND\s+/i, ''));
+            binds.push(...df.params);
+            pIndex += df.params.length;
         }
 
         // Filtro de período resolvido (sempre aplicado)

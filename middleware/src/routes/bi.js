@@ -878,15 +878,8 @@ router.get('/financial/summary', async (req, res, next) => {
     try {
         const tenantId = req.tenant.id;
         const { start, end } = await getBiDateRange(req, tenantId);
-        const centroCusto = req.query.centro_custo;
-        const deptoId = req.query.depto_id;
-        
-        let cf = { clause: '', params: [] };
-        if (centroCusto && centroCusto !== 'todas') {
-            cf = buildCentroCustoFilter(centroCusto, 4, 'f');
-        } else if (deptoId && deptoId !== 'todas') {
-            cf = buildDeptoFilter(deptoId, 4, 'f');
-        }
+        const deptoId = req.query.depto_id || req.query.centro_custo;
+        const cf = buildDeptoFilter(deptoId, 4, 'f');
 
         const { rows: f } = await db.query(`
             SELECT 
@@ -909,12 +902,7 @@ router.get('/financial/summary', async (req, res, next) => {
         const pagos = parseFloat(f[0].pagamentos_realizados);
         const inadimplencia_pct = a_receber > 0 ? (receber_vencido / a_receber) * 100 : 0;
 
-        let cfList = { clause: '', params: [] };
-        if (centroCusto && centroCusto !== 'todas') {
-            cfList = buildCentroCustoFilter(centroCusto, 2, 'f');
-        } else if (deptoId && deptoId !== 'todas') {
-            cfList = buildDeptoFilter(deptoId, 2, 'f');
-        }
+        const cfList = buildDeptoFilter(deptoId, 2, 'f');
 
         const { rows: ultimasPagas } = await db.query(`
             SELECT 

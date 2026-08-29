@@ -33,7 +33,7 @@ function buildCentroCustoFilter(centroCustoId, nextParamIndex, alias = 'f') {
     const num = parseInt(centroCustoId, 10);
     if (isNaN(num)) return { clause: '', params: [] };
     return {
-        clause: ` AND ${alias}.centro_custo = $${nextParamIndex}`,
+        clause: ` AND COALESCE(${alias}.centro_custo, ${alias}.depto_id) = $${nextParamIndex}`,
         params: [num]
     };
 }
