@@ -904,33 +904,102 @@ router.get('/financial/summary', async (req, res, next) => {
 
         const cfList = buildDeptoFilter(deptoId, 2, 'f');
 
+        const { rows: projRows } = await db.query(`
+            SELECT 
+                'Próx. 7 dias' as periodo,
+                1 as sort_order,
+                COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'RECEBER' AND f.data_vencimento BETWEEN NOW() AND NOW() + interval '7 days' THEN f.valor - COALESCE(f.valor_pago, 0) ELSE 0 END), 0) as entradas,
+                COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'PAGAR' AND f.data_vencimento BETWEEN NOW() AND NOW() + interval '7 days' THEN f.valor - COALESCE(f.valor_pago, 0) ELSE 0 END), 0) as saidas
+            FROM dash_financeiro f
+            WHERE f.tenant_id = $1 AND TRIM(f.status_pagamento) = 'ABERTO' ${cfList.clause}
+            UNION ALL
+            SELECT 
+                'Próx. 15 dias' as periodo,
+                2 as sort_order,
+                COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'RECEBER' AND f.data_vencimento BETWEEN NOW() AND NOW() + interval '15 days' THEN f.valor - COALESCE(f.valor_pago, 0) ELSE 0 END), 0) as entradas,
+                COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'PAGAR' AND f.data_vencimento BETWEEN NOW() AND NOW() + interval '15 days' THEN f.valor - COALESCE(f.valor_pago, 0) ELSE 0 END), 0) as saidas
+            FROM dash_financeiro f
+            WHERE f.tenant_id = $1 AND TRIM(f.status_pagamento) = 'ABERTO' ${cfList.clause}
+            UNION ALL
+            SELECT 
+                'Próx. 30 dias' as periodo,
+                3 as sort_order,
+                COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'RECEBER' AND f.data_vencimento BETWEEN NOW() AND NOW() + interval '30 days' THEN f.valor - COALESCE(f.valor_pago, 0) ELSE 0 END), 0) as entradas,
+                COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'PAGAR' AND f.data_vencimento BETWEEN NOW() AND NOW() + interval '30 days' THEN f.valor - COALESCE(f.valor_pago, 0) ELSE 0 END), 0) as saidas
+            FROM dash_financeiro f
+            WHERE f.tenant_id = $1 AND TRIM(f.status_pagamento) = 'ABERTO' ${cfList.clause}
+            UNION ALL
+            SELECT 
+                'Próx. 60 dias' as periodo,
+                4 as sort_order,
+                COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'RECEBER' AND f.data_vencimento BETWEEN NOW() AND NOW() + interval '60 days' THEN f.valor - COALESCE(f.valor_pago, 0) ELSE 0 END), 0) as entradas,
+                COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'PAGAR' AND f.data_vencimento BETWEEN NOW() AND NOW() + interval '60 days' THEN f.valor - COALESCE(f.valor_pago, 0) ELSE 0 END), 0) as saidas
+            FROM dash_financeiro f
+            WHERE f.tenant_id = $1 AND TRIM(f.status_pagamento) = 'ABERTO' ${cfList.clause}
+            UNION ALL
+            SELECT 
+                'Próx. 90 dias' as periodo,
+                5 as sort_order,
+                COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'RECEBER' AND f.data_vencimento BETWEEN NOW() AND NOW() + interval '90 days' THEN f.valor - COALESCE(f.valor_pago, 0) ELSE 0 END), 0) as entradas,
+                COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'PAGAR' AND f.data_vencimento BETWEEN NOW() AND NOW() + interval '90 days' THEN f.valor - COALESCE(f.valor_pago, 0) ELSE 0 END), 0) as saidas
+            FROM dash_financeiro f
+            WHERE f.tenant_id = $1 AND TRIM(f.status_pagamento) = 'ABERTO' ${cfList.clause}
+            ORDER BY sort_order ASC
+        `, [tenantId, ...cfList.params]);
+
+        const projecao_fluxo = projRows.map(r => ({
+            periodo: r.periodo,
+            entradas: parseFloat(r.entradas || 0),
+            saidas: parseFloat(r.saidas || 0),
+            saldo: parseFloat(r.entradas || 0) - parseFloat(r.saidas || 0)
+        }));
+
+        const { rows: evolRows } = await db.query(`
+            SELECT 
+                TO_CHAR(f.data_pagamento, 'MM/YY') as mes,
+                TO_CHAR(f.data_pagamento, 'YYYY-MM') as sort_key,
+                COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'RECEBER' THEN (CASE WHEN f.valor_pago > 0 THEN f.valor_pago ELSE f.valor END) ELSE 0 END), 0) as recebido,
+                COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'PAGAR' THEN (CASE WHEN f.valor_pago > 0 THEN f.valor_pago ELSE f.valor END) ELSE 0 END), 0) as pago
+            FROM dash_financeiro f
+            WHERE f.tenant_id = $1 AND f.data_pagamento >= NOW() - interval '12 months'
+              ${cfList.clause}
+            GROUP BY TO_CHAR(f.data_pagamento, 'MM/YY'), TO_CHAR(f.data_pagamento, 'YYYY-MM')
+            ORDER BY sort_key ASC
+        `, [tenantId, ...cfList.params]);
+
+        const evolucao_fluxo = evolRows.map(r => ({
+            mes: r.mes,
+            recebido: parseFloat(r.recebido || 0),
+            pago: parseFloat(r.pago || 0)
+        }));
+
         const { rows: ultimasPagas } = await db.query(`
             SELECT 
                 f.descricao,
                 COALESCE(f.data_pagamento, f.data_vencimento)::text AS data_pagamento,
-                (CASE WHEN f.valor_pago = 0 THEN f.valor ELSE f.valor_pago END) AS valor
+                (CASE WHEN f.valor_pago > 0 THEN f.valor_pago ELSE f.valor END) AS valor
             FROM dash_financeiro f
             WHERE f.tenant_id = $1 
               AND TRIM(f.tipo) = 'PAGAR' 
-              AND TRIM(f.status_pagamento) = 'PAGO'
-              ${cfList.clause}
-            ORDER BY COALESCE(f.data_pagamento, f.data_vencimento) DESC, f.id DESC
+              AND f.data_pagamento >= $2 AND f.data_pagamento <= $3
+              ${cf.clause}
+            ORDER BY f.data_pagamento DESC, f.id DESC
             LIMIT 10
-        `, [tenantId, ...cfList.params]);
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...cf.params]);
 
         const { rows: ultimasRecebidas } = await db.query(`
             SELECT 
                 f.descricao,
                 COALESCE(f.data_pagamento, f.data_vencimento)::text AS data_pagamento,
-                (CASE WHEN f.valor_pago = 0 THEN f.valor ELSE f.valor_pago END) AS valor
+                (CASE WHEN f.valor_pago > 0 THEN f.valor_pago ELSE f.valor END) AS valor
             FROM dash_financeiro f
             WHERE f.tenant_id = $1 
               AND TRIM(f.tipo) = 'RECEBER' 
-              AND TRIM(f.status_pagamento) = 'PAGO'
-              ${cfList.clause}
-            ORDER BY COALESCE(f.data_pagamento, f.data_vencimento) DESC, f.id DESC
+              AND f.data_pagamento >= $2 AND f.data_pagamento <= $3
+              ${cf.clause}
+            ORDER BY f.data_pagamento DESC, f.id DESC
             LIMIT 10
-        `, [tenantId, ...cfList.params]);
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...cf.params]);
 
         res.json({
             saldo_atual: recebidos - pagos,
@@ -941,6 +1010,8 @@ router.get('/financial/summary', async (req, res, next) => {
             recebimentos_realizados: recebidos,
             pagamentos_realizados: pagos,
             inadimplencia_pct: Number(inadimplencia_pct.toFixed(1)),
+            projecao_fluxo,
+            evolucao_fluxo,
             ultimas_pagas: ultimasPagas,
             ultimas_recebidas: ultimasRecebidas
         });

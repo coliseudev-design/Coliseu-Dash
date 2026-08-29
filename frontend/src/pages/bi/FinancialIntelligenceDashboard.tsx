@@ -51,29 +51,15 @@ export default function FinancialIntelligenceDashboard() {
     );
   }
 
-  // Mocks matching the reference image layout
-  const projecaoData = [
-    { periodo: 'Próx. 7 dias', entradas: 2584.30, saidas: 0, saldo: 2584.30 },
-    { periodo: 'Próx. 15 dias', entradas: 8668.97, saidas: 0, saldo: 8668.97 },
-    { periodo: 'Próx. 30 dias', entradas: 12244.47, saidas: 0, saldo: 12244.47 },
-    { periodo: 'Próx. 60 dias', entradas: 15138.24, saidas: 0, saldo: 15138.24 },
-    { periodo: 'Próx. 90 dias', entradas: 17680.64, saidas: 0, saldo: 17680.64 },
+  const projecaoData = data?.projecao_fluxo?.length ? data.projecao_fluxo : [
+    { periodo: 'Próx. 7 dias', entradas: 0, saidas: 0, saldo: 0 },
+    { periodo: 'Próx. 15 dias', entradas: 0, saidas: 0, saldo: 0 },
+    { periodo: 'Próx. 30 dias', entradas: 0, saidas: 0, saldo: 0 },
+    { periodo: 'Próx. 60 dias', entradas: 0, saidas: 0, saldo: 0 },
+    { periodo: 'Próx. 90 dias', entradas: 0, saidas: 0, saldo: 0 },
   ];
 
-  const evolucaoData = [
-    { mes: 'Jun/25', recebido: 155000, pago: 0 },
-    { mes: 'Jul/25', recebido: 195000, pago: 0 },
-    { mes: 'Ago/25', recebido: 250000, pago: 0 },
-    { mes: 'Set/25', recebido: 210000, pago: 0 },
-    { mes: 'Out/25', recebido: 180000, pago: 0 },
-    { mes: 'Nov/25', recebido: 220000, pago: 0 },
-    { mes: 'Dez/25', recebido: 130000, pago: 0 },
-    { mes: 'Jan/26', recebido: 215000, pago: 0 },
-    { mes: 'Fev/26', recebido: 223756.19, pago: 0 },
-    { mes: 'Mar/26', recebido: 110000, pago: 0 },
-    { mes: 'Abr/26', recebido: 0, pago: 0 },
-    { mes: 'Mai/26', recebido: 0, pago: 0 },
-  ];
+  const evolucaoData = data?.evolucao_fluxo || [];
 
   const topReceitas = [
     { nome: 'VENDAS', valor: 197500, pct: 100 },
