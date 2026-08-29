@@ -35,6 +35,7 @@ export default function FinancialIntelligenceDashboard() {
 
   const [expandedReceberIndex, setExpandedReceberIndex] = useState<number | null>(null);
   const [expandedPagarIndex, setExpandedPagarIndex] = useState<number | null>(null);
+  const [chartView, setChartView] = useState<'daily' | 'monthly'>('daily');
 
   const { data, isLoading } = useBiPeriodQuery(
     ['bi', 'financial'],
@@ -59,7 +60,9 @@ export default function FinancialIntelligenceDashboard() {
     { periodo: 'Próx. 90 dias', entradas: 0, saidas: 0, saldo: 0 },
   ];
 
-  const evolucaoData = data?.evolucao_fluxo || [];
+  const evolucaoData = chartView === 'daily' 
+    ? (data?.evolucao_fluxo_dias || data?.evolucao_fluxo || [])
+    : (data?.evolucao_fluxo_meses || data?.evolucao_fluxo || []);
 
   const topReceitas = [
     { nome: 'VENDAS', valor: 197500, pct: 100 },
@@ -171,16 +174,44 @@ export default function FinancialIntelligenceDashboard() {
         </div>
       </div>
 
-      {/* EVOLUÇÃO MENSAL */}
+      {/* EVOLUÇÃO (FLUXO REALIZADO) */}
       <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5">
-        <h3 className="font-bold text-text-primary text-sm flex items-center gap-2 mb-6">
-          <BarChart3 size={16} className="text-brand-500"/> Fluxo Realizado: Entradas vs Saídas
-        </h3>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
+          <h3 className="font-bold text-text-primary text-sm flex items-center gap-2">
+            <BarChart3 size={16} className="text-brand-500"/> Fluxo Realizado: Entradas vs Saídas
+          </h3>
+
+          <div className="flex items-center gap-1 bg-bg-secondary p-1 rounded-lg border border-border self-end sm:self-auto">
+            <button
+              onClick={() => setChartView('daily')}
+              className={clsx(
+                'px-3 py-1 text-xs font-bold rounded-md transition-all cursor-pointer',
+                chartView === 'daily' 
+                  ? 'bg-brand-500 text-white shadow-sm' 
+                  : 'text-text-secondary hover:text-text-primary'
+              )}
+            >
+              Diário
+            </button>
+            <button
+              onClick={() => setChartView('monthly')}
+              className={clsx(
+                'px-3 py-1 text-xs font-bold rounded-md transition-all cursor-pointer',
+                chartView === 'monthly' 
+                  ? 'bg-brand-500 text-white shadow-sm' 
+                  : 'text-text-secondary hover:text-text-primary'
+              )}
+            >
+              12 Meses
+            </button>
+          </div>
+        </div>
+
         <div className="h-[220px] sm:h-[280px] lg:h-[320px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={evolucaoData} margin={{ top: 20, right: 20, bottom: 0, left: -10 }} barGap={2}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" opacity={0.3} />
-              <XAxis dataKey="mes" tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} tickLine={false} axisLine={false} />
+              <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} tickLine={false} axisLine={false} />
               <YAxis tickFormatter={(v) => formatBRLCompact(v)} tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} tickLine={false} axisLine={false} />
               <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.4 }} />
               <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} iconType="square" />

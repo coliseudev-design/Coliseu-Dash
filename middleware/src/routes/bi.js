@@ -954,12 +954,12 @@ router.get('/financial/summary', async (req, res, next) => {
             saldo: parseFloat(r.entradas || 0) - parseFloat(r.saidas || 0)
         }));
 
-        const { rows: evolRows } = await db.query(`
+        const { rows: evolMesesRows } = await db.query(`
             SELECT 
-                TO_CHAR(f.data_pagamento, 'MM/YY') as mes,
+                TO_CHAR(f.data_pagamento, 'MM/YY') as label,
                 TO_CHAR(f.data_pagamento, 'YYYY-MM') as sort_key,
-                COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'RECEBER' THEN (CASE WHEN f.valor_pago > 0 THEN f.valor_pago ELSE f.valor END) ELSE 0 END), 0) as recebido,
-                COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'PAGAR' THEN (CASE WHEN f.valor_pago > 0 THEN f.valor_pago ELSE f.valor END) ELSE 0 END), 0) as pago
+                COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'RECEBER' AND (TRIM(f.status_pagamento) = 'PAGO' OR f.valor_pago > 0) THEN (CASE WHEN TRIM(f.status_pagamento) = 'PAGO' THEN (CASE WHEN f.valor_pago > 0 THEN f.valor_pago ELSE f.valor END) ELSE f.valor_pago END) ELSE 0 END), 0) as recebido,
+                COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'PAGAR' AND (TRIM(f.status_pagamento) = 'PAGO' OR f.valor_pago > 0) THEN (CASE WHEN TRIM(f.status_pagamento) = 'PAGO' THEN (CASE WHEN f.valor_pago > 0 THEN f.valor_pago ELSE f.valor END) ELSE f.valor_pago END) ELSE 0 END), 0) as pago
             FROM dash_financeiro f
             WHERE f.tenant_id = $1 AND f.data_pagamento >= NOW() - interval '12 months'
               ${cfList.clause}
@@ -967,8 +967,27 @@ router.get('/financial/summary', async (req, res, next) => {
             ORDER BY sort_key ASC
         `, [tenantId, ...cfList.params]);
 
-        const evolucao_fluxo = evolRows.map(r => ({
-            mes: r.mes,
+        const evolucao_fluxo_meses = evolMesesRows.map(r => ({
+            label: r.label,
+            recebido: parseFloat(r.recebido || 0),
+            pago: parseFloat(r.pago || 0)
+        }));
+
+        const { rows: evolDiasRows } = await db.query(`
+            SELECT 
+                TO_CHAR(f.data_pagamento, 'DD/MM') as label,
+                TO_CHAR(f.data_pagamento, 'YYYY-MM-DD') as sort_key,
+                COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'RECEBER' AND (TRIM(f.status_pagamento) = 'PAGO' OR f.valor_pago > 0) THEN (CASE WHEN TRIM(f.status_pagamento) = 'PAGO' THEN (CASE WHEN f.valor_pago > 0 THEN f.valor_pago ELSE f.valor END) ELSE f.valor_pago END) ELSE 0 END), 0) as recebido,
+                COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'PAGAR' AND (TRIM(f.status_pagamento) = 'PAGO' OR f.valor_pago > 0) THEN (CASE WHEN TRIM(f.status_pagamento) = 'PAGO' THEN (CASE WHEN f.valor_pago > 0 THEN f.valor_pago ELSE f.valor END) ELSE f.valor_pago END) ELSE 0 END), 0) as pago
+            FROM dash_financeiro f
+            WHERE f.tenant_id = $1 AND f.data_pagamento >= $2 AND f.data_pagamento <= $3
+              ${cf.clause}
+            GROUP BY TO_CHAR(f.data_pagamento, 'DD/MM'), TO_CHAR(f.data_pagamento, 'YYYY-MM-DD')
+            ORDER BY sort_key ASC
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...cf.params]);
+
+        const evolucao_fluxo_dias = evolDiasRows.map(r => ({
+            label: r.label,
             recebido: parseFloat(r.recebido || 0),
             pago: parseFloat(r.pago || 0)
         }));
@@ -1054,7 +1073,9 @@ router.get('/financial/summary', async (req, res, next) => {
             pagamentos_realizados: pagos,
             inadimplencia_pct: Number(inadimplencia_pct.toFixed(1)),
             projecao_fluxo,
-            evolucao_fluxo,
+            evolucao_fluxo_meses,
+            evolucao_fluxo_dias,
+            evolucao_fluxo: evolucao_fluxo_dias,
             ultimas_pagas: ultimasPagas,
             ultimas_recebidas: ultimasRecebidas,
             aging_receber,
