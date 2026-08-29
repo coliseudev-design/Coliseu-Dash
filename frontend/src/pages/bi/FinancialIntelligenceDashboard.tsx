@@ -66,27 +66,12 @@ export default function FinancialIntelligenceDashboard() {
     { nome: 'COMPRA MERCADORIAS', valor: 18700, pct: 9.4 },
   ];
 
-  const agingReceber = [
-    { label: 'Vencido', valor: data?.receber_vencido || 0, red: true },
-    { label: '0-15 dias', valor: Math.max(0, (data?.contas_receber || 0) - (data?.receber_vencido || 0)) },
-    { label: '16-30 dias', valor: 0 },
-    { label: '31-60 dias', valor: 0 },
-    { label: '60+ dias', valor: 0 },
-  ];
-
-  const agingPagar = [
-    { label: 'Vencido', valor: data?.pagar_vencido || 0, red: true },
-    { label: '0-15 dias', valor: Math.max(0, (data?.contas_pagar || 0) - (data?.pagar_vencido || 0)) },
-    { label: '16-30 dias', valor: 0 },
-    { label: '31-60 dias', valor: 0 },
-    { label: '60+ dias', valor: 0 },
-  ];
+  const agingReceber = data?.aging_receber || [];
+  const agingPagar = data?.aging_pagar || [];
 
   return (
     <div aria-label="Inteligência Financeira Dashboard" className="space-y-4 animate-in fade-in duration-300 pb-6">
       
-
-
       {/* TOP KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Total Recebido */}
@@ -96,9 +81,9 @@ export default function FinancialIntelligenceDashboard() {
           </div>
           <div>
             <div
-              className="text-2xl font-extrabold text-text-primary mb-1 tracking-tight truncate"
+              className="text-xl sm:text-2xl font-extrabold text-text-primary mb-1 tracking-tight truncate font-mono"
               title={formatBRL(data?.recebimentos_realizados || 0)}
-            >{formatBRLCompact(data?.recebimentos_realizados || 0)}</div>
+            >{formatBRL(data?.recebimentos_realizados || 0)}</div>
             <div className="text-[10px] text-text-muted font-medium">No período selecionado</div>
           </div>
         </div>
@@ -110,9 +95,9 @@ export default function FinancialIntelligenceDashboard() {
           </div>
           <div>
             <div
-              className="text-2xl font-extrabold text-text-primary mb-1 tracking-tight truncate"
+              className="text-xl sm:text-2xl font-extrabold text-text-primary mb-1 tracking-tight truncate font-mono"
               title={formatBRL(data?.pagamentos_realizados || 0)}
-            >{formatBRLCompact(data?.pagamentos_realizados || 0)}</div>
+            >{formatBRL(data?.pagamentos_realizados || 0)}</div>
             <div className="text-[10px] text-text-muted font-medium">No período selecionado</div>
           </div>
         </div>
@@ -124,9 +109,9 @@ export default function FinancialIntelligenceDashboard() {
           </div>
           <div>
             <div
-              className="text-2xl font-extrabold text-text-primary mb-1 tracking-tight truncate"
+              className="text-xl sm:text-2xl font-extrabold text-text-primary mb-1 tracking-tight truncate font-mono"
               title={formatBRL(data?.contas_receber || 0)}
-            >{formatBRLCompact(data?.contas_receber || 0)}</div>
+            >{formatBRL(data?.contas_receber || 0)}</div>
             <div className="text-[10px] text-danger font-bold flex items-center gap-1">
               <ArrowDownRight size={12}/> Títulos em aberto
             </div>
@@ -140,9 +125,9 @@ export default function FinancialIntelligenceDashboard() {
           </div>
           <div>
             <div
-              className="text-2xl font-extrabold text-text-primary mb-1 tracking-tight truncate"
+              className="text-xl sm:text-2xl font-extrabold text-text-primary mb-1 tracking-tight truncate font-mono"
               title={formatBRL(data?.contas_pagar || 0)}
-            >{formatBRLCompact(data?.contas_pagar || 0)}</div>
+            >{formatBRL(data?.contas_pagar || 0)}</div>
             <div className="text-[10px] text-danger font-bold flex items-center gap-1">
               <ArrowDownRight size={12}/> Títulos em aberto
             </div>

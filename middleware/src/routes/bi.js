@@ -1001,6 +1001,49 @@ router.get('/financial/summary', async (req, res, next) => {
             LIMIT 10
         `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...cf.params]);
 
+        const { rows: agingRecRows } = await db.query(`
+            SELECT 
+                COALESCE(SUM(CASE WHEN f.data_vencimento >= $2 AND f.data_vencimento <= $3 AND f.data_vencimento < NOW() THEN f.valor - COALESCE(f.valor_pago, 0) ELSE 0 END), 0) AS vencido_periodo,
+                COALESCE(SUM(CASE WHEN f.data_vencimento >= $2 AND f.data_vencimento <= $2::timestamp + interval '15 days' THEN f.valor - COALESCE(f.valor_pago, 0) ELSE 0 END), 0) AS d0_15,
+                COALESCE(SUM(CASE WHEN f.data_vencimento > $2::timestamp + interval '15 days' AND f.data_vencimento <= $3 THEN f.valor - COALESCE(f.valor_pago, 0) ELSE 0 END), 0) AS d16_30,
+                COALESCE(SUM(CASE WHEN f.data_vencimento > $3 AND f.data_vencimento <= $3::timestamp + interval '30 days' THEN f.valor - COALESCE(f.valor_pago, 0) ELSE 0 END), 0) AS d31_60,
+                COALESCE(SUM(CASE WHEN f.data_vencimento > $3::timestamp + interval '30 days' THEN f.valor - COALESCE(f.valor_pago, 0) ELSE 0 END), 0) AS d60_plus
+            FROM dash_financeiro f
+            WHERE f.tenant_id = $1 AND TRIM(f.tipo) = 'RECEBER' AND TRIM(f.status_pagamento) = 'ABERTO'
+              ${cf.clause}
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...cf.params]);
+
+        const { rows: agingPagRows } = await db.query(`
+            SELECT 
+                COALESCE(SUM(CASE WHEN f.data_vencimento >= $2 AND f.data_vencimento <= $3 AND f.data_vencimento < NOW() THEN f.valor - COALESCE(f.valor_pago, 0) ELSE 0 END), 0) AS vencido_periodo,
+                COALESCE(SUM(CASE WHEN f.data_vencimento >= $2 AND f.data_vencimento <= $2::timestamp + interval '15 days' THEN f.valor - COALESCE(f.valor_pago, 0) ELSE 0 END), 0) AS d0_15,
+                COALESCE(SUM(CASE WHEN f.data_vencimento > $2::timestamp + interval '15 days' AND f.data_vencimento <= $3 THEN f.valor - COALESCE(f.valor_pago, 0) ELSE 0 END), 0) AS d16_30,
+                COALESCE(SUM(CASE WHEN f.data_vencimento > $3 AND f.data_vencimento <= $3::timestamp + interval '30 days' THEN f.valor - COALESCE(f.valor_pago, 0) ELSE 0 END), 0) AS d31_60,
+                COALESCE(SUM(CASE WHEN f.data_vencimento > $3::timestamp + interval '30 days' THEN f.valor - COALESCE(f.valor_pago, 0) ELSE 0 END), 0) AS d60_plus
+            FROM dash_financeiro f
+            WHERE f.tenant_id = $1 AND TRIM(f.tipo) = 'PAGAR' AND TRIM(f.status_pagamento) = 'ABERTO'
+              ${cf.clause}
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...cf.params]);
+
+        const ar = agingRecRows[0] || {};
+        const ap = agingPagRows[0] || {};
+
+        const aging_receber = [
+            { label: 'Vencido no período', valor: parseFloat(ar.vencido_periodo || 0), red: true },
+            { label: '0-15 dias', valor: parseFloat(ar.d0_15 || 0) },
+            { label: '16-30 dias', valor: parseFloat(ar.d16_30 || 0) },
+            { label: '31-60 dias', valor: parseFloat(ar.d31_60 || 0) },
+            { label: '60+ dias', valor: parseFloat(ar.d60_plus || 0) }
+        ];
+
+        const aging_pagar = [
+            { label: 'Vencido no período', valor: parseFloat(ap.vencido_periodo || 0), red: true },
+            { label: '0-15 dias', valor: parseFloat(ap.d0_15 || 0) },
+            { label: '16-30 dias', valor: parseFloat(ap.d16_30 || 0) },
+            { label: '31-60 dias', valor: parseFloat(ap.d31_60 || 0) },
+            { label: '60+ dias', valor: parseFloat(ap.d60_plus || 0) }
+        ];
+
         res.json({
             saldo_atual: recebidos - pagos,
             contas_receber: a_receber,
@@ -1013,7 +1056,9 @@ router.get('/financial/summary', async (req, res, next) => {
             projecao_fluxo,
             evolucao_fluxo,
             ultimas_pagas: ultimasPagas,
-            ultimas_recebidas: ultimasRecebidas
+            ultimas_recebidas: ultimasRecebidas,
+            aging_receber,
+            aging_pagar
         });
     } catch (err) { next(err); }
 });
