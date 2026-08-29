@@ -2473,7 +2473,15 @@ router.get('/seller/summary', async (req, res, next) => {
         const start_date = formatDateStr(start);
         const end_date = formatDateStr(end);
 
+        const sellerNameRes = await db.query(
+            `SELECT nome FROM dash_vendedores WHERE tenant_id = $1 AND id_firebird = $2`,
+            [tenantId, vendedorId]
+        );
+        const vendedor_nome = sellerNameRes.rows[0]?.nome || `Vendedor #${vendedorId}`;
+
         res.json({
+            vendedor_id: vendedorId,
+            vendedor_nome,
             faturamento,
             ticket_medio,
             notas_emitidas: total_pedidos,

@@ -8,7 +8,7 @@ import { useBranchPeriodQuery } from '../../hooks/useApi';
 import { BIService } from '../../services/biApi';
 import { BiPeriodFilter } from '../../types/bi.types';
 import { 
-  Trophy, Users, Box, Award, DollarSign, TrendingUp, TrendingDown, 
+  Trophy, Users, User, Box, Award, DollarSign, TrendingUp, TrendingDown, 
   Calendar, MapPin, FileText, ChevronLeft, ChevronRight, Activity,
   BarChart3, ArrowUpDown, Clock, Search, EyeOff, Tag, PieChart as PieIcon, List,
   Target, ChevronDown
@@ -106,10 +106,11 @@ export default function SellerHubDashboard() {
   }), [globalFilter, selectedVendedor, selectedCidade, selectedMarca]);
 
   const selectedSellerName = useMemo(() => {
+    if (data?.vendedor_nome) return data.vendedor_nome;
     if (!selectedVendedor || !vdFull.data?.data) return '';
     const seller = vdFull.data.data.find((v: any) => String(v.id) === String(selectedVendedor));
     return seller ? seller.nome : '';
-  }, [selectedVendedor, vdFull.data]);
+  }, [selectedVendedor, vdFull.data, data?.vendedor_nome]);
 
   const { data, isLoading, isError } = useBiPeriodQuery<any>(
     ['bi', 'seller-summary', activeFilter],
@@ -281,13 +282,36 @@ export default function SellerHubDashboard() {
       {/* CARD 2: FILTROS DE SELEÇÃO */}
       <div className="bg-bg-primary border border-divider shadow-sm rounded-xl p-3.5 flex flex-wrap gap-3 items-center">
         {sellerId ? (
-          <button
-            onClick={() => navigate('/comercial/equipe')}
-            className="px-4 py-2.5 bg-bg-secondary hover:bg-bg-tertiary border border-divider text-text-primary rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
-          >
-            <ChevronLeft size={16} />
-            Voltar para Equipe
-          </button>
+          <div className="flex items-center justify-between w-full flex-wrap gap-3">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => navigate('/comercial/equipe')}
+                className="px-4 py-2 bg-bg-secondary hover:bg-bg-tertiary border border-divider text-text-primary rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
+              >
+                <ChevronLeft size={16} />
+                Voltar para Equipe
+              </button>
+              <div className="h-6 w-px bg-divider hidden sm:block" />
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-brand-500/10 border border-brand-500/20 text-brand-500 flex items-center justify-center font-extrabold text-sm uppercase shadow-xs">
+                  <User size={18} />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-bold text-text-secondary/70 uppercase tracking-wider">Vendedor</span>
+                  <h1 className="text-base font-extrabold text-text-primary uppercase tracking-tight">
+                    {selectedSellerName || data?.vendedor_nome || `Vendedor #${sellerId}`}
+                  </h1>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div className="px-3 py-1.5 bg-bg-secondary border border-divider rounded-lg text-xs font-semibold text-text-secondary flex items-center gap-1.5">
+                <FileText size={14} className="text-brand-500" />
+                <span>{data?.notas_emitidas || 0} Vendas no Período</span>
+              </div>
+            </div>
+          </div>
         ) : (
           <div className="flex flex-wrap gap-3 items-center w-full">
             {/* Vendedor */}
