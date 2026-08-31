@@ -128,9 +128,10 @@ router.get('/produtos', async (req, res, next) => {
                     COALESCE(vi.produto, p.nome, 'Produto ' || COALESCE(vi.produto_id_firebird::text, '?')) AS nome,
                     vi.quantidade * (CASE WHEN vf.valor_total < 0 THEN -1 ELSE 1 END) AS quantidade,
                     vi.preco_unitario,
+                    -- GREATEST evita inflação quando SUM(itens) < valor_total da venda
                     (CASE 
                         WHEN SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id) > 0 
-                        THEN vi.valor_total * (vf.valor_total / SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id)) 
+                        THEN vi.valor_total * (vf.valor_total / GREATEST(SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id), ABS(vf.valor_total)))
                         ELSE vi.valor_total * (CASE WHEN vf.valor_total < 0 THEN -1 ELSE 1 END)
                     END) AS valor_real
                 FROM dash_vendas_itens vi
@@ -220,9 +221,10 @@ router.get('/marcas', async (req, res, next) => {
                     vi.venda_id_firebird,
                     vi.tenant_id,
                     COALESCE(vi.marca, vf.marca, p.marca) AS marca,
+                    -- GREATEST evita inflação quando SUM(itens) < valor_total da venda
                     (CASE 
                         WHEN SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id) > 0 
-                        THEN vi.valor_total * (vf.valor_total / SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id)) 
+                        THEN vi.valor_total * (vf.valor_total / GREATEST(SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id), ABS(vf.valor_total)))
                         ELSE vi.valor_total * (CASE WHEN vf.valor_total < 0 THEN -1 ELSE 1 END)
                     END) AS valor_real
                 FROM dash_vendas_itens vi
@@ -403,9 +405,10 @@ router.get('/categorias', async (req, res, next) => {
                     vi.venda_id_firebird,
                     vi.tenant_id,
                     COALESCE(vi.categoria, vf.categoria, p.categoria) AS categoria,
+                    -- GREATEST evita inflação quando SUM(itens) < valor_total da venda
                     (CASE 
                         WHEN SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id) > 0 
-                        THEN vi.valor_total * (vf.valor_total / SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id)) 
+                        THEN vi.valor_total * (vf.valor_total / GREATEST(SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id), ABS(vf.valor_total)))
                         ELSE vi.valor_total * (CASE WHEN vf.valor_total < 0 THEN -1 ELSE 1 END)
                     END) AS valor_real
                 FROM dash_vendas_itens vi
