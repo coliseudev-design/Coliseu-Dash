@@ -835,7 +835,8 @@ router.get('/sales/abc-analysis', async (req, res, next) => {
             else if (estoque < 20) { status = 'Atenção'; }
 
             return {
-                cod: p.codigo ? String(p.codigo) : String(p.id_firebird),
+                cod: String(p.id_firebird),
+                cod_barra: p.codigo ? String(p.codigo) : '',
                 id_firebird: p.id_firebird,
                 desc: p.nome,
                 emb: 'UN',

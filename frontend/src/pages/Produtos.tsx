@@ -96,7 +96,7 @@ export default function Produtos() {
           <input
             type="text"
             className="input !pl-9"
-            placeholder="Buscar por nome ou código..."
+            placeholder="Buscar por código, cód. barras, referência ou nome..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -123,19 +123,21 @@ export default function Produtos() {
         data={lista.data?.data || []}
         empty="Nenhum produto encontrado"
         columns={[
-          { key: 'codigo', label: 'Código', render: (r: ProdutoItem) => <span className="mono text-xs text-text-secondary">{r.codigo}</span> },
+          { key: 'id', label: 'Código', render: (r: any) => <span className="mono text-xs font-bold text-indigo-600 dark:text-indigo-400">{r.id}</span> },
+          { key: 'codigo', label: 'Cód. Barras', render: (r: any) => <span className="mono text-xs text-text-secondary">{r.codigo || '-'}</span> },
           { key: 'nome', label: 'Nome' },
-          { key: 'categoria', label: 'Categoria', render: (r: ProdutoItem) => <span className="badge-info">{r.categoria}</span> },
+          { key: 'categoria', label: 'Categoria', render: (r: any) => <span className="badge-info">{r.categoria}</span> },
+          { key: 'marca', label: 'Marca', render: (r: any) => <span className="text-xs text-text-secondary">{r.marca || '-'}</span> },
           { key: 'estoque', label: 'Estoque', align: 'right',
-            render: (r: ProdutoItem) => (
-              <span className={r.estoque <= r.estoque_minimo ? 'text-danger font-semibold' : ''}>
+            render: (r: any) => (
+              <span className={r.estoque <= r.estoque_minimo ? 'text-danger font-semibold' : 'font-bold'}>
                 {formatNum(r.estoque)}
               </span>
             ) },
-          { key: 'preco', label: 'Preço', align: 'right', render: (r: ProdutoItem) => formatBRL(r.preco) },
-          { key: 'custo', label: 'Custo', align: 'right', render: (r: ProdutoItem) => <span className="text-text-secondary">{formatBRL(r.custo)}</span> },
+          { key: 'preco', label: 'Preço', align: 'right', render: (r: any) => formatBRL(r.preco) },
+          { key: 'custo', label: 'Custo', align: 'right', render: (r: any) => <span className="text-text-secondary">{formatBRL(r.custo)}</span> },
           { key: 'valor_total_estoque', label: 'Total Estoque', align: 'right',
-            render: (r: ProdutoItem) => <span className="font-semibold">{formatBRL(r.valor_total_estoque)}</span> },
+            render: (r: any) => <span className="font-semibold">{formatBRL(r.valor_total_estoque)}</span> },
         ]}
       />
     </div>

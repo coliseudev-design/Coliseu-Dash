@@ -21,7 +21,13 @@ router.get('/lista', async (req, res, next) => {
         let pIndex = 2;
 
         if (search) {
-            where.push(`(p.nome ILIKE $${pIndex} OR p.codigo ILIKE $${pIndex})`);
+            where.push(`(
+                p.nome ILIKE $${pIndex} 
+                OR CAST(p.id_firebird AS TEXT) ILIKE $${pIndex} 
+                OR p.codigo ILIKE $${pIndex} 
+                OR p.referencia ILIKE $${pIndex} 
+                OR p.codigo_fabrica ILIKE $${pIndex}
+            )`);
             binds.push(`%${search}%`);
             pIndex++;
         }

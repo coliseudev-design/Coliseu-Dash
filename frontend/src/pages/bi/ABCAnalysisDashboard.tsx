@@ -122,10 +122,13 @@ export default function InventoryManagementDashboard() {
   }, [tableData]);
 
   const filteredData = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
     const list = tableData.filter((item: any) => {
-      const matchSearch = !searchTerm ||
-        item.desc?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.cod?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchSearch = !term ||
+        item.desc?.toLowerCase().includes(term) ||
+        item.cod?.toLowerCase().includes(term) ||
+        item.cod_barra?.toLowerCase().includes(term) ||
+        String(item.id_firebird || '').toLowerCase().includes(term);
       const matchMarca = !marcaFilter || item.marca === marcaFilter;
       const matchGrupo = !grupoFilter || item.grupo === grupoFilter;
       const matchAbc = !abcFilter || item.abc === abcFilter;
