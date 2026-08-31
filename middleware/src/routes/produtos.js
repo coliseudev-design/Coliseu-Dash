@@ -12,37 +12,47 @@ router.get('/lista', async (req, res, next) => {
         const limit = Math.min(parseInt(req.query.limit, 10) || 100, 1000);
         const offset = parseInt(req.query.offset, 10) || 0;
         const categoria = req.query.categoria;
+        const deptoId = req.query.depto_id || req.query.centro_custo;
+        const deptoNum = parseInt(deptoId, 10);
+        const hasDepto = !isNaN(deptoNum) && deptoNum > 0;
 
-        const where = ['tenant_id = $1', 'ativo = true'];
+        const where = ['p.tenant_id = $1', 'p.ativo = true'];
         const binds = [tenantId];
         let pIndex = 2;
 
         if (search) {
-            where.push(`(nome ILIKE $${pIndex} OR codigo ILIKE $${pIndex})`);
+            where.push(`(p.nome ILIKE $${pIndex} OR p.codigo ILIKE $${pIndex})`);
             binds.push(`%${search}%`);
             pIndex++;
         }
 
         if (categoria) {
-            where.push(`categoria = $${pIndex}`);
+            where.push(`p.categoria = $${pIndex}`);
             binds.push(categoria);
             pIndex++;
         }
 
         const whereSql = `WHERE ${where.join(' AND ')}`;
+        const deptoJoin = hasDepto
+            ? `LEFT JOIN dash_produtos_depto pd ON pd.produto_id_firebird = p.id_firebird AND pd.tenant_id = p.tenant_id AND pd.depto_id = ${deptoNum}`
+            : ``;
+        const estoqueExpr = hasDepto ? `COALESCE(pd.estoque, p.estoque)` : `p.estoque`;
 
-        const totalP = await db.query(`SELECT COUNT(*) AS total FROM dash_produtos ${whereSql}`, binds);
+        const totalP = await db.query(`SELECT COUNT(*) AS total FROM dash_produtos p ${whereSql}`, binds);
 
         const limitIdx = pIndex++;
         const offsetIdx = pIndex++;
         
         const { rows } = await db.query(`
             SELECT 
-                id_firebird AS id, codigo, nome, categoria, marca, referencia, codigo_fabrica, preco, custo, estoque, estoque_minimo,
-                (preco * estoque) AS valor_total_estoque
-            FROM dash_produtos
+                p.id_firebird AS id, p.codigo, p.nome, p.categoria, p.marca, p.referencia, p.codigo_fabrica, p.preco, p.custo, 
+                ${estoqueExpr} AS estoque, 
+                p.estoque_minimo,
+                (p.preco * ${estoqueExpr}) AS valor_total_estoque
+            FROM dash_produtos p
+            ${deptoJoin}
             ${whereSql}
-            ORDER BY nome
+            ORDER BY p.nome
             LIMIT $${limitIdx} OFFSET $${offsetIdx}
         `, [...binds, limit, offset]);
 

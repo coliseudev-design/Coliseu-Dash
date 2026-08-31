@@ -22,6 +22,7 @@ const TABELAS_MAP = {
     'dash_filiais': ['empresa_erp', 'depto_id', 'centro_custo', 'nome', 'documento', 'is_default'],
     'dash_marcas': ['id_firebird', 'nome'],
     'dash_grupos': ['id_firebird', 'nome'],
+    'dash_produtos_depto': ['produto_id_firebird', 'depto_id', 'estoque', 'estoque_minimo'],
     'dash_metas_dashboard': ['id_firebird', 'tipo', 'referencia_id', 'data_referencia', 'valor_meta', 'periodo'],
     'dash_metas_vendedor_marca': ['id_firebird', 'meta_vendedor_id', 'marca_id', 'valor_meta', 'mes', 'ano']
 };
@@ -144,10 +145,14 @@ router.post('/:tabela', async (req, res) => {
 
 
                 // Guarda: valida chave primária obrigatória
-                const conflictKeyCheck = tabela === 'dash_filiais' ? 'depto_id' : 'id_firebird';
+                const conflictKeyCheck = tabela === 'dash_filiais' ? 'depto_id' : (tabela === 'dash_produtos_depto' ? 'produto_id_firebird' : 'id_firebird');
                 const pkVal = row[conflictKeyCheck];
                 if (pkVal === null || pkVal === undefined || pkVal === '') {
                     errors.push(`Row sem ${conflictKeyCheck}: dados inválidos ignorados`);
+                    continue;
+                }
+                if (tabela === 'dash_produtos_depto' && (row['depto_id'] === null || row['depto_id'] === undefined || row['depto_id'] === '')) {
+                    errors.push(`Row de dash_produtos_depto sem depto_id: dados inválidos ignorados`);
                     continue;
                 }
 
@@ -274,7 +279,10 @@ router.post('/:tabela', async (req, res) => {
                 // Geração posicional para o Pg (ex: $1, $2, $3)
                 const placeholders = insertCols.map((_, i) => `$${i + 1}`).join(', ');
 
-                const conflictKey = tabela === 'dash_filiais' ? 'depto_id' : 'id_firebird';
+                const conflictKey = tabela === 'dash_filiais' ? 'depto_id' : (tabela === 'dash_produtos_depto' ? 'produto_id_firebird' : 'id_firebird');
+                const conflictTarget = tabela === 'dash_filiais' 
+                    ? '(tenant_id, depto_id)' 
+                    : (tabela === 'dash_produtos_depto' ? '(tenant_id, produto_id_firebird, depto_id)' : `(tenant_id, ${conflictKey})`);
 
                 // Regra de conflito: Atualiza todos os campos menos conflictKey e tenant_id
                 let updateSet = '';
@@ -291,6 +299,11 @@ router.post('/:tabela', async (req, res) => {
                             return `${c} = EXCLUDED.${c}`;
                         })
                         .join(', ');
+                } else if (tabela === 'dash_produtos_depto') {
+                    updateSet = usedCols
+                        .filter(c => c !== 'produto_id_firebird' && c !== 'depto_id')
+                        .map(c => `${c} = EXCLUDED.${c}`)
+                        .join(', ');
                 } else {
                     updateSet = usedCols
                         .filter(c => c !== conflictKey)
@@ -304,9 +317,9 @@ router.post('/:tabela', async (req, res) => {
                 `;
 
                 if (updateSet.length > 0) {
-                    sql += ` ON CONFLICT (tenant_id, ${conflictKey}) DO UPDATE SET ${updateSet}, sincronizado_em = NOW()`;
+                    sql += ` ON CONFLICT ${conflictTarget} DO UPDATE SET ${updateSet}, sincronizado_em = NOW()`;
                 } else {
-                    sql += ` ON CONFLICT (tenant_id, ${conflictKey}) DO NOTHING`;
+                    sql += ` ON CONFLICT ${conflictTarget} DO NOTHING`;
                 }
 
                 await client.query(`SAVEPOINT row_save`);
