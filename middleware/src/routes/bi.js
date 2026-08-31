@@ -166,18 +166,27 @@ router.get('/sales/executive-summary', async (req, res, next) => {
         `;
 
         const prodsQuery = `
-            SELECT COALESCE(vi.produto, p.nome, 'Produto ' || COALESCE(vi.produto_id_firebird::text, '?')) AS nome, 
-                   SUM(vi.valor_total) as vendas
-            FROM dash_vendas_itens vi
-            JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
-            LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
-            ${cidadeJoin}
-            WHERE vi.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3 
-              ${salesFilter}
-              AND COALESCE(vi.produto, p.nome, vi.produto_id_firebird::text) IS NOT NULL
-              ${df.clause}
-              ${vf.clause}
-              ${cf.clause}
+            WITH ip AS (
+                SELECT 
+                    COALESCE(vi.produto, p.nome, 'Produto ' || COALESCE(vi.produto_id_firebird::text, '?')) AS nome,
+                    (CASE 
+                        WHEN SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id) > 0 
+                        THEN vi.valor_total * (v.valor_total / GREATEST(SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id), ABS(v.valor_total)))
+                        ELSE vi.valor_total * (CASE WHEN v.valor_total < 0 THEN -1 ELSE 1 END)
+                    END) AS valor_real
+                FROM dash_vendas_itens vi
+                JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+                LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
+                ${cidadeJoin}
+                WHERE vi.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3 
+                  ${salesFilter}
+                  AND COALESCE(vi.produto, p.nome, vi.produto_id_firebird::text) IS NOT NULL
+                  ${df.clause}
+                  ${vf.clause}
+                  ${cf.clause}
+            )
+            SELECT nome, SUM(valor_real) as vendas
+            FROM ip
             GROUP BY 1
             ORDER BY vendas DESC
             LIMIT 10
@@ -1853,38 +1862,61 @@ router.get('/supplier/analytics', async (req, res, next) => {
 
         // ── KPIs gerais ───────────────────────────────────────────
         const kpiQuery = `
+            WITH ip AS (
+                SELECT 
+                    (CASE 
+                        WHEN SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id) > 0 
+                        THEN vi.valor_total * (v.valor_total / GREATEST(SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id), ABS(v.valor_total)))
+                        ELSE vi.valor_total * (CASE WHEN v.valor_total < 0 THEN -1 ELSE 1 END)
+                    END) AS valor_real,
+                    vi.custo_unitario * vi.quantidade AS custo_item,
+                    v.id_firebird AS venda_id,
+                    v.cliente_id_firebird
+                FROM dash_vendas_itens vi
+                JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+                LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
+                WHERE vi.tenant_id = $1
+                  AND COALESCE(v.data_hora_proc, v.data_venda) >= $2
+                  AND COALESCE(v.data_hora_proc, v.data_venda) <= $3
+                  ${salesFilter}
+                  ${df.clause}
+                  ${marcaClause}
+            )
             SELECT 
-                SUM(vi.valor_total) as receita,
-                SUM(vi.custo_unitario * vi.quantidade) as custo,
-                COUNT(DISTINCT v.id_firebird) as pedidos,
-                COUNT(DISTINCT v.cliente_id_firebird) as clientes
-            FROM dash_vendas_itens vi
-            JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
-            LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
-            WHERE vi.tenant_id = $1
-              AND COALESCE(v.data_hora_proc, v.data_venda) >= $2
-              AND COALESCE(v.data_hora_proc, v.data_venda) <= $3
-              ${salesFilter}
-              ${df.clause}
-              ${marcaClause}
+                SUM(valor_real) as receita,
+                SUM(custo_item) as custo,
+                COUNT(DISTINCT venda_id) as pedidos,
+                COUNT(DISTINCT cliente_id_firebird) as clientes
+            FROM ip
         `;
         const { rows: kpis } = await db.query(kpiQuery, paramsWithMarca);
 
         // ── Top 30 Produtos ───────────────────────────────────────
         const prodQuery = `
-            SELECT COALESCE(vi.produto, p.nome, 'S/ NOME') as nome,
-                   SUM(vi.quantidade) as qtde,
-                   SUM(vi.valor_total) as receita
-            FROM dash_vendas_itens vi
-            JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
-            LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
-            WHERE vi.tenant_id = $1
-              AND COALESCE(v.data_hora_proc, v.data_venda) >= $2
-              AND COALESCE(v.data_hora_proc, v.data_venda) <= $3
-              ${salesFilter}
-              ${df.clause}
-              ${marcaClause}
-            GROUP BY COALESCE(vi.produto, p.nome, 'S/ NOME')
+            WITH ip AS (
+                SELECT 
+                    COALESCE(vi.produto, p.nome, 'S/ NOME') as nome,
+                    vi.quantidade,
+                    (CASE 
+                        WHEN SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id) > 0 
+                        THEN vi.valor_total * (v.valor_total / GREATEST(SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id), ABS(v.valor_total)))
+                        ELSE vi.valor_total * (CASE WHEN v.valor_total < 0 THEN -1 ELSE 1 END)
+                    END) AS valor_real
+                FROM dash_vendas_itens vi
+                JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+                LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
+                WHERE vi.tenant_id = $1
+                  AND COALESCE(v.data_hora_proc, v.data_venda) >= $2
+                  AND COALESCE(v.data_hora_proc, v.data_venda) <= $3
+                  ${salesFilter}
+                  ${df.clause}
+                  ${marcaClause}
+            )
+            SELECT nome,
+                   SUM(quantidade) as qtde,
+                   SUM(valor_real) as receita
+            FROM ip
+            GROUP BY nome
             ORDER BY receita DESC
             LIMIT 30
         `;
