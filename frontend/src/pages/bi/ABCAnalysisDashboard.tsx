@@ -21,6 +21,8 @@ const fmtCompact = (v: number) => {
   return formatBRL(v);
 };
 
+const barGradients = ['#4F46E5', '#6366F1', '#0EA5E9', '#10B981', '#F59E0B', '#EC4899', '#8B5CF6', '#14B8A6'];
+
 // Tooltip premium para o gráfico
 const BarTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
