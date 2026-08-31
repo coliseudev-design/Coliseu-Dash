@@ -1874,20 +1874,34 @@ router.get('/supplier/analytics', async (req, res, next) => {
 
         // ── Ranking de Marcas (sem filtro de marca — visão geral) ─
         const brandQuery = `
+            WITH itens_ponderados AS (
+                SELECT 
+                    vi.id_firebird,
+                    vi.venda_id_firebird,
+                    vi.tenant_id,
+                    COALESCE(vi.marca, p.marca, 'S/ MARCA') AS marca,
+                    vi.quantidade,
+                    (CASE 
+                        WHEN SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id) > 0 
+                        THEN vi.valor_total * (v.valor_total / SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id)) 
+                        ELSE vi.valor_total * (CASE WHEN v.valor_total < 0 THEN -1 ELSE 1 END)
+                    END) AS valor_real
+                FROM dash_vendas_itens vi
+                JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+                LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
+                WHERE vi.tenant_id = $1
+                  AND COALESCE(v.data_hora_proc, v.data_venda) >= $2
+                  AND COALESCE(v.data_hora_proc, v.data_venda) <= $3
+                  ${salesFilter}
+                  ${df.clause}
+            )
             SELECT 
-                COALESCE(vi.marca, p.marca, 'S/ MARCA') as nome,
-                SUM(vi.quantidade) as qtde,
-                SUM(vi.valor_total) as receita,
-                RANK() OVER (ORDER BY SUM(vi.valor_total) DESC) as rank
-            FROM dash_vendas_itens vi
-            JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
-            LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
-            WHERE vi.tenant_id = $1
-              AND COALESCE(v.data_hora_proc, v.data_venda) >= $2
-              AND COALESCE(v.data_hora_proc, v.data_venda) <= $3
-              ${salesFilter}
-              ${df.clause}
-            GROUP BY COALESCE(vi.marca, p.marca, 'S/ MARCA')
+                marca AS nome,
+                SUM(quantidade) AS qtde,
+                SUM(valor_real) AS receita,
+                RANK() OVER (ORDER BY SUM(valor_real) DESC) AS rank
+            FROM itens_ponderados
+            GROUP BY marca
             ORDER BY receita DESC
         `;
         const { rows: all_brands_ranked } = await db.query(brandQuery, baseParams);
@@ -1914,21 +1928,36 @@ router.get('/supplier/analytics', async (req, res, next) => {
 
         // ── Evolução Mensal ───────────────────────────────────────
         const monthlyQuery = `
+            WITH itens_ponderados AS (
+                SELECT 
+                    vi.id_firebird,
+                    vi.venda_id_firebird,
+                    vi.tenant_id,
+                    COALESCE(v.data_hora_proc, v.data_venda) AS data_ref,
+                    COALESCE(vi.marca, p.marca, 'S/ MARCA') AS marca,
+                    vi.quantidade,
+                    (CASE 
+                        WHEN SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id) > 0 
+                        THEN vi.valor_total * (v.valor_total / SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id)) 
+                        ELSE vi.valor_total * (CASE WHEN v.valor_total < 0 THEN -1 ELSE 1 END)
+                    END) AS valor_real
+                FROM dash_vendas_itens vi
+                JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+                LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
+                WHERE vi.tenant_id = $1
+                  AND COALESCE(v.data_hora_proc, v.data_venda) >= $2
+                  AND COALESCE(v.data_hora_proc, v.data_venda) <= $3
+                  ${salesFilter}
+                  ${df.clause}
+                  ${marcaClause}
+            )
             SELECT 
-                TO_CHAR(COALESCE(v.data_hora_proc, v.data_venda), 'MM/YYYY') as mes_ano,
-                DATE_TRUNC('month', COALESCE(v.data_hora_proc, v.data_venda)) as mes_trunc,
-                SUM(vi.valor_total) as receita,
-                SUM(vi.quantidade) as qtde
-            FROM dash_vendas_itens vi
-            JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
-            LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
-            WHERE vi.tenant_id = $1
-              AND COALESCE(v.data_hora_proc, v.data_venda) >= $2
-              AND COALESCE(v.data_hora_proc, v.data_venda) <= $3
-              ${salesFilter}
-              ${df.clause}
-              ${marcaClause}
-            GROUP BY mes_trunc, mes_ano
+                TO_CHAR(data_ref, 'MM/YYYY') as mes_ano,
+                DATE_TRUNC('month', data_ref) as mes_trunc,
+                SUM(valor_real) as receita,
+                SUM(quantidade) as qtde
+            FROM itens_ponderados
+            GROUP BY TO_CHAR(data_ref, 'MM/YYYY'), DATE_TRUNC('month', data_ref)
             ORDER BY mes_trunc ASC
         `;
         const { rows: monthly } = await db.query(monthlyQuery, paramsWithMarca);
