@@ -4,14 +4,16 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db/postgres');
 
-// GET /api/produtos/lista?search=&limit=&offset=
+// GET /api/produtos/lista?search=&limit=&offset=&categoria=&vendedor_id=
 router.get('/lista', async (req, res, next) => {
     try {
         const tenantId = req.tenant.id;
         const search = req.query.search || '';
-        const limit = Math.min(parseInt(req.query.limit, 10) || 100, 1000);
+        // Remove hard cap — permite até 50 000 itens para bases grandes
+        const limit = Math.min(parseInt(req.query.limit, 10) || 200, 50000);
         const offset = parseInt(req.query.offset, 10) || 0;
         const categoria = req.query.categoria;
+        const vendedorId = req.query.vendedor_id ? parseInt(req.query.vendedor_id, 10) : null;
         const deptoId = req.query.depto_id || req.query.centro_custo;
         const deptoNum = parseInt(deptoId, 10);
         const hasDepto = !isNaN(deptoNum) && deptoNum > 0;
@@ -35,6 +37,19 @@ router.get('/lista', async (req, res, next) => {
         if (categoria) {
             where.push(`p.categoria = $${pIndex}`);
             binds.push(categoria);
+            pIndex++;
+        }
+
+        // Filtro por vendedor: retorna apenas produtos que esse vendedor vendeu
+        if (vendedorId) {
+            where.push(`p.id_firebird IN (
+                SELECT DISTINCT vi.produto_id_firebird
+                FROM dash_vendas_itens vi
+                JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+                WHERE vi.tenant_id = $1
+                  AND v.vendedor_id_firebird = $${pIndex}
+            )`);
+            binds.push(vendedorId);
             pIndex++;
         }
 
