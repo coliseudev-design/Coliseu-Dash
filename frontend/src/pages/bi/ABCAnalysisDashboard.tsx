@@ -66,7 +66,7 @@ const BarValueLabel = ({ x, y, width, value }: any) => {
 export default function InventoryManagementDashboard() {
   const { filter } = useOutletContext<{ filter: BiPeriodFilter }>();
 
-  const { data, isLoading } = useBiPeriodQuery(
+  const { data, isLoading, isError } = useBiPeriodQuery(
     ['bi', 'abc'],
     BIService.getABCAnalysis,
     filter
@@ -108,6 +108,10 @@ export default function InventoryManagementDashboard() {
       .sort((a: any, b: any) => (b.estoque * b.custo) - (a.estoque * a.custo))
       .slice(0, 8)
   , [tableData]);
+
+  const totalEstoqueParadoValor = useMemo(() =>
+    estoqueParado.reduce((acc: number, item: any) => acc + (item.estoque * item.custo), 0)
+  , [estoqueParado]);
 
   const marcasDisponiveis = useMemo(() => {
     return Array.from(new Set(tableData.map((x: any) => x.marca).filter(Boolean))).sort() as string[];
