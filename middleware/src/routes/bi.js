@@ -2389,11 +2389,22 @@ router.get('/seller/summary', async (req, res, next) => {
         const cidade_top = topCityRes.rowCount > 0 ? topCityRes.rows[0].cidade : 'N/A';
         const cidade_top_valor = topCityRes.rowCount > 0 ? parseFloat(topCityRes.rows[0].total || 0) : 0;
 
-        // 5. Top Lists
+        // 5. Top Lists (com rateio proporcional de desconto para bater com o faturamento faturado líquido)
         const topBrandsRes = await db.query(`
-            SELECT COALESCE(vi.marca, v.marca, p.marca, 'S/ MARCA') AS nome, SUM(vi.valor_total) AS total
+            WITH sale_sums AS (
+                SELECT 
+                    vi.venda_id_firebird,
+                    vi.tenant_id,
+                    SUM(vi.valor_total) as sum_items
+                FROM dash_vendas_itens vi
+                WHERE vi.tenant_id = $1
+                GROUP BY vi.venda_id_firebird, vi.tenant_id
+            )
+            SELECT COALESCE(vi.marca, v.marca, p.marca, 'S/ MARCA') AS nome, 
+                   SUM(CASE WHEN ss.sum_items > 0 THEN vi.valor_total * ((v.valor_total - COALESCE(v.valor_desconto, 0)) / ss.sum_items) ELSE vi.valor_total END) AS total
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+            JOIN sale_sums ss ON ss.venda_id_firebird = vi.venda_id_firebird AND ss.tenant_id = vi.tenant_id
             LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
             ${needsCidadeJoin ? 'LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id' : ''}
             WHERE vi.tenant_id = $1 
@@ -2418,9 +2429,20 @@ router.get('/seller/summary', async (req, res, next) => {
         const top_clientes = topClientsRes.rows.map((r, i) => ({ rank: i + 1, name: r.nome, value: parseFloat(r.total || 0) }));
 
         const topGroupsRes = await db.query(`
-            SELECT COALESCE(vi.categoria, v.categoria, p.categoria, 'S/ GRUPO') AS nome, SUM(vi.valor_total) AS total
+            WITH sale_sums AS (
+                SELECT 
+                    vi.venda_id_firebird,
+                    vi.tenant_id,
+                    SUM(vi.valor_total) as sum_items
+                FROM dash_vendas_itens vi
+                WHERE vi.tenant_id = $1
+                GROUP BY vi.venda_id_firebird, vi.tenant_id
+            )
+            SELECT COALESCE(vi.categoria, v.categoria, p.categoria, 'S/ GRUPO') AS nome, 
+                   SUM(CASE WHEN ss.sum_items > 0 THEN vi.valor_total * ((v.valor_total - COALESCE(v.valor_desconto, 0)) / ss.sum_items) ELSE vi.valor_total END) AS total
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+            JOIN sale_sums ss ON ss.venda_id_firebird = vi.venda_id_firebird AND ss.tenant_id = vi.tenant_id
             LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
             ${needsCidadeJoin ? 'LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id' : ''}
             WHERE vi.tenant_id = $1 
@@ -2432,9 +2454,20 @@ router.get('/seller/summary', async (req, res, next) => {
         const top_grupos = topGroupsRes.rows.map((r, i) => ({ rank: i + 1, name: r.nome, value: parseFloat(r.total || 0) }));
 
         const topProductsRes = await db.query(`
-            SELECT COALESCE(vi.produto, p.nome, 'Produto ' || COALESCE(vi.produto_id_firebird::text, '?')) AS nome, SUM(vi.valor_total) AS total
+            WITH sale_sums AS (
+                SELECT 
+                    vi.venda_id_firebird,
+                    vi.tenant_id,
+                    SUM(vi.valor_total) as sum_items
+                FROM dash_vendas_itens vi
+                WHERE vi.tenant_id = $1
+                GROUP BY vi.venda_id_firebird, vi.tenant_id
+            )
+            SELECT COALESCE(vi.produto, p.nome, 'Produto ' || COALESCE(vi.produto_id_firebird::text, '?')) AS nome, 
+                   SUM(CASE WHEN ss.sum_items > 0 THEN vi.valor_total * ((v.valor_total - COALESCE(v.valor_desconto, 0)) / ss.sum_items) ELSE vi.valor_total END) AS total
             FROM dash_vendas_itens vi
             JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+            JOIN sale_sums ss ON ss.venda_id_firebird = vi.venda_id_firebird AND ss.tenant_id = vi.tenant_id
             LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
             ${needsCidadeJoin ? 'LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id' : ''}
             WHERE vi.tenant_id = $1 

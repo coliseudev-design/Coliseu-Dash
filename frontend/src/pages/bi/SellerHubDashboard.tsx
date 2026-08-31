@@ -484,8 +484,8 @@ export default function SellerHubDashboard() {
             <div className="text-xl font-black text-text-primary tracking-tight truncate mt-1" title={cidadeTop}>
               {cidadeTop}
             </div>
-            <span className="text-xs font-bold text-brand-500 block mt-0.5">
-              {formatBRLCompact(cidadeTopValor)} faturados
+            <span className="text-xs font-bold text-brand-500 block mt-0.5 truncate" title={formatBRL(cidadeTopValor)}>
+              {formatBRL(cidadeTopValor)} faturados
             </span>
           </div>
         </div>
@@ -501,8 +501,8 @@ export default function SellerHubDashboard() {
             <div className="text-xl font-black text-text-primary tracking-tight truncate mt-1" title={principalCliente ? principalCliente.name : 'N/A'}>
               {principalCliente ? principalCliente.name : 'N/A'}
             </div>
-            <span className="text-xs font-bold text-brand-500 block mt-0.5">
-              {principalCliente ? formatBRLCompact(principalCliente.value) : 'Sem vendas'} faturados
+            <span className="text-xs font-bold text-brand-500 block mt-0.5 truncate" title={principalCliente ? formatBRL(principalCliente.value) : ''}>
+              {principalCliente ? formatBRL(principalCliente.value) : 'Sem vendas'} faturados
             </span>
           </div>
         </div>
@@ -515,8 +515,8 @@ export default function SellerHubDashboard() {
           </div>
           <div className="min-w-0 flex-1">
             <span className="text-xs font-bold text-text-secondary uppercase tracking-wider block">Melhor Mês (12m)</span>
-            <div className="text-xl font-black text-brand-500 tracking-tight truncate mt-1">
-              {melhorMes && melhorMes.valor > 0 ? formatBRLCompact(melhorMes.valor) : 'Sem vendas'}
+            <div className="text-xl font-black text-brand-500 tracking-tight truncate mt-1" title={melhorMes && melhorMes.valor > 0 ? formatBRL(melhorMes.valor) : ''}>
+              {melhorMes && melhorMes.valor > 0 ? formatBRL(melhorMes.valor) : 'Sem vendas'}
             </div>
             <span className="text-xs font-bold text-text-primary block mt-0.5">
               {melhorMes && melhorMes.mes !== 'N/A' ? melhorMes.mes : 'N/A'}
