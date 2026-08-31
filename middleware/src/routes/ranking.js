@@ -118,7 +118,15 @@ router.get('/produtos', async (req, res, next) => {
                 FROM dash_vendas v
                 WHERE v.tenant_id = $1
                   AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
+                  AND v.processo = 1
                   ${salesFilter} ${df.clause} ${vf.clause}
+            ),
+            sum_por_venda AS (
+                SELECT vi.venda_id_firebird, SUM(vi.valor_total) AS sum_itens
+                FROM dash_vendas_itens vi
+                JOIN vendas_filtradas vf ON vf.id_firebird = vi.venda_id_firebird AND vf.tenant_id = vi.tenant_id
+                WHERE vi.tenant_id = $1
+                GROUP BY vi.venda_id_firebird
             ),
             itens_ponderados AS (
                 SELECT 
@@ -126,16 +134,17 @@ router.get('/produtos', async (req, res, next) => {
                     vi.venda_id_firebird,
                     vi.tenant_id,
                     COALESCE(vi.produto, p.nome, 'Produto ' || COALESCE(vi.produto_id_firebird::text, '?')) AS nome,
-                    vi.quantidade * (CASE WHEN vf.valor_total < 0 THEN -1 ELSE 1 END) AS quantidade,
+                    vi.quantidade AS quantidade,
                     vi.preco_unitario,
-                    -- GREATEST evita inflação quando SUM(itens) < valor_total da venda
-                    (CASE 
-                        WHEN SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id) > 0 
-                        THEN vi.valor_total * (vf.valor_total / GREATEST(SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id), ABS(vf.valor_total)))
-                        ELSE vi.valor_total * (CASE WHEN vf.valor_total < 0 THEN -1 ELSE 1 END)
-                    END) AS valor_real
+                    -- Proporcionaliza o valor do item pelo valor líquido real da venda (alinha com ERP Posição de Pedidos)
+                    CASE 
+                        WHEN spv.sum_itens > 0 
+                        THEN vi.valor_total * (vf.valor_total / GREATEST(spv.sum_itens, ABS(vf.valor_total)))
+                        ELSE vi.valor_total
+                    END AS valor_real
                 FROM dash_vendas_itens vi
                 JOIN vendas_filtradas vf ON vf.id_firebird = vi.venda_id_firebird AND vf.tenant_id = vi.tenant_id
+                JOIN sum_por_venda spv ON spv.venda_id_firebird = vi.venda_id_firebird
                 LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
                 WHERE vi.tenant_id = $1
             )
@@ -143,10 +152,8 @@ router.get('/produtos', async (req, res, next) => {
                 nome,
                 SUM(valor_real) AS total,
                 SUM(quantidade) AS qtd_vendida,
-                AVG(preco_medio) AS preco_medio
-            FROM (
-                SELECT nome, valor_real, quantidade, preco_unitario AS preco_medio FROM itens_ponderados
-            ) sub
+                AVG(preco_unitario) AS preco_medio
+            FROM itens_ponderados
             GROUP BY 1
             ORDER BY total DESC LIMIT $${4 + df.params.length + vf.params.length}
         `, [tenantId, start, end, ...df.params, ...vf.params, limit]);
@@ -213,7 +220,15 @@ router.get('/marcas', async (req, res, next) => {
                 FROM dash_vendas v
                 WHERE v.tenant_id = $1
                   AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
+                  AND v.processo = 1
                   ${salesFilter} ${df.clause} ${vf.clause}
+            ),
+            sum_por_venda AS (
+                SELECT vi.venda_id_firebird, SUM(vi.valor_total) AS sum_itens
+                FROM dash_vendas_itens vi
+                JOIN vendas_filtradas vf ON vf.id_firebird = vi.venda_id_firebird AND vf.tenant_id = vi.tenant_id
+                WHERE vi.tenant_id = $1
+                GROUP BY vi.venda_id_firebird
             ),
             itens_ponderados AS (
                 SELECT 
@@ -221,14 +236,14 @@ router.get('/marcas', async (req, res, next) => {
                     vi.venda_id_firebird,
                     vi.tenant_id,
                     COALESCE(vi.marca, vf.marca, p.marca) AS marca,
-                    -- GREATEST evita inflação quando SUM(itens) < valor_total da venda
-                    (CASE 
-                        WHEN SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id) > 0 
-                        THEN vi.valor_total * (vf.valor_total / GREATEST(SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id), ABS(vf.valor_total)))
-                        ELSE vi.valor_total * (CASE WHEN vf.valor_total < 0 THEN -1 ELSE 1 END)
-                    END) AS valor_real
+                    CASE 
+                        WHEN spv.sum_itens > 0 
+                        THEN vi.valor_total * (vf.valor_total / GREATEST(spv.sum_itens, ABS(vf.valor_total)))
+                        ELSE vi.valor_total
+                    END AS valor_real
                 FROM dash_vendas_itens vi
                 JOIN vendas_filtradas vf ON vf.id_firebird = vi.venda_id_firebird AND vf.tenant_id = vi.tenant_id
+                JOIN sum_por_venda spv ON spv.venda_id_firebird = vi.venda_id_firebird
                 LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
                 WHERE vi.tenant_id = $1
             )
@@ -397,7 +412,15 @@ router.get('/categorias', async (req, res, next) => {
                 FROM dash_vendas v
                 WHERE v.tenant_id = $1
                   AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
+                  AND v.processo = 1
                   ${salesFilter} ${df.clause} ${vf.clause}
+            ),
+            sum_por_venda AS (
+                SELECT vi.venda_id_firebird, SUM(vi.valor_total) AS sum_itens
+                FROM dash_vendas_itens vi
+                JOIN vendas_filtradas vf ON vf.id_firebird = vi.venda_id_firebird AND vf.tenant_id = vi.tenant_id
+                WHERE vi.tenant_id = $1
+                GROUP BY vi.venda_id_firebird
             ),
             itens_ponderados AS (
                 SELECT 
@@ -405,14 +428,14 @@ router.get('/categorias', async (req, res, next) => {
                     vi.venda_id_firebird,
                     vi.tenant_id,
                     COALESCE(vi.categoria, vf.categoria, p.categoria) AS categoria,
-                    -- GREATEST evita inflação quando SUM(itens) < valor_total da venda
-                    (CASE 
-                        WHEN SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id) > 0 
-                        THEN vi.valor_total * (vf.valor_total / GREATEST(SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id), ABS(vf.valor_total)))
-                        ELSE vi.valor_total * (CASE WHEN vf.valor_total < 0 THEN -1 ELSE 1 END)
-                    END) AS valor_real
+                    CASE 
+                        WHEN spv.sum_itens > 0 
+                        THEN vi.valor_total * (vf.valor_total / GREATEST(spv.sum_itens, ABS(vf.valor_total)))
+                        ELSE vi.valor_total
+                    END AS valor_real
                 FROM dash_vendas_itens vi
                 JOIN vendas_filtradas vf ON vf.id_firebird = vi.venda_id_firebird AND vf.tenant_id = vi.tenant_id
+                JOIN sum_por_venda spv ON spv.venda_id_firebird = vi.venda_id_firebird
                 LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
                 WHERE vi.tenant_id = $1
             )
