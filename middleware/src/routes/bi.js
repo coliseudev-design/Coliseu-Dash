@@ -169,12 +169,10 @@ router.get('/sales/executive-summary', async (req, res, next) => {
             WITH vf AS (
                 SELECT v.id_firebird, v.tenant_id, v.valor_total
                 FROM dash_vendas v
-                JOIN dash_vendas_itens vi2 ON vi2.venda_id_firebird = v.id_firebird AND vi2.tenant_id = v.tenant_id
                 ${cidadeJoin}
-                WHERE vi2.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
-                  AND v.processo = 1
+                WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
+                  AND v.processo IN (1, 2)
                   ${salesFilter}
-                  AND COALESCE(vi2.produto, vi2.produto_id_firebird::text) IS NOT NULL
                   ${df.clause}
                   ${vf.clause}
                   ${cf.clause}
@@ -192,7 +190,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
                     COALESCE(vi.produto, p.nome, 'Produto ' || COALESCE(vi.produto_id_firebird::text, '?')) AS nome,
                     CASE WHEN spv.sum_itens > 0
                          THEN vi.valor_total * (vf.valor_total / GREATEST(spv.sum_itens, ABS(vf.valor_total)))
-                         ELSE vi.valor_total
+                         ELSE 0
                     END AS valor_real
                 FROM dash_vendas_itens vi
                 JOIN vf ON vf.id_firebird = vi.venda_id_firebird AND vf.tenant_id = vi.tenant_id
@@ -214,7 +212,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
                 FROM dash_vendas v
                 ${cidadeJoin}
                 WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
-                  AND v.processo = 1
+                  AND v.processo IN (1, 2)
                   ${salesFilter}
                   ${df.clause}
                   ${vf.clause}
@@ -232,7 +230,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
                     COALESCE(vi.marca, vf.marca, p.marca, 'S/ MARCA') as marca,
                     CASE WHEN spv.sum_itens > 0
                          THEN vi.valor_total * (vf.valor_total / GREATEST(spv.sum_itens, ABS(vf.valor_total)))
-                         ELSE vi.valor_total
+                         ELSE 0
                     END AS valor_real
                 FROM dash_vendas_itens vi
                 JOIN vf ON vf.id_firebird = vi.venda_id_firebird AND vf.tenant_id = vi.tenant_id
@@ -269,7 +267,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
                 FROM dash_vendas v
                 ${cidadeJoin}
                 WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
-                  AND v.processo = 1
+                  AND v.processo IN (1, 2)
                   ${salesFilter}
                   ${df.clause}
                   ${vf.clause}
@@ -287,7 +285,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
                     COALESCE(vi.categoria, vf.categoria, p.categoria, 'S/ GRUPO') as categoria,
                     CASE WHEN spv.sum_itens > 0
                          THEN vi.valor_total * (vf.valor_total / GREATEST(spv.sum_itens, ABS(vf.valor_total)))
-                         ELSE vi.valor_total
+                         ELSE 0
                     END AS valor_real
                 FROM dash_vendas_itens vi
                 JOIN vf ON vf.id_firebird = vi.venda_id_firebird AND vf.tenant_id = vi.tenant_id
