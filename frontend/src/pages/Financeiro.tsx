@@ -21,7 +21,7 @@ export default function Financeiro() {
   const location = useLocation()
   const isConsolidated = location.pathname.includes('/financeiro-consolidado')
 
-  // Seletor de Caixas Real
+  // Seletor de Caixas Real (Padrão: Todos os Caixas)
   const [selectedCaixa, setSelectedCaixa] = useState('todos')
   const [apenasVendas, setApenasVendas] = useState(false)
   const branchParam = useBranchParam()
@@ -29,12 +29,6 @@ export default function Financeiro() {
   // Lista de caixas
   const { data: caixasRes } = useApiQuery<any>('/financeiro/caixas')
   const caixas = caixasRes?.data || []
-
-  useEffect(() => {
-    if (caixas.length > 0 && selectedCaixa === 'todos') {
-      setSelectedCaixa(String(caixas[0].id))
-    }
-  }, [caixas, selectedCaixa])
 
   const extraParams = {
     ...(selectedCaixa !== 'todos' ? { caixa_id: selectedCaixa } : {}),
@@ -45,7 +39,7 @@ export default function Financeiro() {
   // Movimentações do caixa (Vendas e Lançamentos) no período
   const caixasMovimentos = usePeriodQuery<any>('/financeiro/contas', {
     status: 'PAGO',
-    limit: 200,
+    limit: 250,
     apenas_vendas: apenasVendas,
     ...(selectedCaixa !== 'todos' ? { caixa_id: selectedCaixa } : {}),
     ...branchParam
@@ -80,15 +74,16 @@ export default function Financeiro() {
         {!isConsolidated && <PeriodFilter excludePeriods={['lastMonth', 'last12m']} />}
         
         {/* Seletor de Caixa */}
-        <div className="flex items-center gap-2 bg-bg-primary rounded-lg border border-border p-1.5 shadow-sm">
-          <Filter size={16} className="text-text-secondary ml-2" />
+        <div className="flex items-center gap-2 bg-bg-primary rounded-xl border border-border p-1.5 shadow-sm">
+          <Filter size={16} className="text-brand-500 ml-2" />
+          <span className="text-xs font-bold text-text-secondary">Caixa:</span>
           <select 
             value={selectedCaixa}
             onChange={(e) => setSelectedCaixa(e.target.value)}
-            className="bg-transparent border-none text-sm font-medium text-text-primary focus:ring-0 cursor-pointer pr-8"
+            className="bg-transparent border-none text-xs sm:text-sm font-bold text-text-primary focus:ring-0 cursor-pointer pr-8"
             aria-label="Selecionar Caixa"
           >
-            <option value="todos">Todos os Caixas</option>
+            <option value="todos">Todos os Caixas ({caixas.length})</option>
             {caixas.map((c: any) => (
               <option key={c.id} value={c.id}>{c.nome}</option>
             ))}
@@ -101,7 +96,7 @@ export default function Financeiro() {
         <div className="flex items-center gap-2 mb-3">
           <Banknote size={20} className="text-brand-600" />
           <h2 className="font-heading font-semibold text-base sm:text-lg">
-            Resumo do Caixa {selectedCaixa !== 'todos' && '(Filtrado)'}
+            {selectedCaixa === 'todos' ? 'Resumo Consolidado de Todos os Caixas' : `Resumo do Caixa: ${caixas.find((c: any) => String(c.id) === String(selectedCaixa))?.nome || selectedCaixa}`}
           </h2>
           <span className="text-xs text-text-secondary hidden sm:inline">
             · {caixa.data?.period?.label || ''}
@@ -141,7 +136,7 @@ export default function Financeiro() {
         <div className="bg-bg-primary rounded-xl border border-border p-5 mb-6 shadow-sm">
           <h3 className="font-heading font-semibold text-base sm:text-lg mb-4 text-text-primary flex items-center gap-2">
             <Wallet className="text-brand-500" size={20} />
-            Saldos do Caixa por Espécie
+            Saldos do Caixa por Espécie {selectedCaixa === 'todos' ? '(Todos os Caixas)' : ''}
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             {displayEspecies.map((esp) => (
@@ -224,36 +219,41 @@ export default function Financeiro() {
 
         {/* Lista de Movimentações */}
         <div className="bg-bg-primary rounded-xl border border-border p-6 shadow-sm">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
-            <h3 className="font-heading font-semibold text-base sm:text-lg text-text-primary flex items-center gap-2">
-              <Receipt className="text-brand-500" size={20} />
-              Movimentações do Caixa
-            </h3>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 pb-3 border-b border-divider">
+            <div>
+              <h3 className="font-heading font-semibold text-base sm:text-lg text-text-primary flex items-center gap-2">
+                <Receipt className="text-brand-500" size={20} />
+                Movimentações {selectedCaixa === 'todos' ? 'de Todos os Caixas' : `do Caixa`}
+              </h3>
+              <p className="text-xs text-text-secondary mt-0.5">
+                {movimentos.length} registro(s) encontrado(s) {apenasVendas ? '· Filtrado: Apenas Vendas' : '· Todas as entradas e saídas'}
+              </p>
+            </div>
 
-            {/* Botão de Alternância: Todas vs Apenas Vendas */}
-            <div className="flex items-center gap-1 bg-bg-secondary p-1 rounded-xl border border-divider">
+            {/* Botão de Alternância em Destaque: Todas vs Apenas Vendas */}
+            <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 shadow-inner">
               <button
                 type="button"
                 onClick={() => setApenasVendas(false)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${!apenasVendas ? 'bg-white dark:bg-slate-800 text-brand-600 dark:text-brand-400 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all ${!apenasVendas ? 'bg-brand-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}
               >
                 Todas as Movimentações
               </button>
               <button
                 type="button"
                 onClick={() => setApenasVendas(true)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${apenasVendas ? 'bg-white dark:bg-slate-800 text-brand-600 dark:text-brand-400 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all flex items-center gap-1.5 ${apenasVendas ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400'}`}
               >
-                <ShoppingCart size={13} />
-                Apenas Vendas
+                <ShoppingCart size={14} />
+                Apenas Vendas do Caixa
               </button>
             </div>
           </div>
 
           {caixasMovimentos.isLoading ? (
-            <div className="text-sm text-text-secondary">Carregando movimentações...</div>
+            <div className="text-sm text-text-secondary py-6 text-center">Carregando movimentações...</div>
           ) : !movimentos || movimentos.length === 0 ? (
-            <div className="text-sm text-text-secondary">Nenhuma movimentação registrada para este caixa no período.</div>
+            <div className="text-sm text-text-secondary py-6 text-center">Nenhuma movimentação registrada para este filtro no período.</div>
           ) : (
             <>
               {/* Desktop Table View */}
@@ -262,6 +262,7 @@ export default function Financeiro() {
                   <thead>
                     <tr className="border-b border-divider text-xs font-bold text-text-secondary uppercase">
                       <th className="py-2.5 px-3">Data</th>
+                      <th className="py-2.5 px-3">Caixa</th>
                       <th className="py-2.5 px-3">Descrição / Cliente</th>
                       <th className="py-2.5 px-3">Doc / Pedido</th>
                       <th className="py-2.5 px-3">Tipo</th>
@@ -277,7 +278,12 @@ export default function Financeiro() {
                           <td className="py-2.5 px-3 text-text-secondary text-xs whitespace-nowrap">
                             {mov.data_pagamento ? new Date(mov.data_pagamento).toLocaleDateString('pt-BR') : ''}
                           </td>
-                          <td className="py-2.5 px-3 max-w-[280px] truncate font-medium text-xs sm:text-sm" title={mov.descricao || mov.cliente || 'Lançamento'}>
+                          <td className="py-2.5 px-3 whitespace-nowrap">
+                            <span className="text-[11px] font-bold text-brand-600 dark:text-brand-400 bg-brand-500/10 px-2 py-0.5 rounded-md">
+                              {mov.nome_caixa || 'CAIXA'}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 max-w-[260px] truncate font-medium text-xs sm:text-sm" title={mov.descricao || mov.cliente || 'Lançamento'}>
                             {mov.descricao || mov.cliente || 'Lançamento'}
                           </td>
                           <td className="py-2.5 px-3 text-text-secondary text-xs font-mono">
@@ -309,15 +315,19 @@ export default function Financeiro() {
                     <div key={mov.id} className="p-3 border border-divider rounded-xl bg-bg-secondary/10 flex flex-col gap-1.5">
                       <div className="flex justify-between items-start">
                         <div className="flex-1 min-w-0 pr-2">
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <span className="text-[10px] font-bold text-brand-600 dark:text-brand-400 bg-brand-500/10 px-1.5 py-0.5 rounded">
+                              {mov.nome_caixa || 'CAIXA'}
+                            </span>
+                            <span className="text-[10px] text-text-muted">
+                              {mov.data_pagamento ? mov.data_pagamento.substring(0, 10).split('-').reverse().join('/') : '-'}
+                            </span>
+                          </div>
                           <h4 className="text-xs font-bold text-text-primary truncate block" title={mov.descricao || mov.cliente || 'Lançamento'}>
                             {mov.descricao || mov.cliente || 'Lançamento'}
                           </h4>
                           <div className="text-[10px] text-text-muted mt-1 flex items-center gap-1.5 leading-none">
                             <span className="uppercase font-semibold">{mov.especie || 'DINHEIRO'}</span>
-                            <span>•</span>
-                            <span>
-                              {mov.data_pagamento ? mov.data_pagamento.substring(0, 10).split('-').reverse().join('/') : '-'}
-                            </span>
                           </div>
                         </div>
                         <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold shrink-0 ${isReceber ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'}`}>

@@ -504,6 +504,7 @@ router.get('/contas', async (req, res, next) => {
                 f.valor, f.valor_pago, f.status_pagamento,
                 COALESCE(c.nome, f.descricao) AS cliente,
                 COALESCE(v.numero_pedido, f.tipo_documento, '') AS numero_pedido,
+                COALESCE(cx.descricao, 'CAIXA GERAL') AS nome_caixa,
                 CASE 
                     WHEN v.id_firebird IS NOT NULL OR f.venda_id_firebird IS NOT NULL OR UPPER(f.descricao) LIKE '%CONSUMIDOR%' OR UPPER(f.descricao) LIKE '%PEDIDO%' THEN true 
                     ELSE false 
@@ -521,6 +522,7 @@ router.get('/contas', async (req, res, next) => {
                 ))) AS especie
             FROM dash_financeiro f
             LEFT JOIN dash_clientes c ON c.id_firebird = f.cliente_id_firebird AND c.tenant_id = f.tenant_id
+            LEFT JOIN dash_caixas cx ON cx.id_firebird = f.caixa_id_firebird AND cx.tenant_id = f.tenant_id
             LEFT JOIN dash_vendas v ON v.tenant_id = f.tenant_id
               AND (v.id_firebird = f.venda_id_firebird OR (v.cliente_id_firebird = f.cliente_id_firebird AND ABS(v.valor_total - COALESCE(v.valor_desconto, 0) - f.valor) < 0.01))
             WHERE ${where.join(' AND ')}
