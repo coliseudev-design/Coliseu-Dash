@@ -197,26 +197,7 @@ export default function SalesIntelligenceDashboard() {
     }
   }, [filteredTrajectory, evolutionGroupBy]);
 
-  const isPeriodOver30Days = useMemo(() => {
-    if (filter.period === 'last12m') return true;
-    if (filter.start_date && filter.end_date) {
-      const s = new Date(filter.start_date + 'T00:00:00');
-      const e = new Date(filter.end_date + 'T23:59:59');
-      const diff = Math.ceil((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24));
-      return diff > 30;
-    }
-    return false;
-  }, [filter]);
-
-  useEffect(() => {
-    if (isPeriodOver30Days) {
-      setEvolutionGroupBy('mes');
-    } else {
-      setEvolutionGroupBy('dia');
-    }
-  }, [isPeriodOver30Days]);
-
-  // Chronological Details per Day or Month
+  // Chronological Details per Day or Month (Ordenado pela data atual primeiro)
   const chronologicalDetails = useMemo(() => {
     if (evolutionGroupBy === 'dia') {
       return revenueTrajectory.map((d) => {
@@ -232,9 +213,9 @@ export default function SalesIntelligenceDashboard() {
           value: d.valor,
           key: d.dia
         };
-      }).sort((a, b) => a.key.localeCompare(b.key));
+      }).sort((a, b) => b.key.localeCompare(a.key));
     } else {
-      // Group by month
+      // Group by month (mês atual primeiro)
       const groups: Record<string, { key: string; label: string; value: number }> = {};
       revenueTrajectory.forEach((item: any) => {
         let monthKey = '';
@@ -263,7 +244,7 @@ export default function SalesIntelligenceDashboard() {
         }
       });
       return Object.values(groups)
-        .sort((a, b) => a.key.localeCompare(b.key))
+        .sort((a, b) => b.key.localeCompare(a.key))
         .map(g => ({
           label: g.label,
           value: g.value,
