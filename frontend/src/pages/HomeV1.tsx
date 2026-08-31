@@ -283,9 +283,9 @@ export default function HomeV1() {
       </div>
 
       {/* ── SELECTOR FILTERS ROW ─────────────────────────────────────────── */}
-      <div className="hidden md:grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="hidden md:flex items-center gap-4 max-w-md">
         {/* Vendedor Dropdown */}
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-1.5 w-full">
           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1">Vendedor</label>
           <div className="relative">
             <select
@@ -296,42 +296,6 @@ export default function HomeV1() {
               <option value="todas">Todos os Vendedores</option>
               {sellersDropdown.data?.data?.map((s: any) => (
                 <option key={s.id} value={s.id}>{s.nome}</option>
-              ))}
-            </select>
-            <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-          </div>
-        </div>
-
-        {/* Marca Dropdown */}
-        <div className="flex flex-col gap-1.5">
-          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1">Marca</label>
-          <div className="relative">
-            <select
-              value={selectedMarca}
-              onChange={(e) => setSelectedMarca(e.target.value)}
-              className="w-full bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-800 dark:text-white outline-none appearance-none focus:border-[#00a896] transition-colors cursor-pointer"
-            >
-              <option value="todas">Todas as Marcas</option>
-              {brandsDropdown.data?.data?.map((b: any) => (
-                <option key={b.nome} value={b.nome}>{b.nome}</option>
-              ))}
-            </select>
-            <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-          </div>
-        </div>
-
-        {/* Cidade Dropdown */}
-        <div className="flex flex-col gap-1.5">
-          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1">Cidade</label>
-          <div className="relative">
-            <select
-              value={selectedCidade}
-              onChange={(e) => setSelectedCidade(e.target.value)}
-              className="w-full bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-800 dark:text-white outline-none appearance-none focus:border-[#00a896] transition-colors cursor-pointer"
-            >
-              <option value="todas">Todas as Cidades</option>
-              {citiesDropdown.data?.data?.map((c: any) => (
-                <option key={c.nome} value={c.nome}>{c.nome}</option>
               ))}
             </select>
             <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
@@ -951,7 +915,7 @@ export default function HomeV1() {
               onClick={() => setShowFiltersSheet(true)}
               className="flex flex-col items-center justify-center py-1 flex-1 cursor-pointer transition-all text-slate-400 dark:text-slate-500 relative"
             >
-              {(selectedVendedor !== 'todas' || selectedMarca !== 'todas' || selectedCidade !== 'todas' || period !== 'thisMonth') && (
+              {(selectedVendedor !== 'todas' || period !== 'thisMonth') && (
                 <span className="absolute top-1 right-6 w-2 h-2 rounded-full bg-emerald-500 border border-white" />
               )}
               <Sliders size={18} />
@@ -1009,46 +973,6 @@ export default function HomeV1() {
                     <option value="todas">Todos os Vendedores</option>
                     {sellersDropdown.data?.data?.map((s: any) => (
                       <option key={s.id} value={s.id}>{s.nome}</option>
-                    ))}
-                  </select>
-                  <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                </div>
-              </div>
-
-              {/* Marca Dropdown */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">
-                  Marca
-                </label>
-                <div className="relative">
-                  <select
-                    value={selectedMarca}
-                    onChange={(e) => setSelectedMarca(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-xs font-semibold text-slate-800 dark:text-white outline-none appearance-none focus:border-[#00a896] transition-colors cursor-pointer"
-                  >
-                    <option value="todas">Todas as Marcas</option>
-                    {brandsDropdown.data?.data?.map((b: any) => (
-                      <option key={b.nome} value={b.nome}>{b.nome}</option>
-                    ))}
-                  </select>
-                  <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                </div>
-              </div>
-
-              {/* Cidade Dropdown */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">
-                  Cidade
-                </label>
-                <div className="relative">
-                  <select
-                    value={selectedCidade}
-                    onChange={(e) => setSelectedCidade(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-xs font-semibold text-slate-800 dark:text-white outline-none appearance-none focus:border-[#00a896] transition-colors cursor-pointer"
-                  >
-                    <option value="todas">Todas as Cidades</option>
-                    {citiesDropdown.data?.data?.map((c: any) => (
-                      <option key={c.nome} value={c.nome}>{c.nome}</option>
                     ))}
                   </select>
                   <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />

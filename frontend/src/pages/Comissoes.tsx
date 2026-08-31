@@ -31,7 +31,7 @@ export default function Comissoes() {
 
   const filteredData = useMemo(() => {
     if (!selectedVendedor || selectedVendedor === 'all') return sortedData
-    return sortedData.filter((v: any) => String(v.vendedor_id) === String(selectedVendedor))
+    return sortedData.filter((v: any) => String(v.id || v.vendedor_id) === String(selectedVendedor))
   }, [sortedData, selectedVendedor])
 
   // Custom Tooltip for the chart
@@ -90,21 +90,25 @@ export default function Comissoes() {
                   className="h-10 px-3 bg-bg-secondary border border-border text-text-primary rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 w-full cursor-pointer shadow-sm"
                 >
                   <option value="all">Todos os Vendedores</option>
-                  {sortedData.map((v: any) => (
-                    <option key={v.vendedor_id} value={v.vendedor_id}>{v.vendedor}</option>
-                  ))}
+                  {sortedData.map((v: any) => {
+                    const sellerId = v.id !== undefined ? v.id : v.vendedor_id;
+                    return (
+                      <option key={sellerId} value={sellerId}>{v.vendedor}</option>
+                    );
+                  })}
                 </select>
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {filteredData.map((v: any) => {
-                const originalIndex = sortedData.findIndex((item: any) => item.vendedor_id === v.vendedor_id)
-                const medal = originalIndex < 3 ? (originalIndex === 0 ? '🥇' : originalIndex === 1 ? '🥈' : '🥉') : null
+                const sellerId = v.id !== undefined ? v.id : v.vendedor_id;
+                const originalIndex = sortedData.findIndex((item: any) => (item.id !== undefined ? item.id : item.vendedor_id) === sellerId);
+                const medal = originalIndex < 3 ? (originalIndex === 0 ? '🥇' : originalIndex === 1 ? '🥈' : '🥉') : null;
 
                 return (
                   <div 
-                    key={v.vendedor_id} 
+                    key={sellerId} 
                     className="border border-divider rounded-2xl p-3 sm:p-5 bg-bg-primary hover:shadow-card-hover hover:border-brand-500/40 transition-all duration-300 relative shadow-card flex flex-col justify-between h-full hover:scale-[1.01] group"
                   >
                     {/* Badge Rank / Medal */}
@@ -133,18 +137,18 @@ export default function Comissoes() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
-                        toggleCard(String(v.vendedor_id))
+                        toggleCard(String(sellerId))
                       }}
                       className="w-full flex items-center justify-center gap-1.5 py-2.5 px-3 bg-bg-secondary hover:bg-bg-secondary/80 border border-divider/60 rounded-xl text-[11px] font-bold text-text-secondary sm:hidden cursor-pointer transition-all mt-1"
                     >
-                      <span>{expandedCards[String(v.vendedor_id)] ? "Ocultar Detalhes" : "Ver Detalhes"}</span>
-                      <ChevronDown size={14} className={clsx("transition-transform duration-300", expandedCards[String(v.vendedor_id)] && "rotate-180")} />
+                      <span>{expandedCards[String(sellerId)] ? "Ocultar Detalhes" : "Ver Detalhes"}</span>
+                      <ChevronDown size={14} className={clsx("transition-transform duration-300", expandedCards[String(sellerId)] && "rotate-180")} />
                     </button>
 
                     {/* Collapsible content (hidden on mobile by default, always visible on sm+) */}
                     <div className={clsx(
                       "space-y-4",
-                      expandedCards[String(v.vendedor_id)] ? "block" : "hidden sm:block"
+                      expandedCards[String(sellerId)] ? "block" : "hidden sm:block"
                     )}>
                       {/* Secundário: Vendas e Ticket */}
                       <div className="grid grid-cols-2 gap-3 pt-2">
@@ -208,7 +212,7 @@ export default function Comissoes() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        navigate(`/comercial/vendedor/${v.vendedor_id}`);
+                        navigate(`/comercial/vendedor/${sellerId}`);
                       }}
                       className="w-full flex items-center justify-center gap-1.5 py-2.5 px-4 bg-brand-500 hover:bg-brand-600 active:scale-[0.98] text-white rounded-xl text-xs font-black transition-all cursor-pointer shadow-sm hover:shadow-md mt-2"
                     >

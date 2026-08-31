@@ -73,7 +73,7 @@ function buildCidadeFilter(cidade, nextParamIndex, alias = 'c') {
         return { clause: '', params: [] };
     }
     return {
-        clause: ` AND TRIM(${alias}.cidade) = $${nextParamIndex}`,
+        clause: ` AND UPPER(TRIM(${alias}.cidade)) = UPPER(TRIM($${nextParamIndex}))`,
         params: [cidade]
     };
 }
