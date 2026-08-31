@@ -101,12 +101,12 @@ export default function VisaoEstrategicaV3() {
   const ov = useBranchPeriodQuery<any>('/estatisticas/overview')
   const kpisData = useBranchPeriodQuery<any>('/estatisticas/kpis')
   const fatMes = useBranchPeriodQuery<any>('/vendas/faturadas')
-  const vd = useBranchPeriodQuery<any>('/ranking/vendedores')
-  const prod = useBranchPeriodQuery<any>('/ranking/produtos')
-  const cli = useBranchPeriodQuery<any>('/ranking/clientes')
-  const marcas = useBranchPeriodQuery<any>('/ranking/marcas')
-  const cidades = useBranchPeriodQuery<any>('/ranking/cidades')
-  const categorias = useBranchPeriodQuery<any>('/ranking/categorias')
+  const vd = useBranchPeriodQuery<any>('/ranking/vendedores', { limit: 100 })
+  const prod = useBranchPeriodQuery<any>('/ranking/produtos', { limit: 100 })
+  const cli = useBranchPeriodQuery<any>('/ranking/clientes', { limit: 100 })
+  const marcas = useBranchPeriodQuery<any>('/ranking/marcas', { limit: 100 })
+  const cidades = useBranchPeriodQuery<any>('/ranking/cidades', { limit: 100 })
+  const categorias = useBranchPeriodQuery<any>('/ranking/categorias', { limit: 100 })
 
   const { filiais, selectedBranch, setSelectedBranch } = useBranch()
 

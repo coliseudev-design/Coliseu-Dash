@@ -156,11 +156,11 @@ export default function HomeV1() {
   const ov = useBranchPeriodQuery<any>('/estatisticas/overview', queryParams)
   const kpisQuery = useBranchPeriodQuery<any>('/estatisticas/kpis', queryParams)
   const fatMes = useBranchPeriodQuery<any>('/vendas/faturadas', queryParams)
-  const vd = useBranchPeriodQuery<any>('/ranking/vendedores', queryParams)
-  const marcasQuery = useBranchPeriodQuery<any>('/ranking/marcas', queryParams)
-  const cidadesQuery = useBranchPeriodQuery<any>('/ranking/cidades', queryParams)
-  const clientesQuery = useBranchPeriodQuery<any>('/ranking/clientes', queryParams)
-  const categoriasQuery = useBranchPeriodQuery<any>('/ranking/categorias', queryParams)
+  const vd = useBranchPeriodQuery<any>('/ranking/vendedores', { ...queryParams, limit: 100 })
+  const marcasQuery = useBranchPeriodQuery<any>('/ranking/marcas', { ...queryParams, limit: 100 })
+  const cidadesQuery = useBranchPeriodQuery<any>('/ranking/cidades', { ...queryParams, limit: 100 })
+  const clientesQuery = useBranchPeriodQuery<any>('/ranking/clientes', { ...queryParams, limit: 100 })
+  const categoriasQuery = useBranchPeriodQuery<any>('/ranking/categorias', { ...queryParams, limit: 100 })
 
   // ─── Dropdown Lists Queries (Unfiltered to list options) ────────────────────
   const sellersDropdown = useBranchPeriodQuery<any>('/ranking/vendedores', { limit: 100 })
@@ -187,10 +187,9 @@ export default function HomeV1() {
   const melhorMarca = marcasQuery.data?.data?.[0]
   const melhorCidade = cidadesQuery.data?.data?.[0]
 
-  // Filter rankings local lists by Brand and City if selected
+  // Filter rankings local lists by Brand and City if selected (mostrando todos)
   const filteredTopSellers = useMemo(() => {
-    let list = vd.data?.data || []
-    return list.slice(0, 8)
+    return vd.data?.data || []
   }, [vd.data])
 
   const top10Marcas = useMemo(() => {
@@ -198,12 +197,11 @@ export default function HomeV1() {
     if (selectedMarca !== 'todas') {
       list = list.filter((m: any) => m.marca === selectedMarca || m.nome === selectedMarca)
     }
-    return list.slice(0, 10)
+    return list
   }, [marcasQuery.data, selectedMarca])
 
   const top10Grupos = useMemo(() => {
-    let list = categoriasQuery.data?.data || []
-    return list.slice(0, 10)
+    return categoriasQuery.data?.data || []
   }, [categoriasQuery.data])
 
   const top10Cidades = useMemo(() => {
@@ -211,12 +209,11 @@ export default function HomeV1() {
     if (selectedCidade !== 'todas') {
       list = list.filter((c: any) => c.nome === selectedCidade)
     }
-    return list.slice(0, 10)
+    return list
   }, [cidadesQuery.data, selectedCidade])
 
   const top10Clientes = useMemo(() => {
-    let list = clientesQuery.data?.data || []
-    return list.slice(0, 10)
+    return clientesQuery.data?.data || []
   }, [clientesQuery.data])
 
   // ─── Chart Data ─────────────────────────────────────────────────────────────
@@ -715,8 +712,9 @@ export default function HomeV1() {
             <h3 className="font-extrabold text-slate-800 dark:text-white text-xs uppercase tracking-widest">
               Desempenho dos Vendedores (Gráfico)
             </h3>
+            <span className="text-[10px] font-bold text-slate-400">{filteredTopSellers.length} vendedores</span>
           </div>
-          <div className="h-[220px] sm:h-[280px]">
+          <div className="h-[260px] sm:h-[350px]">
             {vd.isLoading ? (
               <div className="h-full flex items-center justify-center text-xs text-slate-400">Carregando gráfico...</div>
             ) : filteredTopSellers.length === 0 ? (
@@ -751,10 +749,11 @@ export default function HomeV1() {
         <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm flex flex-col">
           <div className="flex justify-between items-center mb-4">
             <h3 className="font-extrabold text-slate-800 dark:text-white text-xs uppercase tracking-widest">
-              Top Vendedores (Ranking)
+              Ranking de Vendedores
             </h3>
+            <span className="text-[10px] font-bold text-slate-400">{filteredTopSellers.length} total</span>
           </div>
-          <div className="flex-1 space-y-2 pr-1 overflow-y-visible sm:overflow-y-auto max-h-none sm:max-h-[280px]">
+          <div className="flex-1 space-y-2 pr-1 overflow-y-visible sm:overflow-y-auto max-h-none sm:max-h-[350px]">
             {vd.isLoading ? (
               <div className="h-full flex items-center justify-center text-xs text-slate-400">Carregando ranking...</div>
             ) : filteredTopSellers.map((seller: any, i: number) => {
@@ -814,8 +813,9 @@ export default function HomeV1() {
             <h3 className="font-extrabold text-slate-800 dark:text-white text-xs uppercase tracking-widest flex items-center gap-1.5">
               <Target size={14} className="text-emerald-600" /> Desempenho das Cidades (Gráfico)
             </h3>
+            <span className="text-[10px] font-bold text-slate-400">{top10Cidades.length} cidades</span>
           </div>
-          <div className="h-[220px] sm:h-[280px]">
+          <div className="h-[260px] sm:h-[350px]">
             {cidadesQuery.isLoading ? (
               <div className="h-full flex items-center justify-center text-xs text-slate-400">Carregando gráfico...</div>
             ) : top10Cidades.length === 0 ? (
@@ -846,14 +846,15 @@ export default function HomeV1() {
           </div>
         </div>
 
-        {/* Top 10 Cidades Ranking */}
+        {/* Top Cidades Ranking */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm flex flex-col">
           <div className="flex justify-between items-center mb-4">
             <h3 className="font-extrabold text-slate-800 dark:text-white text-xs uppercase tracking-widest flex items-center gap-1.5">
-              <Target size={14} className="text-emerald-600" /> Top Cidades (Ranking)
+              <Target size={14} className="text-emerald-600" /> Ranking de Cidades
             </h3>
+            <span className="text-[10px] font-bold text-slate-400">{top10Cidades.length} total</span>
           </div>
-          <div className="flex-1 space-y-2 pr-1 overflow-y-visible sm:overflow-y-auto max-h-none sm:max-h-[280px]">
+          <div className="flex-1 space-y-2 pr-1 overflow-y-visible sm:overflow-y-auto max-h-none sm:max-h-[350px]">
             {cidadesQuery.isLoading ? (
               <div className="h-full flex items-center justify-center text-xs text-slate-400">Carregando ranking...</div>
             ) : top10Cidades.map((item: any, i: number) => {
