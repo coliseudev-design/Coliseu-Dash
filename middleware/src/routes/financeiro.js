@@ -46,7 +46,7 @@ router.get('/contas-receber', async (req, res, next) => {
             SELECT 
                 ${CAT_SQL} AS status,
                 COUNT(*) AS quantidade,
-                SUM(f.valor) AS total
+                SUM(CASE WHEN TRIM(f.status_pagamento) = 'PAGO' THEN (CASE WHEN f.valor_pago = 0 THEN f.valor ELSE f.valor_pago END) ELSE (f.valor - COALESCE(f.valor_pago, 0)) END) AS total
             FROM dash_financeiro f
             WHERE f.tenant_id = $1 
               AND TRIM(f.tipo) = 'RECEBER'
@@ -80,7 +80,7 @@ router.get('/contas-pagar', async (req, res, next) => {
             SELECT 
                 ${CAT_SQL} AS status,
                 COUNT(*) AS quantidade,
-                SUM(f.valor) AS total
+                SUM(CASE WHEN TRIM(f.status_pagamento) = 'PAGO' THEN (CASE WHEN f.valor_pago = 0 THEN f.valor ELSE f.valor_pago END) ELSE (f.valor - COALESCE(f.valor_pago, 0)) END) AS total
             FROM dash_financeiro f
             WHERE f.tenant_id = $1 
               AND TRIM(f.tipo) = 'PAGAR'
@@ -115,11 +115,11 @@ router.get('/resumo-mes', async (req, res, next) => {
         const { rows } = await db.query(`
             SELECT
                 SUM(CASE WHEN TRIM(f.tipo) = 'RECEBER' AND TRIM(f.status_pagamento) = 'PAGO' THEN (CASE WHEN f.valor_pago = 0 THEN f.valor ELSE f.valor_pago END) ELSE 0 END) AS total_recebido,
-                SUM(CASE WHEN TRIM(f.tipo) = 'RECEBER' AND TRIM(f.status_pagamento) = 'ABERTO' THEN f.valor ELSE 0 END) AS total_a_receber,
+                SUM(CASE WHEN TRIM(f.tipo) = 'RECEBER' AND TRIM(f.status_pagamento) = 'ABERTO' THEN (f.valor - COALESCE(f.valor_pago, 0)) ELSE 0 END) AS total_a_receber,
                 SUM(CASE WHEN TRIM(f.tipo) = 'PAGAR' AND TRIM(f.status_pagamento) = 'PAGO' THEN (CASE WHEN f.valor_pago = 0 THEN f.valor ELSE f.valor_pago END) ELSE 0 END) AS total_pago,
-                SUM(CASE WHEN TRIM(f.tipo) = 'PAGAR' AND TRIM(f.status_pagamento) = 'ABERTO' THEN f.valor ELSE 0 END) AS total_a_pagar,
-                COUNT(DISTINCT CASE WHEN TRIM(f.tipo) = 'RECEBER' AND TRIM(f.status_pagamento) = 'ABERTO' AND f.data_vencimento < NOW() THEN f.id END) AS qtd_inadimplentes,
-                SUM(CASE WHEN TRIM(f.tipo) = 'RECEBER' AND TRIM(f.status_pagamento) = 'ABERTO' AND f.data_vencimento < NOW() THEN f.valor ELSE 0 END) AS total_inadimplente
+                SUM(CASE WHEN TRIM(f.tipo) = 'PAGAR' AND TRIM(f.status_pagamento) = 'ABERTO' THEN (f.valor - COALESCE(f.valor_pago, 0)) ELSE 0 END) AS total_a_pagar,
+                COUNT(DISTINCT CASE WHEN TRIM(f.tipo) = 'RECEBER' AND TRIM(f.status_pagamento) = 'ABERTO' AND f.data_vencimento < NOW() AND (f.valor - COALESCE(f.valor_pago, 0)) > 0 THEN f.id END) AS qtd_inadimplentes,
+                SUM(CASE WHEN TRIM(f.tipo) = 'RECEBER' AND TRIM(f.status_pagamento) = 'ABERTO' AND f.data_vencimento < NOW() THEN (f.valor - COALESCE(f.valor_pago, 0)) ELSE 0 END) AS total_inadimplente
             FROM dash_financeiro f
             WHERE f.tenant_id = $1 
               AND COALESCE(f.data_pagamento, f.data_vencimento) >= $2 
