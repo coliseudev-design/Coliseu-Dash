@@ -64,7 +64,7 @@ const BarValueLabel = ({ x, y, width, value }: any) => {
 export default function InventoryManagementDashboard() {
   const { filter } = useOutletContext<{ filter: BiPeriodFilter }>();
 
-  const { data, isLoading, isError } = useBiPeriodQuery(
+  const { data, isLoading } = useBiPeriodQuery(
     ['bi', 'abc'],
     BIService.getABCAnalysis,
     filter
@@ -75,7 +75,9 @@ export default function InventoryManagementDashboard() {
   const [grupoFilter, setGrupoFilter] = useState('');
   const [abcFilter, setAbcFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [comEstoque, setComEstoque] = useState(false);
+  // Padrão: somente produtos com estoque positivo
+  const [filtroEstoque, setFiltroEstoque] = useState<'com_estoque' | 'todos' | 'negativo' | 'sem_estoque'>('com_estoque');
+  const [ordenacao, setOrdenacao] = useState<'abc' | 'nome_asc' | 'nome_desc' | 'cod_asc' | 'cod_desc' | 'estoque_desc' | 'estoque_asc' | 'valor_desc' | 'valor_asc'>('abc');
   const [currentPage, setCurrentPage] = useState(1);
   const [showChartValues, setShowChartValues] = useState(false);
   const [activeBarIdx, setActiveBarIdx] = useState<number | null>(null);
@@ -92,7 +94,8 @@ export default function InventoryManagementDashboard() {
   };
 
   const markup = kpis.valor_estoque_custo > 0 ? kpis.valor_estoque_venda / kpis.valor_estoque_custo : 0;
-  const semEstoque = tableData.filter((x: any) => x.estoque <= 0).length;
+  const semEstoque = tableData.filter((x: any) => x.estoque === 0).length;
+  const estoqueNegativo = tableData.filter((x: any) => x.estoque < 0).length;
   const estoqueCritico = tableData.filter((x: any) => x.estoque > 0 && x.estoque < 10).length;
   const diasEstoque = 73;
   const estoqueIdeal = kpis.valor_estoque_custo * 0.13;
@@ -104,8 +107,6 @@ export default function InventoryManagementDashboard() {
       .slice(0, 8)
   , [tableData]);
 
-  const totalEstoqueParadoValor = estoqueParado.reduce((s: number, x: any) => s + x.estoque * x.custo, 0);
-
   const marcasDisponiveis = useMemo(() => {
     return Array.from(new Set(tableData.map((x: any) => x.marca).filter(Boolean))).sort() as string[];
   }, [tableData]);
@@ -114,8 +115,8 @@ export default function InventoryManagementDashboard() {
     return Array.from(new Set(tableData.map((x: any) => x.grupo).filter(Boolean))).sort() as string[];
   }, [tableData]);
 
-  const filteredData = useMemo(() =>
-    tableData.filter((item: any) => {
+  const filteredData = useMemo(() => {
+    const list = tableData.filter((item: any) => {
       const matchSearch = !searchTerm ||
         item.desc?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.cod?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -123,12 +124,41 @@ export default function InventoryManagementDashboard() {
       const matchGrupo = !grupoFilter || item.grupo === grupoFilter;
       const matchAbc = !abcFilter || item.abc === abcFilter;
       const matchStatus = !statusFilter || item.status === statusFilter;
-      const matchEstoque = !comEstoque || item.estoque > 0;
-      return matchSearch && matchMarca && matchGrupo && matchAbc && matchStatus && matchEstoque;
-    })
-  , [tableData, searchTerm, marcaFilter, grupoFilter, abcFilter, statusFilter, comEstoque]);
+      
+      let matchEstoque = true;
+      if (filtroEstoque === 'com_estoque') matchEstoque = item.estoque > 0;
+      else if (filtroEstoque === 'negativo') matchEstoque = item.estoque < 0;
+      else if (filtroEstoque === 'sem_estoque') matchEstoque = item.estoque === 0;
 
-  useEffect(() => { setCurrentPage(1); }, [searchTerm, marcaFilter, grupoFilter, abcFilter, statusFilter, comEstoque]);
+      return matchSearch && matchMarca && matchGrupo && matchAbc && matchStatus && matchEstoque;
+    });
+
+    return list.sort((a: any, b: any) => {
+      switch (ordenacao) {
+        case 'nome_asc':
+          return (a.desc || '').localeCompare(b.desc || '');
+        case 'nome_desc':
+          return (b.desc || '').localeCompare(a.desc || '');
+        case 'cod_asc':
+          return (Number(a.cod) || 0) - (Number(b.cod) || 0);
+        case 'cod_desc':
+          return (Number(b.cod) || 0) - (Number(a.cod) || 0);
+        case 'estoque_desc':
+          return (b.estoque || 0) - (a.estoque || 0);
+        case 'estoque_asc':
+          return (a.estoque || 0) - (b.estoque || 0);
+        case 'valor_desc':
+          return ((b.estoque || 0) * (b.custo || 0)) - ((a.estoque || 0) * (a.custo || 0));
+        case 'valor_asc':
+          return ((a.estoque || 0) * (a.custo || 0)) - ((b.estoque || 0) * (b.custo || 0));
+        case 'abc':
+        default:
+          return (b.faturamento || 0) - (a.faturamento || 0);
+      }
+    });
+  }, [tableData, searchTerm, marcaFilter, grupoFilter, abcFilter, statusFilter, filtroEstoque, ordenacao]);
+
+  useEffect(() => { setCurrentPage(1); }, [searchTerm, marcaFilter, grupoFilter, abcFilter, statusFilter, filtroEstoque, ordenacao]);
 
   const totalPages = Math.max(1, Math.ceil(filteredData.length / itemsPerPage));
   const paginatedData = useMemo(() =>
@@ -137,11 +167,6 @@ export default function InventoryManagementDashboard() {
 
   const maxGrupo = Math.max(...distGrupo.map((x: any) => x.value), 1);
   const maxMarca = Math.max(...distMarca.map((x: any) => x.value), 1);
-
-  // Paleta índigo/esmeralda para barras
-  const barGradients = ['#4F46E5', '#6366F1', '#818CF8', '#4F46E5', '#6366F1',
-    '#10B981', '#059669', '#34D399', '#10B981', '#059669',
-    '#F59E0B', '#D97706', '#FBBF24', '#F59E0B', '#D97706'];
 
   const statusStyle = (status: string): string => {
     const n = status?.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -193,16 +218,16 @@ export default function InventoryManagementDashboard() {
       <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-4">
         {[
           {
-            label: 'Total Investido', value: fmtCompact(kpis.valor_estoque_custo), sub: 'Custo do estoque',
-            Icon: DollarSign, color: '#10B981', trend: +2.4, alert: false
+            label: 'Total Investido', value: formatBRL(kpis.valor_estoque_custo), sub: 'Custo do estoque',
+            Icon: DollarSign, color: '#10B981', trend: null, alert: false
           },
           {
-            label: 'Receita Potencial em Estoque', value: fmtCompact(kpis.valor_estoque_venda), sub: 'Preço de venda',
-            Icon: CircleDollarSign, color: '#4F46E5', trend: +1.8, alert: false
+            label: 'Receita Potencial', value: formatBRL(kpis.valor_estoque_venda), sub: 'Preço de venda',
+            Icon: CircleDollarSign, color: '#4F46E5', trend: null, alert: false
           },
           {
             label: 'Itens em Estoque', value: formatNum(kpis.total_volume), sub: 'Unidades físicas',
-            Icon: Boxes, color: '#06B6D4', trend: -0.5, alert: false
+            Icon: Boxes, color: '#06B6D4', trend: null, alert: false
           },
           {
             label: 'Cobertura', value: `${diasEstoque}d`, sub: 'Dias de estoque',
@@ -210,23 +235,23 @@ export default function InventoryManagementDashboard() {
           },
           {
             label: 'Markup Médio', value: `${markup.toFixed(2)}x`, sub: 'Venda / Custo',
-            Icon: BarChart2, color: '#6366F1', trend: +0.1, alert: false
+            Icon: BarChart2, color: '#6366F1', trend: null, alert: false
           },
           {
-            label: 'Ruptura', value: String(semEstoque), sub: 'Sem estoque',
+            label: 'Ruptura (0 Saldo)', value: String(semEstoque), sub: 'Sem estoque',
+            Icon: AlertTriangle, color: '#64748B', trend: null, alert: false
+          },
+          {
+            label: 'Estoque Negativo', value: String(estoqueNegativo), sub: 'Abaixo de 0',
             Icon: AlertTriangle, color: '#EF4444', trend: null, alert: true
           },
           {
-            label: 'Crítico', value: String(estoqueCritico), sub: 'Abaixo do mínimo',
-            Icon: AlertTriangle, color: '#F59E0B', trend: null, alert: true
-          },
-          {
-            label: 'Estoque Ideal', value: fmtCompact(estoqueIdeal), sub: 'Capital recomendado',
+            label: 'Estoque Ideal', value: formatBRL(estoqueIdeal), sub: 'Capital recomendado',
             Icon: Package2, color: '#14B8A6', trend: null, alert: false
           },
         ].map((card, i) => (
           <div key={i} className={clsx(
-            'col-span-2 group rounded-2xl p-4 flex flex-col gap-2 transition-all duration-200',
+            'col-span-2 group rounded-2xl p-4 flex flex-col justify-between gap-2 transition-all duration-200 min-w-0',
             'bg-bg-primary shadow-sm hover:shadow-md',
             card.alert
               ? 'border-l-4'
@@ -234,29 +259,22 @@ export default function InventoryManagementDashboard() {
           )} style={card.alert ? { borderLeftColor: card.color, borderTop: `1px solid ${card.color}20`, borderRight: `1px solid ${card.color}20`, borderBottom: `1px solid ${card.color}20` } : {}}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200 group-hover:scale-110"
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200 group-hover:scale-110"
                   style={{ background: `${card.color}18`, border: `1px solid ${card.color}25` }}>
-                  <card.Icon size={15} style={{ color: card.color }} />
+                  <card.Icon size={14} style={{ color: card.color }} />
                 </div>
               </div>
-              {card.trend !== null && (
-                <span className={clsx(
-                  'text-[9px] font-black flex items-center gap-0.5 px-1.5 py-0.5 rounded-full',
-                  card.trend >= 0
-                    ? 'text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-500/10'
-                    : 'text-red-500 bg-red-50 dark:bg-red-500/10'
-                )}>
-                  {card.trend >= 0 ? <TrendingUp size={8} /> : <TrendingDown size={8} />}
-                  {card.trend >= 0 ? '+' : ''}{card.trend}%
-                </span>
-              )}
             </div>
-            <div>
-              <div className="text-[9px] font-bold text-text-secondary uppercase tracking-widest">{card.label}</div>
-              <div className="text-[22px] font-black font-mono leading-tight mt-0.5" style={{ color: card.alert ? card.color : 'var(--color-text-primary)' }}>
+            <div className="min-w-0">
+              <div className="text-[9px] font-bold text-text-secondary uppercase tracking-widest truncate">{card.label}</div>
+              <div 
+                className="text-base sm:text-lg xl:text-xl font-black font-mono leading-tight mt-1 truncate" 
+                title={card.value}
+                style={{ color: card.alert ? card.color : 'var(--color-text-primary)' }}
+              >
                 {card.value}
               </div>
-              <div className="text-[9px] text-text-secondary mt-0.5">{card.sub}</div>
+              <div className="text-[9px] text-text-secondary mt-0.5 truncate">{card.sub}</div>
             </div>
           </div>
         ))}
@@ -502,38 +520,101 @@ export default function InventoryManagementDashboard() {
             )}
           </div>
 
-          {[
-            {
-              value: abcFilter, onChange: (v: string) => setAbcFilter(v),
-              options: [['', 'Curva ABC'], ['A', 'Curva A'], ['B', 'Curva B'], ['C', 'Curva C']]
-            },
-            {
-              value: statusFilter, onChange: (v: string) => setStatusFilter(v),
-              options: [['', 'Status: Todos'], ['Ideal', 'Ideal'], ['Atencao', 'Atenção'], ['Critico', 'Crítico'], ['Sem Giro', 'Sem Giro']]
-            },
-          ].map((sel, si) => (
-            <select key={si} value={sel.value} onChange={e => sel.onChange(e.target.value)}
-              className="bg-bg-primary border border-divider rounded-2xl px-3.5 py-2.5 text-xs font-semibold text-text-primary outline-none cursor-pointer hover:border-indigo-300 transition-colors">
-              {sel.options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-            </select>
-          ))}
+          {/* Seletor de Ordenação */}
+          <select 
+            value={ordenacao} 
+            onChange={e => setOrdenacao(e.target.value as any)}
+            className="bg-bg-primary border border-divider rounded-2xl px-3.5 py-2.5 text-xs font-semibold text-text-primary outline-none cursor-pointer hover:border-indigo-300 transition-colors"
+          >
+            <option value="abc">Ordenar: Curva ABC</option>
+            <option value="nome_asc">Ordenar: Nome (A-Z)</option>
+            <option value="nome_desc">Ordenar: Nome (Z-A)</option>
+            <option value="cod_asc">Ordenar: Código (1 → 9)</option>
+            <option value="cod_desc">Ordenar: Código (9 → 1)</option>
+            <option value="estoque_desc">Ordenar: Maior Estoque</option>
+            <option value="estoque_asc">Ordenar: Menor Estoque</option>
+            <option value="valor_desc">Ordenar: Maior Valor Total</option>
+            <option value="valor_asc">Ordenar: Menor Valor Total</option>
+          </select>
 
-          <button onClick={() => setComEstoque(!comEstoque)}
+          {/* Filtro de Estoque */}
+          <select 
+            value={filtroEstoque} 
+            onChange={e => setFiltroEstoque(e.target.value as any)}
             className={clsx(
-              'px-3.5 py-2.5 rounded-2xl text-xs font-bold border flex items-center gap-1.5 transition-all cursor-pointer',
-              comEstoque
-                ? 'bg-emerald-500 text-white border-emerald-500 shadow-sm shadow-emerald-500/25'
-                : 'bg-bg-primary border-divider text-text-secondary hover:border-emerald-300'
-            )}>
-            <span className={clsx('w-1.5 h-1.5 rounded-full', comEstoque ? 'bg-white' : 'bg-text-secondary')} />
-            Com Estoque
-          </button>
+              "border rounded-2xl px-3.5 py-2.5 text-xs font-bold outline-none cursor-pointer transition-colors",
+              filtroEstoque === 'com_estoque' 
+                ? "bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/30"
+                : filtroEstoque === 'negativo'
+                ? "bg-red-50 text-red-700 border-red-300 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/30"
+                : "bg-bg-primary text-text-primary border-divider hover:border-indigo-300"
+            )}
+          >
+            <option value="com_estoque">Estoque: Com Saldo (&gt; 0)</option>
+            <option value="todos">Estoque: Mostrar Todos</option>
+            <option value="negativo">Estoque: Negativos (&lt; 0)</option>
+            <option value="sem_estoque">Estoque: Zerados (= 0)</option>
+          </select>
 
-          {(searchTerm || marcaFilter || grupoFilter || abcFilter || statusFilter || comEstoque) && (
+          {/* Grupo Filter */}
+          <select 
+            value={grupoFilter} 
+            onChange={e => setGrupoFilter(e.target.value)}
+            className="bg-bg-primary border border-divider rounded-2xl px-3.5 py-2.5 text-xs font-semibold text-text-primary outline-none cursor-pointer hover:border-indigo-300 transition-colors"
+          >
+            <option value="">Grupo / Categoria: Todos</option>
+            {gruposDisponiveis.map(g => <option key={g} value={g}>{g}</option>)}
+          </select>
+
+          {/* Marca Filter */}
+          <select 
+            value={marcaFilter} 
+            onChange={e => setMarcaFilter(e.target.value)}
+            className="bg-bg-primary border border-divider rounded-2xl px-3.5 py-2.5 text-xs font-semibold text-text-primary outline-none cursor-pointer hover:border-indigo-300 transition-colors"
+          >
+            <option value="">Marca: Todas</option>
+            {marcasDisponiveis.map(m => <option key={m} value={m}>{m}</option>)}
+          </select>
+
+          {/* ABC Filter */}
+          <select 
+            value={abcFilter} 
+            onChange={e => setAbcFilter(e.target.value)}
+            className="bg-bg-primary border border-divider rounded-2xl px-3.5 py-2.5 text-xs font-semibold text-text-primary outline-none cursor-pointer hover:border-indigo-300 transition-colors"
+          >
+            <option value="">Curva ABC: Todas</option>
+            <option value="A">Curva A</option>
+            <option value="B">Curva B</option>
+            <option value="C">Curva C</option>
+          </select>
+
+          {/* Status Filter */}
+          <select 
+            value={statusFilter} 
+            onChange={e => setStatusFilter(e.target.value)}
+            className="bg-bg-primary border border-divider rounded-2xl px-3.5 py-2.5 text-xs font-semibold text-text-primary outline-none cursor-pointer hover:border-indigo-300 transition-colors"
+          >
+            <option value="">Status: Todos</option>
+            <option value="Ideal">Ideal</option>
+            <option value="Atencao">Atenção</option>
+            <option value="Critico">Crítico</option>
+            <option value="Sem Giro">Sem Giro</option>
+          </select>
+
+          {(searchTerm || marcaFilter || grupoFilter || abcFilter || statusFilter || filtroEstoque !== 'com_estoque' || ordenacao !== 'abc') && (
             <button
-              onClick={() => { setSearchTerm(''); setMarcaFilter(''); setGrupoFilter(''); setAbcFilter(''); setStatusFilter(''); setComEstoque(false); }}
-              className="flex items-center gap-1 text-[10px] font-black text-red-500 hover:text-red-600 cursor-pointer transition-colors px-1">
-              <Filter size={10} />Limpar
+              onClick={() => { 
+                setSearchTerm(''); 
+                setMarcaFilter(''); 
+                setGrupoFilter(''); 
+                setAbcFilter(''); 
+                setStatusFilter(''); 
+                setFiltroEstoque('com_estoque'); 
+                setOrdenacao('abc'); 
+              }}
+              className="flex items-center gap-1 text-[10px] font-black text-red-500 hover:text-red-600 cursor-pointer transition-colors px-2 py-2 rounded-xl bg-red-50 dark:bg-red-500/10"
+            >
+              <Filter size={11} /> Limpar Filtros
             </button>
           )}
         </div>
@@ -556,30 +637,52 @@ export default function InventoryManagementDashboard() {
               </tr>
             </thead>
             <tbody className="divide-y divide-divider/20">
-              {paginatedData.map((row: any, i: number) => (
-                <tr key={i} className="hover:bg-indigo-50/40 dark:hover:bg-indigo-500/5 transition-colors cursor-default group">
-                  <td className="px-5 py-3.5 font-mono font-black text-indigo-600 dark:text-indigo-400 text-xs">{row.cod}</td>
-                  <td className="px-5 py-3.5 font-semibold text-text-primary text-xs max-w-[220px] truncate" title={row.desc}>{row.desc}</td>
-                  <td className="px-5 py-3.5 text-text-secondary text-xs">{row.marca}</td>
-                  <td className="px-5 py-3.5 text-text-secondary text-xs">{row.grupo}</td>
-                  <td className="px-5 py-3.5 text-center">
-                    <span className={clsx('px-2 py-0.5 text-[9px] font-black rounded-md', abcStyle(row.abc))}>
-                      {row.abc}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3.5 text-right font-mono font-bold text-xs">
-                    <span className={row.alert ? 'text-red-500' : 'text-text-primary'}>{row.estoque.toFixed(2)}</span>
-                  </td>
-                  <td className="px-5 py-3.5 text-right font-mono text-text-secondary text-xs">{formatBRL(row.custo)}</td>
-                  <td className="px-5 py-3.5 text-right font-mono font-bold text-text-primary text-xs">{formatBRL(row.preco)}</td>
-                  <td className="px-5 py-3.5 text-right font-mono font-black text-emerald-600 dark:text-emerald-400 text-xs">{formatBRL(row.estoque * row.custo)}</td>
-                  <td className="px-5 py-3.5 text-center">
-                    <span className={clsx('px-2.5 py-0.5 text-[9px] font-black rounded-full uppercase tracking-wide', statusStyle(row.status))}>
-                      {row.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
+              {paginatedData.map((row: any, i: number) => {
+                const totalValor = (row.estoque || 0) * (row.custo || 0);
+                const isNegativo = (row.estoque || 0) < 0;
+                const isZero = (row.estoque || 0) === 0;
+
+                return (
+                  <tr key={i} className="hover:bg-indigo-50/40 dark:hover:bg-indigo-500/5 transition-colors cursor-default group">
+                    <td className="px-5 py-3.5 font-mono font-black text-indigo-600 dark:text-indigo-400 text-xs">{row.cod}</td>
+                    <td className="px-5 py-3.5 font-semibold text-text-primary text-xs max-w-[240px] truncate" title={row.desc}>{row.desc}</td>
+                    <td className="px-5 py-3.5 text-text-secondary text-xs">{row.marca}</td>
+                    <td className="px-5 py-3.5 text-text-secondary text-xs">{row.grupo}</td>
+                    <td className="px-5 py-3.5 text-center">
+                      <span className={clsx('px-2 py-0.5 text-[9px] font-black rounded-md', abcStyle(row.abc))}>
+                        {row.abc}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3.5 text-right font-mono text-xs">
+                      {isNegativo ? (
+                        <span className="inline-block px-2 py-0.5 rounded-md font-black bg-red-100 text-red-700 border border-red-200 dark:bg-red-500/20 dark:text-red-400 dark:border-red-500/30">
+                          {formatNum(row.estoque)}
+                        </span>
+                      ) : isZero ? (
+                        <span className="text-text-muted font-normal">0,00</span>
+                      ) : (
+                        <span className="text-text-primary font-bold">{formatNum(row.estoque)}</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3.5 text-right font-mono text-text-secondary text-xs">{formatBRL(row.custo)}</td>
+                    <td className="px-5 py-3.5 text-right font-mono font-bold text-text-primary text-xs">{formatBRL(row.preco)}</td>
+                    <td className="px-5 py-3.5 text-right font-mono text-xs">
+                      {isNegativo ? (
+                        <span className="text-red-600 dark:text-red-400 font-bold">{formatBRL(totalValor)}</span>
+                      ) : isZero ? (
+                        <span className="text-text-muted">R$ 0,00</span>
+                      ) : (
+                        <span className="font-black text-emerald-600 dark:text-emerald-400">{formatBRL(totalValor)}</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3.5 text-center">
+                      <span className={clsx('px-2.5 py-0.5 text-[9px] font-black rounded-full uppercase tracking-wide', statusStyle(row.status))}>
+                        {row.status}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
               {paginatedData.length === 0 && (
                 <tr>
                   <td colSpan={10} className="px-5 py-12 text-center text-text-secondary font-semibold text-sm">

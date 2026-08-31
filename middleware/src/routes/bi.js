@@ -758,6 +758,9 @@ router.get('/sales/sellers', async (req, res, next) => {
 router.get('/sales/abc-analysis', async (req, res, next) => {
     try {
         const tenantId = req.tenant.id;
+        const { start, end } = await getBiDateRange(req, tenantId);
+        const deptoId = req.query.depto_id || req.query.centro_custo;
+        const df = buildDeptoFilter(deptoId, 4, 'v');
 
         // Inventory values from dash_produtos
         const { rows: inv } = await db.query(`
@@ -766,6 +769,7 @@ router.get('/sales/abc-analysis', async (req, res, next) => {
                 COALESCE(SUM(estoque * preco), 0) AS valor_estoque_venda,
                 COALESCE(SUM(estoque), 0) AS total_volume,
                 COUNT(CASE WHEN estoque > 0 THEN 1 END) AS skus_com_saldo,
+                COUNT(CASE WHEN estoque < 0 THEN 1 END) AS skus_negativos,
                 COUNT(id_firebird) AS total_skus
             FROM dash_produtos
             WHERE tenant_id = $1 AND ativo = true
@@ -773,8 +777,9 @@ router.get('/sales/abc-analysis', async (req, res, next) => {
 
         const valor_estoque_custo = parseFloat(inv[0].valor_estoque_custo);
         const valor_estoque_venda = parseFloat(inv[0].valor_estoque_venda);
-        const total_volume = parseInt(inv[0].total_volume, 10);
+        const total_volume = parseFloat(inv[0].total_volume);
         const skus_com_saldo = parseInt(inv[0].skus_com_saldo, 10);
+        const skus_negativos = parseInt(inv[0].skus_negativos, 10);
         const total_skus = parseInt(inv[0].total_skus, 10);
         const ruptura_pct = total_skus > 0 ? ((total_skus - skus_com_saldo) / total_skus) * 100 : 0;
 
@@ -783,17 +788,18 @@ router.get('/sales/abc-analysis', async (req, res, next) => {
         // Fetch product list and calculate ABC
         const { rows: prods } = await db.query(`
             SELECT 
-                p.id_firebird, p.nome, COALESCE(p.marca, 'DIVERSAS') as marca, 
+                p.id_firebird, p.codigo, p.nome, COALESCE(p.marca, 'DIVERSAS') as marca, 
                 COALESCE(p.categoria, 'OUTROS') as grupo, p.estoque, p.custo, p.preco,
                 COALESCE(SUM(vi.valor_total), 0) as faturamento_historico
             FROM dash_produtos p
             LEFT JOIN dash_vendas_itens vi ON vi.produto_id_firebird = p.id_firebird AND vi.tenant_id = p.tenant_id
-            LEFT JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id ${salesFilter}
+            LEFT JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id 
+                AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3 ${salesFilter} ${df.clause}
             WHERE p.tenant_id = $1 AND p.ativo = true
-            GROUP BY p.id_firebird, p.nome, p.marca, p.categoria, p.estoque, p.custo, p.preco
-            ORDER BY faturamento_historico DESC
-            LIMIT 500
-        `, [tenantId]);
+            GROUP BY p.id_firebird, p.codigo, p.nome, p.marca, p.categoria, p.estoque, p.custo, p.preco
+            ORDER BY faturamento_historico DESC, p.nome ASC
+            LIMIT 5000
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
 
         let totalFaturamentoGeral = 0;
         prods.forEach(r => totalFaturamentoGeral += parseFloat(r.faturamento_historico));
@@ -816,7 +822,8 @@ router.get('/sales/abc-analysis', async (req, res, next) => {
             else if (estoque < 20) { status = 'Atenção'; }
 
             return {
-                cod: String(p.id_firebird),
+                cod: p.codigo ? String(p.codigo) : String(p.id_firebird),
+                id_firebird: p.id_firebird,
                 desc: p.nome,
                 emb: 'UN',
                 marca: p.marca,
@@ -826,7 +833,7 @@ router.get('/sales/abc-analysis', async (req, res, next) => {
                 estoque: estoque,
                 custo: parseFloat(p.custo),
                 preco: parseFloat(p.preco),
-                dias: 30, // Mock for now
+                dias: 30,
                 alert: alert,
                 faturamento: fat
             };
