@@ -4,7 +4,7 @@ import { useBiPeriodQuery } from '../../hooks/useBiPeriodQuery';
 import { BIService } from '../../services/biApi';
 import { BiPeriodFilter } from '../../types/bi.types';
 import {
-  DollarSign, Box, AlertTriangle, Search, X, Eye, EyeOff,
+  DollarSign, AlertTriangle, Search, X, Eye, EyeOff,
   Boxes, TrendingUp, TrendingDown, Clock, Layers, BarChart2,
   Package2, ChevronLeft, ChevronRight, Filter, CircleDollarSign
 } from 'lucide-react';
@@ -102,16 +102,8 @@ export default function InventoryManagementDashboard() {
   const diasEstoque = 73;
   const estoqueIdeal = kpis.valor_estoque_custo * 0.13;
 
-  const estoqueParado = useMemo(() =>
-    tableData
-      .filter((x: any) => x.faturamento === 0 && x.estoque > 0)
-      .sort((a: any, b: any) => (b.estoque * b.custo) - (a.estoque * a.custo))
-      .slice(0, 8)
-  , [tableData]);
 
-  const totalEstoqueParadoValor = useMemo(() =>
-    estoqueParado.reduce((acc: number, item: any) => acc + (item.estoque * item.custo), 0)
-  , [estoqueParado]);
+
 
   const marcasDisponiveis = useMemo(() => {
     return Array.from(new Set(tableData.map((x: any) => x.marca).filter(Boolean))).sort() as string[];
@@ -379,58 +371,7 @@ export default function InventoryManagementDashboard() {
         </div>
       </div>
 
-      {/* ══ ESTOQUE PARADO ══════════════════════════════════ */}
-      {estoqueParado.length > 0 && (
-        <div className="bg-bg-primary border border-divider rounded-3xl shadow-sm overflow-hidden hover:shadow-md transition-shadow">
-          <div className="px-6 py-4 border-b border-divider/40 flex items-center justify-between flex-wrap gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
-                <Box size={15} className="text-amber-500" />
-              </div>
-              <div>
-                <h3 className="text-sm font-black text-text-primary">Estoque Parado</h3>
-                <p className="text-[10px] text-text-secondary">Produtos sem faturamento registrado</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 px-3 py-1.5 rounded-xl">
-              <span className="text-[9px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider">Total:</span>
-              <span className="text-sm font-black text-amber-600 dark:text-amber-400 font-mono">{fmtCompact(totalEstoqueParadoValor)}</span>
-            </div>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead className="bg-bg-secondary/50">
-                <tr className="text-[9px] text-text-secondary uppercase font-black tracking-widest border-b border-divider/40">
-                  <th className="px-6 py-3.5">Produto</th>
-                  <th className="px-6 py-3.5 text-right">Qtd Estoque</th>
-                  <th className="px-6 py-3.5 text-right">Valor (Custo)</th>
-                  <th className="px-6 py-3.5 text-right">% Portfolio</th>
-                  <th className="px-6 py-3.5 text-center">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-divider/30">
-                {estoqueParado.map((item: any, i: number) => {
-                  const valor = item.estoque * item.custo;
-                  const pct = kpis.valor_estoque_custo > 0 ? (valor / kpis.valor_estoque_custo * 100).toFixed(2) : '0.00';
-                  return (
-                    <tr key={i} className="hover:bg-bg-secondary/40 transition-colors group">
-                      <td className="px-6 py-3.5 font-semibold text-text-primary text-xs truncate max-w-[280px]" title={item.desc}>{item.desc}</td>
-                      <td className="px-6 py-3.5 text-right font-mono font-bold text-text-primary text-xs">{formatNum(item.estoque)}</td>
-                      <td className="px-6 py-3.5 text-right font-mono font-bold text-amber-500 text-xs">{formatBRL(valor)}</td>
-                      <td className="px-6 py-3.5 text-right font-mono text-text-secondary text-xs">{pct}%</td>
-                      <td className="px-6 py-3.5 text-center">
-                        <span className="px-2.5 py-1 text-[9px] font-black rounded-full bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-500/15 dark:text-amber-400 dark:border-amber-500/25 uppercase tracking-wider">
-                          Sem Giro
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+
 
       {/* ══ DISTRIBUIÇÃO GRUPO + MARCA ══════════════════════ */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
