@@ -167,7 +167,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
 
         const prodsQuery = `
             WITH vf AS (
-                SELECT v.id_firebird, v.tenant_id, v.valor_total
+                SELECT v.id_firebird, v.tenant_id, v.valor_total, v.valor_desconto
                 FROM dash_vendas v
                 ${cidadeJoin}
                 WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
@@ -176,7 +176,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
                   ${df.clause}
                   ${vf.clause}
                   ${cf.clause}
-                GROUP BY v.id_firebird, v.tenant_id, v.valor_total
+                GROUP BY v.id_firebird, v.tenant_id, v.valor_total, v.valor_desconto
             ),
             spv AS (
                 SELECT vi.venda_id_firebird, SUM(vi.valor_total) AS sum_itens
@@ -189,7 +189,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
                 SELECT 
                     COALESCE(vi.produto, p.nome, 'Produto ' || COALESCE(vi.produto_id_firebird::text, '?')) AS nome,
                     CASE WHEN spv.sum_itens > 0
-                         THEN vi.valor_total * (vf.valor_total / GREATEST(spv.sum_itens, ABS(vf.valor_total)))
+                         THEN vi.valor_total * ((vf.valor_total - COALESCE(vf.valor_desconto, 0)) / spv.sum_itens)
                          ELSE 0
                     END AS valor_real
                 FROM dash_vendas_itens vi
@@ -208,7 +208,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
 
         const brandsQuery = `
             WITH vf AS (
-                SELECT v.id_firebird, v.tenant_id, v.marca, v.valor_total
+                SELECT v.id_firebird, v.tenant_id, v.marca, v.valor_total, v.valor_desconto
                 FROM dash_vendas v
                 ${cidadeJoin}
                 WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
@@ -229,7 +229,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
                 SELECT 
                     COALESCE(vi.marca, vf.marca, p.marca, 'S/ MARCA') as marca,
                     CASE WHEN spv.sum_itens > 0
-                         THEN vi.valor_total * (vf.valor_total / GREATEST(spv.sum_itens, ABS(vf.valor_total)))
+                         THEN vi.valor_total * ((vf.valor_total - COALESCE(vf.valor_desconto, 0)) / spv.sum_itens)
                          ELSE 0
                     END AS valor_real
                 FROM dash_vendas_itens vi
@@ -263,7 +263,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
 
         const categoriesQuery = `
             WITH vf AS (
-                SELECT v.id_firebird, v.tenant_id, v.categoria, v.valor_total
+                SELECT v.id_firebird, v.tenant_id, v.categoria, v.valor_total, v.valor_desconto
                 FROM dash_vendas v
                 ${cidadeJoin}
                 WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
@@ -284,7 +284,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
                 SELECT 
                     COALESCE(vi.categoria, vf.categoria, p.categoria, 'S/ GRUPO') as categoria,
                     CASE WHEN spv.sum_itens > 0
-                         THEN vi.valor_total * (vf.valor_total / GREATEST(spv.sum_itens, ABS(vf.valor_total)))
+                         THEN vi.valor_total * ((vf.valor_total - COALESCE(vf.valor_desconto, 0)) / spv.sum_itens)
                          ELSE 0
                     END AS valor_real
                 FROM dash_vendas_itens vi
@@ -1906,7 +1906,7 @@ router.get('/supplier/analytics', async (req, res, next) => {
                 SELECT 
                     (CASE 
                         WHEN SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id) > 0 
-                        THEN vi.valor_total * (v.valor_total / GREATEST(SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id), ABS(v.valor_total)))
+                        THEN vi.valor_total * ((v.valor_total - COALESCE(v.valor_desconto, 0)) / NULLIF(SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id), 0))
                         ELSE vi.valor_total * (CASE WHEN v.valor_total < 0 THEN -1 ELSE 1 END)
                     END) AS valor_real,
                     vi.custo_unitario * vi.quantidade AS custo_item,
@@ -1939,7 +1939,7 @@ router.get('/supplier/analytics', async (req, res, next) => {
                     vi.quantidade,
                     (CASE 
                         WHEN SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id) > 0 
-                        THEN vi.valor_total * (v.valor_total / GREATEST(SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id), ABS(v.valor_total)))
+                        THEN vi.valor_total * ((v.valor_total - COALESCE(v.valor_desconto, 0)) / NULLIF(SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id), 0))
                         ELSE vi.valor_total * (CASE WHEN v.valor_total < 0 THEN -1 ELSE 1 END)
                     END) AS valor_real
                 FROM dash_vendas_itens vi
@@ -1974,7 +1974,7 @@ router.get('/supplier/analytics', async (req, res, next) => {
                     -- GREATEST evita inflação quando SUM(itens) < valor_total da venda
                     (CASE 
                         WHEN SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id) > 0 
-                        THEN vi.valor_total * (v.valor_total / GREATEST(SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id), ABS(v.valor_total)))
+                        THEN vi.valor_total * ((v.valor_total - COALESCE(v.valor_desconto, 0)) / NULLIF(SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id), 0))
                         ELSE vi.valor_total * (CASE WHEN v.valor_total < 0 THEN -1 ELSE 1 END)
                     END) AS valor_real
                 FROM dash_vendas_itens vi
@@ -2030,7 +2030,7 @@ router.get('/supplier/analytics', async (req, res, next) => {
                     -- GREATEST evita inflação quando SUM(itens) < valor_total da venda
                     (CASE 
                         WHEN SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id) > 0 
-                        THEN vi.valor_total * (v.valor_total / GREATEST(SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id), ABS(v.valor_total)))
+                        THEN vi.valor_total * ((v.valor_total - COALESCE(v.valor_desconto, 0)) / NULLIF(SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id), 0))
                         ELSE vi.valor_total * (CASE WHEN v.valor_total < 0 THEN -1 ELSE 1 END)
                     END) AS valor_real
                 FROM dash_vendas_itens vi

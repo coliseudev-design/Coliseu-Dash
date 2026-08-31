@@ -140,7 +140,7 @@ router.get('/produtos', async (req, res, next) => {
                     -- Para devoluções (v.valor_total < 0): resultado é negativo (alinha com ERP)
                     CASE 
                         WHEN spv.sum_itens > 0 
-                        THEN vi.valor_total * (vf.valor_total / GREATEST(spv.sum_itens, ABS(vf.valor_total)))
+                        THEN vi.valor_total * ((vf.valor_total - COALESCE(vf.valor_desconto, 0)) / spv.sum_itens)
                         ELSE 0
                     END AS valor_real
                 FROM dash_vendas_itens vi
@@ -239,7 +239,7 @@ router.get('/marcas', async (req, res, next) => {
                     COALESCE(vi.marca, vf.marca, p.marca) AS marca,
                     CASE 
                         WHEN spv.sum_itens > 0 
-                        THEN vi.valor_total * (vf.valor_total / GREATEST(spv.sum_itens, ABS(vf.valor_total)))
+                        THEN vi.valor_total * ((vf.valor_total - COALESCE(vf.valor_desconto, 0)) / spv.sum_itens)
                         ELSE 0
                     END AS valor_real
                 FROM dash_vendas_itens vi
@@ -356,13 +356,20 @@ router.get('/ranking', async (req, res, next) => {
 
         // Melhor produto por vendedor (1 query só, com window function)
         const { rows: bestProducts } = await db.query(`
-            WITH ranked AS (
+            WITH sum_por_venda_bp AS (
+                SELECT vi.venda_id_firebird, vi.tenant_id, SUM(vi.valor_total) AS sum_itens
+                FROM dash_vendas_itens vi
+                WHERE vi.tenant_id = $1
+                GROUP BY vi.venda_id_firebird, vi.tenant_id
+            ),
+            ranked AS (
                 SELECT v.vendedor_id_firebird,
                     COALESCE(vi.produto, p.nome, 'Sem nome') AS produto_nome,
-                    SUM(COALESCE(vi.valor_total * (1 - COALESCE(v.valor_desconto, 0) / NULLIF(v.valor_total, 0)) * (CASE WHEN v.valor_total < 0 THEN -1 ELSE 1 END), 0)) AS total,
-                    ROW_NUMBER() OVER (PARTITION BY v.vendedor_id_firebird ORDER BY SUM(COALESCE(vi.valor_total * (1 - COALESCE(v.valor_desconto, 0) / NULLIF(v.valor_total, 0)) * (CASE WHEN v.valor_total < 0 THEN -1 ELSE 1 END), 0)) DESC) AS rn
+                    SUM(CASE WHEN spv.sum_itens > 0 THEN vi.valor_total * ((v.valor_total - COALESCE(v.valor_desconto, 0)) / spv.sum_itens) ELSE 0 END) AS total,
+                    ROW_NUMBER() OVER (PARTITION BY v.vendedor_id_firebird ORDER BY SUM(CASE WHEN spv.sum_itens > 0 THEN vi.valor_total * ((v.valor_total - COALESCE(v.valor_desconto, 0)) / spv.sum_itens) ELSE 0 END) DESC) AS rn
                 FROM dash_vendas_itens vi
                 JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+                JOIN sum_por_venda_bp spv ON spv.venda_id_firebird = vi.venda_id_firebird AND spv.tenant_id = vi.tenant_id
                 LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
                 WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
                   AND v.vendedor_id_firebird = ANY($4)
@@ -431,7 +438,7 @@ router.get('/categorias', async (req, res, next) => {
                     COALESCE(vi.categoria, vf.categoria, p.categoria) AS categoria,
                     CASE 
                         WHEN spv.sum_itens > 0 
-                        THEN vi.valor_total * (vf.valor_total / GREATEST(spv.sum_itens, ABS(vf.valor_total)))
+                        THEN vi.valor_total * ((vf.valor_total - COALESCE(vf.valor_desconto, 0)) / spv.sum_itens)
                         ELSE 0
                     END AS valor_real
                 FROM dash_vendas_itens vi
