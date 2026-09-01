@@ -176,6 +176,7 @@ CREATE TABLE IF NOT EXISTS dash_vendas_itens (
     preco_unitario DECIMAL(15,2) NOT NULL DEFAULT 0,
     custo_unitario DECIMAL(15,2) NOT NULL DEFAULT 0,
     valor_total DECIMAL(15,2) NOT NULL DEFAULT 0,
+    desconto_item DECIMAL(10,2) DEFAULT 0,
     vendedor VARCHAR(255),
     produto VARCHAR(500),
     marca VARCHAR(255),
@@ -189,6 +190,7 @@ DROP MATERIALIZED VIEW IF EXISTS mv_dash_vendas_diario;
 ALTER TABLE dash_vendas ADD COLUMN IF NOT EXISTS marca VARCHAR(255);
 ALTER TABLE dash_vendas ADD COLUMN IF NOT EXISTS categoria VARCHAR(255);
 ALTER TABLE dash_vendas ADD COLUMN IF NOT EXISTS especie VARCHAR(255);
+ALTER TABLE dash_vendas_itens ADD COLUMN IF NOT EXISTS desconto_item DECIMAL(10,2) DEFAULT 0;
 ALTER TABLE dash_vendas_itens ADD COLUMN IF NOT EXISTS vendedor VARCHAR(255);
 ALTER TABLE dash_vendas_itens ADD COLUMN IF NOT EXISTS produto VARCHAR(500);
 ALTER TABLE dash_vendas_itens ADD COLUMN IF NOT EXISTS marca VARCHAR(255);
