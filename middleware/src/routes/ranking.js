@@ -113,48 +113,18 @@ router.get('/produtos', async (req, res, next) => {
         const salesFilter = cfopUtil.getSalesFilterClause('v');
 
         const { rows } = await db.query(`
-            WITH vendas_filtradas AS NOT MATERIALIZED (
-                SELECT v.id_firebird, v.tenant_id, v.valor_total, v.valor_desconto
-                FROM dash_vendas v
-                WHERE v.tenant_id = $1
-                  AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
-                  AND v.processo IN (1, 2)
-                  ${salesFilter} ${df.clause} ${vf.clause}
-            ),
-            sum_por_venda AS (
-                SELECT vi.venda_id_firebird, SUM(vi.valor_total) AS sum_itens
-                FROM dash_vendas_itens vi
-                JOIN vendas_filtradas vf ON vf.id_firebird = vi.venda_id_firebird AND vf.tenant_id = vi.tenant_id
-                WHERE vi.tenant_id = $1
-                GROUP BY vi.venda_id_firebird
-            ),
-            itens_ponderados AS (
-                SELECT 
-                    vi.id_firebird,
-                    vi.venda_id_firebird,
-                    vi.tenant_id,
-                    COALESCE(vi.produto, p.nome, 'Produto ' || COALESCE(vi.produto_id_firebird::text, '?')) AS nome,
-                    vi.quantidade AS quantidade,
-                    vi.preco_unitario,
-                    -- Distribui valor líquido da venda proporcionalmente pelos itens
-                    -- Para devoluções (v.valor_total < 0): resultado é negativo (alinha com ERP)
-                    CASE 
-                        WHEN spv.sum_itens > 0 
-                        THEN vi.valor_total * (vf.valor_total / spv.sum_itens)
-                        ELSE 0
-                    END AS valor_real
-                FROM dash_vendas_itens vi
-                JOIN vendas_filtradas vf ON vf.id_firebird = vi.venda_id_firebird AND vf.tenant_id = vi.tenant_id
-                JOIN sum_por_venda spv ON spv.venda_id_firebird = vi.venda_id_firebird
-                LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
-                WHERE vi.tenant_id = $1
-            )
             SELECT 
-                nome,
-                SUM(valor_real) AS total,
-                SUM(quantidade) AS qtd_vendida,
-                AVG(preco_unitario) AS preco_medio
-            FROM itens_ponderados
+                COALESCE(vi.produto, p.nome, 'Produto ' || COALESCE(vi.produto_id_firebird::text, '?')) AS nome,
+                SUM(vi.valor_total * (1 - COALESCE(vi.desconto_item, 0) / 100.0)) AS total,
+                SUM(vi.quantidade) AS qtd_vendida,
+                AVG(vi.preco_unitario) AS preco_medio
+            FROM dash_vendas_itens vi
+            JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+            LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
+            WHERE vi.tenant_id = $1
+              AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
+              AND v.processo IN (1, 2)
+              ${salesFilter} ${df.clause} ${vf.clause}
             GROUP BY 1
             ORDER BY total DESC LIMIT $${4 + df.params.length + vf.params.length}
         `, [tenantId, start, end, ...df.params, ...vf.params, limit]);
@@ -216,44 +186,19 @@ router.get('/marcas', async (req, res, next) => {
         const salesFilter = cfopUtil.getSalesFilterClause('v');
 
         const { rows } = await db.query(`
-            WITH vendas_filtradas AS NOT MATERIALIZED (
-                SELECT v.id_firebird, v.tenant_id, v.marca, v.valor_total, v.valor_desconto
-                FROM dash_vendas v
-                WHERE v.tenant_id = $1
-                  AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
-                  AND v.processo IN (1, 2)
-                  ${salesFilter} ${df.clause} ${vf.clause}
-            ),
-            sum_por_venda AS (
-                SELECT vi.venda_id_firebird, SUM(vi.valor_total) AS sum_itens
-                FROM dash_vendas_itens vi
-                JOIN vendas_filtradas vf ON vf.id_firebird = vi.venda_id_firebird AND vf.tenant_id = vi.tenant_id
-                WHERE vi.tenant_id = $1
-                GROUP BY vi.venda_id_firebird
-            ),
-            itens_ponderados AS (
-                SELECT 
-                    vi.id_firebird,
-                    vi.venda_id_firebird,
-                    vi.tenant_id,
-                    COALESCE(vi.marca, vf.marca, p.marca) AS marca,
-                    CASE 
-                        WHEN spv.sum_itens > 0 
-                        THEN vi.valor_total * (vf.valor_total / spv.sum_itens)
-                        ELSE 0
-                    END AS valor_real
-                FROM dash_vendas_itens vi
-                JOIN vendas_filtradas vf ON vf.id_firebird = vi.venda_id_firebird AND vf.tenant_id = vi.tenant_id
-                JOIN sum_por_venda spv ON spv.venda_id_firebird = vi.venda_id_firebird
-                LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
-                WHERE vi.tenant_id = $1
-            )
             SELECT 
-                marca,
-                SUM(valor_real) AS total,
+                COALESCE(vi.marca, v.marca, p.marca) AS marca,
+                SUM(vi.valor_total * (1 - COALESCE(vi.desconto_item, 0) / 100.0)) AS total,
                 COUNT(*) AS qtd_itens
-            FROM itens_ponderados
-            WHERE marca IS NOT NULL AND marca != ''
+            FROM dash_vendas_itens vi
+            JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+            LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
+            WHERE vi.tenant_id = $1
+              AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
+              AND v.processo IN (1, 2)
+              ${salesFilter} ${df.clause} ${vf.clause}
+              AND COALESCE(vi.marca, v.marca, p.marca) IS NOT NULL 
+              AND COALESCE(vi.marca, v.marca, p.marca) != ''
             GROUP BY 1
             ORDER BY total DESC LIMIT $${4 + df.params.length + vf.params.length}
         `, [tenantId, start, end, ...df.params, ...vf.params, limit]);
@@ -356,20 +301,13 @@ router.get('/ranking', async (req, res, next) => {
 
         // Melhor produto por vendedor (1 query só, com window function)
         const { rows: bestProducts } = await db.query(`
-            WITH sum_por_venda_bp AS (
-                SELECT vi.venda_id_firebird, vi.tenant_id, SUM(vi.valor_total) AS sum_itens
-                FROM dash_vendas_itens vi
-                WHERE vi.tenant_id = $1
-                GROUP BY vi.venda_id_firebird, vi.tenant_id
-            ),
-            ranked AS (
+            WITH ranked AS (
                 SELECT v.vendedor_id_firebird,
                     COALESCE(vi.produto, p.nome, 'Sem nome') AS produto_nome,
-                    SUM(CASE WHEN spv.sum_itens > 0 THEN vi.valor_total * (v.valor_total / spv.sum_itens) ELSE 0 END) AS total,
-                    ROW_NUMBER() OVER (PARTITION BY v.vendedor_id_firebird ORDER BY SUM(CASE WHEN spv.sum_itens > 0 THEN vi.valor_total * (v.valor_total / spv.sum_itens) ELSE 0 END) DESC) AS rn
+                    SUM(vi.valor_total * (1 - COALESCE(vi.desconto_item, 0) / 100.0)) AS total,
+                    ROW_NUMBER() OVER (PARTITION BY v.vendedor_id_firebird ORDER BY SUM(vi.valor_total * (1 - COALESCE(vi.desconto_item, 0) / 100.0)) DESC) AS rn
                 FROM dash_vendas_itens vi
                 JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
-                JOIN sum_por_venda_bp spv ON spv.venda_id_firebird = vi.venda_id_firebird AND spv.tenant_id = vi.tenant_id
                 LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
                 WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
                   AND v.vendedor_id_firebird = ANY($4)
@@ -415,43 +353,18 @@ router.get('/categorias', async (req, res, next) => {
         const salesFilter = cfopUtil.getSalesFilterClause('v');
 
         const { rows } = await db.query(`
-            WITH vendas_filtradas AS NOT MATERIALIZED (
-                SELECT v.id_firebird, v.tenant_id, v.categoria, v.valor_total, v.valor_desconto
-                FROM dash_vendas v
-                WHERE v.tenant_id = $1
-                  AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
-                  AND v.processo IN (1, 2)
-                  ${salesFilter} ${df.clause} ${vf.clause}
-            ),
-            sum_por_venda AS (
-                SELECT vi.venda_id_firebird, SUM(vi.valor_total) AS sum_itens
-                FROM dash_vendas_itens vi
-                JOIN vendas_filtradas vf ON vf.id_firebird = vi.venda_id_firebird AND vf.tenant_id = vi.tenant_id
-                WHERE vi.tenant_id = $1
-                GROUP BY vi.venda_id_firebird
-            ),
-            itens_ponderados AS (
-                SELECT 
-                    vi.id_firebird,
-                    vi.venda_id_firebird,
-                    vi.tenant_id,
-                    COALESCE(vi.categoria, vf.categoria, p.categoria) AS categoria,
-                    CASE 
-                        WHEN spv.sum_itens > 0 
-                        THEN vi.valor_total * (vf.valor_total / spv.sum_itens)
-                        ELSE 0
-                    END AS valor_real
-                FROM dash_vendas_itens vi
-                JOIN vendas_filtradas vf ON vf.id_firebird = vi.venda_id_firebird AND vf.tenant_id = vi.tenant_id
-                JOIN sum_por_venda spv ON spv.venda_id_firebird = vi.venda_id_firebird
-                LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
-                WHERE vi.tenant_id = $1
-            )
             SELECT 
-                categoria, 
-                SUM(valor_real) AS total
-            FROM itens_ponderados
-            WHERE categoria IS NOT NULL AND categoria != ''
+                COALESCE(vi.categoria, v.categoria, p.categoria) AS categoria,
+                SUM(vi.valor_total * (1 - COALESCE(vi.desconto_item, 0) / 100.0)) AS total
+            FROM dash_vendas_itens vi
+            JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+            LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
+            WHERE vi.tenant_id = $1
+              AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
+              AND v.processo IN (1, 2)
+              ${salesFilter} ${df.clause} ${vf.clause}
+              AND COALESCE(vi.categoria, v.categoria, p.categoria) IS NOT NULL 
+              AND COALESCE(vi.categoria, v.categoria, p.categoria) != ''
             GROUP BY 1
             ORDER BY total DESC LIMIT $${4 + df.params.length + vf.params.length}
         `, [tenantId, start, end, ...df.params, ...vf.params, limit]);
