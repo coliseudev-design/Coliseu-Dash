@@ -189,7 +189,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
                 SELECT 
                     COALESCE(vi.produto, p.nome, 'Produto ' || COALESCE(vi.produto_id_firebird::text, '?')) AS nome,
                     CASE WHEN spv.sum_itens > 0
-                         THEN vi.valor_total * ((vf.valor_total - COALESCE(vf.valor_desconto, 0)) / spv.sum_itens)
+                         THEN vi.valor_total * (vf.valor_total / spv.sum_itens)
                          ELSE 0
                     END AS valor_real
                 FROM dash_vendas_itens vi
@@ -229,7 +229,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
                 SELECT 
                     COALESCE(vi.marca, vf.marca, p.marca, 'S/ MARCA') as marca,
                     CASE WHEN spv.sum_itens > 0
-                         THEN vi.valor_total * ((vf.valor_total - COALESCE(vf.valor_desconto, 0)) / spv.sum_itens)
+                         THEN vi.valor_total * (vf.valor_total / spv.sum_itens)
                          ELSE 0
                     END AS valor_real
                 FROM dash_vendas_itens vi
@@ -284,7 +284,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
                 SELECT 
                     COALESCE(vi.categoria, vf.categoria, p.categoria, 'S/ GRUPO') as categoria,
                     CASE WHEN spv.sum_itens > 0
-                         THEN vi.valor_total * ((vf.valor_total - COALESCE(vf.valor_desconto, 0)) / spv.sum_itens)
+                         THEN vi.valor_total * (vf.valor_total / spv.sum_itens)
                          ELSE 0
                     END AS valor_real
                 FROM dash_vendas_itens vi
@@ -1906,7 +1906,7 @@ router.get('/supplier/analytics', async (req, res, next) => {
                 SELECT 
                     (CASE 
                         WHEN SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id) > 0 
-                        THEN vi.valor_total * ((v.valor_total - COALESCE(v.valor_desconto, 0)) / NULLIF(SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id), 0))
+                        THEN vi.valor_total * (v.valor_total / NULLIF(SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id), 0))
                         ELSE vi.valor_total * (CASE WHEN v.valor_total < 0 THEN -1 ELSE 1 END)
                     END) AS valor_real,
                     vi.custo_unitario * vi.quantidade AS custo_item,
@@ -1939,7 +1939,7 @@ router.get('/supplier/analytics', async (req, res, next) => {
                     vi.quantidade,
                     (CASE 
                         WHEN SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id) > 0 
-                        THEN vi.valor_total * ((v.valor_total - COALESCE(v.valor_desconto, 0)) / NULLIF(SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id), 0))
+                        THEN vi.valor_total * (v.valor_total / NULLIF(SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id), 0))
                         ELSE vi.valor_total * (CASE WHEN v.valor_total < 0 THEN -1 ELSE 1 END)
                     END) AS valor_real
                 FROM dash_vendas_itens vi
@@ -1974,7 +1974,7 @@ router.get('/supplier/analytics', async (req, res, next) => {
                     -- GREATEST evita inflação quando SUM(itens) < valor_total da venda
                     (CASE 
                         WHEN SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id) > 0 
-                        THEN vi.valor_total * ((v.valor_total - COALESCE(v.valor_desconto, 0)) / NULLIF(SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id), 0))
+                        THEN vi.valor_total * (v.valor_total / NULLIF(SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id), 0))
                         ELSE vi.valor_total * (CASE WHEN v.valor_total < 0 THEN -1 ELSE 1 END)
                     END) AS valor_real
                 FROM dash_vendas_itens vi
@@ -2030,7 +2030,7 @@ router.get('/supplier/analytics', async (req, res, next) => {
                     -- GREATEST evita inflação quando SUM(itens) < valor_total da venda
                     (CASE 
                         WHEN SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id) > 0 
-                        THEN vi.valor_total * ((v.valor_total - COALESCE(v.valor_desconto, 0)) / NULLIF(SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id), 0))
+                        THEN vi.valor_total * (v.valor_total / NULLIF(SUM(vi.valor_total) OVER (PARTITION BY vi.venda_id_firebird, vi.tenant_id), 0))
                         ELSE vi.valor_total * (CASE WHEN v.valor_total < 0 THEN -1 ELSE 1 END)
                     END) AS valor_real
                 FROM dash_vendas_itens vi
@@ -2551,7 +2551,7 @@ router.get('/seller/summary', async (req, res, next) => {
                 GROUP BY vi.venda_id_firebird
             )
             SELECT COALESCE(vi.marca, fs.v_marca, p.marca, 'S/ MARCA') AS nome, 
-                   SUM(CASE WHEN ss.sum_items > 0 THEN vi.valor_total * ((fs.valor_total - COALESCE(fs.valor_desconto, 0)) / ss.sum_items) ELSE vi.valor_total END) AS total
+                   SUM(CASE WHEN ss.sum_items > 0 THEN vi.valor_total * (fs.valor_total / ss.sum_items) ELSE vi.valor_total END) AS total
             FROM dash_vendas_itens vi
             JOIN filtered_sales fs ON fs.id_firebird = vi.venda_id_firebird
             JOIN sale_sums ss ON ss.venda_id_firebird = vi.venda_id_firebird
@@ -2595,7 +2595,7 @@ router.get('/seller/summary', async (req, res, next) => {
                 GROUP BY vi.venda_id_firebird
             )
             SELECT COALESCE(vi.categoria, fs.v_categoria, p.categoria, 'S/ GRUPO') AS nome, 
-                   SUM(CASE WHEN ss.sum_items > 0 THEN vi.valor_total * ((fs.valor_total - COALESCE(fs.valor_desconto, 0)) / ss.sum_items) ELSE vi.valor_total END) AS total
+                   SUM(CASE WHEN ss.sum_items > 0 THEN vi.valor_total * (fs.valor_total / ss.sum_items) ELSE vi.valor_total END) AS total
             FROM dash_vendas_itens vi
             JOIN filtered_sales fs ON fs.id_firebird = vi.venda_id_firebird
             JOIN sale_sums ss ON ss.venda_id_firebird = vi.venda_id_firebird
@@ -2626,7 +2626,7 @@ router.get('/seller/summary', async (req, res, next) => {
                 GROUP BY vi.venda_id_firebird
             )
             SELECT COALESCE(vi.produto, p.nome, 'Produto ' || COALESCE(vi.produto_id_firebird::text, '?')) AS nome, 
-                   SUM(CASE WHEN ss.sum_items > 0 THEN vi.valor_total * ((fs.valor_total - COALESCE(fs.valor_desconto, 0)) / ss.sum_items) ELSE vi.valor_total END) AS total
+                   SUM(CASE WHEN ss.sum_items > 0 THEN vi.valor_total * (fs.valor_total / ss.sum_items) ELSE vi.valor_total END) AS total
             FROM dash_vendas_itens vi
             JOIN filtered_sales fs ON fs.id_firebird = vi.venda_id_firebird
             JOIN sale_sums ss ON ss.venda_id_firebird = vi.venda_id_firebird

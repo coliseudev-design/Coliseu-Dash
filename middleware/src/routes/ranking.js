@@ -140,7 +140,7 @@ router.get('/produtos', async (req, res, next) => {
                     -- Para devoluções (v.valor_total < 0): resultado é negativo (alinha com ERP)
                     CASE 
                         WHEN spv.sum_itens > 0 
-                        THEN vi.valor_total * ((vf.valor_total - COALESCE(vf.valor_desconto, 0)) / spv.sum_itens)
+                        THEN vi.valor_total * (vf.valor_total / spv.sum_itens)
                         ELSE 0
                     END AS valor_real
                 FROM dash_vendas_itens vi
@@ -239,7 +239,7 @@ router.get('/marcas', async (req, res, next) => {
                     COALESCE(vi.marca, vf.marca, p.marca) AS marca,
                     CASE 
                         WHEN spv.sum_itens > 0 
-                        THEN vi.valor_total * ((vf.valor_total - COALESCE(vf.valor_desconto, 0)) / spv.sum_itens)
+                        THEN vi.valor_total * (vf.valor_total / spv.sum_itens)
                         ELSE 0
                     END AS valor_real
                 FROM dash_vendas_itens vi
@@ -365,8 +365,8 @@ router.get('/ranking', async (req, res, next) => {
             ranked AS (
                 SELECT v.vendedor_id_firebird,
                     COALESCE(vi.produto, p.nome, 'Sem nome') AS produto_nome,
-                    SUM(CASE WHEN spv.sum_itens > 0 THEN vi.valor_total * ((v.valor_total - COALESCE(v.valor_desconto, 0)) / spv.sum_itens) ELSE 0 END) AS total,
-                    ROW_NUMBER() OVER (PARTITION BY v.vendedor_id_firebird ORDER BY SUM(CASE WHEN spv.sum_itens > 0 THEN vi.valor_total * ((v.valor_total - COALESCE(v.valor_desconto, 0)) / spv.sum_itens) ELSE 0 END) DESC) AS rn
+                    SUM(CASE WHEN spv.sum_itens > 0 THEN vi.valor_total * (v.valor_total / spv.sum_itens) ELSE 0 END) AS total,
+                    ROW_NUMBER() OVER (PARTITION BY v.vendedor_id_firebird ORDER BY SUM(CASE WHEN spv.sum_itens > 0 THEN vi.valor_total * (v.valor_total / spv.sum_itens) ELSE 0 END) DESC) AS rn
                 FROM dash_vendas_itens vi
                 JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
                 JOIN sum_por_venda_bp spv ON spv.venda_id_firebird = vi.venda_id_firebird AND spv.tenant_id = vi.tenant_id
@@ -438,7 +438,7 @@ router.get('/categorias', async (req, res, next) => {
                     COALESCE(vi.categoria, vf.categoria, p.categoria) AS categoria,
                     CASE 
                         WHEN spv.sum_itens > 0 
-                        THEN vi.valor_total * ((vf.valor_total - COALESCE(vf.valor_desconto, 0)) / spv.sum_itens)
+                        THEN vi.valor_total * (vf.valor_total / spv.sum_itens)
                         ELSE 0
                     END AS valor_real
                 FROM dash_vendas_itens vi
