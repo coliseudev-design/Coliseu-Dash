@@ -1,43 +1,37 @@
+"""
+Conectar ao servidor de banco de dados via SSH e consultar dash_vendas_itens da Amazônia Madeiras.
+"""
 import paramiko
 
 client = paramiko.SSHClient()
 client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-try:
-    client.connect('177.39.17.7', username='root', password='6EFBC!c0:wzr%Ij', timeout=10)
-    print("SSH conectado com sucesso!")
+client.connect('177.39.17.7', username='root', password='6EFBC!c0:wzr%Ij', timeout=10)
 
-    # 1. Containers
-    stdin, stdout, stderr = client.exec_command('docker ps --filter name=coliseu-db --format "{{.Names}}"')
-    db_containers = stdout.read().decode().strip().split('\n')
-    print('DB Containers:', db_containers)
+db_container = 'coliseu-db-thyqkc5gkvp7i1nld555wakz-172547374937'
 
-    container = db_containers[0]
-    
-    # 2. Migração para garantir a coluna desconto_item no PostgreSQL
-    print("\n--- Aplicando/Garantindo coluna desconto_item no PostgreSQL ---")
-    mig_cmd = f'docker exec {container} psql -U coliseu_admin -d coliseu_dashboard -c "ALTER TABLE dash_vendas_itens ADD COLUMN IF NOT EXISTS desconto_item DECIMAL(10,2) DEFAULT 0;"'
-    stdin, stdout, stderr = client.exec_command(mig_cmd)
-    print(stdout.read().decode())
-    print(stderr.read().decode())
+def run_query(db_name, sql):
+    sql_escaped = sql.replace("'", "'\\''")
+    cmd = f"docker exec {db_container} psql -U coliseu_admin -d {db_name} -c '{sql_escaped}' 2>&1"
+    stdin, stdout, stderr = client.exec_command(cmd)
+    out = stdout.read().decode('utf-8')
+    return out
 
-    # 3. Verificar tenants
-    print("\n--- Tenants no banco ---")
-    t_cmd = f'docker exec {container} psql -U coliseu_admin -d coliseu_dashboard -c "SELECT id, nome FROM dash_tenants LIMIT 10;"'
-    stdin, stdout, stderr = client.exec_command(t_cmd)
-    print(stdout.read().decode())
+print("=== COLUNAS DE dash_vendas_itens ===")
+print(run_query("coliseu_dashboard", "\d dash_vendas_itens"))
 
-    # 4. Verificar amostra de EUCALIPTO
-    print("\n--- Amostra de EUCALIPTO em dash_vendas_itens ---")
-    e_cmd = f"docker exec {container} psql -U coliseu_admin -d coliseu_dashboard -c \"SELECT venda_id_firebird, produto, valor_total, desconto_item FROM dash_vendas_itens WHERE produto LIKE '%EUCALIPTO%' ORDER BY id DESC LIMIT 5;\""
-    stdin, stdout, stderr = client.exec_command(e_cmd)
-    print(stdout.read().decode())
+print("\n=== TOP 10 PRODUTOS (AGOSTO/2026) NO BANCO DE PRODUCAO ===")
+print(run_query("coliseu_dashboard", """
+    SELECT vi.produto, SUM(vi.valor_total) AS total_bruto,
+           SUM(vi.valor_total * (1 - COALESCE(vi.desconto_item, 0)/100.0)) AS total_liquido
+    FROM dash_vendas_itens vi
+    JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+    WHERE v.data_hora_proc >= '2026-08-01' AND v.data_hora_proc <= '2026-08-31 23:59:59'
+      AND v.processo IN (1, 2)
+      AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO', 'PROCESSADO')
+      AND v.depto_id = 1
+    GROUP BY 1
+    ORDER BY total_liquido DESC
+    LIMIT 10;
+"""))
 
-    # 5. Quantos itens tem desconto_item > 0 vs = 0?
-    print("\n--- Contagem desconto_item ---")
-    c_cmd = f"docker exec {container} psql -U coliseu_admin -d coliseu_dashboard -c \"SELECT COUNT(*) AS total, COUNT(*) FILTER (WHERE desconto_item > 0) AS com_desconto, COUNT(*) FILTER (WHERE desconto_item = 0 OR desconto_item IS NULL) AS sem_desconto FROM dash_vendas_itens;\""
-    stdin, stdout, stderr = client.exec_command(c_cmd)
-    print(stdout.read().decode())
-
-    client.close()
-except Exception as ex:
-    print(f"Erro SSH: {ex}")
+client.close()
