@@ -166,19 +166,40 @@ router.get('/sales/executive-summary', async (req, res, next) => {
         `;
 
         const prodsQuery = `
+            WITH vf AS NOT MATERIALIZED (
+                SELECT v.id_firebird, v.tenant_id, v.valor_total
+                FROM dash_vendas v
+                ${cidadeJoin}
+                WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
+                  AND v.processo IN (1, 2)
+                  ${salesFilter}
+                  ${df.clause}
+                  ${vf.clause}
+                  ${cf.clause}
+            ),
+            spv AS (
+                SELECT vi.venda_id_firebird, vi.tenant_id, SUM(vi.valor_total) AS sum_itens
+                FROM dash_vendas_itens vi
+                JOIN vf ON vf.id_firebird = vi.venda_id_firebird AND vf.tenant_id = vi.tenant_id
+                WHERE vi.tenant_id = $1
+                GROUP BY vi.venda_id_firebird, vi.tenant_id
+            )
             SELECT 
                 COALESCE(vi.produto, p.nome, 'Produto ' || COALESCE(vi.produto_id_firebird::text, '?')) AS nome,
-                SUM(vi.valor_total * (1 - COALESCE(vi.desconto_item, 0) / 100.0)) as vendas
+                SUM(
+                    CASE 
+                        WHEN COALESCE(vi.desconto_item, 0) > 0 
+                            THEN vi.valor_total * (1 - vi.desconto_item / 100.0)
+                        WHEN spv.sum_itens > 0 
+                            THEN vi.valor_total * (vf.valor_total / spv.sum_itens)
+                        ELSE vi.valor_total * (CASE WHEN vf.valor_total < 0 THEN -1 ELSE 1 END)
+                    END
+                ) as vendas
             FROM dash_vendas_itens vi
-            JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
-            ${cidadeJoin}
+            JOIN vf ON vf.id_firebird = vi.venda_id_firebird AND vf.tenant_id = vi.tenant_id
+            JOIN spv ON spv.venda_id_firebird = vi.venda_id_firebird AND spv.tenant_id = vi.tenant_id
             LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
-            WHERE vi.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
-              AND v.processo IN (1, 2)
-              ${salesFilter}
-              ${df.clause}
-              ${vf.clause}
-              ${cf.clause}
+            WHERE vi.tenant_id = $1
               AND COALESCE(vi.produto, p.nome, vi.produto_id_firebird::text) IS NOT NULL
             GROUP BY 1
             ORDER BY vendas DESC
@@ -186,20 +207,41 @@ router.get('/sales/executive-summary', async (req, res, next) => {
         `;
 
         const brandsQuery = `
+            WITH vf AS NOT MATERIALIZED (
+                SELECT v.id_firebird, v.tenant_id, v.marca AS venda_marca, v.valor_total
+                FROM dash_vendas v
+                ${cidadeJoin}
+                WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
+                  AND v.processo IN (1, 2)
+                  ${salesFilter}
+                  ${df.clause}
+                  ${vf.clause}
+                  ${cf.clause}
+            ),
+            spv AS (
+                SELECT vi.venda_id_firebird, vi.tenant_id, SUM(vi.valor_total) AS sum_itens
+                FROM dash_vendas_itens vi
+                JOIN vf ON vf.id_firebird = vi.venda_id_firebird AND vf.tenant_id = vi.tenant_id
+                WHERE vi.tenant_id = $1
+                GROUP BY vi.venda_id_firebird, vi.tenant_id
+            )
             SELECT 
-                COALESCE(vi.marca, v.marca, p.marca, 'S/ MARCA') as nome,
-                SUM(vi.valor_total * (1 - COALESCE(vi.desconto_item, 0) / 100.0)) as vendas
+                COALESCE(vi.marca, vf.venda_marca, p.marca, 'S/ MARCA') as nome,
+                SUM(
+                    CASE 
+                        WHEN COALESCE(vi.desconto_item, 0) > 0 
+                            THEN vi.valor_total * (1 - vi.desconto_item / 100.0)
+                        WHEN spv.sum_itens > 0 
+                            THEN vi.valor_total * (vf.valor_total / spv.sum_itens)
+                        ELSE vi.valor_total * (CASE WHEN vf.valor_total < 0 THEN -1 ELSE 1 END)
+                    END
+                ) as vendas
             FROM dash_vendas_itens vi
-            JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
-            ${cidadeJoin}
+            JOIN vf ON vf.id_firebird = vi.venda_id_firebird AND vf.tenant_id = vi.tenant_id
+            JOIN spv ON spv.venda_id_firebird = vi.venda_id_firebird AND spv.tenant_id = vi.tenant_id
             LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
-            WHERE vi.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
-              AND v.processo IN (1, 2)
-              ${salesFilter}
-              ${df.clause}
-              ${vf.clause}
-              ${cf.clause}
-              AND COALESCE(vi.marca, v.marca, p.marca) IS NOT NULL AND COALESCE(vi.marca, v.marca, p.marca) != ''
+            WHERE vi.tenant_id = $1
+              AND COALESCE(vi.marca, vf.venda_marca, p.marca) IS NOT NULL AND COALESCE(vi.marca, vf.venda_marca, p.marca) != ''
             GROUP BY 1
             ORDER BY vendas DESC
             LIMIT 10
@@ -221,20 +263,41 @@ router.get('/sales/executive-summary', async (req, res, next) => {
         `;
 
         const categoriesQuery = `
+            WITH vf AS NOT MATERIALIZED (
+                SELECT v.id_firebird, v.tenant_id, v.categoria AS venda_categoria, v.valor_total
+                FROM dash_vendas v
+                ${cidadeJoin}
+                WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
+                  AND v.processo IN (1, 2)
+                  ${salesFilter}
+                  ${df.clause}
+                  ${vf.clause}
+                  ${cf.clause}
+            ),
+            spv AS (
+                SELECT vi.venda_id_firebird, vi.tenant_id, SUM(vi.valor_total) AS sum_itens
+                FROM dash_vendas_itens vi
+                JOIN vf ON vf.id_firebird = vi.venda_id_firebird AND vf.tenant_id = vi.tenant_id
+                WHERE vi.tenant_id = $1
+                GROUP BY vi.venda_id_firebird, vi.tenant_id
+            )
             SELECT 
-                COALESCE(vi.categoria, v.categoria, p.categoria, 'S/ GRUPO') as nome,
-                SUM(vi.valor_total * (1 - COALESCE(vi.desconto_item, 0) / 100.0)) as vendas
+                COALESCE(vi.categoria, vf.venda_categoria, p.categoria, 'S/ GRUPO') as nome,
+                SUM(
+                    CASE 
+                        WHEN COALESCE(vi.desconto_item, 0) > 0 
+                            THEN vi.valor_total * (1 - vi.desconto_item / 100.0)
+                        WHEN spv.sum_itens > 0 
+                            THEN vi.valor_total * (vf.valor_total / spv.sum_itens)
+                        ELSE vi.valor_total * (CASE WHEN vf.valor_total < 0 THEN -1 ELSE 1 END)
+                    END
+                ) as vendas
             FROM dash_vendas_itens vi
-            JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
-            ${cidadeJoin}
+            JOIN vf ON vf.id_firebird = vi.venda_id_firebird AND vf.tenant_id = vi.tenant_id
+            JOIN spv ON spv.venda_id_firebird = vi.venda_id_firebird AND spv.tenant_id = vi.tenant_id
             LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
-            WHERE vi.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
-              AND v.processo IN (1, 2)
-              ${salesFilter}
-              ${df.clause}
-              ${vf.clause}
-              ${cf.clause}
-              AND COALESCE(vi.categoria, v.categoria, p.categoria) IS NOT NULL AND COALESCE(vi.categoria, v.categoria, p.categoria) != ''
+            WHERE vi.tenant_id = $1
+              AND COALESCE(vi.categoria, vf.venda_categoria, p.categoria) IS NOT NULL AND COALESCE(vi.categoria, vf.venda_categoria, p.categoria) != ''
             GROUP BY 1
             ORDER BY vendas DESC
             LIMIT 10
