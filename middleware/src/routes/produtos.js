@@ -57,7 +57,7 @@ router.get('/lista', async (req, res, next) => {
         const deptoJoin = hasDepto
             ? `LEFT JOIN dash_produtos_depto pd ON pd.produto_id_firebird = p.id_firebird AND pd.tenant_id = p.tenant_id AND pd.depto_id = ${deptoNum}`
             : ``;
-        const estoqueExpr = hasDepto ? `COALESCE(pd.estoque, p.estoque)` : `p.estoque`;
+        const estoqueExpr = hasDepto ? `COALESCE(pd.estoque, 0)` : `p.estoque`;
 
         const totalP = await db.query(`SELECT COUNT(*) AS total FROM dash_produtos p ${whereSql}`, binds);
 
@@ -128,28 +128,38 @@ router.get('/categorias', async (req, res, next) => {
 router.get('/kpis', async (req, res, next) => {
     try {
         const tenantId = req.tenant.id;
+        const deptoId = req.query.depto_id || req.query.centro_custo;
+        const deptoNum = parseInt(deptoId, 10);
+        const hasDepto = !isNaN(deptoNum) && deptoNum > 0;
+        const deptoJoin = hasDepto
+            ? `LEFT JOIN dash_produtos_depto pd ON pd.produto_id_firebird = p.id_firebird AND pd.tenant_id = p.tenant_id AND pd.depto_id = ${deptoNum}`
+            : ``;
+        const estoqueExpr = hasDepto ? `COALESCE(pd.estoque, 0)` : `p.estoque`;
         
         const rP = await db.query(`
             SELECT 
                 COUNT(*) AS total,
-                COALESCE(SUM(preco * estoque), 0) AS valor_total_estoque,
-                COALESCE(MAX(preco), 0) AS mais_caro,
-                COALESCE(MIN(preco), 0) AS mais_barato,
-                SUM(CASE WHEN estoque <= estoque_minimo THEN 1 ELSE 0 END) AS baixo_estoque
-            FROM dash_produtos 
-            WHERE tenant_id = $1 AND ativo = true
+                COALESCE(SUM(CASE WHEN ${estoqueExpr} > 0 THEN p.preco * ${estoqueExpr} ELSE 0 END), 0) AS valor_total_estoque,
+                COALESCE(MAX(p.preco), 0) AS mais_caro,
+                COALESCE(MIN(p.preco), 0) AS mais_barato,
+                SUM(CASE WHEN ${estoqueExpr} <= p.estoque_minimo THEN 1 ELSE 0 END) AS baixo_estoque
+            FROM dash_produtos p
+            ${deptoJoin}
+            WHERE p.tenant_id = $1 AND p.ativo = true
         `, [tenantId]);
 
         const caroP = await db.query(`
-            SELECT nome FROM dash_produtos 
-            WHERE tenant_id = $1 AND ativo = true 
-            ORDER BY preco DESC LIMIT 1
+            SELECT p.nome FROM dash_produtos p
+            ${deptoJoin}
+            WHERE p.tenant_id = $1 AND p.ativo = true 
+            ORDER BY p.preco DESC LIMIT 1
         `, [tenantId]);
 
         const baratoP = await db.query(`
-            SELECT nome FROM dash_produtos 
-            WHERE tenant_id = $1 AND ativo = true AND preco > 0 
-            ORDER BY preco ASC LIMIT 1
+            SELECT p.nome FROM dash_produtos p
+            ${deptoJoin}
+            WHERE p.tenant_id = $1 AND p.ativo = true AND p.preco > 0 
+            ORDER BY p.preco ASC LIMIT 1
         `, [tenantId]);
 
         res.json({

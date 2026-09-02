@@ -836,16 +836,18 @@ router.get('/sales/abc-analysis', async (req, res, next) => {
         const deptoJoin = hasDepto
             ? `LEFT JOIN dash_produtos_depto pd ON pd.produto_id_firebird = p.id_firebird AND pd.tenant_id = p.tenant_id AND pd.depto_id = ${deptoNum}`
             : ``;
+        // Quando filtrado por filial, se nao houver registro em pd, o estoque dessa filial é 0 (e não o global de outras filiais)
         const estoqueExpr = hasDepto
-            ? `COALESCE(pd.estoque, p.estoque)`
+            ? `COALESCE(pd.estoque, 0)`
             : `p.estoque`;
 
         // Inventory values from dash_produtos (com join de depto se filtrado)
+        // Capital investido e receita potencial consideram itens com saldo físico positivo (> 0)
         const { rows: inv } = await db.query(`
             SELECT 
-                COALESCE(SUM(${estoqueExpr} * p.custo), 0) AS valor_estoque_custo,
-                COALESCE(SUM(${estoqueExpr} * p.preco), 0) AS valor_estoque_venda,
-                COALESCE(SUM(${estoqueExpr}), 0) AS total_volume,
+                COALESCE(SUM(CASE WHEN ${estoqueExpr} > 0 THEN ${estoqueExpr} * p.custo ELSE 0 END), 0) AS valor_estoque_custo,
+                COALESCE(SUM(CASE WHEN ${estoqueExpr} > 0 THEN ${estoqueExpr} * p.preco ELSE 0 END), 0) AS valor_estoque_venda,
+                COALESCE(SUM(CASE WHEN ${estoqueExpr} > 0 THEN ${estoqueExpr} ELSE 0 END), 0) AS total_volume,
                 COUNT(CASE WHEN ${estoqueExpr} > 0 THEN 1 END) AS skus_com_saldo,
                 COUNT(CASE WHEN ${estoqueExpr} < 0 THEN 1 END) AS skus_negativos,
                 COUNT(p.id_firebird) AS total_skus
@@ -938,12 +940,18 @@ router.get('/sales/abc-analysis', async (req, res, next) => {
             WHERE p.tenant_id = $1 AND p.ativo = true GROUP BY p.marca ORDER BY value DESC LIMIT 10
         `, [tenantId]);
 
-        // Bar Chart (Top 15 Marcas por Estoque)
+        // Bar Chart (Top 15 Marcas por Estoque Positivo)
         const { rows: barChart } = await db.query(`
-            SELECT COALESCE(p.marca, 'DIVERSAS') as name, SUM(${estoqueExpr} * p.custo) as estoque
+            SELECT 
+                COALESCE(p.marca, 'DIVERSAS') as name, 
+                SUM(CASE WHEN ${estoqueExpr} > 0 THEN ${estoqueExpr} * p.custo ELSE 0 END) as estoque
             FROM dash_produtos p
             ${deptoJoin}
-            WHERE p.tenant_id = $1 AND p.ativo = true GROUP BY p.marca ORDER BY estoque DESC LIMIT 15
+            WHERE p.tenant_id = $1 AND p.ativo = true 
+            GROUP BY p.marca 
+            HAVING SUM(CASE WHEN ${estoqueExpr} > 0 THEN ${estoqueExpr} * p.custo ELSE 0 END) > 0
+            ORDER BY estoque DESC 
+            LIMIT 15
         `, [tenantId]);
 
         res.json({
