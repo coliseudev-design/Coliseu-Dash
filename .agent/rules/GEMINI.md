@@ -119,6 +119,14 @@ When user's prompt is NOT in English:
 - **Performance**: Measure first. Adhere to 2025 standards (Core Web Vitals).
 - **Infra/Safety**: 5-Phase Deployment. Verify secrets security.
 
+### 🔒 Workspace & Project Guard (Global Mandatory)
+
+**Antes de executar QUALQUER modificação, build ou deploy:**
+1. **Validar Diretório Raiz:** O workspace DEVE ser estritamente `/Users/kleber/Documents/GitHub/Coliseu-Dash`.
+2. **Identidade do Projeto:** Este projeto é o **Coliseu Dash** (`coliseudev-design/Coliseu-Dash`), domínio `dashboard.coliseusistemas.com.br`.
+3. **Isolamento de Ecossistema:** NUNCA importar, mesclar ou sobrescrever código/assets com outros projetos da máquina ou da VPS (como ColiseuVet, Brascampo, Siscom, SacDigital).
+4. **Validação de Deploy VPS:** Todo deploy de frontend ou middleware DEVE apontar exclusivamente para os containers vinculados ao domínio `dashboard.coliseusistemas.com.br` (`dashboard-frontend-g115wwb76cltjli9wew0cgfi-*` e `dashboard-middleware-g115wwb76cltjli9wew0cgfi-*`).
+
 ### 📁 File Dependency Awareness
 
 **Before modifying ANY file:**
