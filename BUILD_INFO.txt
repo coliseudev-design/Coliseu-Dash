@@ -1,1 +1,1 @@
-Build trigger: 2026-09-01 16:04:36 UTC
+Frontend restored & verified: 2026-09-08 13:02:58 UTC
