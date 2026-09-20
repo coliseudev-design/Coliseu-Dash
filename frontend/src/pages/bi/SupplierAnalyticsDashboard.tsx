@@ -61,14 +61,15 @@ export default function SupplierAnalyticsDashboard() {
   const { filter } = useOutletContext<{ filter: BiPeriodFilter }>();
   const [activeTab, setActiveTab] = useState('Visão Geral de Vendas');
   const [selectedBrand, setSelectedBrand] = useState(''); // Default to empty (All Brands)
+  const [selectedCity, setSelectedCity] = useState('');
   const [stockSearch, setStockSearch] = useState('');
   const [stockSort, setStockSort] = useState('alto'); // 'alto', 'baixo', 'custo'
   const [selectedProductCode, setSelectedProductCode] = useState<string | null>(null);
 
-  const supplierFilter = { ...filter, marca: selectedBrand };
+  const supplierFilter = { ...filter, marca: selectedBrand, cidade: selectedCity };
 
-  const { data, isLoading } = useBiPeriodQuery(
-    ['bi', 'supplier', selectedBrand],
+  const { data, isLoading, refetch } = useBiPeriodQuery(
+    ['bi', 'supplier', selectedBrand, selectedCity],
     () => BIService.getSupplierAnalytics(supplierFilter),
     supplierFilter
   );
@@ -120,13 +121,12 @@ export default function SupplierAnalyticsDashboard() {
     );
   }
 
-
-
   const chartData = data?.monthly_performance || [];
   const overview = data?.overview || { receita: 0, custo: 0, pedidos: 0, clientes: 0 };
   const topProducts = data?.top_products || [];
   const topBrands = data?.top_brands || [];
-  const availableBrands = data?.available_brands || ['VHM TRACTOR'];
+  const availableBrands = data?.available_brands || [];
+  const availableCities = data?.available_cities || [];
   const margem = overview.receita > 0 ? ((overview.receita - overview.custo) / overview.receita) * 100 : 0;
   const ticketMedio = overview.pedidos > 0 ? overview.receita / overview.pedidos : 0;
 
@@ -160,8 +160,8 @@ export default function SupplierAnalyticsDashboard() {
               <p className="text-orange-100 font-medium text-sm leading-none mt-0.5">Raio-X de Performance no Período</p>
             </div>
             
-            {/* Filtro de Marca e Botão Analisar em Linha (Movidos conforme solicitado) */}
-            <div className="flex items-center gap-2 mt-1">
+            {/* Filtros de Marca, Cidade e Botão Analisar em Linha */}
+            <div className="flex flex-wrap items-center gap-2 mt-1">
               <select 
                 aria-label="Selecionar Marca"
                 className="bg-white/10 hover:bg-white/20 border border-white/25 rounded-lg px-2.5 py-1 text-xs text-white outline-none focus:border-white/50 max-w-[200px] cursor-pointer"
@@ -174,8 +174,23 @@ export default function SupplierAnalyticsDashboard() {
                   <option key={b} value={b} className="text-slate-900 bg-white">{b}</option>
                 ))}
               </select>
+
+              <select 
+                aria-label="Selecionar Cidade"
+                className="bg-white/10 hover:bg-white/20 border border-white/25 rounded-lg px-2.5 py-1 text-xs text-white outline-none focus:border-white/50 max-w-[180px] cursor-pointer"
+                value={selectedCity}
+                onChange={(e) => setSelectedCity(e.target.value)}
+                style={{ colorScheme: 'dark' }}
+              >
+                <option value="" className="text-slate-900 bg-white">Todas as Cidades</option>
+                {availableCities.map((c: string) => (
+                  <option key={c} value={c} className="text-slate-900 bg-white">{c}</option>
+                ))}
+              </select>
+
               <button 
                 type="button"
+                onClick={() => refetch()}
                 className="bg-white text-orange-600 hover:bg-orange-50 font-black px-3.5 py-1 rounded-lg text-xs flex items-center gap-1.5 transition-all shadow-sm active:scale-[0.97] cursor-pointer border border-transparent"
               >
                 <Search size={12} className="text-orange-600" /> Analisar
@@ -321,7 +336,9 @@ export default function SupplierAnalyticsDashboard() {
             <Award size={14} className="text-blue-500" /> Principal Cliente
           </div>
           <div>
-            <div className="text-sm font-extrabold text-text-primary mb-1 leading-tight break-words">NORTH FACE LOGÍSTICA E TRANSPORTES LTDA</div>
+            <div className="text-sm font-extrabold text-text-primary mb-1 leading-tight break-words line-clamp-2" title={data?.top_client || 'N/A'}>
+              {data?.top_client || 'N/A'}
+            </div>
             <div className="text-[10px] text-text-muted mt-2">Maior comprador</div>
           </div>
         </div>
@@ -330,8 +347,10 @@ export default function SupplierAnalyticsDashboard() {
             <MapPin size={14} className="text-text-secondary" /> Cidade Destaque
           </div>
           <div>
-            <div className="text-xl font-extrabold text-text-primary mb-1">N/A</div>
-            <div className="text-[10px] text-text-muted">Mais vendas no período</div>
+            <div className="text-base font-extrabold text-text-primary mb-1 truncate" title={data?.top_city || 'N/A'}>
+              {data?.top_city || 'N/A'}
+            </div>
+            <div className="text-[10px] text-text-muted">Maior volume no período</div>
           </div>
         </div>
         <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between">
@@ -339,8 +358,10 @@ export default function SupplierAnalyticsDashboard() {
             <Users size={14} className="text-brand-500" /> Vendedor Destaque
           </div>
           <div>
-            <div className="text-xl font-extrabold text-text-primary mb-1">N/A</div>
-            <div className="text-[10px] text-text-muted">Maior volume na marca</div>
+            <div className="text-base font-extrabold text-text-primary mb-1 truncate" title={data?.top_seller || 'N/A'}>
+              {data?.top_seller || 'N/A'}
+            </div>
+            <div className="text-[10px] text-text-muted">Maior volume em vendas</div>
           </div>
         </div>
         <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between">
@@ -348,7 +369,7 @@ export default function SupplierAnalyticsDashboard() {
             <Box size={14} className="text-text-secondary" /> SKUs Vendidos
           </div>
           <div>
-            <div className="text-xl font-extrabold text-text-primary mb-1">{topProducts.length}</div>
+            <div className="text-xl font-extrabold text-text-primary mb-1">{data?.skus_count || topProducts.length || 0}</div>
             <div className="text-[10px] text-text-muted">Produtos distintos</div>
           </div>
         </div>
@@ -369,7 +390,7 @@ export default function SupplierAnalyticsDashboard() {
           <Award size={18} className="text-warning" /> Top 3 Produtos em Vendas
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {topProducts.slice(0, 3).map((prod, index) => {
+          {topProducts.slice(0, 3).map((prod: any, index: number) => {
              const isFirst = index === 0;
              const isSecond = index === 1;
              const isThird = index === 2;
@@ -449,6 +470,8 @@ export default function SupplierAnalyticsDashboard() {
               <tr className="bg-bg-secondary/30 text-[10px] text-text-muted uppercase font-bold tracking-wider">
                 <th className="px-5 py-3 w-16">POS</th>
                 <th className="px-5 py-3">PRODUTO</th>
+                <th className="px-4 py-3 text-center">EMB</th>
+                <th className="px-4 py-3 text-center">APRES</th>
                 <th className="px-5 py-3 text-right">QTDE. VENDIDA</th>
                 <th className="px-5 py-3 text-right">VALOR TOTAL (R$)</th>
                 <th className="px-5 py-3 text-right">PARTICIPAÇÃO (%)</th>
@@ -457,8 +480,10 @@ export default function SupplierAnalyticsDashboard() {
             <tbody className="divide-y divide-divider/30 text-xs">
               {topProducts.map((prod: any, idx: number) => (
                 <tr key={idx} className="hover:bg-bg-secondary/50 transition-colors">
-                  <td className="px-5 py-3 font-bold text-text-muted">{prod.rank}º</td>
+                  <td className="px-5 py-3 font-bold text-text-muted">{prod.rank || idx + 1}º</td>
                   <td className="px-5 py-3 font-bold text-text-primary">{prod.name}</td>
+                  <td className="px-4 py-3 text-center text-text-secondary font-mono">{prod.emb || 'UN'}</td>
+                  <td className="px-4 py-3 text-center text-text-secondary font-mono">{prod.apres || '-'}</td>
                   <td className="px-5 py-3 text-right font-medium text-text-primary">{prod.volume}</td>
                   <td className="px-5 py-3 text-right font-mono font-bold text-text-primary">{formatBRL(prod.receita)}</td>
                   <td className="px-5 py-3 text-right font-bold text-text-secondary">
@@ -471,29 +496,33 @@ export default function SupplierAnalyticsDashboard() {
         </div>
       </div>
 
-      {/* INTELIGÊNCIA DE NEGOCIAÇÃO */}
+      {/* INTELIGÊNCIA DE NEGOCIAÇÃO / RECOMENDAÇÕES */}
       <div className="mt-8">
         <h3 className="font-bold text-text-primary text-base flex items-center gap-2 mb-4">
-          <ShieldCheck size={20} className="text-brand-500" /> Insights de Negociação (IA)
+          <ShieldCheck size={20} className="text-brand-500" /> Recomendações Estratégicas / Inteligência de Negociação (IA)
         </h3>
         
         <div className="bg-bg-primary border border-border shadow-card rounded-xl overflow-hidden flex flex-col">
           <div className="p-4 border-b border-divider">
-            <h3 className="font-bold text-text-primary text-sm tracking-wider">Insights de Negociação (IA)</h3>
+            <h3 className="font-bold text-text-primary text-sm tracking-wider">Insights e Diretrizes para Compras & Vendas</h3>
           </div>
           <div className="p-5 space-y-4">
             <div className="bg-success/5 border border-success/20 rounded-lg p-4 flex gap-4">
               <div className="mt-0.5"><TrendingUp size={18} className="text-success" /></div>
               <div>
-                <h4 className="font-bold text-success text-sm mb-1">Tendência de Crescimento Forte</h4>
-                <p className="text-sm text-text-secondary">A marca cresceu 32.9%. Ótimo momento para negociar maiores volumes de compra com desconto.</p>
+                <h4 className="font-bold text-success text-sm mb-1">Tendência e Oportunidade Comercial</h4>
+                <p className="text-sm text-text-secondary">
+                  {selectedBrand ? `A marca ${selectedBrand} possui representatividade relevante nas vendas.` : 'A marca possui tração comercial.'} Ótimo momento para negociar maiores volumes de compra com bonificação ou desconto progressivo.
+                </p>
               </div>
             </div>
-            <div className="bg-success/5 border border-success/20 rounded-lg p-4 flex gap-4">
-              <div className="mt-0.5"><Target size={18} className="text-success" /></div>
+            <div className="bg-brand-500/5 border border-brand-500/20 rounded-lg p-4 flex gap-4">
+              <div className="mt-0.5"><Target size={18} className="text-brand-500" /></div>
               <div>
-                <h4 className="font-bold text-success text-sm mb-1">Rentabilidade Elevada</h4>
-                <p className="text-sm text-text-secondary">A marca apresenta excelente margem de lucro médio. Considere realizar campanhas de incentivo para a equipe de vendas focar nestes produtos.</p>
+                <h4 className="font-bold text-brand-500 text-sm mb-1">Rentabilidade e Margem de Contribuição</h4>
+                <p className="text-sm text-text-secondary">
+                  Margem atual de <strong>{margem.toFixed(1)}%</strong>. Considere realizar campanhas de incentivo para a equipe comercial e focar nos SKUs de maior valor agregado para maximizar a rentabilidade bruta.
+                </p>
               </div>
             </div>
           </div>
