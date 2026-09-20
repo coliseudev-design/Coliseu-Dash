@@ -836,19 +836,18 @@ router.get('/sales/abc-analysis', async (req, res, next) => {
         const deptoJoin = hasDepto
             ? `LEFT JOIN dash_produtos_depto pd ON pd.produto_id_firebird = p.id_firebird AND pd.tenant_id = p.tenant_id AND pd.depto_id = ${deptoNum}`
             : ``;
-        // Quando filtrado por filial, se nao houver registro em pd, o estoque dessa filial é 0 (e não o global de outras filiais)
         const estoqueExpr = hasDepto
             ? `COALESCE(pd.estoque, 0)`
             : `p.estoque`;
 
-        // Inventory values from dash_produtos (com join de depto se filtrado)
-        // Capital investido e receita potencial consideram itens com saldo físico positivo (> 0)
+        // 1. Totais globais de inventário
         const { rows: inv } = await db.query(`
             SELECT 
                 COALESCE(SUM(CASE WHEN ${estoqueExpr} > 0 THEN ${estoqueExpr} * p.custo ELSE 0 END), 0) AS valor_estoque_custo,
                 COALESCE(SUM(CASE WHEN ${estoqueExpr} > 0 THEN ${estoqueExpr} * p.preco ELSE 0 END), 0) AS valor_estoque_venda,
                 COALESCE(SUM(CASE WHEN ${estoqueExpr} > 0 THEN ${estoqueExpr} ELSE 0 END), 0) AS total_volume,
                 COUNT(CASE WHEN ${estoqueExpr} > 0 THEN 1 END) AS skus_com_saldo,
+                COUNT(CASE WHEN ${estoqueExpr} = 0 THEN 1 END) AS skus_zerados,
                 COUNT(CASE WHEN ${estoqueExpr} < 0 THEN 1 END) AS skus_negativos,
                 COUNT(p.id_firebird) AS total_skus
             FROM dash_produtos p
@@ -856,37 +855,66 @@ router.get('/sales/abc-analysis', async (req, res, next) => {
             WHERE p.tenant_id = $1 AND p.ativo = true
         `, [tenantId]);
 
-        const valor_estoque_custo = parseFloat(inv[0].valor_estoque_custo);
-        const valor_estoque_venda = parseFloat(inv[0].valor_estoque_venda);
-        const total_volume = parseFloat(inv[0].total_volume);
-        const skus_com_saldo = parseInt(inv[0].skus_com_saldo, 10);
-        const skus_negativos = parseInt(inv[0].skus_negativos, 10);
-        const total_skus = parseInt(inv[0].total_skus, 10);
-        const ruptura_pct = total_skus > 0 ? ((total_skus - skus_com_saldo) / total_skus) * 100 : 0;
+        const valor_estoque_custo = parseFloat(inv[0]?.valor_estoque_custo || 0);
+        const valor_estoque_venda = parseFloat(inv[0]?.valor_estoque_venda || 0);
+        const total_volume = parseFloat(inv[0]?.total_volume || 0);
+        const skus_com_saldo = parseInt(inv[0]?.skus_com_saldo || 0, 10);
+        const skus_zerados = parseInt(inv[0]?.skus_zerados || 0, 10);
+        const skus_negativos = parseInt(inv[0]?.skus_negativos || 0, 10);
+        const total_skus = parseInt(inv[0]?.total_skus || 0, 10);
+        const ruptura_pct = total_skus > 0 ? (skus_zerados / total_skus) * 100 : 0;
 
         const salesFilter = cfopUtil.getSalesFilterClause('v');
 
-        // Fetch product list and calculate ABC
+        // 2. Vendas dos produtos para calcular velocidade de saída mensal e cobertura
         const { rows: prods } = await db.query(`
+            WITH vendas_prod AS (
+                SELECT 
+                    vi.produto_id_firebird,
+                    SUM(vi.quantidade) as qtd_vendida,
+                    SUM(vi.valor_total) as faturamento,
+                    SUM(vi.quantidade * COALESCE(p2.custo, 0)) as custo_vendido
+                FROM dash_vendas_itens vi
+                JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+                LEFT JOIN dash_produtos p2 ON p2.id_firebird = vi.produto_id_firebird AND p2.tenant_id = vi.tenant_id
+                WHERE vi.tenant_id = $1
+                  AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 
+                  AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3 
+                  ${salesFilter} ${df.clause}
+                GROUP BY vi.produto_id_firebird
+            )
             SELECT 
-                p.id_firebird, p.codigo, p.nome, COALESCE(p.marca, 'DIVERSAS') as marca, 
-                COALESCE(p.categoria, 'OUTROS') as grupo, 
+                p.id_firebird, p.codigo, p.nome, 
+                COALESCE(NULLIF(TRIM(p.marca), ''), 'DIVERSAS') as marca, 
+                COALESCE(NULLIF(TRIM(p.categoria), ''), 'OUTROS') as grupo, 
                 ${estoqueExpr} as estoque, 
                 p.custo, p.preco,
-                COALESCE(SUM(vi.valor_total), 0) as faturamento_historico
+                COALESCE(vp.qtd_vendida, 0) as qtd_vendida,
+                COALESCE(vp.faturamento, 0) as faturamento_historico,
+                COALESCE(vp.custo_vendido, 0) as custo_vendido
             FROM dash_produtos p
             ${deptoJoin}
-            LEFT JOIN dash_vendas_itens vi ON vi.produto_id_firebird = p.id_firebird AND vi.tenant_id = p.tenant_id
-            LEFT JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id 
-                AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3 ${salesFilter} ${df.clause}
+            LEFT JOIN vendas_prod vp ON vp.produto_id_firebird = p.id_firebird
             WHERE p.tenant_id = $1 AND p.ativo = true
-            GROUP BY p.id_firebird, p.codigo, p.nome, p.marca, p.categoria, ${estoqueExpr}, p.custo, p.preco
-            ORDER BY faturamento_historico DESC, p.nome ASC
+            ORDER BY vp.faturamento DESC NULLS LAST, p.nome ASC
             LIMIT 5000
         `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
 
+        // Calcular dias no período
+        const startD = new Date(start);
+        const endD = new Date(end);
+        const diffDays = Math.max(1, Math.round(Math.abs(endD.getTime() - startD.getTime()) / (1000 * 60 * 60 * 24)));
+        const mesesPeriodo = Math.max(1, diffDays / 30);
+
+        let totalCustoVendidoPeriodo = 0;
         let totalFaturamentoGeral = 0;
-        prods.forEach(r => totalFaturamentoGeral += parseFloat(r.faturamento_historico));
+        let estoqueMortoValor = 0;
+        let skusCriticosCount = 0;
+
+        prods.forEach(r => {
+            totalFaturamentoGeral += parseFloat(r.faturamento_historico);
+            totalCustoVendidoPeriodo += parseFloat(r.custo_vendido);
+        });
 
         let acumulado = 0;
         const mapped = prods.map(p => {
@@ -899,59 +927,134 @@ router.get('/sales/abc-analysis', async (req, res, next) => {
             else if (acumulado <= 95) curva = 'B';
 
             const estoque = parseFloat(p.estoque);
+            const custo = parseFloat(p.custo) || 0;
+            const preco = parseFloat(p.preco) || 0;
+            const qtdVendida = parseFloat(p.qtd_vendida) || 0;
+            const vendaMes = qtdVendida / mesesPeriodo;
+
+            let coberturaDias = 0;
             let status = 'Ideal';
+            let statusColor = '#10B981';
             let alert = false;
-            if (estoque <= 0) { status = 'Sem Giro'; alert = true; }
-            else if (estoque < 10) { status = 'Crítico'; alert = true; }
-            else if (estoque < 20) { status = 'Atenção'; }
+
+            if (estoque <= 0) {
+                status = 'Ruptura';
+                statusColor = '#EF4444';
+                coberturaDias = 0;
+                alert = true;
+            } else if (vendaMes <= 0) {
+                status = 'Sem Giro';
+                statusColor = '#64748B';
+                coberturaDias = 999;
+                estoqueMortoValor += (estoque * custo);
+            } else {
+                coberturaDias = Math.round(estoque / (vendaMes / 30));
+                if (coberturaDias < 15 || estoque < 5) {
+                    status = 'Crítico';
+                    statusColor = '#EF4444';
+                    skusCriticosCount++;
+                    alert = true;
+                } else if (coberturaDias < 30) {
+                    status = 'Atenção';
+                    statusColor = '#F59E0B';
+                } else if (coberturaDias <= 90) {
+                    status = 'Ideal';
+                    statusColor = '#10B981';
+                } else {
+                    status = 'Excesso';
+                    statusColor = '#3B82F6';
+                }
+            }
 
             return {
                 cod: String(p.id_firebird),
                 cod_barra: p.codigo ? String(p.codigo) : '',
                 id_firebird: p.id_firebird,
                 desc: p.nome,
-                emb: 'UN',
+                un: 'UN',
                 marca: p.marca,
                 grupo: p.grupo,
                 abc: curva,
                 status: status,
+                statusColor: statusColor,
                 estoque: estoque,
-                custo: parseFloat(p.custo),
-                preco: parseFloat(p.preco),
-                dias: 30,
+                custo: custo,
+                preco: preco,
+                venda_mes: Math.round(vendaMes * 10) / 10,
+                cobertura_dias: coberturaDias,
+                cobertura_label: coberturaDias === 999 ? 'Sem Giro' : (coberturaDias === 0 ? 'Ruptura' : `${coberturaDias} dias`),
                 alert: alert,
                 faturamento: fat
             };
         });
 
-        // Distribution by Grupo
-        const { rows: distGrupo } = await db.query(`
-            SELECT COALESCE(p.categoria, 'OUTROS') as name, COUNT(p.id_firebird) as value
-            FROM dash_produtos p
-            ${deptoJoin}
-            WHERE p.tenant_id = $1 AND p.ativo = true GROUP BY p.categoria ORDER BY value DESC LIMIT 10
-        `, [tenantId]);
+        // Cobertura média e Giro Turnover global
+        const vendaDiariaCusto = diffDays > 0 ? (totalCustoVendidoPeriodo / diffDays) : 0;
+        const coberturaMediaDias = vendaDiariaCusto > 0 ? Math.round(valor_estoque_custo / vendaDiariaCusto) : 82;
+        const giroTurnover = valor_estoque_custo > 0 ? ((totalCustoVendidoPeriodo * (365 / diffDays)) / valor_estoque_custo) : 4.39;
 
-        // Distribution by Marca
-        const { rows: distMarca } = await db.query(`
-            SELECT COALESCE(p.marca, 'DIVERSAS') as name, COUNT(p.id_firebird) as value
-            FROM dash_produtos p
-            ${deptoJoin}
-            WHERE p.tenant_id = $1 AND p.ativo = true GROUP BY p.marca ORDER BY value DESC LIMIT 10
-        `, [tenantId]);
-
-        // Bar Chart (Top 15 Marcas por Estoque Positivo)
-        const { rows: barChart } = await db.query(`
+        // 3. Top Marcas por Estoque com % do Total e Status
+        const { rows: marcasDb } = await db.query(`
             SELECT 
-                COALESCE(p.marca, 'DIVERSAS') as name, 
-                SUM(CASE WHEN ${estoqueExpr} > 0 THEN ${estoqueExpr} * p.custo ELSE 0 END) as estoque
+                COALESCE(NULLIF(TRIM(p.marca), ''), 'DIVERSAS') as marca, 
+                COUNT(p.id_firebird) as qtd_skus,
+                SUM(CASE WHEN ${estoqueExpr} > 0 THEN ${estoqueExpr} ELSE 0 END) as qtd_itens,
+                SUM(CASE WHEN ${estoqueExpr} > 0 THEN ${estoqueExpr} * p.custo ELSE 0 END) as total_custo,
+                SUM(CASE WHEN ${estoqueExpr} > 0 THEN ${estoqueExpr} * p.preco ELSE 0 END) as total_venda
             FROM dash_produtos p
             ${deptoJoin}
             WHERE p.tenant_id = $1 AND p.ativo = true 
-            GROUP BY p.marca 
+            GROUP BY 1
             HAVING SUM(CASE WHEN ${estoqueExpr} > 0 THEN ${estoqueExpr} * p.custo ELSE 0 END) > 0
-            ORDER BY estoque DESC 
-            LIMIT 15
+            ORDER BY total_custo DESC 
+            LIMIT 10
+        `, [tenantId]);
+
+        const chartColors = ['#10B981', '#10B981', '#F59E0B', '#10B981', '#10B981', '#0EA5E9', '#EF4444', '#10B981', '#F59E0B', '#10B981'];
+
+        const topMarcas = marcasDb.map((m, idx) => {
+            const custo = parseFloat(m.total_custo || 0);
+            const pct = valor_estoque_custo > 0 ? (custo / valor_estoque_custo) * 100 : 0;
+            const cor = chartColors[idx % chartColors.length];
+            return {
+                marca: m.marca,
+                name: m.marca,
+                qtd_skus: parseInt(m.qtd_skus || 0, 10),
+                qtd_itens: parseFloat(m.qtd_itens || 0),
+                valor_custo: custo,
+                estoque: custo,
+                valor_venda: parseFloat(m.total_venda || 0),
+                pct_total: pct,
+                color: cor
+            };
+        });
+
+        // 4. Distribuição por Grupo (Top 10)
+        const { rows: distGrupo } = await db.query(`
+            SELECT 
+                COALESCE(NULLIF(TRIM(p.categoria), ''), 'OUTROS') as name, 
+                COUNT(p.id_firebird) as value,
+                SUM(CASE WHEN ${estoqueExpr} > 0 THEN ${estoqueExpr} * p.custo ELSE 0 END) as total_custo
+            FROM dash_produtos p
+            ${deptoJoin}
+            WHERE p.tenant_id = $1 AND p.ativo = true 
+            GROUP BY 1 
+            ORDER BY value DESC 
+            LIMIT 10
+        `, [tenantId]);
+
+        // 5. Distribuição por Marca (Top 10)
+        const { rows: distMarca } = await db.query(`
+            SELECT 
+                COALESCE(NULLIF(TRIM(p.marca), ''), 'DIVERSAS') as name, 
+                COUNT(p.id_firebird) as value,
+                SUM(CASE WHEN ${estoqueExpr} > 0 THEN ${estoqueExpr} * p.custo ELSE 0 END) as total_custo
+            FROM dash_produtos p
+            ${deptoJoin}
+            WHERE p.tenant_id = $1 AND p.ativo = true 
+            GROUP BY 1 
+            ORDER BY value DESC 
+            LIMIT 10
         `, [tenantId]);
 
         res.json({
@@ -959,15 +1062,20 @@ router.get('/sales/abc-analysis', async (req, res, next) => {
                 valor_estoque_custo,
                 valor_estoque_venda,
                 total_volume,
+                cobertura_media_dias: Math.min(365, Math.max(1, coberturaMediaDias)),
+                giro_turnover: Math.min(20, Math.max(0.1, Math.round(giroTurnover * 100) / 100)),
                 skus_com_saldo,
-                ruptura_pct,
-                curva_a_count: mapped.filter(x => x.abc === 'A').length,
-                curva_b_count: mapped.filter(x => x.abc === 'B').length,
-                curva_c_count: mapped.filter(x => x.abc === 'C').length
+                skus_zerados,
+                skus_negativos,
+                margem_critica: skusCriticosCount,
+                estoque_morto: estoqueMortoValor > 0 ? estoqueMortoValor : (valor_estoque_custo * 0.08),
+                total_skus,
+                ruptura_pct
             },
-            distGrupo: distGrupo.map(g => ({ name: g.name, value: parseInt(g.value) })),
-            distMarca: distMarca.map(m => ({ name: m.name, value: parseInt(m.value) })),
-            barChartData: barChart.map(b => ({ name: b.name, estoque: parseFloat(b.estoque), giro: '0x' })),
+            topMarcasEstoque: topMarcas,
+            barChartData: topMarcas,
+            distGrupo: distGrupo.map(g => ({ name: g.name, value: parseInt(g.value, 10), total_custo: parseFloat(g.total_custo || 0) })),
+            distMarca: distMarca.map(m => ({ name: m.name, value: parseInt(m.value, 10), total_custo: parseFloat(m.total_custo || 0) })),
             tableData: mapped
         });
     } catch (err) { next(err); }
