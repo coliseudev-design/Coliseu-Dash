@@ -123,6 +123,7 @@ export default function App() {
             <Route path="gestao" element={<FinancialIntelligenceDashboard />} />
             <Route path="fluxo-caixa" element={<FluxoCaixa />} />
             <Route path="titulos" element={<Titulos />} />
+            <Route path="caixas" element={<Financeiro />} />
           </Route>
 
           {/* Novas Rotas de BI */}

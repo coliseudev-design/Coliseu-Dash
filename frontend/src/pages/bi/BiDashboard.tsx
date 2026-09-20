@@ -33,7 +33,7 @@ export default function BiDashboard() {
   // Radar 360 usa filtros próprios internos — ocultar filtro global
   const isRadar360 = location.pathname.includes('/bi/customer');
 
-  const showFilter = !['/bi/abc', '/bi/customer-analytics', '/bi/goals', '/bi/heatmap', '/bi/comparative'].some(
+  const showFilter = !['/bi/abc', '/bi/customer-analytics', '/bi/goals', '/bi/heatmap', '/bi/comparative', '/bi/finance'].some(
     p => location.pathname.includes(p)
   ) && !isRadar360;
 

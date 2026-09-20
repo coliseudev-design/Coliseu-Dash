@@ -1091,6 +1091,8 @@ router.get('/financial/summary', async (req, res, next) => {
         const tenantId = req.tenant.id;
         const { start, end } = await getBiDateRange(req, tenantId);
         const deptoId = req.query.depto_id || req.query.centro_custo;
+        const caixaId = req.query.caixa_id;
+        const filterCaixa = (caixaId && caixaId !== 'todos') ? ` AND f.caixa_id_firebird = ${parseInt(caixaId)}` : '';
         const cf = buildDeptoFilter(deptoId, 4, 'f');
 
         const { rows: f } = await db.query(`
@@ -1103,6 +1105,7 @@ router.get('/financial/summary', async (req, res, next) => {
                 COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'PAGAR' AND f.data_pagamento >= $2 AND f.data_pagamento <= $3 AND (TRIM(f.status_pagamento) = 'PAGO' OR f.valor_pago > 0) THEN (CASE WHEN TRIM(f.status_pagamento) = 'PAGO' THEN (CASE WHEN f.valor_pago > 0 THEN f.valor_pago ELSE f.valor END) ELSE f.valor_pago END) ELSE 0 END), 0) AS pagamentos_realizados
             FROM dash_financeiro f
             WHERE f.tenant_id = $1
+            ${filterCaixa}
             ${cf.clause}
         `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...cf.params]);
 
@@ -1123,7 +1126,7 @@ router.get('/financial/summary', async (req, res, next) => {
                 COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'RECEBER' AND f.data_vencimento BETWEEN NOW() AND NOW() + interval '7 days' THEN f.valor - COALESCE(f.valor_pago, 0) ELSE 0 END), 0) as entradas,
                 COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'PAGAR' AND f.data_vencimento BETWEEN NOW() AND NOW() + interval '7 days' THEN f.valor - COALESCE(f.valor_pago, 0) ELSE 0 END), 0) as saidas
             FROM dash_financeiro f
-            WHERE f.tenant_id = $1 AND TRIM(f.status_pagamento) = 'ABERTO' ${cfList.clause}
+            WHERE f.tenant_id = $1 AND TRIM(f.status_pagamento) = 'ABERTO' ${filterCaixa} ${cfList.clause}
             UNION ALL
             SELECT 
                 'Próx. 15 dias' as periodo,
@@ -1131,7 +1134,7 @@ router.get('/financial/summary', async (req, res, next) => {
                 COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'RECEBER' AND f.data_vencimento BETWEEN NOW() AND NOW() + interval '15 days' THEN f.valor - COALESCE(f.valor_pago, 0) ELSE 0 END), 0) as entradas,
                 COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'PAGAR' AND f.data_vencimento BETWEEN NOW() AND NOW() + interval '15 days' THEN f.valor - COALESCE(f.valor_pago, 0) ELSE 0 END), 0) as saidas
             FROM dash_financeiro f
-            WHERE f.tenant_id = $1 AND TRIM(f.status_pagamento) = 'ABERTO' ${cfList.clause}
+            WHERE f.tenant_id = $1 AND TRIM(f.status_pagamento) = 'ABERTO' ${filterCaixa} ${cfList.clause}
             UNION ALL
             SELECT 
                 'Próx. 30 dias' as periodo,
@@ -1139,7 +1142,7 @@ router.get('/financial/summary', async (req, res, next) => {
                 COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'RECEBER' AND f.data_vencimento BETWEEN NOW() AND NOW() + interval '30 days' THEN f.valor - COALESCE(f.valor_pago, 0) ELSE 0 END), 0) as entradas,
                 COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'PAGAR' AND f.data_vencimento BETWEEN NOW() AND NOW() + interval '30 days' THEN f.valor - COALESCE(f.valor_pago, 0) ELSE 0 END), 0) as saidas
             FROM dash_financeiro f
-            WHERE f.tenant_id = $1 AND TRIM(f.status_pagamento) = 'ABERTO' ${cfList.clause}
+            WHERE f.tenant_id = $1 AND TRIM(f.status_pagamento) = 'ABERTO' ${filterCaixa} ${cfList.clause}
             UNION ALL
             SELECT 
                 'Próx. 60 dias' as periodo,
@@ -1147,7 +1150,7 @@ router.get('/financial/summary', async (req, res, next) => {
                 COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'RECEBER' AND f.data_vencimento BETWEEN NOW() AND NOW() + interval '60 days' THEN f.valor - COALESCE(f.valor_pago, 0) ELSE 0 END), 0) as entradas,
                 COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'PAGAR' AND f.data_vencimento BETWEEN NOW() AND NOW() + interval '60 days' THEN f.valor - COALESCE(f.valor_pago, 0) ELSE 0 END), 0) as saidas
             FROM dash_financeiro f
-            WHERE f.tenant_id = $1 AND TRIM(f.status_pagamento) = 'ABERTO' ${cfList.clause}
+            WHERE f.tenant_id = $1 AND TRIM(f.status_pagamento) = 'ABERTO' ${filterCaixa} ${cfList.clause}
             UNION ALL
             SELECT 
                 'Próx. 90 dias' as periodo,
@@ -1155,7 +1158,7 @@ router.get('/financial/summary', async (req, res, next) => {
                 COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'RECEBER' AND f.data_vencimento BETWEEN NOW() AND NOW() + interval '90 days' THEN f.valor - COALESCE(f.valor_pago, 0) ELSE 0 END), 0) as entradas,
                 COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'PAGAR' AND f.data_vencimento BETWEEN NOW() AND NOW() + interval '90 days' THEN f.valor - COALESCE(f.valor_pago, 0) ELSE 0 END), 0) as saidas
             FROM dash_financeiro f
-            WHERE f.tenant_id = $1 AND TRIM(f.status_pagamento) = 'ABERTO' ${cfList.clause}
+            WHERE f.tenant_id = $1 AND TRIM(f.status_pagamento) = 'ABERTO' ${filterCaixa} ${cfList.clause}
             ORDER BY sort_order ASC
         `, [tenantId, ...cfList.params]);
 
@@ -1174,6 +1177,7 @@ router.get('/financial/summary', async (req, res, next) => {
                 COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'PAGAR' AND (TRIM(f.status_pagamento) = 'PAGO' OR f.valor_pago > 0) THEN (CASE WHEN TRIM(f.status_pagamento) = 'PAGO' THEN (CASE WHEN f.valor_pago > 0 THEN f.valor_pago ELSE f.valor END) ELSE f.valor_pago END) ELSE 0 END), 0) as pago
             FROM dash_financeiro f
             WHERE f.tenant_id = $1 AND f.data_pagamento >= NOW() - interval '12 months'
+              ${filterCaixa}
               ${cfList.clause}
             GROUP BY TO_CHAR(f.data_pagamento, 'MM/YY'), TO_CHAR(f.data_pagamento, 'YYYY-MM')
             ORDER BY sort_key ASC
@@ -1193,6 +1197,7 @@ router.get('/financial/summary', async (req, res, next) => {
                 COALESCE(SUM(CASE WHEN TRIM(f.tipo) = 'PAGAR' AND (TRIM(f.status_pagamento) = 'PAGO' OR f.valor_pago > 0) THEN (CASE WHEN TRIM(f.status_pagamento) = 'PAGO' THEN (CASE WHEN f.valor_pago > 0 THEN f.valor_pago ELSE f.valor END) ELSE f.valor_pago END) ELSE 0 END), 0) as pago
             FROM dash_financeiro f
             WHERE f.tenant_id = $1 AND f.data_pagamento >= $2 AND f.data_pagamento <= $3
+              ${filterCaixa}
               ${cf.clause}
             GROUP BY TO_CHAR(f.data_pagamento, 'DD/MM'), TO_CHAR(f.data_pagamento, 'YYYY-MM-DD')
             ORDER BY sort_key ASC
@@ -1213,6 +1218,7 @@ router.get('/financial/summary', async (req, res, next) => {
             WHERE f.tenant_id = $1 
               AND TRIM(f.tipo) = 'PAGAR' 
               AND f.data_pagamento >= $2 AND f.data_pagamento <= $3
+              ${filterCaixa}
               ${cf.clause}
             ORDER BY f.data_pagamento DESC, f.id DESC
             LIMIT 10
@@ -1227,6 +1233,7 @@ router.get('/financial/summary', async (req, res, next) => {
             WHERE f.tenant_id = $1 
               AND TRIM(f.tipo) = 'RECEBER' 
               AND f.data_pagamento >= $2 AND f.data_pagamento <= $3
+              ${filterCaixa}
               ${cf.clause}
             ORDER BY f.data_pagamento DESC, f.id DESC
             LIMIT 10
@@ -1241,6 +1248,7 @@ router.get('/financial/summary', async (req, res, next) => {
                 COALESCE(SUM(CASE WHEN f.data_vencimento > $3::timestamp + interval '30 days' THEN f.valor - COALESCE(f.valor_pago, 0) ELSE 0 END), 0) AS d60_plus
             FROM dash_financeiro f
             WHERE f.tenant_id = $1 AND TRIM(f.tipo) = 'RECEBER' AND TRIM(f.status_pagamento) = 'ABERTO'
+              ${filterCaixa}
               ${cf.clause}
         `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...cf.params]);
 
@@ -1253,6 +1261,7 @@ router.get('/financial/summary', async (req, res, next) => {
                 COALESCE(SUM(CASE WHEN f.data_vencimento > $3::timestamp + interval '30 days' THEN f.valor - COALESCE(f.valor_pago, 0) ELSE 0 END), 0) AS d60_plus
             FROM dash_financeiro f
             WHERE f.tenant_id = $1 AND TRIM(f.tipo) = 'PAGAR' AND TRIM(f.status_pagamento) = 'ABERTO'
+              ${filterCaixa}
               ${cf.clause}
         `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...cf.params]);
 

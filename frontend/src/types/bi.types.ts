@@ -17,6 +17,7 @@ export interface BiPeriodFilter {
   cidade?: string;
   grupo?: string;
   marca?: string;
+  caixa_id?: string;
 }
 
 export type BiTrend = 'UP' | 'DOWN' | 'STABLE' | 'UP_STRONG' | 'DOWN_STRONG';

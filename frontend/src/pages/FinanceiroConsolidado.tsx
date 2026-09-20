@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import PeriodFilter from '../components/PeriodFilter';
 import { usePeriodStore, PERIOD_OPTIONS, periodToParams } from '../store/periodStore';
+import { useApiQuery } from '../hooks/useApi';
 import { BiPeriodFilter } from '../types/bi.types';
 import { useBranchParam } from '../contexts/BranchContext';
-import { Wallet, LineChart, ShieldAlert, X, FileText, Sliders, ChevronDown } from 'lucide-react';
+import { Wallet, LineChart, FileText, Banknote, Filter, X, Sliders } from 'lucide-react';
 import clsx from 'clsx';
 
 export default function FinanceiroConsolidado() {
@@ -15,6 +16,11 @@ export default function FinanceiroConsolidado() {
 
   const [isMobile, setIsMobile] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [selectedCaixa, setSelectedCaixa] = useState('todos');
+
+  // Carrega lista de caixas
+  const { data: caixasRes } = useApiQuery<any>('/financeiro/caixas');
+  const caixas = caixasRes?.data || [];
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -25,13 +31,15 @@ export default function FinanceiroConsolidado() {
 
   const filter: BiPeriodFilter = {
     ...periodToParams(periodState),
-    ...branchParam
+    ...branchParam,
+    ...(selectedCaixa !== 'todos' ? { caixa_id: selectedCaixa } : {})
   };
 
   const tabs = [
     { path: '/financeiro-consolidado', label: 'Gestão Financeira', shortLabel: 'Gestão', icon: Wallet },
     { path: '/financeiro-consolidado/fluxo-caixa', label: 'Fluxo de Caixa', shortLabel: 'Fluxo', icon: LineChart },
-    { path: '/financeiro-consolidado/titulos', label: 'Títulos & Contas', shortLabel: 'Títulos', icon: FileText }
+    { path: '/financeiro-consolidado/titulos', label: 'Títulos & Contas', shortLabel: 'Títulos', icon: FileText },
+    { path: '/financeiro-consolidado/caixas', label: 'Caixas & Movimentos', shortLabel: 'Caixas', icon: Banknote }
   ];
 
   return (
@@ -40,14 +48,17 @@ export default function FinanceiroConsolidado() {
       {/* Header do Módulo Financeiro com Tabs integradas */}
       <div className="bg-bg-primary border border-divider rounded-2xl p-4 sm:p-5 flex flex-col gap-4 shadow-card">
         {/* Line 1: Title + Tabs */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <h1 className="text-xl sm:text-2xl font-black text-text-primary tracking-tight flex items-center gap-2 whitespace-nowrap">
-            <Wallet className="text-brand-500" size={24} />
-            Módulo Financeiro
-          </h1>
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-black text-text-primary tracking-tight flex items-center gap-2 whitespace-nowrap">
+              <Wallet className="text-brand-500" size={24} />
+              Módulo Financeiro
+            </h1>
+            <p className="text-xs text-text-muted mt-0.5">Gestão de liquidez, projeção de caixa, títulos e extrato</p>
+          </div>
 
           {/* Desktop Navigation Tabs */}
-          <div className="hidden md:flex bg-bg-secondary p-1 rounded-xl border border-divider shadow-xs">
+          <div className="flex flex-wrap bg-bg-secondary p-1 rounded-xl border border-divider shadow-xs gap-1">
             {tabs.map((tab) => {
               const isActive = 
                 tab.path === '/financeiro-consolidado'
@@ -59,7 +70,7 @@ export default function FinanceiroConsolidado() {
                   key={tab.path}
                   onClick={() => navigate(tab.path)}
                   className={clsx(
-                    "flex items-center justify-center gap-2 py-1.5 px-4 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                    "flex items-center justify-center gap-2 py-1.5 px-3.5 rounded-lg text-xs font-bold transition-all cursor-pointer",
                     isActive
                       ? "bg-brand-500 text-white shadow-sm"
                       : "text-text-secondary hover:bg-bg-tertiary hover:text-text-primary"
@@ -73,23 +84,38 @@ export default function FinanceiroConsolidado() {
           </div>
         </div>
 
-        {/* Line 2: Desktop Period Filter */}
-        <div className="hidden md:flex items-center w-full">
-          <PeriodFilter excludePeriods={['yesterday', 'lastMonth', 'last12m']} />
+        {/* Line 2: Desktop Period Filter + Caixa Filter */}
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 pt-3 border-t border-divider">
+          <div className="flex-1 min-w-0 flex items-center overflow-x-auto pb-1 md:pb-0">
+            <PeriodFilter excludePeriods={['yesterday']} />
+          </div>
+
+          <div className="flex items-center gap-2 bg-bg-secondary/80 rounded-xl border border-divider px-3 py-1.5 shadow-xs shrink-0">
+            <Filter size={15} className="text-brand-500" />
+            <span className="text-xs font-bold text-text-secondary whitespace-nowrap">Caixa:</span>
+            <select
+              value={selectedCaixa}
+              onChange={(e) => setSelectedCaixa(e.target.value)}
+              className="bg-transparent border-none text-xs sm:text-sm font-bold text-text-primary focus:ring-0 cursor-pointer pr-6"
+              aria-label="Selecionar Caixa"
+            >
+              <option value="todos">Todos os Caixas ({caixas.length})</option>
+              {caixas.map((c: any) => (
+                <option key={c.id} value={c.id}>{c.nome}</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
       {/* Mobile Bottom Sheet Filter Modal */}
       {showMobileFilters && (
         <div className="fixed inset-0 z-50 flex items-end justify-center select-none animate-in fade-in duration-200">
-          {/* Backdrop */}
           <div
             className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity duration-300"
             onClick={() => setShowMobileFilters(false)}
           />
-          {/* Bottom Sheet Drawer */}
           <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-t-3xl p-6 shadow-2xl z-10 animate-in slide-in-from-bottom duration-300 max-h-[85vh] overflow-y-auto flex flex-col pb-8">
-            {/* Handle bar */}
             <div className="w-12 h-1 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-5 shrink-0" />
 
             <div className="flex justify-between items-center mb-6 shrink-0">
@@ -109,7 +135,23 @@ export default function FinanceiroConsolidado() {
                 <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-2.5 pl-1">
                   Período
                 </span>
-                <PeriodFilter excludePeriods={['yesterday', 'lastMonth', 'last12m']} compact={true} />
+                <PeriodFilter excludePeriods={['yesterday']} compact={true} />
+              </div>
+
+              <div className="space-y-2">
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-2.5 pl-1">
+                  Caixa
+                </span>
+                <select
+                  value={selectedCaixa}
+                  onChange={(e) => setSelectedCaixa(e.target.value)}
+                  className="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 dark:text-white"
+                >
+                  <option value="todos">Todos os Caixas ({caixas.length})</option>
+                  {caixas.map((c: any) => (
+                    <option key={c.id} value={c.id}>{c.nome}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
@@ -170,3 +212,4 @@ export default function FinanceiroConsolidado() {
     </div>
   );
 }
+
