@@ -23,8 +23,14 @@ export default function ProfitabilityDashboard() {
   const { filter: globalFilter } = useOutletContext<{ filter: BiPeriodFilter }>();
 
   // Busca de Vendedores e Cidades do banco de dados para os filtros
-  const sellersQuery = useQuery<any>(['bi', 'sellers'], BIService.getSellers);
-  const citiesQuery = useQuery<any>(['bi', 'cities'], BIService.getCities);
+  const sellersQuery = useQuery<any>({
+    queryKey: ['bi', 'sellers'],
+    queryFn: BIService.getSellers
+  });
+  const citiesQuery = useQuery<any>({
+    queryKey: ['bi', 'cities'],
+    queryFn: BIService.getCities
+  });
 
   // Gera as datas de início/fim com base no mês/ano e tab acumulada
   const buildDateRange = (m: number, y: number, isAcumulado: boolean) => {

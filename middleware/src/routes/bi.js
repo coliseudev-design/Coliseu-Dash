@@ -125,10 +125,10 @@ router.get('/sales/executive-summary', async (req, res, next) => {
             SELECT 
                 COALESCE(SUM(v.valor_total - COALESCE(v.valor_desconto, 0)), 0) AS faturamento_total,
                 COUNT(DISTINCT v.id_firebird) AS total_pedidos,
-                (SELECT COALESCE(SUM(vi.quantidade * (CASE WHEN v2.valor_total < 0 THEN -1 ELSE 1 END)), 0) FROM dash_vendas_itens vi JOIN dash_vendas v2 ON v2.id_firebird = vi.venda_id_firebird AND v2.tenant_id = vi.tenant_id ${cidadeJoin.replace(/v\./g, 'v2.')} WHERE v2.tenant_id = $1 AND v2.data_hora_proc >= $2 AND v2.data_hora_proc <= $3 ${salesFilter.replace(/v\./g, 'v2.')} ${df.clause.replace(/v\./g, 'v2.')} ${vf.clause.replace(/v\./g, 'v2.')} ${cf.clause.replace(/v\./g, 'v2.')}) AS total_itens
+                (SELECT COALESCE(SUM(vi.quantidade * (CASE WHEN v2.valor_total < 0 THEN -1 ELSE 1 END)), 0) FROM dash_vendas_itens vi JOIN dash_vendas v2 ON v2.id_firebird = vi.venda_id_firebird AND v2.tenant_id = vi.tenant_id ${cidadeJoin.replace(/v\./g, 'v2.')} WHERE v2.tenant_id = $1 AND COALESCE(v2.data_hora_proc, v2.data_vencimento, v2.data_venda) >= $2 AND COALESCE(v2.data_hora_proc, v2.data_vencimento, v2.data_venda) <= $3 ${salesFilter.replace(/v\./g, 'v2.')} ${df.clause.replace(/v\./g, 'v2.')} ${vf.clause.replace(/v\./g, 'v2.')} ${cf.clause.replace(/v\./g, 'v2.')}) AS total_itens
             FROM dash_vendas v
             ${cidadeJoin}
-            WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3 
+            WHERE v.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3 
               ${salesFilter}
               ${df.clause}
               ${vf.clause}
@@ -139,10 +139,10 @@ router.get('/sales/executive-summary', async (req, res, next) => {
             SELECT 
                 COALESCE(SUM(v.valor_total - COALESCE(v.valor_desconto, 0)), 0) AS faturamento_total,
                 COUNT(DISTINCT v.id_firebird) AS total_pedidos,
-                (SELECT COALESCE(SUM(vi.quantidade * (CASE WHEN v2.valor_total < 0 THEN -1 ELSE 1 END)), 0) FROM dash_vendas_itens vi JOIN dash_vendas v2 ON v2.id_firebird = vi.venda_id_firebird AND v2.tenant_id = vi.tenant_id ${cidadeJoin.replace(/v\./g, 'v2.')} WHERE v2.tenant_id = $1 AND v2.data_hora_proc >= $2 AND v2.data_hora_proc <= $3 ${salesFilter.replace(/v\./g, 'v2.')} ${df.clause.replace(/v\./g, 'v2.')} ${vf.clause.replace(/v\./g, 'v2.')} ${cf.clause.replace(/v\./g, 'v2.')}) AS total_itens
+                (SELECT COALESCE(SUM(vi.quantidade * (CASE WHEN v2.valor_total < 0 THEN -1 ELSE 1 END)), 0) FROM dash_vendas_itens vi JOIN dash_vendas v2 ON v2.id_firebird = vi.venda_id_firebird AND v2.tenant_id = vi.tenant_id ${cidadeJoin.replace(/v\./g, 'v2.')} WHERE v2.tenant_id = $1 AND COALESCE(v2.data_hora_proc, v2.data_vencimento, v2.data_venda) >= $2 AND COALESCE(v2.data_hora_proc, v2.data_vencimento, v2.data_venda) <= $3 ${salesFilter.replace(/v\./g, 'v2.')} ${df.clause.replace(/v\./g, 'v2.')} ${vf.clause.replace(/v\./g, 'v2.')} ${cf.clause.replace(/v\./g, 'v2.')}) AS total_itens
             FROM dash_vendas v
             ${cidadeJoin}
-            WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3 
+            WHERE v.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3 
               ${salesFilter}
               ${df.clause}
               ${vf.clause}
@@ -155,7 +155,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
             FROM dash_vendas v
             LEFT JOIN dash_vendedores vend ON vend.id_firebird = v.vendedor_id_firebird AND vend.tenant_id = v.tenant_id
             ${cidadeJoin}
-            WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3 
+            WHERE v.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3 
               ${salesFilter}
               ${df.clause}
               ${vf.clause}
@@ -170,7 +170,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
                 SELECT v.id_firebird, v.tenant_id, v.valor_total
                 FROM dash_vendas v
                 ${cidadeJoin}
-                WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
+                WHERE v.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
                   AND v.processo IN (1, 2)
                   ${salesFilter}
                   ${df.clause}
@@ -211,7 +211,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
                 SELECT v.id_firebird, v.tenant_id, v.marca AS venda_marca, v.valor_total
                 FROM dash_vendas v
                 ${cidadeJoin}
-                WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
+                WHERE v.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
                   AND v.processo IN (1, 2)
                   ${salesFilter}
                   ${df.clause}
@@ -252,7 +252,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
                    SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) as vendas
             FROM dash_vendas v
             LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
-            WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3 
+            WHERE v.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3 
               ${salesFilter}
               ${df.clause}
               ${vf.clause}
@@ -267,7 +267,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
                 SELECT v.id_firebird, v.tenant_id, v.categoria AS venda_categoria, v.valor_total
                 FROM dash_vendas v
                 ${cidadeJoin}
-                WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
+                WHERE v.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
                   AND v.processo IN (1, 2)
                   ${salesFilter}
                   ${df.clause}
@@ -388,7 +388,7 @@ router.get('/sales/executive-summary', async (req, res, next) => {
                    ) as vendas
             FROM dash_vendas v
             LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
-            WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3 
+            WHERE v.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3 
               ${salesFilter}
               ${df.clause}
               ${vf.clause}
@@ -407,17 +407,17 @@ router.get('/sales/executive-summary', async (req, res, next) => {
         // --- 8. Trajetória da Receita (Evolução Diária) ---
         const { rows: trajectory } = await db.query(`
             SELECT 
-                TO_CHAR(v.data_hora_proc, 'YYYY-MM-DD') AS dia,
+                TO_CHAR(COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda), 'YYYY-MM-DD') AS dia,
                 SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) AS valor
             FROM dash_vendas v
             ${cidadeJoin}
-            WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
+            WHERE v.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
               ${salesFilter}
               ${df.clause}
               ${vf.clause}
               ${cf.clause}
-            GROUP BY DATE_TRUNC('day', v.data_hora_proc), TO_CHAR(v.data_hora_proc, 'YYYY-MM-DD')
-            ORDER BY DATE_TRUNC('day', v.data_hora_proc) ASC
+            GROUP BY DATE_TRUNC('day', COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda)), TO_CHAR(COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda), 'YYYY-MM-DD')
+            ORDER BY DATE_TRUNC('day', COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda)) ASC
         `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params, ...vf.params, ...cf.params]);
 
         const revenue_trajectory = trajectory.map(t => ({
@@ -491,7 +491,7 @@ router.get('/sales/commercial-kpis', async (req, res, next) => {
                 JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
                 LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
                 LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
-                WHERE vi.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3 
+                WHERE vi.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3 
                   ${salesFilter}
                   ${df.clause}
                   ${vf.clause}
@@ -505,7 +505,7 @@ router.get('/sales/commercial-kpis', async (req, res, next) => {
                 FROM dash_vendas_itens vi
                 JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
                 LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
-                WHERE vi.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3 
+                WHERE vi.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3 
                   ${salesFilter}
                   ${df.clause}
                   ${vf.clause}
@@ -525,7 +525,7 @@ router.get('/sales/commercial-kpis', async (req, res, next) => {
                 INNER JOIN dash_vendas_itens vi ON vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id
                 LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
                 LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
-                WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3 
+                WHERE v.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3 
                   ${salesFilter}
                   ${df.clause}
                   ${vf.clause}
@@ -540,7 +540,7 @@ router.get('/sales/commercial-kpis', async (req, res, next) => {
                     COALESCE(SUM(v.valor_total - COALESCE(v.valor_desconto, 0)), 0) as faturamento_total
                 FROM dash_vendas v
                 LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
-                WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3 
+                WHERE v.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3 
                   ${salesFilter}
                   ${df.clause}
                   ${vf.clause}
@@ -558,7 +558,7 @@ router.get('/sales/commercial-kpis', async (req, res, next) => {
                 INNER JOIN dash_vendas_itens vi ON vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id
                 LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
                 LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
-                WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
+                WHERE v.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
                   ${salesFilter}
                   ${df.clause}
                   ${vf.clause}
@@ -571,7 +571,7 @@ router.get('/sales/commercial-kpis', async (req, res, next) => {
                 SELECT COALESCE(SUM(v.valor_desconto), 0) AS descontos
                 FROM dash_vendas v
                 LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
-                WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
+                WHERE v.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
                   ${salesFilter}
                   ${df.clause}
                   ${vf.clause}
@@ -591,7 +591,7 @@ router.get('/sales/commercial-kpis', async (req, res, next) => {
                 LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
                 LEFT JOIN dash_vendedores vend ON vend.id_firebird = v.vendedor_id_firebird AND vend.tenant_id = v.tenant_id
                 LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
-                WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3 
+                WHERE v.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3 
                   ${salesFilter}
                   ${df.clause}
                   ${vf.clause}
@@ -609,7 +609,7 @@ router.get('/sales/commercial-kpis', async (req, res, next) => {
                 FROM dash_vendas v
                 LEFT JOIN dash_vendedores vend ON vend.id_firebird = v.vendedor_id_firebird AND vend.tenant_id = v.tenant_id
                 LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
-                WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3 
+                WHERE v.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3 
                   ${salesFilter}
                   ${df.clause}
                   ${vf.clause}
@@ -707,7 +707,7 @@ router.get('/sales/commercial-kpis', async (req, res, next) => {
                     v.numero_pedido as numero_nota,
                     c.nome as cliente,
                     vend.nome as vendedor,
-                    TO_CHAR(v.data_hora_proc, 'DD/MM/YYYY') as data,
+                    TO_CHAR(COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda), 'DD/MM/YYYY') as data,
                     v.valor_total - COALESCE(v.valor_desconto, 0) as valor,
                     v.status,
                     v.es,
@@ -715,7 +715,7 @@ router.get('/sales/commercial-kpis', async (req, res, next) => {
                 FROM dash_vendas v
                 LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
                 LEFT JOIN dash_vendedores vend ON vend.id_firebird = v.vendedor_id_firebird AND vend.tenant_id = v.tenant_id
-                WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
+                WHERE v.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
                   ${salesFilter}
                   ${df.clause}
                   ${vf.clause}
@@ -728,7 +728,7 @@ router.get('/sales/commercial-kpis', async (req, res, next) => {
                         ${gf.clause}
                         ${mf.clause}
                   )
-                ORDER BY v.data_hora_proc DESC, v.id_firebird DESC
+                ORDER BY COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) DESC, v.id_firebird DESC
             `;
         } else {
             recentQuery = `
@@ -737,7 +737,7 @@ router.get('/sales/commercial-kpis', async (req, res, next) => {
                     v.numero_pedido as numero_nota,
                     c.nome as cliente,
                     vend.nome as vendedor,
-                    TO_CHAR(v.data_hora_proc, 'DD/MM/YYYY') as data,
+                    TO_CHAR(COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda), 'DD/MM/YYYY') as data,
                     v.valor_total - COALESCE(v.valor_desconto, 0) as valor,
                     v.status,
                     v.es,
@@ -745,12 +745,12 @@ router.get('/sales/commercial-kpis', async (req, res, next) => {
                 FROM dash_vendas v
                 LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
                 LEFT JOIN dash_vendedores vend ON vend.id_firebird = v.vendedor_id_firebird AND vend.tenant_id = v.tenant_id
-                WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
+                WHERE v.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
                   ${salesFilter}
                   ${df.clause}
                   ${vf.clause}
                   ${cf.clause}
-                ORDER BY v.data_hora_proc DESC, v.id_firebird DESC
+                ORDER BY COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) DESC, v.id_firebird DESC
             `;
         }
         const { rows: recent } = await db.query(recentQuery, allParams);
@@ -797,10 +797,10 @@ router.get('/sales/sellers', async (req, res, next) => {
                 COUNT(v.id_firebird) as pedidos,
                 COALESCE(AVG(v.valor_total - COALESCE(v.valor_desconto, 0)), 0) as ticket_medio,
                 COALESCE(SUM(v.valor_total - COALESCE(v.valor_desconto, 0) - v.valor_custo), 0) as lucro,
-                MAX(v.data_hora_proc) as ultima_venda
+                MAX(COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda)) as ultima_venda
             FROM dash_vendas v
             JOIN dash_vendedores vend ON vend.id_firebird = v.vendedor_id_firebird AND vend.tenant_id = v.tenant_id
-            WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
+            WHERE v.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
               ${salesFilter}
               ${df.clause}
             GROUP BY vend.id_firebird, vend.nome
@@ -878,7 +878,7 @@ router.get('/sales/abc-analysis', async (req, res, next) => {
             ${deptoJoin}
             LEFT JOIN dash_vendas_itens vi ON vi.produto_id_firebird = p.id_firebird AND vi.tenant_id = p.tenant_id
             LEFT JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id 
-                AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3 ${salesFilter} ${df.clause}
+                AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3 ${salesFilter} ${df.clause}
             WHERE p.tenant_id = $1 AND p.ativo = true
             GROUP BY p.id_firebird, p.codigo, p.nome, p.marca, p.categoria, ${estoqueExpr}, p.custo, p.preco
             ORDER BY faturamento_historico DESC, p.nome ASC
@@ -1224,7 +1224,7 @@ router.get('/customer/analytics', async (req, res, next) => {
         const { rows: atv } = await db.query(`
             SELECT COUNT(DISTINCT v.cliente_id_firebird) AS ativos
             FROM dash_vendas v
-            WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3 
+            WHERE v.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3 
               ${salesFilter}
               ${df.clause}
         `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
@@ -1242,16 +1242,16 @@ router.get('/customer/analytics', async (req, res, next) => {
 
         // Top 50 clientes em risco (compraram antes do inicio, mas nao no periodo atual)
         const { rows: risco } = await db.query(`
-            SELECT c.id_firebird, c.nome, MAX(v.data_hora_proc) as ultima_compra, SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) as LTV
+            SELECT c.id_firebird, c.nome, MAX(COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda)) as ultima_compra, SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) as LTV
             FROM dash_clientes c
             JOIN dash_vendas v ON v.cliente_id_firebird = c.id_firebird AND v.tenant_id = c.tenant_id
-            WHERE c.tenant_id = $1 AND v.data_hora_proc < $2 AND c.ativo = true
+            WHERE c.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) < $2 AND c.ativo = true
               AND (c.tipo IS NULL OR UPPER(TRIM(c.tipo)) NOT IN ('FORNECEDOR', 'FORNECEDORES', 'FORNEC'))
               AND EXISTS (SELECT 1 FROM dash_financeiro fx WHERE fx.cliente_id_firebird = c.id_firebird AND fx.tenant_id = c.tenant_id)
               ${salesFilter}
               AND c.id_firebird NOT IN (
                   SELECT DISTINCT cliente_id_firebird FROM dash_vendas v
-                  WHERE tenant_id = $1 AND COALESCE(data_vencimento, data_venda) >= $2 AND COALESCE(data_vencimento, data_venda) <= $3
+                  WHERE tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
                     ${salesFilter}
               )
               ${df.clause}

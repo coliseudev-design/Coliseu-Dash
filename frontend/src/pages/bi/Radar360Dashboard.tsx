@@ -1,5 +1,5 @@
 import { useOutletContext, useSearchParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { useBiPeriodQuery } from '../../hooks/useBiPeriodQuery';
 import { BIService } from '../../services/biApi';
 import { BiPeriodFilter } from '../../types/bi.types';
@@ -60,15 +60,16 @@ export default function Radar360Dashboard() {
     return () => clearTimeout(handler);
   }, [clientSearch]);
 
-  const { data: clientListData, isLoading: isClientListLoading } = useQuery(
-    ['bi', 'customer', 'list', debouncedSearch, clientPage],
-    () => BIService.getCustomerList({
+  const { data: clientListData, isLoading: isClientListLoading } = useQuery({
+    queryKey: ['bi', 'customer', 'list', debouncedSearch, clientPage],
+    queryFn: () => BIService.getCustomerList({
       search: debouncedSearch,
       limit: CLIENTS_PER_PAGE,
       offset: (clientPage - 1) * CLIENTS_PER_PAGE
     }),
-    { keepPreviousData: true, enabled: !customerId }
-  );
+    placeholderData: keepPreviousData,
+    enabled: !customerId
+  });
 
   const [selectedPeriod, setSelectedPeriod] = useState<'TODOS' | 'MES_ATUAL' | '6_MESES' | 'PERSONALIZADO'>('TODOS');
   const [dateFrom, setDateFrom] = useState('');
