@@ -30,7 +30,8 @@ export default function FinanceiroConsolidado() {
 
   const tabs = [
     { path: '/financeiro-consolidado', label: 'Gestão Financeira', shortLabel: 'Gestão', icon: Wallet },
-    { path: '/financeiro-consolidado/fluxo-caixa', label: 'Fluxo de Caixa', shortLabel: 'Fluxo', icon: LineChart }
+    { path: '/financeiro-consolidado/fluxo-caixa', label: 'Fluxo de Caixa', shortLabel: 'Fluxo', icon: LineChart },
+    { path: '/financeiro-consolidado/titulos', label: 'Títulos & Contas', shortLabel: 'Títulos', icon: FileText }
   ];
 
   return (

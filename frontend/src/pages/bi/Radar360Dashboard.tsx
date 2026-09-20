@@ -295,20 +295,20 @@ export default function Radar360Dashboard() {
 
         {/* TABELA DE CLIENTES */}
         <div className="bg-bg-primary border border-divider shadow-card rounded-2xl overflow-hidden flex flex-col">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs whitespace-nowrap" aria-label="Lista de Clientes Radar 360">
+          <div className="overflow-x-auto w-full">
+            <table className="w-full min-w-[1240px] text-left text-xs whitespace-nowrap" aria-label="Lista de Clientes Radar 360">
               <thead>
                 <tr className="bg-bg-secondary/60 border-b border-divider text-[10px] text-text-secondary uppercase font-black tracking-wider">
-                  <th className="py-3 px-4 w-16">CÓD</th>
-                  <th className="py-3 px-4">CLIENTE / RAZÃO SOCIAL</th>
-                  <th className="py-3 px-4">CIDADE / UF</th>
-                  <th className="py-3 px-4">CNPJ / CPF</th>
-                  <th className="py-3 px-4">TELEFONES</th>
-                  <th className="py-3 px-4">E-MAIL</th>
-                  <th className="py-3 px-4 text-right">SALDO DEVEDOR</th>
-                  <th className="py-3 px-4 text-right">FATURAMENTO (LTV)</th>
-                  <th className="py-3 px-4 text-center">PEDIDOS</th>
-                  <th className="py-3 px-4 text-center w-28">AÇÃO</th>
+                  <th className="py-3.5 px-4 w-20 min-w-[80px]">CÓD</th>
+                  <th className="py-3.5 px-4 min-w-[280px]">CLIENTE / RAZÃO SOCIAL</th>
+                  <th className="py-3.5 px-4 min-w-[150px]">CIDADE / UF</th>
+                  <th className="py-3.5 px-4 min-w-[150px]">CNPJ / CPF</th>
+                  <th className="py-3.5 px-4 min-w-[160px]">TELEFONES</th>
+                  <th className="py-3.5 px-4 min-w-[260px]">E-MAIL</th>
+                  <th className="py-3.5 px-4 text-right min-w-[120px]">SALDO DEVEDOR</th>
+                  <th className="py-3.5 px-4 text-right min-w-[140px]">FATURAMENTO (LTV)</th>
+                  <th className="py-3.5 px-4 text-center min-w-[90px]">PEDIDOS</th>
+                  <th className="py-3.5 px-4 text-center min-w-[110px]">AÇÃO</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-divider/30 text-[11px]">
@@ -341,24 +341,24 @@ export default function Radar360Dashboard() {
                         className="hover:bg-bg-secondary/60 transition-colors cursor-pointer group"
                       >
                         {/* CÓDIGO (SEM O #) */}
-                        <td className="py-3.5 px-4">
+                        <td className="py-3.5 px-4 w-20 min-w-[80px]">
                           <span className="font-mono text-xs font-bold text-text-primary bg-bg-secondary border border-border px-2.5 py-1 rounded-lg">
                             {c.cod || c.id}
                           </span>
                         </td>
 
                         {/* NOME / RAZÃO SOCIAL (SEM O CÍRCULO DA LETRA) */}
-                        <td className="py-3.5 px-4">
-                          <div className="flex flex-col">
-                            <span className="font-extrabold text-text-primary uppercase truncate max-w-[320px] group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
+                        <td className="py-3.5 px-4 min-w-[280px]">
+                          <div className="flex flex-col" title={c.nome}>
+                            <span className="font-extrabold text-text-primary uppercase truncate max-w-[280px] group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
                               {c.nome}
                             </span>
                           </div>
                         </td>
 
                         {/* CIDADE / UF */}
-                        <td className="py-3.5 px-4 text-text-secondary">
-                          <div className="flex items-center gap-1.5">
+                        <td className="py-3.5 px-4 text-text-secondary min-w-[150px]">
+                          <div className="flex items-center gap-1.5" title={`${c.cidade || 'NÃO INFORMADA'} / ${c.estado || ''}`}>
                             <MapPin size={13} className="text-text-muted shrink-0" />
                             <span className="truncate max-w-[140px] uppercase font-semibold">
                               {c.cidade || 'NÃO INFORMADA'}{c.estado ? ` / ${c.estado}` : ''}
@@ -367,12 +367,12 @@ export default function Radar360Dashboard() {
                         </td>
 
                         {/* CNPJ / CPF */}
-                        <td className="py-3.5 px-4 font-mono text-text-secondary font-medium">
+                        <td className="py-3.5 px-4 font-mono text-text-secondary font-medium min-w-[150px]">
                           {c.documento || c.cnpj || '-'}
                         </td>
 
                         {/* TELEFONES COM VALIDAÇÃO WHATSAPP */}
-                        <td className="py-3.5 px-4">
+                        <td className="py-3.5 px-4 min-w-[160px]">
                           {phoneInfo.isWhatsApp && phoneInfo.waLink ? (
                             <a
                               href={phoneInfo.waLink}
@@ -394,15 +394,15 @@ export default function Radar360Dashboard() {
                         </td>
 
                         {/* E-MAIL */}
-                        <td className="py-3.5 px-4 text-text-secondary">
-                          <div className="flex items-center gap-1.5 lowercase font-medium">
-                            <Mail size={12} className="text-text-muted shrink-0" />
-                            <span className="truncate max-w-[180px]">{c.email || '-'}</span>
+                        <td className="py-3.5 px-4 text-text-secondary min-w-[260px]">
+                          <div className="flex items-center gap-1.5 lowercase font-medium" title={c.email || ''}>
+                            <Mail size={13} className="text-text-muted shrink-0" />
+                            <span className="truncate max-w-[240px] select-all font-mono text-[11px]">{c.email || '-'}</span>
                           </div>
                         </td>
 
                         {/* SALDO DEVEDOR */}
-                        <td className="py-3.5 px-4 text-right font-mono">
+                        <td className="py-3.5 px-4 text-right font-mono min-w-[120px]">
                           {(c.saldo_devedor || 0) > 0 ? (
                             <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 font-bold text-[11px]">
                               {formatCurrency(c.saldo_devedor)}
@@ -415,19 +415,19 @@ export default function Radar360Dashboard() {
                         </td>
 
                         {/* LTV */}
-                        <td className="py-3.5 px-4 text-right font-black text-text-primary font-mono">
+                        <td className="py-3.5 px-4 text-right font-black text-text-primary font-mono min-w-[140px]">
                           {formatCurrency(c.ltv)}
                         </td>
 
                         {/* TOTAL PEDIDOS */}
-                        <td className="py-3.5 px-4 text-center">
+                        <td className="py-3.5 px-4 text-center min-w-[90px]">
                           <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-bg-secondary border border-border text-text-secondary font-mono">
                             {c.total_pedidos} ped.
                           </span>
                         </td>
 
                         {/* AÇÃO */}
-                        <td className="py-3.5 px-4 text-center">
+                        <td className="py-3.5 px-4 text-center min-w-[110px]">
                           <button
                             type="button"
                             onClick={(e) => {

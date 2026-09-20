@@ -204,6 +204,257 @@ router.get('/overview', async (req, res, next) => {
     }
 });
 
+// GET /api/estatisticas/visao-estrategica
+router.get('/visao-estrategica', async (req, res, next) => {
+    try {
+        const tenantId = req.tenant.id;
+        const period = req.query.period || 'currentMonth';
+        const { start_date, end_date } = req.query;
+        const deptoId = req.query.depto_id;
+        const vendedorId = req.query.vendedor_id;
+        const marca = req.query.marca;
+        const compareMode = req.query.compare_mode || 'ano_acumulado'; // 'mes_anterior' | 'mesmo_mes_ano_ant' | 'ano_acumulado'
+
+        const store = db.dbContext.getStore();
+        const tzOffset = store ? store.tzOffset : -180;
+        const anchorDate = new Date(Date.now() + (tzOffset * 60 * 1000));
+
+        const { start, end } = getPeriodRange(period, start_date, end_date, anchorDate);
+        const endDateObj = new Date(end);
+        const startDateObj = new Date(start);
+
+        const currentYear = endDateObj.getUTCFullYear();
+        const prevYear = currentYear - 1;
+
+        // Filtro de departamento e vendedor
+        const df = buildDeptoFilter(deptoId, 4, 'v');
+        const vf = buildVendedorFilter(vendedorId, 4 + df.params.length, 'v', req.user?.allowedSellers);
+
+        // Filtro de marca opcional
+        let marcaClause = '';
+        let marcaParams = [];
+        if (marca && marca !== 'todas' && marca !== 'all' && marca !== 'TODAS') {
+            const nextIdx = 4 + df.params.length + vf.params.length;
+            marcaClause = ` AND EXISTS (
+                SELECT 1 FROM dash_vendas_itens vi2 
+                LEFT JOIN dash_produtos p2 ON p2.id_firebird = vi2.produto_id_firebird AND p2.tenant_id = vi2.tenant_id
+                WHERE vi2.venda_id_firebird = v.id_firebird AND vi2.tenant_id = v.tenant_id
+                  AND UPPER(TRIM(COALESCE(vi2.marca, p2.marca, ''))) = UPPER(TRIM($${nextIdx}))
+            )`;
+            marcaParams.push(marca);
+        }
+
+        const allExtraParams = [...df.params, ...vf.params, ...marcaParams];
+        const salesFilter = cfopUtil.getSalesFilterClause('v');
+
+        // Ranges para os comparativos
+        // 1. Mês Anterior (período anterior de mesmo tamanho ou mês anterior)
+        const diffTime = Math.abs(endDateObj.getTime() - startDateObj.getTime());
+        const prevEndObj = new Date(startDateObj.getTime() - 1);
+        const prevStartObj = new Date(prevEndObj.getTime() - diffTime);
+        const prevStartStr = require('../utils/period').toSafeSqlString(prevStartObj);
+        const prevEndStr = require('../utils/period').toSafeSqlString(prevEndObj);
+
+        // 2. Mesmo Período Ano Anterior (-1 ano)
+        const samePeriodPrevYearStartObj = new Date(startDateObj);
+        samePeriodPrevYearStartObj.setUTCFullYear(currentYear - 1);
+        const samePeriodPrevYearEndObj = new Date(endDateObj);
+        samePeriodPrevYearEndObj.setUTCFullYear(currentYear - 1);
+        const samePeriodPrevYearStartStr = require('../utils/period').toSafeSqlString(samePeriodPrevYearStartObj);
+        const samePeriodPrevYearEndStr = require('../utils/period').toSafeSqlString(samePeriodPrevYearEndObj);
+
+        // 3. YTD Ano Atual (01/Jan até o corte)
+        const ytdCurrentStartStr = `${currentYear}-01-01 00:00:00`;
+        const ytdCurrentEndStr = require('../utils/period').toSafeSqlString(endDateObj);
+
+        // 4. YTD Ano Anterior (01/Jan até o mesmo corte no ano anterior)
+        const ytdPrevStartStr = `${prevYear}-01-01 00:00:00`;
+        const ytdPrevEndObj = new Date(endDateObj);
+        ytdPrevEndObj.setUTCFullYear(prevYear);
+        const ytdPrevEndStr = require('../utils/period').toSafeSqlString(ytdPrevEndObj);
+
+        // 5. Ano Anterior Fechado Completo (12 Meses)
+        const prevYearFullStartStr = `${prevYear}-01-01 00:00:00`;
+        const prevYearFullEndStr = `${prevYear}-12-31 23:59:59`;
+
+        const queryVendas = (startStr, endStr) => {
+            return db.query(`
+                SELECT 
+                    COALESCE(SUM(v.valor_total - COALESCE(v.valor_desconto, 0)), 0) AS total,
+                    COUNT(DISTINCT v.id_firebird) AS qtd_pedidos,
+                    COUNT(DISTINCT v.cliente_id_firebird) AS clientes_unicos
+                FROM dash_vendas v
+                WHERE v.tenant_id = $1 
+                  AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 
+                  AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3 
+                  ${salesFilter} ${df.clause} ${vf.clause} ${marcaClause}
+            `, [tenantId, startStr, endStr, ...allExtraParams]);
+        };
+
+        const [
+            vAtual,
+            vPrevPeriod,
+            vSameMonthPrevYear,
+            vYtdCurrent,
+            vYtdPrev,
+            vPrevYearFull,
+            topSellersRes,
+            topClientsRes,
+            topBrandsRes,
+            topCitiesRes,
+            totalClientsBaseRes
+        ] = await Promise.all([
+            queryVendas(start, end),
+            queryVendas(prevStartStr, prevEndStr),
+            queryVendas(samePeriodPrevYearStartStr, samePeriodPrevYearEndStr),
+            queryVendas(ytdCurrentStartStr, ytdCurrentEndStr),
+            queryVendas(ytdPrevStartStr, ytdPrevEndStr),
+            queryVendas(prevYearFullStartStr, prevYearFullEndStr),
+
+            // Top Vendedor
+            db.query(`
+                SELECT COALESCE(v.vendedor_nome, 'VENDEDOR') AS nome, SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) AS total
+                FROM dash_vendas v
+                WHERE v.tenant_id = $1 
+                  AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 
+                  AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3 
+                  ${salesFilter} ${df.clause} ${vf.clause} ${marcaClause}
+                GROUP BY COALESCE(v.vendedor_nome, 'VENDEDOR')
+                ORDER BY total DESC LIMIT 1
+            `, [tenantId, start, end, ...allExtraParams]),
+
+            // Top Cliente
+            db.query(`
+                SELECT COALESCE(c.nome, v.cliente_nome, 'CLIENTE') AS nome, SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) AS total
+                FROM dash_vendas v
+                LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
+                WHERE v.tenant_id = $1 
+                  AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 
+                  AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3 
+                  ${salesFilter} ${df.clause} ${vf.clause} ${marcaClause}
+                GROUP BY COALESCE(c.nome, v.cliente_nome, 'CLIENTE')
+                ORDER BY total DESC LIMIT 1
+            `, [tenantId, start, end, ...allExtraParams]),
+
+            // Top Marca
+            db.query(`
+                SELECT COALESCE(vi.marca, p.marca, 'S/ MARCA') AS nome, 
+                       SUM(vi.valor_total * (CASE WHEN v.valor_total < 0 THEN -1 ELSE 1 END)) AS total
+                FROM dash_vendas_itens vi
+                JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
+                LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
+                WHERE vi.tenant_id = $1 
+                  AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 
+                  AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3 
+                  ${salesFilter} ${df.clause} ${vf.clause}
+                GROUP BY 1 ORDER BY total DESC LIMIT 1
+            `, [tenantId, start, end, ...df.params, ...vf.params]),
+
+            // Top Cidade
+            db.query(`
+                SELECT COALESCE(NULLIF(TRIM(c.cidade), ''), 'NÃO INFORMADA') AS nome, 
+                       SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) AS total
+                FROM dash_vendas v
+                LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
+                WHERE v.tenant_id = $1 
+                  AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 
+                  AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3 
+                  ${salesFilter} ${df.clause} ${vf.clause} ${marcaClause}
+                GROUP BY 1 ORDER BY total DESC LIMIT 1
+            `, [tenantId, start, end, ...allExtraParams]),
+
+            // Total de clientes ativos na base
+            db.query(`SELECT COUNT(*) AS total FROM dash_clientes WHERE tenant_id = $1 AND ativo = true`, [tenantId])
+        ]);
+
+        const faturamentoAtual = parseFloat(vAtual.rows[0]?.total || 0);
+        const qtdPedidos = parseInt(vAtual.rows[0]?.qtd_pedidos || 0, 10);
+        const clientesAtivos = parseInt(vAtual.rows[0]?.clientes_unicos || 0, 10);
+        const totalClientesBase = parseInt(totalClientsBaseRes.rows[0]?.total || 0, 10);
+        const ticketMedio = qtdPedidos > 0 ? faturamentoAtual / qtdPedidos : 0;
+
+        const faturamentoMesAnterior = parseFloat(vPrevPeriod.rows[0]?.total || 0);
+        const faturamentoMesmoMesAnoAnt = parseFloat(vSameMonthPrevYear.rows[0]?.total || 0);
+        const ytdAtual = parseFloat(vYtdCurrent.rows[0]?.total || 0);
+        const ytdAnterior = parseFloat(vYtdPrev.rows[0]?.total || 0);
+        const totalAnoAnterior12m = parseFloat(vPrevYearFull.rows[0]?.total || 0);
+
+        // Crescimentos
+        const crescMesAnterior = faturamentoMesAnterior > 0 ? ((faturamentoAtual - faturamentoMesAnterior) / faturamentoMesAnterior) * 100 : 0;
+        const crescMesmoMesAnoAnt = faturamentoMesmoMesAnoAnt > 0 ? ((faturamentoAtual - faturamentoMesmoMesAnoAnt) / faturamentoMesmoMesAnoAnt) * 100 : 0;
+        const crescYtd = ytdAnterior > 0 ? ((ytdAtual - ytdAnterior) / ytdAnterior) * 100 : 0;
+
+        // Superação ano fechado
+        const superacaoValor = ytdAtual - totalAnoAnterior12m;
+        const superacaoPct = totalAnoAnterior12m > 0 ? (ytdAtual / totalAnoAnterior12m) * 100 : 0;
+
+        // Highlights com share percentual
+        const melhorVendedor = topSellersRes.rows[0] ? {
+            nome: topSellersRes.rows[0].nome,
+            total: parseFloat(topSellersRes.rows[0].total),
+            pct_share: faturamentoAtual > 0 ? (parseFloat(topSellersRes.rows[0].total) / faturamentoAtual) * 100 : 0
+        } : { nome: 'N/A', total: 0, pct_share: 0 };
+
+        const melhorCliente = topClientsRes.rows[0] ? {
+            nome: topClientsRes.rows[0].nome,
+            total: parseFloat(topClientsRes.rows[0].total),
+            pct_share: faturamentoAtual > 0 ? (parseFloat(topClientsRes.rows[0].total) / faturamentoAtual) * 100 : 0
+        } : { nome: 'N/A', total: 0, pct_share: 0 };
+
+        const marcaMaisVendida = topBrandsRes.rows[0] ? {
+            nome: topBrandsRes.rows[0].nome,
+            total: parseFloat(topBrandsRes.rows[0].total),
+            pct_share: faturamentoAtual > 0 ? (parseFloat(topBrandsRes.rows[0].total) / faturamentoAtual) * 100 : 0
+        } : { nome: 'N/A', total: 0, pct_share: 0 };
+
+        const cidadeDestaque = topCitiesRes.rows[0] ? {
+            nome: topCitiesRes.rows[0].nome,
+            total: parseFloat(topCitiesRes.rows[0].total),
+            pct_share: faturamentoAtual > 0 ? (parseFloat(topCitiesRes.rows[0].total) / faturamentoAtual) * 100 : 0
+        } : { nome: 'N/A', total: 0, pct_share: 0 };
+
+        // Taxa de recompra estimada
+        const taxaRecompra = totalClientesBase > 0 ? (clientesAtivos / totalClientesBase) * 100 : 0;
+
+        const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+        const currentMonthName = months[endDateObj.getUTCMonth()];
+        const prevMonthName = months[(endDateObj.getUTCMonth() + 11) % 12];
+
+        res.json({
+            success: true,
+            years: { current: currentYear, prev: prevYear },
+            periodo_atual_label: `${currentMonthName} / ${currentYear}`,
+            periodo_anterior_label: `${prevMonthName} / ${currentYear}`,
+            periodo_mesmo_mes_ano_ant_label: `${currentMonthName} / ${prevYear}`,
+            corte_label_atual: `01/Jan até ${currentMonthName} / ${currentYear}`,
+            corte_label_anterior: `01/Jan a corte de ${prevYear}`,
+            faturamento_atual: faturamentoAtual,
+            faturamento_mes_anterior: faturamentoMesAnterior,
+            cresc_mes_anterior: crescMesAnterior,
+            faturamento_mesmo_mes_ano_ant: faturamentoMesmoMesAnoAnt,
+            cresc_mesmo_mes_ano_ant: crescMesmoMesAnoAnt,
+            ytd_atual: ytdAtual,
+            ytd_anterior: ytdAnterior,
+            cresc_ytd: crescYtd,
+            total_ano_anterior_12m: totalAnoAnterior12m,
+            superacao_valor: superacaoValor,
+            superacao_pct: superacaoPct,
+            qtd_pedidos: qtdPedidos,
+            ticket_medio: ticketMedio,
+            taxa_recompra: taxaRecompra,
+            clientes_com_compra: clientesAtivos,
+            total_clientes_base: totalClientesBase,
+            highlights: {
+                melhor_vendedor: melhorVendedor,
+                melhor_cliente: melhorCliente,
+                marca_mais_vendida: marcaMaisVendida,
+                cidade_destaque: cidadeDestaque
+            }
+        });
+    } catch (err) {
+        next(err);
+    }
+});
 
 // GET /api/estatisticas/kpis
 router.get('/kpis', async (req, res, next) => {
