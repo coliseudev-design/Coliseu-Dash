@@ -45,7 +45,7 @@ const MENU_GROUPS = [
     color: '#EC4899',
     items: [
       { to: '/bi/customer-analytics', label: 'Visão Geral da Carteira', icon: UsersRound, id: 'bi_customer_analytics', color: '#14B8A6', iconClass: 'icon-clientes' },
-      { to: '/bi/customer', label: 'Customer 360', icon: Radar, id: 'bi_customer', color: '#EC4899', iconClass: 'icon-clientes' },
+      { to: '/bi/customer', label: 'Cliente 360', icon: Radar, id: 'bi_customer', color: '#EC4899', iconClass: 'icon-clientes' },
     ]
   },
   {

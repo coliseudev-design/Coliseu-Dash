@@ -2356,8 +2356,8 @@ router.get('/supplier/analytics', async (req, res, next) => {
             WITH ip AS (
                 SELECT 
                     COALESCE(vi.produto, p.nome, 'S/ NOME') as nome,
-                    COALESCE(NULLIF(TRIM(p.unidade), ''), 'UN') as emb,
-                    COALESCE(NULLIF(TRIM(p.apresentacao), ''), NULLIF(TRIM(p.referencia), ''), '-') as apres,
+                    'UN' as emb,
+                    COALESCE(NULLIF(TRIM(p.referencia), ''), NULLIF(TRIM(p.codigo_fabrica), ''), '-') as apres,
                     vi.quantidade,
                     vi.valor_total * (1 - COALESCE(vi.desconto_item, 0) / 100.0) AS valor_real
                 FROM dash_vendas_itens vi
@@ -2528,7 +2528,7 @@ router.get('/supplier/analytics', async (req, res, next) => {
             SELECT 
                 COALESCE(NULLIF(p.referencia, ''), NULLIF(p.codigo_fabrica, ''), p.id_firebird::text, NULLIF(p.codigo, '')) as cod,
                 p.nome as desc,
-                COALESCE(NULLIF(TRIM(p.unidade), ''), 'UN') as un,
+                'UN' as un,
                 COALESCE(p.marca, 'S/ MARCA') as marca,
                 p.estoque,
                 p.custo,

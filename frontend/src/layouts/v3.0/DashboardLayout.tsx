@@ -17,7 +17,7 @@ const ROUTE_CONFIGS: Record<string, { label: string; icon: React.ElementType; co
   '/bi/supplier': { label: 'PERFORMANCE DE PARCEIROS', icon: Truck, color: '#F59E0B' },
   '/bi/abc': { label: 'DINÂMICA DE INVENTÁRIO', icon: Package, color: '#06B6D4' },
   '/bi/finance': { label: 'GESTÃO E PROJEÇÃO DE CAIXA', icon: Wallet, color: '#22C55E' },
-  '/bi/customer': { label: 'CUSTOMER 360', icon: Users, color: '#EC4899' },
+  '/bi/customer': { label: 'CLIENTE 360', icon: Users, color: '#EC4899' },
   '/bi/comparative': { label: 'ANÁLISE DE RENTABILIDADE', icon: DollarSign, color: '#84CC16' },
   '/bi/customer-analytics': { label: 'VISÃO GERAL DA CARTEIRA', icon: Users, color: '#14B8A6' },
   '/bi/goals': { label: 'ANÁLISE DE METAS', icon: Trophy, color: '#EAB308' },

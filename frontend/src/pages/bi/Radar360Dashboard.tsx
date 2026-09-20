@@ -185,112 +185,112 @@ export default function Radar360Dashboard() {
     const availableCities = clientListData?.available_cities || [];
 
     return (
-      <div aria-label="Radar 360 Dashboard Inicial" className="space-y-5 animate-in fade-in duration-300 relative min-h-[85vh] pb-12">
+      <div aria-label="Cliente 360 Dashboard Inicial" className="space-y-3 animate-in fade-in duration-300 relative min-h-[85vh] pb-8">
         {/* Background gradients for Glassmorphism effect */}
         <div className="fixed inset-0 pointer-events-none z-[-1] overflow-hidden">
           <div className="absolute top-[10%] left-[10%] w-[35%] h-[35%] rounded-full bg-brand-500/5 blur-[120px]"></div>
           <div className="absolute bottom-[15%] right-[10%] w-[40%] h-[40%] rounded-full bg-cyan-500/5 blur-[150px]"></div>
         </div>
 
-        {/* CABEÇALHO & RESUMO */}
-        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <h1 className="text-2xl font-black tracking-tight text-text-primary flex items-center gap-2.5">
-              <span className="text-brand-500">⚡</span> Radar 360 — Carteira de Clientes
-            </h1>
-            <p className="text-xs text-text-secondary font-medium">
-              Selecione um cliente para abrir a Ficha Antecipatória com DNA de compras e inteligência comercial.
-            </p>
-          </div>
+        {/* CABEÇALHO & FILTROS INTEGRADOS (COMPACTO E ULTRA-MODERNO) */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-4 space-y-3">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div className="space-y-0.5">
+              <h1 className="text-xl font-black tracking-tight text-text-primary flex items-center gap-2">
+                <span className="text-brand-500">⚡</span> Cliente 360 — Carteira de Clientes
+              </h1>
+              <p className="text-[11px] text-text-secondary font-medium">
+                Selecione um cliente para abrir a Ficha Antecipatória com DNA de compras e inteligência comercial.
+              </p>
+            </div>
 
-          <div className="flex items-center gap-3">
-            <div className="px-3.5 py-1.5 bg-bg-secondary border border-border rounded-xl text-xs font-bold text-text-secondary flex items-center gap-2 shadow-sm">
-              <Users size={15} className="text-brand-500" />
-              <span><strong className="text-text-primary font-mono">{formatNum(totalClients)}</strong> clientes filtrados</span>
+            <div className="flex items-center gap-2 shrink-0">
+              <div className="px-3 py-1 bg-bg-secondary border border-border rounded-xl text-xs font-bold text-text-secondary flex items-center gap-2 shadow-sm">
+                <Users size={14} className="text-brand-500" />
+                <span><strong className="text-text-primary font-mono">{formatNum(totalClients)}</strong> clientes filtrados</span>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* BARRA DE FILTROS AVANÇADOS */}
-        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-4 flex flex-col lg:flex-row items-stretch lg:items-center gap-3">
-          
-          {/* BUSCA TEXTUAL */}
-          <div className="relative flex-1">
-            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
-            <input
-              type="text"
-              value={clientSearch}
-              onChange={(e) => setClientSearch(e.target.value)}
-              placeholder="Buscar por Código, Razão Social, CNPJ/CPF, Cidade ou E-mail..."
-              className="w-full pl-10 pr-10 py-2.5 bg-bg-secondary border border-border rounded-xl text-xs font-semibold text-text-primary placeholder:text-text-muted outline-none focus:ring-2 focus:ring-brand-500 transition-all shadow-sm"
-            />
-            {clientSearch && (
-              <button
-                onClick={() => setClientSearch('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary p-1"
+          {/* BARRA DE FILTROS */}
+          <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-2.5 pt-2 border-t border-divider/40">
+            {/* BUSCA TEXTUAL */}
+            <div className="relative flex-1">
+              <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+              <input
+                type="text"
+                value={clientSearch}
+                onChange={(e) => setClientSearch(e.target.value)}
+                placeholder="Buscar por Código, Razão Social, CNPJ/CPF, Cidade ou E-mail..."
+                className="w-full pl-9 pr-8 py-2 bg-bg-secondary border border-border rounded-xl text-xs font-semibold text-text-primary placeholder:text-text-muted outline-none focus:ring-2 focus:ring-brand-500 transition-all shadow-sm"
+              />
+              {clientSearch && (
+                <button
+                  onClick={() => setClientSearch('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary p-1"
+                >
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+
+            {/* FILTRO POR CIDADE */}
+            <div className="relative min-w-[180px]">
+              <select
+                value={selectedCity}
+                onChange={(e) => {
+                  setSelectedCity(e.target.value);
+                  setClientPage(1);
+                }}
+                className="appearance-none w-full h-[36px] pl-3 pr-8 bg-bg-secondary border border-border rounded-xl text-xs font-bold text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all cursor-pointer shadow-sm uppercase"
               >
-                <X size={14} />
-              </button>
-            )}
-          </div>
+                <option value="todas">📍 Todas as Cidades</option>
+                {availableCities.map((cidade) => (
+                  <option key={cidade} value={cidade}>📍 {cidade}</option>
+                ))}
+              </select>
+              <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+            </div>
 
-          {/* FILTRO POR CIDADE */}
-          <div className="relative min-w-[200px]">
-            <select
-              value={selectedCity}
-              onChange={(e) => {
-                setSelectedCity(e.target.value);
-                setClientPage(1);
-              }}
-              className="appearance-none w-full h-[40px] pl-3.5 pr-9 bg-bg-secondary border border-border rounded-xl text-xs font-bold text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all cursor-pointer shadow-sm uppercase"
-            >
-              <option value="todas">📍 Todas as Cidades</option>
-              {availableCities.map((cidade) => (
-                <option key={cidade} value={cidade}>📍 {cidade}</option>
-              ))}
-            </select>
-            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
-          </div>
+            {/* FILTRO POR SALDO */}
+            <div className="relative min-w-[170px]">
+              <select
+                value={saldoFilter}
+                onChange={(e) => {
+                  setSaldoFilter(e.target.value as any);
+                  setClientPage(1);
+                }}
+                className="appearance-none w-full h-[36px] pl-3 pr-8 bg-bg-secondary border border-border rounded-xl text-xs font-bold text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all cursor-pointer shadow-sm"
+              >
+                <option value="todos">💳 Todos os Saldos</option>
+                <option value="com_saldo">🔴 Com Saldo Devedor</option>
+                <option value="sem_saldo">🟢 Em Dia / Sem Saldo</option>
+              </select>
+              <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+            </div>
 
-          {/* FILTRO POR SALDO */}
-          <div className="relative min-w-[180px]">
-            <select
-              value={saldoFilter}
-              onChange={(e) => {
-                setSaldoFilter(e.target.value as any);
-                setClientPage(1);
-              }}
-              className="appearance-none w-full h-[40px] pl-3.5 pr-9 bg-bg-secondary border border-border rounded-xl text-xs font-bold text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all cursor-pointer shadow-sm"
-            >
-              <option value="todos">💳 Todos os Saldos</option>
-              <option value="com_saldo">🔴 Com Saldo Devedor</option>
-              <option value="sem_saldo">🟢 Em Dia / Sem Saldo</option>
-            </select>
-            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+            {/* ORDENAÇÃO */}
+            <div className="relative min-w-[195px]">
+              <select
+                value={sortOrder}
+                onChange={(e) => {
+                  setSortOrder(e.target.value);
+                  setClientPage(1);
+                }}
+                className="appearance-none w-full h-[36px] pl-3 pr-8 bg-bg-secondary border border-border rounded-xl text-xs font-bold text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all cursor-pointer shadow-sm"
+              >
+                <option value="nome_asc">🔤 Ordem Alfabética (A-Z)</option>
+                <option value="nome_desc">🔤 Ordem Alfabética (Z-A)</option>
+                <option value="cod_asc">🔢 Código (Crescente)</option>
+                <option value="cod_desc">🔢 Código (Decrescente)</option>
+                <option value="saldo_desc">💰 Maior Saldo Devedor</option>
+                <option value="ltv_desc">📈 Maior Faturamento (LTV)</option>
+                <option value="pedidos_desc">📦 Mais Pedidos</option>
+                <option value="recente">🕒 Última Compra (Recentes)</option>
+              </select>
+              <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+            </div>
           </div>
-
-          {/* ORDENAÇÃO */}
-          <div className="relative min-w-[210px]">
-            <select
-              value={sortOrder}
-              onChange={(e) => {
-                setSortOrder(e.target.value);
-                setClientPage(1);
-              }}
-              className="appearance-none w-full h-[40px] pl-3.5 pr-9 bg-bg-secondary border border-border rounded-xl text-xs font-bold text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all cursor-pointer shadow-sm"
-            >
-              <option value="nome_asc">🔤 Ordem Alfabética (A-Z)</option>
-              <option value="nome_desc">🔤 Ordem Alfabética (Z-A)</option>
-              <option value="cod_asc">🔢 Código (Crescente)</option>
-              <option value="cod_desc">🔢 Código (Decrescente)</option>
-              <option value="saldo_desc">💰 Maior Saldo Devedor</option>
-              <option value="ltv_desc">📈 Maior Faturamento (LTV)</option>
-              <option value="pedidos_desc">📦 Mais Pedidos</option>
-              <option value="recente">🕒 Última Compra (Recentes)</option>
-            </select>
-            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
-          </div>
-
         </div>
 
         {/* TABELA DE CLIENTES */}

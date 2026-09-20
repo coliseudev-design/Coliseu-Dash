@@ -143,74 +143,103 @@ export default function SupplierAnalyticsDashboard() {
   })();
 
   return (
-    <div aria-label="Fornecedores Dashboard" className="space-y-6 animate-in fade-in duration-300 pb-10">
+    <div aria-label="Fornecedores Dashboard" className="space-y-4 animate-in fade-in duration-300 pb-10">
       
-      {/* ORANGE BANNER */}
-      <div className="bg-gradient-to-r from-orange-500 to-amber-600 rounded-xl p-5 shadow-lg flex flex-col md:flex-row items-center justify-between gap-6 text-white relative overflow-hidden">
+      {/* HEADER BANNER */}
+      <div className="bg-gradient-to-r from-orange-500 to-amber-600 rounded-2xl p-5 shadow-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-white relative overflow-hidden">
         {/* Subtle background decoration */}
         <div className="absolute right-0 top-0 w-64 h-64 bg-white opacity-5 rounded-full blur-3xl transform translate-x-1/2 -translate-y-1/2"></div>
         
-        <div className="flex items-center gap-4 z-10">
-          <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl">
-            <Target size={32} className="text-white" />
+        <div className="flex items-center gap-3.5 z-10">
+          <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl shrink-0">
+            <Target size={28} className="text-white" />
           </div>
-          <div className="flex flex-col gap-1.5">
-            <div>
-              <h2 className="text-2xl font-extrabold tracking-tight">{selectedBrand || 'Todas as Marcas'}</h2>
-              <p className="text-orange-100 font-medium text-sm leading-none mt-0.5">Raio-X de Performance no Período</p>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl md:text-2xl font-black tracking-tight">{selectedBrand || 'Todas as Marcas'}</h2>
+              {selectedCity && (
+                <span className="px-2 py-0.5 rounded-md bg-white/20 text-white text-[11px] font-bold">
+                  📍 {selectedCity}
+                </span>
+              )}
             </div>
-            
-            {/* Filtros de Marca, Cidade e Botão Analisar em Linha */}
-            <div className="flex flex-wrap items-center gap-2 mt-1">
-              <select 
-                aria-label="Selecionar Marca"
-                className="bg-white/10 hover:bg-white/20 border border-white/25 rounded-lg px-2.5 py-1 text-xs text-white outline-none focus:border-white/50 max-w-[200px] cursor-pointer"
-                value={selectedBrand}
-                onChange={(e) => setSelectedBrand(e.target.value)}
-                style={{ colorScheme: 'dark' }}
-              >
-                <option value="" className="text-slate-900 bg-white">Todas as Marcas</option>
-                {availableBrands.map((b: string) => (
-                  <option key={b} value={b} className="text-slate-900 bg-white">{b}</option>
-                ))}
-              </select>
-
-              <select 
-                aria-label="Selecionar Cidade"
-                className="bg-white/10 hover:bg-white/20 border border-white/25 rounded-lg px-2.5 py-1 text-xs text-white outline-none focus:border-white/50 max-w-[180px] cursor-pointer"
-                value={selectedCity}
-                onChange={(e) => setSelectedCity(e.target.value)}
-                style={{ colorScheme: 'dark' }}
-              >
-                <option value="" className="text-slate-900 bg-white">Todas as Cidades</option>
-                {availableCities.map((c: string) => (
-                  <option key={c} value={c} className="text-slate-900 bg-white">{c}</option>
-                ))}
-              </select>
-
-              <button 
-                type="button"
-                onClick={() => refetch()}
-                className="bg-white text-orange-600 hover:bg-orange-50 font-black px-3.5 py-1 rounded-lg text-xs flex items-center gap-1.5 transition-all shadow-sm active:scale-[0.97] cursor-pointer border border-transparent"
-              >
-                <Search size={12} className="text-orange-600" /> Analisar
-              </button>
-            </div>
+            <p className="text-orange-100 font-medium text-xs mt-0.5">
+              Hub de Inteligência Comercial e Performance de Fornecedores
+            </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-4 z-10">
-          <div className="bg-white text-orange-600 rounded-xl px-4 py-3 flex items-center gap-3 shadow-md">
-            <div className="text-2xl font-extrabold bg-orange-100 rounded-full w-10 h-10 flex items-center justify-center">{currentRank}</div>
+        <div className="flex items-center gap-3 z-10 w-full md:w-auto justify-end">
+          <div className="bg-white text-orange-600 rounded-xl px-3.5 py-2 flex items-center gap-2.5 shadow-md">
+            <div className="text-lg font-black bg-orange-100 rounded-lg w-8 h-8 flex items-center justify-center">{currentRank}</div>
             <div className="flex flex-col">
-              <span className="text-[10px] font-black uppercase tracking-wider text-orange-400">Posição no Ranking</span>
-              <span className="text-xs font-bold text-orange-600">Período Selecionado</span>
+              <span className="text-[9px] font-black uppercase tracking-wider text-orange-400">Posição</span>
+              <span className="text-[11px] font-extrabold text-orange-600">Ranking</span>
             </div>
           </div>
-          <div className="bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl px-4 py-3 flex flex-col justify-center shadow-md">
-            <span className="text-[10px] font-black uppercase tracking-wider text-orange-100">Share da Empresa</span>
-            <span className="text-xl font-extrabold text-white">{currentShare}</span>
+          <div className="bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl px-3.5 py-2 flex flex-col justify-center shadow-md">
+            <span className="text-[9px] font-black uppercase tracking-wider text-orange-100">Share da Empresa</span>
+            <span className="text-base font-black text-white">{currentShare}</span>
           </div>
+        </div>
+      </div>
+
+      {/* BARRA DE FILTROS DEDICADA (SEM CORTAR) */}
+      <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-[280px]">
+          {/* SELETOR DE MARCA */}
+          <div className="relative flex-1 min-w-[200px] max-w-[320px]">
+            <select 
+              aria-label="Selecionar Marca"
+              className="appearance-none w-full h-[38px] pl-3.5 pr-8 bg-bg-secondary border border-border rounded-xl text-xs font-bold text-text-primary focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all cursor-pointer shadow-sm"
+              value={selectedBrand}
+              onChange={(e) => setSelectedBrand(e.target.value)}
+            >
+              <option value="">🏷️ Todas as Marcas ({availableBrands.length})</option>
+              {availableBrands.map((b: string) => (
+                <option key={b} value={b}>{b}</option>
+              ))}
+            </select>
+            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+          </div>
+
+          {/* SELETOR DE CIDADE */}
+          <div className="relative flex-1 min-w-[180px] max-w-[280px]">
+            <select 
+              aria-label="Selecionar Cidade"
+              className="appearance-none w-full h-[38px] pl-3.5 pr-8 bg-bg-secondary border border-border rounded-xl text-xs font-bold text-text-primary focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all cursor-pointer shadow-sm uppercase"
+              value={selectedCity}
+              onChange={(e) => setSelectedCity(e.target.value)}
+            >
+              <option value="">📍 Todas as Cidades</option>
+              {availableCities.map((c: string) => (
+                <option key={c} value={c}>📍 {c}</option>
+              ))}
+            </select>
+            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+          </div>
+
+          {/* BOTÃO ATUALIZAR / FILTRAR */}
+          <button 
+            type="button"
+            onClick={() => refetch()}
+            className="h-[38px] bg-orange-500 hover:bg-orange-600 text-white font-extrabold px-4 rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-sm active:scale-[0.97] cursor-pointer"
+          >
+            <Search size={13} className="text-white" /> Atualizar
+          </button>
+
+          {(selectedBrand || selectedCity) && (
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedBrand('');
+                setSelectedCity('');
+              }}
+              className="h-[38px] px-3 bg-bg-secondary hover:bg-bg-tertiary text-text-secondary border border-border rounded-xl text-xs font-bold flex items-center gap-1 transition-all cursor-pointer"
+            >
+              <X size={13} /> Limpar
+            </button>
+          )}
         </div>
       </div>
 
@@ -221,8 +250,8 @@ export default function SupplierAnalyticsDashboard() {
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={clsx(
-              "pb-3 text-sm font-bold uppercase tracking-wide transition-colors relative flex items-center gap-2",
-              activeTab === tab ? "text-brand-500" : "text-text-muted hover:text-text-primary"
+              "pb-3 text-sm font-bold uppercase tracking-wide transition-colors relative flex items-center gap-2 cursor-pointer",
+              activeTab === tab ? "text-orange-600 dark:text-orange-400" : "text-text-muted hover:text-text-primary"
             )}
           >
             {tab === 'Visão Geral de Vendas' && <Activity size={16} />}
@@ -231,24 +260,13 @@ export default function SupplierAnalyticsDashboard() {
             {tab === 'Catálogo' && <ShoppingCart size={16} />}
             {tab}
             {activeTab === tab && (
-              <div className="absolute bottom-0 left-0 w-full h-0.5 bg-brand-500 rounded-t-full"></div>
+              <div className="absolute bottom-0 left-0 w-full h-0.5 bg-orange-500 rounded-t-full"></div>
             )}
           </button>
         ))}
       </div>
 
       {activeTab === 'Visão Geral de Vendas' && (
-        !selectedBrand ? (
-          <div className="bg-bg-primary border border-border shadow-card rounded-xl p-12 text-center animate-in fade-in flex flex-col items-center justify-center">
-            <div className="w-16 h-16 bg-bg-secondary rounded-full flex items-center justify-center mb-4">
-              <Activity size={32} className="text-text-muted" />
-            </div>
-            <h3 className="text-xl font-bold text-text-primary mb-2">Selecione uma Marca</h3>
-            <p className="text-sm text-text-secondary max-w-md">
-              Para visualizar a <strong>Visão Geral de Vendas</strong>, escolha uma marca específica no filtro superior. Para ver o portfólio completo, acesse a guia "Ranking de Marcas".
-            </p>
-          </div>
-        ) : (
         <div className="space-y-6 animate-in fade-in duration-300">
           {/* PERFORMANCE MENSAL TABLE */}
           <div className="bg-bg-primary border border-border shadow-card rounded-xl overflow-hidden flex flex-col">
@@ -529,8 +547,7 @@ export default function SupplierAnalyticsDashboard() {
         </div>
       </div>
     </div>
-  )
-)}
+  )}
       {activeTab === 'Ranking de Marcas' && (
         <div className="space-y-6 animate-in fade-in duration-300">
           
