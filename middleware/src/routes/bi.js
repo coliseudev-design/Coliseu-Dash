@@ -1298,6 +1298,8 @@ router.get('/customer/list', async (req, res, next) => {
         const limit = Math.min(parseInt(req.query.limit, 10) || 50, 200);
         const offset = parseInt(req.query.offset, 10) || 0;
         const cidade = req.query.cidade;
+        const comSaldo = req.query.com_saldo;
+        const ordenacao = req.query.ordenacao || 'nome_asc';
 
         const salesFilter = cfopUtil.getSalesFilterClause('v');
 
@@ -1322,6 +1324,26 @@ router.get('/customer/list', async (req, res, next) => {
             bIdx++;
         }
 
+        if (comSaldo === 'true' || comSaldo === 'com_saldo' || comSaldo === 'com_saldo_devedor') {
+            mainWhere.push(`EXISTS (
+                SELECT 1 FROM dash_financeiro f 
+                WHERE f.cliente_id_firebird = c.id_firebird 
+                  AND f.tenant_id = c.tenant_id 
+                  AND f.tipo = 'RECEBER' 
+                  AND f.status_pagamento = 'ABERTO' 
+                  AND (f.valor - COALESCE(f.valor_pago, 0)) > 0.01
+            )`);
+        } else if (comSaldo === 'false' || comSaldo === 'sem_saldo' || comSaldo === 'em_dia') {
+            mainWhere.push(`NOT EXISTS (
+                SELECT 1 FROM dash_financeiro f 
+                WHERE f.cliente_id_firebird = c.id_firebird 
+                  AND f.tenant_id = c.tenant_id 
+                  AND f.tipo = 'RECEBER' 
+                  AND f.status_pagamento = 'ABERTO' 
+                  AND (f.valor - COALESCE(f.valor_pago, 0)) > 0.01
+            )`);
+        }
+
         // Total count
         const countQuery = `
             SELECT COUNT(DISTINCT c.id_firebird) as total
@@ -1331,58 +1353,160 @@ router.get('/customer/list', async (req, res, next) => {
         const { rows: countRows } = await db.query(countQuery, binds);
         const total = parseInt(countRows[0]?.total || 0, 10);
 
+        // Determinando ordenação SQL
+        let orderClause = 'ORDER BY c.nome ASC';
+        let outerOrderClause = 'ORDER BY mc.nome ASC';
+
+        if (ordenacao === 'nome_desc') {
+            orderClause = 'ORDER BY c.nome DESC';
+            outerOrderClause = 'ORDER BY mc.nome DESC';
+        } else if (ordenacao === 'cod_asc' || ordenacao === 'codigo_asc') {
+            orderClause = 'ORDER BY c.id_firebird ASC';
+            outerOrderClause = 'ORDER BY mc.cod ASC';
+        } else if (ordenacao === 'cod_desc' || ordenacao === 'codigo_desc') {
+            orderClause = 'ORDER BY c.id_firebird DESC';
+            outerOrderClause = 'ORDER BY mc.cod DESC';
+        } else if (ordenacao === 'saldo_desc') {
+            outerOrderClause = 'ORDER BY saldo_devedor DESC, mc.nome ASC';
+        } else if (ordenacao === 'ltv_desc') {
+            outerOrderClause = 'ORDER BY ltv DESC, mc.nome ASC';
+        } else if (ordenacao === 'pedidos_desc') {
+            outerOrderClause = 'ORDER BY total_pedidos DESC, mc.nome ASC';
+        } else if (ordenacao === 'recente' || ordenacao === 'ultima_compra_desc') {
+            outerOrderClause = 'ORDER BY ultima_compra DESC NULLS LAST, mc.nome ASC';
+        }
+
         // Fetch clients with aggregate stats
-        const clientsQuery = `
-            WITH matched_clientes AS (
-                SELECT 
-                    c.id_firebird as id,
-                    c.id_firebird as cod,
-                    c.nome,
-                    c.documento,
-                    c.cidade,
-                    c.estado,
-                    c.telefone,
-                    c.email,
-                    c.ativo,
-                    c.tenant_id
-                FROM dash_clientes c
-                WHERE ${mainWhere.join(' AND ')}
-                ORDER BY c.nome ASC
+        let clientsQuery = '';
+        if (['saldo_desc', 'ltv_desc', 'pedidos_desc', 'recente', 'ultima_compra_desc'].includes(ordenacao)) {
+            // Se ordenar por agregação, agregamos nos clientes correspondentes e paginamos fora
+            clientsQuery = `
+                WITH base_clientes AS (
+                    SELECT 
+                        c.id_firebird as id,
+                        c.id_firebird as cod,
+                        c.nome,
+                        c.documento,
+                        c.cidade,
+                        c.estado,
+                        c.telefone,
+                        c.email,
+                        c.ativo,
+                        c.tenant_id
+                    FROM dash_clientes c
+                    WHERE ${mainWhere.join(' AND ')}
+                ),
+                calculated AS (
+                    SELECT 
+                        mc.id,
+                        mc.cod,
+                        mc.nome,
+                        mc.documento,
+                        mc.cidade,
+                        mc.estado,
+                        mc.telefone,
+                        mc.email,
+                        mc.ativo,
+                        COALESCE((
+                            SELECT SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) 
+                            FROM dash_vendas v 
+                            WHERE v.cliente_id_firebird = mc.id AND v.tenant_id = mc.tenant_id
+                              ${salesFilter}
+                        ), 0) as ltv,
+                        COALESCE((
+                            SELECT SUM(f.valor - COALESCE(f.valor_pago, 0))
+                            FROM dash_financeiro f
+                            WHERE f.cliente_id_firebird = mc.id AND f.tenant_id = mc.tenant_id
+                              AND f.tipo = 'RECEBER' AND f.status_pagamento = 'ABERTO'
+                        ), 0) as saldo_devedor,
+                        (
+                            SELECT COUNT(DISTINCT v.id_firebird) 
+                            FROM dash_vendas v 
+                            WHERE v.cliente_id_firebird = mc.id AND v.tenant_id = mc.tenant_id
+                              ${salesFilter}
+                        ) as total_pedidos,
+                        (
+                            SELECT MAX(COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda)) 
+                            FROM dash_vendas v 
+                            WHERE v.cliente_id_firebird = mc.id AND v.tenant_id = mc.tenant_id
+                              ${salesFilter}
+                        ) as ultima_compra
+                    FROM base_clientes mc
+                )
+                SELECT * FROM calculated
+                ${outerOrderClause}
                 LIMIT $${bIdx} OFFSET $${bIdx + 1}
-            )
-            SELECT 
-                mc.id,
-                mc.cod,
-                mc.nome,
-                mc.documento,
-                mc.cidade,
-                mc.estado,
-                mc.telefone,
-                mc.email,
-                mc.ativo,
-                COALESCE((
-                    SELECT SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) 
-                    FROM dash_vendas v 
-                    WHERE v.cliente_id_firebird = mc.id AND v.tenant_id = mc.tenant_id
-                      ${salesFilter}
-                ), 0) as ltv,
-                (
-                    SELECT COUNT(DISTINCT v.id_firebird) 
-                    FROM dash_vendas v 
-                    WHERE v.cliente_id_firebird = mc.id AND v.tenant_id = mc.tenant_id
-                      ${salesFilter}
-                ) as total_pedidos,
-                (
-                    SELECT MAX(COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda)) 
-                    FROM dash_vendas v 
-                    WHERE v.cliente_id_firebird = mc.id AND v.tenant_id = mc.tenant_id
-                      ${salesFilter}
-                ) as ultima_compra
-            FROM matched_clientes mc
-            ORDER BY mc.nome ASC
-        `;
+            `;
+        } else {
+            // Ordenação padrão direto na CTE para máxima velocidade
+            clientsQuery = `
+                WITH matched_clientes AS (
+                    SELECT 
+                        c.id_firebird as id,
+                        c.id_firebird as cod,
+                        c.nome,
+                        c.documento,
+                        c.cidade,
+                        c.estado,
+                        c.telefone,
+                        c.email,
+                        c.ativo,
+                        c.tenant_id
+                    FROM dash_clientes c
+                    WHERE ${mainWhere.join(' AND ')}
+                    ${orderClause}
+                    LIMIT $${bIdx} OFFSET $${bIdx + 1}
+                )
+                SELECT 
+                    mc.id,
+                    mc.cod,
+                    mc.nome,
+                    mc.documento,
+                    mc.cidade,
+                    mc.estado,
+                    mc.telefone,
+                    mc.email,
+                    mc.ativo,
+                    COALESCE((
+                        SELECT SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) 
+                        FROM dash_vendas v 
+                        WHERE v.cliente_id_firebird = mc.id AND v.tenant_id = mc.tenant_id
+                          ${salesFilter}
+                    ), 0) as ltv,
+                    COALESCE((
+                        SELECT SUM(f.valor - COALESCE(f.valor_pago, 0))
+                        FROM dash_financeiro f
+                        WHERE f.cliente_id_firebird = mc.id AND f.tenant_id = mc.tenant_id
+                          AND f.tipo = 'RECEBER' AND f.status_pagamento = 'ABERTO'
+                    ), 0) as saldo_devedor,
+                    (
+                        SELECT COUNT(DISTINCT v.id_firebird) 
+                        FROM dash_vendas v 
+                        WHERE v.cliente_id_firebird = mc.id AND v.tenant_id = mc.tenant_id
+                          ${salesFilter}
+                    ) as total_pedidos,
+                    (
+                        SELECT MAX(COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda)) 
+                        FROM dash_vendas v 
+                        WHERE v.cliente_id_firebird = mc.id AND v.tenant_id = mc.tenant_id
+                          ${salesFilter}
+                    ) as ultima_compra
+                FROM matched_clientes mc
+                ${outerOrderClause}
+            `;
+        }
+
         binds.push(limit, offset);
         const { rows: clientRows } = await db.query(clientsQuery, binds);
+
+        // Busca lista de cidades disponíveis para o filtro
+        const { rows: cityRows } = await db.query(`
+            SELECT DISTINCT c.cidade 
+            FROM dash_clientes c 
+            WHERE c.tenant_id = $1 AND c.cidade IS NOT NULL AND TRIM(c.cidade) != ''
+            ORDER BY c.cidade ASC
+        `, [tenantId]);
+        const available_cities = cityRows.map(r => r.cidade);
 
         const data = clientRows.map(r => ({
             id: r.id,
@@ -1396,6 +1520,7 @@ router.get('/customer/list', async (req, res, next) => {
             email: r.email,
             status: r.ativo ? 'ATIVO' : 'INATIVO',
             ltv: parseFloat(r.ltv || 0),
+            saldo_devedor: parseFloat(r.saldo_devedor || 0),
             total_pedidos: parseInt(r.total_pedidos || 0, 10),
             ultima_compra: r.ultima_compra
         }));
@@ -1403,6 +1528,7 @@ router.get('/customer/list', async (req, res, next) => {
         res.json({
             data,
             total,
+            available_cities,
             limit,
             offset
         });

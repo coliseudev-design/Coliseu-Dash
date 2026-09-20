@@ -26,7 +26,12 @@ import {
   ShieldAlert, 
   ChevronRight,
   ChevronLeft,
-  X
+  ChevronDown,
+  X,
+  MessageCircle,
+  ArrowUpDown,
+  Filter,
+  Wallet
 } from 'lucide-react';
 import clsx from 'clsx';
 import {
@@ -37,6 +42,64 @@ import {
 // CommandCenter (Busca Preditiva Flutuante)
 import { CommandCenter } from '../../components/bi/Radar360/CommandCenter';
 
+// Helper para validar telefone e formatar WhatsApp
+function parsePhone(rawPhone?: string) {
+  if (!rawPhone) return { display: '-', isWhatsApp: false, waLink: '' };
+  
+  const digits = rawPhone.replace(/\D/g, '');
+  
+  if (digits.length < 8) {
+    const trimmed = rawPhone.trim();
+    if (!trimmed || trimmed === '()' || trimmed === '() -' || trimmed === '( ) - -' || trimmed === '-') {
+      return { display: '-', isWhatsApp: false, waLink: '' };
+    }
+    return { display: trimmed, isWhatsApp: false, waLink: '' };
+  }
+
+  // Formato celular brasileiro com DDD (11 dígitos): (XX) 9XXXX-XXXX
+  if (digits.length === 11) {
+    const ddd = digits.substring(0, 2);
+    const num = digits.substring(2);
+    return {
+      display: `(${ddd}) ${num.substring(0, 5)}-${num.substring(5)}`,
+      isWhatsApp: true,
+      waLink: `https://wa.me/55${digits}`
+    };
+  }
+
+  // Formato 10 dígitos: (XX) XXXX-XXXX (considera celular se iniciar por 9 ou 8)
+  if (digits.length === 10) {
+    const ddd = digits.substring(0, 2);
+    const num = digits.substring(2);
+    const isMobile = num.startsWith('9') || num.startsWith('8');
+    return {
+      display: `(${ddd}) ${num.substring(0, 4)}-${num.substring(4)}`,
+      isWhatsApp: isMobile,
+      waLink: isMobile ? `https://wa.me/55${digits}` : ''
+    };
+  }
+
+  // Formato internacional com 55
+  if (digits.startsWith('55') && (digits.length === 13 || digits.length === 12)) {
+    const national = digits.substring(2);
+    const ddd = national.substring(0, 2);
+    const num = national.substring(2);
+    const is11 = national.length === 11;
+    const isMobile = is11 || num.startsWith('9') || num.startsWith('8');
+    return {
+      display: `(${ddd}) ${is11 ? `${num.substring(0, 5)}-${num.substring(5)}` : `${num.substring(0, 4)}-${num.substring(4)}`}`,
+      isWhatsApp: isMobile,
+      waLink: isMobile ? `https://wa.me/${digits}` : ''
+    };
+  }
+
+  return {
+    display: rawPhone,
+    isWhatsApp: false,
+    waLink: ''
+  };
+}
+
 export default function Radar360Dashboard() {
   const { filter } = useOutletContext<{ filter: BiPeriodFilter }>();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -46,9 +109,12 @@ export default function Radar360Dashboard() {
     urlId ? parseInt(urlId, 10) : null
   );
 
-  // Client list state for initial screen
+  // Estados dos filtros da listagem de clientes
   const [clientSearch, setClientSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [selectedCity, setSelectedCity] = useState('todas');
+  const [saldoFilter, setSaldoFilter] = useState<'todos' | 'com_saldo' | 'sem_saldo'>('todos');
+  const [sortOrder, setSortOrder] = useState<string>('nome_asc');
   const [clientPage, setClientPage] = useState(1);
   const CLIENTS_PER_PAGE = 50;
 
@@ -61,9 +127,12 @@ export default function Radar360Dashboard() {
   }, [clientSearch]);
 
   const { data: clientListData, isLoading: isClientListLoading } = useQuery({
-    queryKey: ['bi', 'customer', 'list', debouncedSearch, clientPage],
+    queryKey: ['bi', 'customer', 'list', debouncedSearch, selectedCity, saldoFilter, sortOrder, clientPage],
     queryFn: () => BIService.getCustomerList({
       search: debouncedSearch,
+      cidade: selectedCity,
+      com_saldo: saldoFilter,
+      ordenacao: sortOrder,
       limit: CLIENTS_PER_PAGE,
       offset: (clientPage - 1) * CLIENTS_PER_PAGE
     }),
@@ -113,19 +182,20 @@ export default function Radar360Dashboard() {
     const totalClients = clientListData?.total || 0;
     const totalPages = Math.max(1, Math.ceil(totalClients / CLIENTS_PER_PAGE));
     const clients = clientListData?.data || [];
+    const availableCities = clientListData?.available_cities || [];
 
     return (
-      <div aria-label="Radar 360 Dashboard Inicial" className="space-y-6 animate-in fade-in duration-300 relative min-h-[85vh] pb-12">
+      <div aria-label="Radar 360 Dashboard Inicial" className="space-y-5 animate-in fade-in duration-300 relative min-h-[85vh] pb-12">
         {/* Background gradients for Glassmorphism effect */}
         <div className="fixed inset-0 pointer-events-none z-[-1] overflow-hidden">
           <div className="absolute top-[10%] left-[10%] w-[35%] h-[35%] rounded-full bg-brand-500/5 blur-[120px]"></div>
           <div className="absolute bottom-[15%] right-[10%] w-[40%] h-[40%] rounded-full bg-cyan-500/5 blur-[150px]"></div>
         </div>
 
-        {/* CABEÇALHO & BUSCA */}
+        {/* CABEÇALHO & RESUMO */}
         <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
-            <h1 className="text-2xl font-extrabold tracking-tight text-text-primary flex items-center gap-2.5">
+            <h1 className="text-2xl font-black tracking-tight text-text-primary flex items-center gap-2.5">
               <span className="text-brand-500">⚡</span> Radar 360 — Carteira de Clientes
             </h1>
             <p className="text-xs text-text-secondary font-medium">
@@ -134,23 +204,25 @@ export default function Radar360Dashboard() {
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="px-3.5 py-1.5 bg-bg-secondary border border-border rounded-xl text-xs font-bold text-text-secondary flex items-center gap-2">
-              <Users size={14} className="text-brand-500" />
-              <span><strong className="text-text-primary">{formatNum(totalClients)}</strong> clientes</span>
+            <div className="px-3.5 py-1.5 bg-bg-secondary border border-border rounded-xl text-xs font-bold text-text-secondary flex items-center gap-2 shadow-sm">
+              <Users size={15} className="text-brand-500" />
+              <span><strong className="text-text-primary font-mono">{formatNum(totalClients)}</strong> clientes filtrados</span>
             </div>
           </div>
         </div>
 
-        {/* BARRA DE PESQUISA RÁPIDA */}
-        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-4 flex flex-col sm:flex-row items-center gap-3">
-          <div className="relative flex-1 w-full">
+        {/* BARRA DE FILTROS AVANÇADOS */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-4 flex flex-col lg:flex-row items-stretch lg:items-center gap-3">
+          
+          {/* BUSCA TEXTUAL */}
+          <div className="relative flex-1">
             <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
             <input
               type="text"
               value={clientSearch}
               onChange={(e) => setClientSearch(e.target.value)}
-              placeholder="Buscar cliente por Código, Nome / Razão Social, CNPJ/CPF, Cidade ou E-mail..."
-              className="w-full pl-10 pr-10 py-2.5 bg-bg-secondary border border-border rounded-xl text-xs font-semibold text-text-primary placeholder:text-text-muted outline-none focus:ring-2 focus:ring-brand-500 transition-all"
+              placeholder="Buscar por Código, Razão Social, CNPJ/CPF, Cidade ou E-mail..."
+              className="w-full pl-10 pr-10 py-2.5 bg-bg-secondary border border-border rounded-xl text-xs font-semibold text-text-primary placeholder:text-text-muted outline-none focus:ring-2 focus:ring-brand-500 transition-all shadow-sm"
             />
             {clientSearch && (
               <button
@@ -161,125 +233,215 @@ export default function Radar360Dashboard() {
               </button>
             )}
           </div>
+
+          {/* FILTRO POR CIDADE */}
+          <div className="relative min-w-[200px]">
+            <select
+              value={selectedCity}
+              onChange={(e) => {
+                setSelectedCity(e.target.value);
+                setClientPage(1);
+              }}
+              className="appearance-none w-full h-[40px] pl-3.5 pr-9 bg-bg-secondary border border-border rounded-xl text-xs font-bold text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all cursor-pointer shadow-sm uppercase"
+            >
+              <option value="todas">📍 Todas as Cidades</option>
+              {availableCities.map((cidade) => (
+                <option key={cidade} value={cidade}>📍 {cidade}</option>
+              ))}
+            </select>
+            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+          </div>
+
+          {/* FILTRO POR SALDO */}
+          <div className="relative min-w-[180px]">
+            <select
+              value={saldoFilter}
+              onChange={(e) => {
+                setSaldoFilter(e.target.value as any);
+                setClientPage(1);
+              }}
+              className="appearance-none w-full h-[40px] pl-3.5 pr-9 bg-bg-secondary border border-border rounded-xl text-xs font-bold text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all cursor-pointer shadow-sm"
+            >
+              <option value="todos">💳 Todos os Saldos</option>
+              <option value="com_saldo">🔴 Com Saldo Devedor</option>
+              <option value="sem_saldo">🟢 Em Dia / Sem Saldo</option>
+            </select>
+            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+          </div>
+
+          {/* ORDENAÇÃO */}
+          <div className="relative min-w-[210px]">
+            <select
+              value={sortOrder}
+              onChange={(e) => {
+                setSortOrder(e.target.value);
+                setClientPage(1);
+              }}
+              className="appearance-none w-full h-[40px] pl-3.5 pr-9 bg-bg-secondary border border-border rounded-xl text-xs font-bold text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all cursor-pointer shadow-sm"
+            >
+              <option value="nome_asc">🔤 Ordem Alfabética (A-Z)</option>
+              <option value="nome_desc">🔤 Ordem Alfabética (Z-A)</option>
+              <option value="cod_asc">🔢 Código (Crescente)</option>
+              <option value="cod_desc">🔢 Código (Decrescente)</option>
+              <option value="saldo_desc">💰 Maior Saldo Devedor</option>
+              <option value="ltv_desc">📈 Maior Faturamento (LTV)</option>
+              <option value="pedidos_desc">📦 Mais Pedidos</option>
+              <option value="recente">🕒 Última Compra (Recentes)</option>
+            </select>
+            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+          </div>
+
         </div>
 
-        {/* TABELA DE CLIENTES EM ORDEM ALFABÉTICA */}
+        {/* TABELA DE CLIENTES */}
         <div className="bg-bg-primary border border-divider shadow-card rounded-2xl overflow-hidden flex flex-col">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs whitespace-nowrap" aria-label="Lista de Clientes Radar 360">
               <thead>
                 <tr className="bg-bg-secondary/60 border-b border-divider text-[10px] text-text-secondary uppercase font-black tracking-wider">
-                  <th className="py-3 px-3 w-16">CÓD</th>
-                  <th className="py-3 px-3">CLIENTE / RAZÃO SOCIAL</th>
-                  <th className="py-3 px-3">CIDADE / UF</th>
-                  <th className="py-3 px-3">CNPJ / CPF</th>
-                  <th className="py-3 px-3">TELEFONES</th>
-                  <th className="py-3 px-3">E-MAIL</th>
-                  <th className="py-3 px-3 text-right font-black">FATURAMENTO (LTV)</th>
-                  <th className="py-3 px-3 text-center">PEDIDOS</th>
-                  <th className="py-3 px-3 text-center w-28">AÇÃO</th>
+                  <th className="py-3 px-4 w-16">CÓD</th>
+                  <th className="py-3 px-4">CLIENTE / RAZÃO SOCIAL</th>
+                  <th className="py-3 px-4">CIDADE / UF</th>
+                  <th className="py-3 px-4">CNPJ / CPF</th>
+                  <th className="py-3 px-4">TELEFONES</th>
+                  <th className="py-3 px-4">E-MAIL</th>
+                  <th className="py-3 px-4 text-right">SALDO DEVEDOR</th>
+                  <th className="py-3 px-4 text-right">FATURAMENTO (LTV)</th>
+                  <th className="py-3 px-4 text-center">PEDIDOS</th>
+                  <th className="py-3 px-4 text-center w-28">AÇÃO</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-divider/30 text-[11px]">
                 {isClientListLoading ? (
                   <tr>
-                    <td colSpan={9} className="py-12 text-center text-text-secondary">
+                    <td colSpan={10} className="py-14 text-center text-text-secondary">
                       <div className="flex flex-col items-center justify-center gap-2">
                         <Loader2 size={24} className="animate-spin text-brand-500" />
-                        <span>Carregando lista de clientes em ordem alfabética...</span>
+                        <span className="font-semibold text-xs">Carregando carteira de clientes...</span>
                       </div>
                     </td>
                   </tr>
                 ) : clients.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="py-12 text-center text-text-secondary">
-                      Nenhum cliente encontrado para os critérios de busca.
+                    <td colSpan={10} className="py-14 text-center text-text-secondary">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <AlertCircle size={24} className="text-text-muted" />
+                        <span className="font-bold text-xs">Nenhum cliente encontrado para os critérios de busca.</span>
+                      </div>
                     </td>
                   </tr>
                 ) : (
-                  clients.map((c) => (
-                    <tr
-                      key={c.id}
-                      onClick={() => handleSelectCustomer(c.id)}
-                      className="hover:bg-bg-secondary/60 transition-colors cursor-pointer group"
-                    >
-                      {/* CÓDIGO */}
-                      <td className="py-3 px-3">
-                        <span className="font-mono text-xs font-bold text-brand-600 dark:text-brand-400 bg-brand-500/10 px-2 py-0.5 rounded-md">
-                          #{c.cod || c.id}
-                        </span>
-                      </td>
+                  clients.map((c) => {
+                    const phoneInfo = parsePhone(c.telefone);
 
-                      {/* NOME */}
-                      <td className="py-3 px-3">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-7 h-7 rounded-full bg-brand-500/15 text-brand-600 dark:text-brand-400 flex items-center justify-center font-bold text-xs shrink-0 group-hover:bg-brand-500 group-hover:text-white transition-colors">
-                            {c.nome ? c.nome.charAt(0).toUpperCase() : '?'}
+                    return (
+                      <tr
+                        key={c.id}
+                        onClick={() => handleSelectCustomer(c.id)}
+                        className="hover:bg-bg-secondary/60 transition-colors cursor-pointer group"
+                      >
+                        {/* CÓDIGO (SEM O #) */}
+                        <td className="py-3.5 px-4">
+                          <span className="font-mono text-xs font-bold text-text-primary bg-bg-secondary border border-border px-2.5 py-1 rounded-lg">
+                            {c.cod || c.id}
+                          </span>
+                        </td>
+
+                        {/* NOME / RAZÃO SOCIAL (SEM O CÍRCULO DA LETRA) */}
+                        <td className="py-3.5 px-4">
+                          <div className="flex flex-col">
+                            <span className="font-extrabold text-text-primary uppercase truncate max-w-[320px] group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
+                              {c.nome}
+                            </span>
                           </div>
-                          <span className="font-bold text-text-primary uppercase truncate max-w-[260px] group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
-                            {c.nome}
+                        </td>
+
+                        {/* CIDADE / UF */}
+                        <td className="py-3.5 px-4 text-text-secondary">
+                          <div className="flex items-center gap-1.5">
+                            <MapPin size={13} className="text-text-muted shrink-0" />
+                            <span className="truncate max-w-[140px] uppercase font-semibold">
+                              {c.cidade || 'NÃO INFORMADA'}{c.estado ? ` / ${c.estado}` : ''}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* CNPJ / CPF */}
+                        <td className="py-3.5 px-4 font-mono text-text-secondary font-medium">
+                          {c.documento || c.cnpj || '-'}
+                        </td>
+
+                        {/* TELEFONES COM VALIDAÇÃO WHATSAPP */}
+                        <td className="py-3.5 px-4">
+                          {phoneInfo.isWhatsApp && phoneInfo.waLink ? (
+                            <a
+                              href={phoneInfo.waLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              title="Clique para conversar no WhatsApp"
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500 text-emerald-600 hover:text-white dark:text-emerald-400 dark:hover:text-white font-mono font-bold text-[11px] transition-all group/wa shadow-sm border border-emerald-500/20"
+                            >
+                              <MessageCircle size={13} className="text-emerald-500 group-hover/wa:text-white" />
+                              <span>{phoneInfo.display}</span>
+                            </a>
+                          ) : (
+                            <div className="flex items-center gap-1.5 font-mono text-text-secondary font-medium">
+                              <Phone size={12} className="text-text-muted shrink-0" />
+                              <span>{phoneInfo.display}</span>
+                            </div>
+                          )}
+                        </td>
+
+                        {/* E-MAIL */}
+                        <td className="py-3.5 px-4 text-text-secondary">
+                          <div className="flex items-center gap-1.5 lowercase font-medium">
+                            <Mail size={12} className="text-text-muted shrink-0" />
+                            <span className="truncate max-w-[180px]">{c.email || '-'}</span>
+                          </div>
+                        </td>
+
+                        {/* SALDO DEVEDOR */}
+                        <td className="py-3.5 px-4 text-right font-mono">
+                          {(c.saldo_devedor || 0) > 0 ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 font-bold text-[11px]">
+                              {formatCurrency(c.saldo_devedor)}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold text-[10px]">
+                              Em Dia
+                            </span>
+                          )}
+                        </td>
+
+                        {/* LTV */}
+                        <td className="py-3.5 px-4 text-right font-black text-text-primary font-mono">
+                          {formatCurrency(c.ltv)}
+                        </td>
+
+                        {/* TOTAL PEDIDOS */}
+                        <td className="py-3.5 px-4 text-center">
+                          <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-bg-secondary border border-border text-text-secondary font-mono">
+                            {c.total_pedidos} ped.
                           </span>
-                        </div>
-                      </td>
+                        </td>
 
-                      {/* CIDADE / UF */}
-                      <td className="py-3 px-3 text-text-secondary">
-                        <div className="flex items-center gap-1.5">
-                          <MapPin size={12} className="text-text-muted shrink-0" />
-                          <span className="truncate max-w-[140px] uppercase font-semibold">
-                            {c.cidade || 'NÃO INFORMADA'}{c.estado ? ` / ${c.estado}` : ''}
-                          </span>
-                        </div>
-                      </td>
-
-                      {/* CNPJ / CPF */}
-                      <td className="py-3 px-3 font-mono text-text-secondary">
-                        {c.documento || c.cnpj || '-'}
-                      </td>
-
-                      {/* TELEFONES */}
-                      <td className="py-3 px-3 text-text-secondary">
-                        <div className="flex items-center gap-1.5 font-mono">
-                          <Phone size={12} className="text-text-muted shrink-0" />
-                          <span>{c.telefone || '-'}</span>
-                        </div>
-                      </td>
-
-                      {/* E-MAIL */}
-                      <td className="py-3 px-3 text-text-secondary">
-                        <div className="flex items-center gap-1.5 lowercase">
-                          <Mail size={12} className="text-text-muted shrink-0" />
-                          <span className="truncate max-w-[180px]">{c.email || '-'}</span>
-                        </div>
-                      </td>
-
-                      {/* LTV */}
-                      <td className="py-3 px-3 text-right font-black text-text-primary font-mono">
-                        {formatCurrency(c.ltv)}
-                      </td>
-
-                      {/* TOTAL PEDIDOS */}
-                      <td className="py-3 px-3 text-center">
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-bg-secondary border border-border text-text-secondary">
-                          {c.total_pedidos} ped.
-                        </span>
-                      </td>
-
-                      {/* AÇÃO */}
-                      <td className="py-3 px-3 text-center">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleSelectCustomer(c.id);
-                          }}
-                          className="px-2.5 py-1 bg-brand-500/10 hover:bg-brand-500 text-brand-600 hover:text-white rounded-lg text-[10px] font-extrabold transition-all cursor-pointer inline-flex items-center gap-1"
-                        >
-                          Abrir Ficha <ChevronRight size={12} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+                        {/* AÇÃO */}
+                        <td className="py-3.5 px-4 text-center">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSelectCustomer(c.id);
+                            }}
+                            className="px-3 py-1 bg-brand-500/10 hover:bg-brand-500 text-brand-600 hover:text-white rounded-lg text-[10px] font-extrabold transition-all cursor-pointer inline-flex items-center gap-1 shadow-sm"
+                          >
+                            Abrir Ficha <ChevronRight size={12} />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -296,7 +458,7 @@ export default function Radar360Dashboard() {
                   type="button"
                   disabled={clientPage <= 1}
                   onClick={() => setClientPage(p => Math.max(1, p - 1))}
-                  className="px-3 py-1.5 bg-bg-primary hover:bg-bg-secondary border border-border rounded-lg text-xs font-bold text-text-primary disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer inline-flex items-center gap-1"
+                  className="px-3 py-1.5 bg-bg-primary hover:bg-bg-secondary border border-border rounded-lg text-xs font-bold text-text-primary disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer inline-flex items-center gap-1 shadow-sm"
                 >
                   <ChevronLeft size={13} /> Anterior
                 </button>
@@ -307,7 +469,7 @@ export default function Radar360Dashboard() {
                   type="button"
                   disabled={clientPage >= totalPages}
                   onClick={() => setClientPage(p => Math.min(totalPages, p + 1))}
-                  className="px-3 py-1.5 bg-bg-primary hover:bg-bg-secondary border border-border rounded-lg text-xs font-bold text-text-primary disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer inline-flex items-center gap-1"
+                  className="px-3 py-1.5 bg-bg-primary hover:bg-bg-secondary border border-border rounded-lg text-xs font-bold text-text-primary disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer inline-flex items-center gap-1 shadow-sm"
                 >
                   Próximo <ChevronRight size={13} />
                 </button>

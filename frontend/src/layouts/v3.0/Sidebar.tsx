@@ -80,14 +80,14 @@ const MENU_GROUPS = [
     id: 'compras',
     label: 'Compras Inteligentes (IA)',
     icon: ShoppingCart,
-    color: '#A855F7',
+    color: '#0284C7',
     items: [
       { 
         to: '/bi/compras-ia', 
         label: 'Recomendações de Compra', 
         icon: ShoppingCart, 
         id: 'bi_compras_ia', 
-        color: '#A855F7', 
+        color: '#0284C7', 
         isComingSoon: true,
         iconClass: 'icon-compras'
       },
@@ -220,7 +220,7 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }: 
               >
                 {label}
                 {isComingSoon && (
-                  <span className="bg-gradient-to-r from-purple-500 via-[#4364F7] to-cyan-400 text-white text-[7px] px-1.5 py-0.5 rounded-full font-black uppercase tracking-wider scale-90 border border-purple-400/40 shadow-[0_0_8px_rgba(168,85,247,0.5)] animate-pulse flex-shrink-0">
+                  <span className="bg-gradient-to-r from-sky-500 to-emerald-500 text-white text-[7px] px-1.5 py-0.5 rounded-full font-black uppercase tracking-wider scale-90 border border-sky-400/40 shadow-[0_0_8px_rgba(14,165,233,0.5)] animate-pulse flex-shrink-0">
                     PREDITIVO
                   </span>
                 )}

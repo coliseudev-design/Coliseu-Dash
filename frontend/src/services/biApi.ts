@@ -46,7 +46,14 @@ export const BIService = {
     return data;
   },
 
-  getCustomerList: async (params?: { search?: string; limit?: number; offset?: number; cidade?: string }): Promise<{
+  getCustomerList: async (params?: { 
+    search?: string; 
+    limit?: number; 
+    offset?: number; 
+    cidade?: string;
+    com_saldo?: string | boolean;
+    ordenacao?: string;
+  }): Promise<{
     data: Array<{
       id: number;
       cod: number;
@@ -59,10 +66,12 @@ export const BIService = {
       email: string;
       status: string;
       ltv: number;
+      saldo_devedor: number;
       total_pedidos: number;
       ultima_compra: string | null;
     }>;
     total: number;
+    available_cities?: string[];
     limit: number;
     offset: number;
   }> => {
