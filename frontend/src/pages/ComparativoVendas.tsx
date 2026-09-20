@@ -50,7 +50,7 @@ const MONTHS = [
   { value: 12, label: 'Dezembro' }
 ]
 
-const YEARS = [2026, 2025, 2024]
+const YEARS = [2027, 2026, 2025, 2024, 2023, 2022]
 
 export default function ComparativoVendas() {
   const { filiais, selectedBranch, setSelectedBranch } = useBranch()
@@ -71,6 +71,42 @@ export default function ComparativoVendas() {
   const [analiseAno, setAnaliseAno] = useState(currentYear)
   const [comparacaoMes, setComparacaoMes] = useState(prevMonth)
   const [comparacaoAno, setComparacaoAno] = useState(prevYear)
+  const [isYearComparison, setIsYearComparison] = useState(false)
+
+  // Dinâmica de seleção de período automático
+  const handleAnaliseMesChange = (newMonth: number) => {
+    setAnaliseMes(newMonth)
+    if (isYearComparison) {
+      setComparacaoMes(newMonth)
+      setComparacaoAno(analiseAno - 1)
+    } else {
+      setComparacaoMes(newMonth === 1 ? 12 : newMonth - 1)
+      setComparacaoAno(newMonth === 1 ? analiseAno - 1 : analiseAno)
+    }
+  }
+
+  const handleAnaliseAnoChange = (newYear: number) => {
+    setAnaliseAno(newYear)
+    if (isYearComparison) {
+      setComparacaoMes(analiseMes)
+      setComparacaoAno(newYear - 1)
+    } else {
+      setComparacaoMes(analiseMes === 1 ? 12 : analiseMes - 1)
+      setComparacaoAno(analiseMes === 1 ? newYear - 1 : newYear)
+    }
+  }
+
+  const toggleYearComparison = () => {
+    const nextVal = !isYearComparison
+    setIsYearComparison(nextVal)
+    if (nextVal) {
+      setComparacaoMes(analiseMes)
+      setComparacaoAno(analiseAno - 1)
+    } else {
+      setComparacaoMes(analiseMes === 1 ? 12 : analiseMes - 1)
+      setComparacaoAno(analiseMes === 1 ? analiseAno - 1 : analiseAno)
+    }
+  }
 
   // Intervalos Personalizados
   const [customAnaliseStart, setCustomAnaliseStart] = useState('')
@@ -239,7 +275,6 @@ export default function ComparativoVendas() {
     <div className="space-y-4 pb-6 animate-in fade-in duration-300">
       {/* Teleportamos todos os filtros da página para o cabeçalho superior unificado */}
       {/* Painel de Filtros da Página - Posicionado abaixo do título da tela */}
-      {/* Painel de Filtros da Página - Estrutura organizada em 2 linhas distribuídas */}
       <div className="bg-bg-primary border border-border shadow-sm rounded-xl p-3.5 flex flex-col gap-3.5 text-xs w-full animate-in slide-in-from-top-3 duration-250">
         
         {/* LINHA 1: PERÍODOS DE COMPARAÇÃO */}
@@ -267,14 +302,14 @@ export default function ComparativoVendas() {
           </div>
 
           {/* Análise Period */}
-          <div className="flex items-center gap-2 border-r border-divider/40 pr-4 pl-1 shrink-0">
+          <div className="flex items-center gap-2 pr-2 pl-1 shrink-0">
             <span className="text-[10px] text-blue-500 font-bold uppercase tracking-wider">ANÁLISE</span>
             {tipoPeriodo === 'mes' ? (
               <div className="flex items-center gap-1.5">
                 <div className="relative">
                   <select
                     value={analiseMes}
-                    onChange={(e) => setAnaliseMes(Number(e.target.value))}
+                    onChange={(e) => handleAnaliseMesChange(Number(e.target.value))}
                     className="bg-bg-secondary border border-border rounded-lg px-2.5 py-1.5 text-xs font-semibold text-text-primary outline-none cursor-pointer pr-7"
                   >
                     {MONTHS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
@@ -284,7 +319,7 @@ export default function ComparativoVendas() {
                 <div className="relative">
                   <select
                     value={analiseAno}
-                    onChange={(e) => setAnaliseAno(Number(e.target.value))}
+                    onChange={(e) => handleAnaliseAnoChange(Number(e.target.value))}
                     className="bg-bg-secondary border border-border rounded-lg px-2.5 py-1.5 text-xs font-semibold text-text-primary outline-none cursor-pointer pr-7"
                   >
                     {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
@@ -310,6 +345,32 @@ export default function ComparativoVendas() {
               </div>
             )}
           </div>
+
+          {/* SUTIL SWITCH / MARCAÇÃO "ANO" ENTRE OS PERÍODOS */}
+          {tipoPeriodo === 'mes' && (
+            <div className="flex items-center px-1 border-x border-divider/40">
+              <button
+                type="button"
+                onClick={toggleYearComparison}
+                title={isYearComparison ? "Ativo: comparando com o mesmo mês do ano anterior (ex: Set/2026 vs Set/2025)" : "Clique para comparar com o mesmo mês do ano anterior (Ano a Ano)"}
+                className={clsx(
+                  "flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer select-none",
+                  isYearComparison 
+                    ? "bg-emerald-500/15 border-emerald-500/50 text-emerald-600 dark:text-emerald-400 shadow-sm"
+                    : "bg-bg-secondary border-border text-text-secondary hover:text-text-primary hover:border-border/80"
+                )}
+              >
+                <span className={clsx(
+                  "w-2 h-2 rounded-full transition-colors",
+                  isYearComparison ? "bg-emerald-500" : "bg-text-secondary/40"
+                )} />
+                <span className="tracking-wide">Ano</span>
+                <span className="text-[8.5px] opacity-75 font-semibold">
+                  {isYearComparison ? '(Ano Ant.)' : '(Mês Ant.)'}
+                </span>
+              </button>
+            </div>
+          )}
 
           {/* Comparação Period */}
           <div className="flex items-center gap-2 pr-4 shrink-0">

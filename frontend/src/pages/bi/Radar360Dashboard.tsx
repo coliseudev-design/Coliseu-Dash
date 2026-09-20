@@ -1,4 +1,5 @@
 import { useOutletContext, useSearchParams, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useBiPeriodQuery } from '../../hooks/useBiPeriodQuery';
 import { BIService } from '../../services/biApi';
 import { BiPeriodFilter } from '../../types/bi.types';
@@ -23,7 +24,9 @@ import {
   Package, 
   Bookmark, 
   ShieldAlert, 
-  ChevronRight 
+  ChevronRight,
+  ChevronLeft,
+  X
 } from 'lucide-react';
 import clsx from 'clsx';
 import {
@@ -41,6 +44,30 @@ export default function Radar360Dashboard() {
   const urlId = searchParams.get('id');
   const [customerId, setCustomerId] = useState<number | null>(
     urlId ? parseInt(urlId, 10) : null
+  );
+
+  // Client list state for initial screen
+  const [clientSearch, setClientSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [clientPage, setClientPage] = useState(1);
+  const CLIENTS_PER_PAGE = 50;
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(clientSearch);
+      setClientPage(1);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [clientSearch]);
+
+  const { data: clientListData, isLoading: isClientListLoading } = useQuery(
+    ['bi', 'customer', 'list', debouncedSearch, clientPage],
+    () => BIService.getCustomerList({
+      search: debouncedSearch,
+      limit: CLIENTS_PER_PAGE,
+      offset: (clientPage - 1) * CLIENTS_PER_PAGE
+    }),
+    { keepPreviousData: true, enabled: !customerId }
   );
 
   const [selectedPeriod, setSelectedPeriod] = useState<'TODOS' | 'MES_ATUAL' | '6_MESES' | 'PERSONALIZADO'>('TODOS');
@@ -80,44 +107,212 @@ export default function Radar360Dashboard() {
   const formatCurrency = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
   const formatNum = (val: number) => new Intl.NumberFormat('pt-BR').format(val);
 
-  // Render da tela antes da seleção do cliente (Imagem 1)
+  // Render da tela antes da seleção do cliente (Lista Inicial com Tabela Completa)
   if (!customerId) {
+    const totalClients = clientListData?.total || 0;
+    const totalPages = Math.max(1, Math.ceil(totalClients / CLIENTS_PER_PAGE));
+    const clients = clientListData?.data || [];
+
     return (
-      <div aria-label="Radar 360 Dashboard Inicial" className="space-y-8 animate-in fade-in duration-500 relative min-h-[85vh] flex flex-col justify-center items-center pb-12">
+      <div aria-label="Radar 360 Dashboard Inicial" className="space-y-6 animate-in fade-in duration-300 relative min-h-[85vh] pb-12">
         {/* Background gradients for Glassmorphism effect */}
         <div className="fixed inset-0 pointer-events-none z-[-1] overflow-hidden">
-          <div className="absolute top-[15%] left-[20%] w-[35%] h-[35%] rounded-full bg-brand-500/5 blur-[120px]"></div>
-          <div className="absolute bottom-[20%] right-[15%] w-[40%] h-[40%] rounded-full bg-cyan-500/5 blur-[150px]"></div>
+          <div className="absolute top-[10%] left-[10%] w-[35%] h-[35%] rounded-full bg-brand-500/5 blur-[120px]"></div>
+          <div className="absolute bottom-[15%] right-[10%] w-[40%] h-[40%] rounded-full bg-cyan-500/5 blur-[150px]"></div>
         </div>
 
-        <div className="w-full max-w-2xl text-center space-y-3 mb-6 animate-in slide-in-from-top-6 duration-300">
-          <h1 className="text-4xl font-extrabold tracking-tight text-text-primary flex items-center justify-center gap-3">
-            <span className="text-brand-500">⚡</span> Radar 360
-          </h1>
-          <p className="text-sm text-text-secondary font-medium">
-            Busque um cliente para ativar a Interface Antecipatória
-          </p>
-        </div>
+        {/* CABEÇALHO & BUSCA */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <h1 className="text-2xl font-extrabold tracking-tight text-text-primary flex items-center gap-2.5">
+              <span className="text-brand-500">⚡</span> Radar 360 — Carteira de Clientes
+            </h1>
+            <p className="text-xs text-text-secondary font-medium">
+              Selecione um cliente para abrir a Ficha Antecipatória com DNA de compras e inteligência comercial.
+            </p>
+          </div>
 
-        {/* CommandCenter no centro */}
-        <div className="w-full max-w-2xl px-4 z-50 animate-in zoom-in-95 duration-200">
-          <CommandCenter onSelectCustomer={handleSelectCustomer} />
-        </div>
-
-        {/* Card do Fingerprint */}
-        <div className="w-full max-w-4xl px-4 mt-8 animate-in slide-in-from-bottom-8 duration-300">
-          <div className="bg-bg-primary border border-divider shadow-card rounded-3xl p-10 flex flex-col items-center justify-center text-center space-y-4">
-            <div className="relative group cursor-pointer p-6 bg-brand-500/5 rounded-full border border-brand-500/10 hover:border-brand-500/20 transition-all duration-300">
-              <Fingerprint size={68} className="text-brand-500 animate-pulse" />
-              <div className="absolute inset-0 rounded-full bg-brand-500/10 blur opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            </div>
-            <div className="space-y-1.5 max-w-md">
-              <h3 className="text-base font-bold text-text-primary">Ficha de Cliente Antecipatória</h3>
-              <p className="text-xs text-text-secondary leading-relaxed font-medium">
-                Pesquise e selecione um cliente na barra superior para acessar a inteligência de compras e comportamento comercial.
-              </p>
+          <div className="flex items-center gap-3">
+            <div className="px-3.5 py-1.5 bg-bg-secondary border border-border rounded-xl text-xs font-bold text-text-secondary flex items-center gap-2">
+              <Users size={14} className="text-brand-500" />
+              <span><strong className="text-text-primary">{formatNum(totalClients)}</strong> clientes</span>
             </div>
           </div>
+        </div>
+
+        {/* BARRA DE PESQUISA RÁPIDA */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-4 flex flex-col sm:flex-row items-center gap-3">
+          <div className="relative flex-1 w-full">
+            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+            <input
+              type="text"
+              value={clientSearch}
+              onChange={(e) => setClientSearch(e.target.value)}
+              placeholder="Buscar cliente por Código, Nome / Razão Social, CNPJ/CPF, Cidade ou E-mail..."
+              className="w-full pl-10 pr-10 py-2.5 bg-bg-secondary border border-border rounded-xl text-xs font-semibold text-text-primary placeholder:text-text-muted outline-none focus:ring-2 focus:ring-brand-500 transition-all"
+            />
+            {clientSearch && (
+              <button
+                onClick={() => setClientSearch('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary p-1"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* TABELA DE CLIENTES EM ORDEM ALFABÉTICA */}
+        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl overflow-hidden flex flex-col">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs whitespace-nowrap" aria-label="Lista de Clientes Radar 360">
+              <thead>
+                <tr className="bg-bg-secondary/60 border-b border-divider text-[10px] text-text-secondary uppercase font-black tracking-wider">
+                  <th className="py-3 px-3 w-16">CÓD</th>
+                  <th className="py-3 px-3">CLIENTE / RAZÃO SOCIAL</th>
+                  <th className="py-3 px-3">CIDADE / UF</th>
+                  <th className="py-3 px-3">CNPJ / CPF</th>
+                  <th className="py-3 px-3">TELEFONES</th>
+                  <th className="py-3 px-3">E-MAIL</th>
+                  <th className="py-3 px-3 text-right font-black">FATURAMENTO (LTV)</th>
+                  <th className="py-3 px-3 text-center">PEDIDOS</th>
+                  <th className="py-3 px-3 text-center w-28">AÇÃO</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-divider/30 text-[11px]">
+                {isClientListLoading ? (
+                  <tr>
+                    <td colSpan={9} className="py-12 text-center text-text-secondary">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <Loader2 size={24} className="animate-spin text-brand-500" />
+                        <span>Carregando lista de clientes em ordem alfabética...</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : clients.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="py-12 text-center text-text-secondary">
+                      Nenhum cliente encontrado para os critérios de busca.
+                    </td>
+                  </tr>
+                ) : (
+                  clients.map((c) => (
+                    <tr
+                      key={c.id}
+                      onClick={() => handleSelectCustomer(c.id)}
+                      className="hover:bg-bg-secondary/60 transition-colors cursor-pointer group"
+                    >
+                      {/* CÓDIGO */}
+                      <td className="py-3 px-3">
+                        <span className="font-mono text-xs font-bold text-brand-600 dark:text-brand-400 bg-brand-500/10 px-2 py-0.5 rounded-md">
+                          #{c.cod || c.id}
+                        </span>
+                      </td>
+
+                      {/* NOME */}
+                      <td className="py-3 px-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-full bg-brand-500/15 text-brand-600 dark:text-brand-400 flex items-center justify-center font-bold text-xs shrink-0 group-hover:bg-brand-500 group-hover:text-white transition-colors">
+                            {c.nome ? c.nome.charAt(0).toUpperCase() : '?'}
+                          </div>
+                          <span className="font-bold text-text-primary uppercase truncate max-w-[260px] group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
+                            {c.nome}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* CIDADE / UF */}
+                      <td className="py-3 px-3 text-text-secondary">
+                        <div className="flex items-center gap-1.5">
+                          <MapPin size={12} className="text-text-muted shrink-0" />
+                          <span className="truncate max-w-[140px] uppercase font-semibold">
+                            {c.cidade || 'NÃO INFORMADA'}{c.estado ? ` / ${c.estado}` : ''}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* CNPJ / CPF */}
+                      <td className="py-3 px-3 font-mono text-text-secondary">
+                        {c.documento || c.cnpj || '-'}
+                      </td>
+
+                      {/* TELEFONES */}
+                      <td className="py-3 px-3 text-text-secondary">
+                        <div className="flex items-center gap-1.5 font-mono">
+                          <Phone size={12} className="text-text-muted shrink-0" />
+                          <span>{c.telefone || '-'}</span>
+                        </div>
+                      </td>
+
+                      {/* E-MAIL */}
+                      <td className="py-3 px-3 text-text-secondary">
+                        <div className="flex items-center gap-1.5 lowercase">
+                          <Mail size={12} className="text-text-muted shrink-0" />
+                          <span className="truncate max-w-[180px]">{c.email || '-'}</span>
+                        </div>
+                      </td>
+
+                      {/* LTV */}
+                      <td className="py-3 px-3 text-right font-black text-text-primary font-mono">
+                        {formatCurrency(c.ltv)}
+                      </td>
+
+                      {/* TOTAL PEDIDOS */}
+                      <td className="py-3 px-3 text-center">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-bg-secondary border border-border text-text-secondary">
+                          {c.total_pedidos} ped.
+                        </span>
+                      </td>
+
+                      {/* AÇÃO */}
+                      <td className="py-3 px-3 text-center">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSelectCustomer(c.id);
+                          }}
+                          className="px-2.5 py-1 bg-brand-500/10 hover:bg-brand-500 text-brand-600 hover:text-white rounded-lg text-[10px] font-extrabold transition-all cursor-pointer inline-flex items-center gap-1"
+                        >
+                          Abrir Ficha <ChevronRight size={12} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* PAGINAÇÃO */}
+          {totalPages > 1 && (
+            <div className="p-4 bg-bg-secondary/30 border-t border-divider flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+              <div className="text-text-secondary text-[11px]">
+                Mostrando <strong>{((clientPage - 1) * CLIENTS_PER_PAGE) + 1}</strong> a <strong>{Math.min(clientPage * CLIENTS_PER_PAGE, totalClients)}</strong> de <strong>{totalClients}</strong> clientes
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={clientPage <= 1}
+                  onClick={() => setClientPage(p => Math.max(1, p - 1))}
+                  className="px-3 py-1.5 bg-bg-primary hover:bg-bg-secondary border border-border rounded-lg text-xs font-bold text-text-primary disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer inline-flex items-center gap-1"
+                >
+                  <ChevronLeft size={13} /> Anterior
+                </button>
+                <span className="px-2 font-bold text-text-secondary text-xs">
+                  Página {clientPage} de {totalPages}
+                </span>
+                <button
+                  type="button"
+                  disabled={clientPage >= totalPages}
+                  onClick={() => setClientPage(p => Math.min(totalPages, p + 1))}
+                  className="px-3 py-1.5 bg-bg-primary hover:bg-bg-secondary border border-border rounded-lg text-xs font-bold text-text-primary disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer inline-flex items-center gap-1"
+                >
+                  Próximo <ChevronRight size={13} />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );

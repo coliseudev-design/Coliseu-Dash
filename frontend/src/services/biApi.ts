@@ -41,8 +41,32 @@ export const BIService = {
   },
 
   searchCustomers: async (query: string): Promise<{id: number, nome: string, cnpj: string, ltv?: number, risco_churn_pct?: number}[]> => {
-    if (!query || query.length < 3) return [];
+    if (!query || query.length < 2) return [];
     const { data } = await api.get<any>('/bi/customer/search', { params: { q: query } });
+    return data;
+  },
+
+  getCustomerList: async (params?: { search?: string; limit?: number; offset?: number; cidade?: string }): Promise<{
+    data: Array<{
+      id: number;
+      cod: number;
+      nome: string;
+      documento: string;
+      cnpj: string;
+      cidade: string;
+      estado: string;
+      telefone: string;
+      email: string;
+      status: string;
+      ltv: number;
+      total_pedidos: number;
+      ultima_compra: string | null;
+    }>;
+    total: number;
+    limit: number;
+    offset: number;
+  }> => {
+    const { data } = await api.get<any>('/bi/customer/list', { params });
     return data;
   },
 
