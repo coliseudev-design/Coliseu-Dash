@@ -3494,6 +3494,7 @@ router.get('/compras/resumo', async (req, res, next) => {
         `, [tenantId, toSafeSqlString(start), toSafeSqlString(end)]);
 
         // 6. Alertas de Estoque
+        const apenasComCompra = req.query.apenas_com_compra !== 'false';
         let alertFilter = '';
         if (status_estoque === 'comprar') {
             alertFilter = 'AND (COALESCE(p.estoque, 0) <= 0)';
@@ -3501,6 +3502,11 @@ router.get('/compras/resumo', async (req, res, next) => {
             alertFilter = 'AND (p.estoque > 0 AND p.estoque <= p.estoque_minimo AND p.estoque_minimo > 0)';
         } else if (status_estoque === 'sem_cadastro') {
             alertFilter = 'AND (COALESCE(p.estoque_minimo, 0) <= 0)';
+        }
+
+        let comprasJoinFilter = '';
+        if (apenasComCompra) {
+            comprasJoinFilter = 'AND ult.cliente_id_firebird IS NOT NULL';
         }
 
         const alertasRes = await db.query(`
@@ -3517,9 +3523,9 @@ router.get('/compras/resumo', async (req, res, next) => {
                 c.id_firebird as fornecedor_id,
                 GREATEST(0, COALESCE(p.estoque_minimo, 0) - COALESCE(p.estoque, 0)) as sugestao_compra,
                 CASE
-                    WHEN COALESCE(p.estoque_minimo, 0) <= 0 THEN 'sem_cadastro'
                     WHEN COALESCE(p.estoque, 0) <= 0 THEN 'comprar'
-                    WHEN COALESCE(p.estoque, 0) <= COALESCE(p.estoque_minimo, 0) THEN 'atencao'
+                    WHEN COALESCE(p.estoque, 0) <= COALESCE(p.estoque_minimo, 0) AND COALESCE(p.estoque_minimo, 0) > 0 THEN 'atencao'
+                    WHEN COALESCE(p.estoque_minimo, 0) <= 0 THEN 'sem_cadastro'
                     ELSE 'normal'
                 END as status
             FROM dash_produtos p
@@ -3535,6 +3541,7 @@ router.get('/compras/resumo', async (req, res, next) => {
             LEFT JOIN dash_clientes c ON c.tenant_id = p.tenant_id AND c.id_firebird = ult.cliente_id_firebird
             WHERE p.tenant_id = $1 AND p.ativo = true
               AND (p.estoque <= p.estoque_minimo OR p.estoque <= 0 OR p.estoque_minimo <= 0)
+              ${comprasJoinFilter}
               ${alertFilter}
             ORDER BY 
                 CASE 
@@ -3543,7 +3550,7 @@ router.get('/compras/resumo', async (req, res, next) => {
                     ELSE 3
                 END,
                 p.estoque ASC
-            LIMIT 40
+            LIMIT 50
         `, [tenantId]);
 
         res.json({
@@ -3568,11 +3575,12 @@ router.get('/compras/fornecedores', async (req, res, next) => {
     try {
         const tenantId = req.tenant.id;
         const page = parseInt(req.query.page || 1, 10);
-        const limit = Math.min(parseInt(req.query.limit || 20, 10), 100);
+        const limit = Math.min(parseInt(req.query.limit || 50, 10), 100);
         const offset = (page - 1) * limit;
         const search = req.query.search ? req.query.search.trim() : null;
         const cidade = req.query.cidade ? req.query.cidade.trim() : null;
         const status = req.query.status ? req.query.status.trim() : null;
+        const saldo = req.query.saldo || 'com_saldo'; // 'com_saldo' (default), 'todos', 'sem_saldo'
 
         let whereClause = `WHERE c.tenant_id = $1 AND c.tipo = '2'`;
         const params = [tenantId];
@@ -3596,15 +3604,28 @@ router.get('/compras/fornecedores', async (req, res, next) => {
             whereClause += ` AND c.ativo = false`;
         }
 
+        let saldoFilter = '';
+        if (saldo === 'com_saldo') {
+            saldoFilter = 'AND COALESCE(compras.total_comprado, 0) > 0';
+        } else if (saldo === 'sem_saldo') {
+            saldoFilter = 'AND COALESCE(compras.total_comprado, 0) = 0';
+        }
+
         // Count total
         const countRes = await db.query(`
             SELECT count(*) as total
             FROM dash_clientes c
+            LEFT JOIN LATERAL (
+                SELECT SUM(v.valor_total) as total_comprado
+                FROM dash_vendas v
+                WHERE v.tenant_id = c.tenant_id AND v.cliente_id_firebird = c.id_firebird
+            ) compras ON true
             ${whereClause}
+            ${saldoFilter}
         `, params);
         const total = parseInt(countRes.rows[0]?.total || 0, 10);
 
-        // Fetch paginated suppliers with aggregated purchase stats
+        // Fetch paginated suppliers with aggregated purchase stats in alphabetical order
         const queryParams = [...params, limit, offset];
         const rowsRes = await db.query(`
             SELECT 
@@ -3635,7 +3656,8 @@ router.get('/compras/fornecedores', async (req, res, next) => {
                 WHERE v.tenant_id = c.tenant_id AND v.cliente_id_firebird = c.id_firebird
             ) compras ON true
             ${whereClause}
-            ORDER BY COALESCE(compras.total_comprado, 0) DESC, c.nome ASC
+            ${saldoFilter}
+            ORDER BY c.nome ASC
             LIMIT $${idx} OFFSET $${idx + 1}
         `, queryParams);
 
@@ -3777,18 +3799,20 @@ router.get('/compras/pedidos', async (req, res, next) => {
     try {
         const tenantId = req.tenant.id;
         const page = parseInt(req.query.page || 1, 10);
-        const limit = Math.min(parseInt(req.query.limit || 20, 10), 100);
+        const limit = Math.min(parseInt(req.query.limit || 50, 10), 100);
         const offset = (page - 1) * limit;
         const search = req.query.search ? req.query.search.trim() : null;
         const status = req.query.status ? req.query.status.trim() : null;
         const fornecedor_id = req.query.fornecedor_id ? parseInt(req.query.fornecedor_id, 10) : null;
+        const data_inicio = req.query.data_inicio ? req.query.data_inicio.trim() : null;
+        const data_fim = req.query.data_fim ? req.query.data_fim.trim() : null;
 
         let whereClause = `WHERE v.tenant_id = $1 AND c.tipo = '2'`;
         const params = [tenantId];
         let idx = 2;
 
         if (search) {
-            whereClause += ` AND (v.numero_pedido ILIKE $${idx} OR v.numero_nota::text ILIKE $${idx} OR c.nome ILIKE $${idx})`;
+            whereClause += ` AND (v.numero_pedido ILIKE $${idx} OR v.numero_nota::text ILIKE $${idx} OR c.nome ILIKE $${idx} OR c.razao_social ILIKE $${idx} OR c.documento ILIKE $${idx} OR c.cidade ILIKE $${idx})`;
             params.push(`%${search}%`);
             idx++;
         }
@@ -3802,6 +3826,18 @@ router.get('/compras/pedidos', async (req, res, next) => {
         if (status && status !== 'todos') {
             whereClause += ` AND v.status ILIKE $${idx}`;
             params.push(`%${status}%`);
+            idx++;
+        }
+
+        if (data_inicio) {
+            whereClause += ` AND v.data_venda >= $${idx}`;
+            params.push(data_inicio);
+            idx++;
+        }
+
+        if (data_fim) {
+            whereClause += ` AND v.data_venda <= $${idx}`;
+            params.push(data_fim.includes(' ') ? data_fim : `${data_fim} 23:59:59`);
             idx++;
         }
 

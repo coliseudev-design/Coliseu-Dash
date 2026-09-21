@@ -39,19 +39,27 @@ export default function PurchasesDashboard() {
 
   // Filtro de alerta de estoque da aba Resumo
   const [filtroAlertaEstoque, setFiltroAlertaEstoque] = useState<'todos' | 'comprar' | 'atencao' | 'sem_cadastro'>('todos');
+  const [apenasComCompra, setApenasComCompra] = useState<boolean>(true);
+
+  // Filtro de saldo de fornecedores (Aba Fornecedores)
+  const [fornecedorSaldo, setFornecedorSaldo] = useState<'com_saldo' | 'todos' | 'sem_saldo'>('com_saldo');
 
   // 1. Query: Resumo Geral
   const resumoQuery = useQuery({
-    queryKey: ['bi-compras-resumo', filtroAlertaEstoque],
-    queryFn: () => BIService.getComprasResumo({ status_estoque: filtroAlertaEstoque }),
+    queryKey: ['bi-compras-resumo', filtroAlertaEstoque, apenasComCompra],
+    queryFn: () => BIService.getComprasResumo({ 
+      status_estoque: filtroAlertaEstoque,
+      apenas_com_compra: apenasComCompra
+    }),
   });
 
-  // 2. Query: Lista de Fornecedores
+  // 2. Query: Lista de Fornecedores (50 em 50, ordem alfabética)
   const fornecedoresQuery = useQuery({
-    queryKey: ['bi-compras-fornecedores', fornecedorPage, fornecedorSearch, fornecedorCidade, fornecedorStatus],
+    queryKey: ['bi-compras-fornecedores', fornecedorPage, fornecedorSearch, fornecedorCidade, fornecedorStatus, fornecedorSaldo],
     queryFn: () => BIService.getComprasFornecedores({
       page: fornecedorPage,
-      limit: 15,
+      limit: 50,
+      saldo: fornecedorSaldo,
       search: fornecedorSearch,
       cidade: fornecedorCidade,
       status: fornecedorStatus !== 'todos' ? fornecedorStatus : undefined
@@ -66,12 +74,12 @@ export default function PurchasesDashboard() {
     enabled: !!selectedFornecedorId
   });
 
-  // 4. Query: Lista de Compras / Notas
+  // 4. Query: Lista de Compras / Notas (50 em 50, busca completa)
   const comprasQuery = useQuery({
     queryKey: ['bi-compras-pedidos', compraPage, compraSearch, compraStatus],
     queryFn: () => BIService.getComprasPedidos({
       page: compraPage,
-      limit: 15,
+      limit: 50,
       search: compraSearch,
       status: compraStatus !== 'todos' ? compraStatus : undefined
     }),
@@ -285,7 +293,7 @@ export default function PurchasesDashboard() {
                 <div className="p-1.5 rounded-lg bg-blue-500/10 text-blue-500"><ShoppingCart size={14} /></div>
               </div>
               <div className="text-2xl font-black text-text-primary font-mono">{formatNum(kpis.produtos_comprados || 0)}</div>
-              <div className="text-[10px] text-text-muted font-semibold mt-1">Variedade de SKUs</div>
+              <div className="text-[10px] text-text-muted font-semibold mt-1">Variedade de Produtos</div>
             </div>
 
             {/* Estoque Baixo */}
@@ -311,50 +319,82 @@ export default function PurchasesDashboard() {
 
           {/* TABELA DE ALERTA DE ESTOQUE */}
           <div className="bg-bg-primary border border-border rounded-2xl p-5 shadow-card space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-divider/40 pb-3">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-divider/40 pb-3">
               <div>
                 <h3 className="font-black text-sm uppercase tracking-wider text-text-primary flex items-center gap-2">
                   <AlertTriangle size={16} className="text-amber-500" />
                   Alertas de Reposição e Estoque Crítico
                 </h3>
-                <p className="text-xs text-text-secondary">Produtos que necessitam de compras imediatas confrontados com seus fornecedores</p>
+                <p className="text-xs text-text-secondary">Produtos que necessitam de compras imediatas confrontados com seus fornecedores vinculados</p>
               </div>
 
-              {/* Filtro de Alerta */}
-              <div className="flex items-center gap-1.5 bg-bg-secondary p-1 rounded-xl border border-divider text-xs">
-                <button
-                  onClick={() => setFiltroAlertaEstoque('todos')}
-                  className={clsx("px-2.5 py-1 rounded-lg font-bold transition-all", filtroAlertaEstoque === 'todos' ? "bg-bg-primary text-text-primary shadow-xs" : "text-text-secondary")}
-                >
-                  Todos
-                </button>
-                <button
-                  onClick={() => setFiltroAlertaEstoque('comprar')}
-                  className={clsx("px-2.5 py-1 rounded-lg font-bold transition-all", filtroAlertaEstoque === 'comprar' ? "bg-rose-500 text-white shadow-xs" : "text-text-secondary")}
-                >
-                  Comprar
-                </button>
-                <button
-                  onClick={() => setFiltroAlertaEstoque('atencao')}
-                  className={clsx("px-2.5 py-1 rounded-lg font-bold transition-all", filtroAlertaEstoque === 'atencao' ? "bg-amber-500 text-white shadow-xs" : "text-text-secondary")}
-                >
-                  Atenção
-                </button>
-                <button
-                  onClick={() => setFiltroAlertaEstoque('sem_cadastro')}
-                  className={clsx("px-2.5 py-1 rounded-lg font-bold transition-all", filtroAlertaEstoque === 'sem_cadastro' ? "bg-blue-500 text-white shadow-xs" : "text-text-secondary")}
-                >
-                  Sem Cadastro
-                </button>
+              {/* Filtros da Tabela de Alertas */}
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Filtro: Apenas com Nota de Entrada (Padrão) vs Todos */}
+                <div className="flex items-center gap-1 bg-bg-secondary p-1 rounded-xl border border-divider text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setApenasComCompra(true)}
+                    className={clsx(
+                      "px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer inline-flex items-center gap-1",
+                      apenasComCompra 
+                        ? "bg-emerald-500 text-white shadow-xs" 
+                        : "text-text-secondary hover:text-text-primary"
+                    )}
+                    title="Exibe apenas produtos que já possuem histórico de compras registradas em notas de entrada"
+                  >
+                    <CheckCircle2 size={12} /> Com Nota de Entrada (Padrão)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setApenasComCompra(false)}
+                    className={clsx(
+                      "px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer",
+                      !apenasComCompra 
+                        ? "bg-bg-primary text-text-primary shadow-xs border border-border" 
+                        : "text-text-secondary hover:text-text-primary"
+                    )}
+                    title="Exibe todos os produtos do cadastro de estoque geral"
+                  >
+                    Todos do Catálogo
+                  </button>
+                </div>
+
+                {/* Filtro de Nível de Alerta */}
+                <div className="flex items-center gap-1.5 bg-bg-secondary p-1 rounded-xl border border-divider text-xs">
+                  <button
+                    onClick={() => setFiltroAlertaEstoque('todos')}
+                    className={clsx("px-2.5 py-1 rounded-lg font-bold transition-all", filtroAlertaEstoque === 'todos' ? "bg-bg-primary text-text-primary shadow-xs" : "text-text-secondary")}
+                  >
+                    Todos
+                  </button>
+                  <button
+                    onClick={() => setFiltroAlertaEstoque('comprar')}
+                    className={clsx("px-2.5 py-1 rounded-lg font-bold transition-all", filtroAlertaEstoque === 'comprar' ? "bg-rose-500 text-white shadow-xs" : "text-text-secondary")}
+                  >
+                    Comprar
+                  </button>
+                  <button
+                    onClick={() => setFiltroAlertaEstoque('atencao')}
+                    className={clsx("px-2.5 py-1 rounded-lg font-bold transition-all", filtroAlertaEstoque === 'atencao' ? "bg-amber-500 text-white shadow-xs" : "text-text-secondary")}
+                  >
+                    Atenção
+                  </button>
+                  <button
+                    onClick={() => setFiltroAlertaEstoque('sem_cadastro')}
+                    className={clsx("px-2.5 py-1 rounded-lg font-bold transition-all", filtroAlertaEstoque === 'sem_cadastro' ? "bg-blue-500 text-white shadow-xs" : "text-text-secondary")}
+                  >
+                    Sem Cadastro
+                  </button>
+                </div>
               </div>
             </div>
 
             <div className="overflow-x-auto w-full">
-              <table className="w-full min-w-[900px] text-left text-xs whitespace-nowrap">
+              <table className="w-full min-w-[850px] text-left text-xs whitespace-nowrap">
                 <thead>
                   <tr className="bg-bg-secondary/60 border-b border-divider text-[10px] text-text-secondary uppercase font-black tracking-wider">
                     <th className="py-3 px-3">Produto</th>
-                    <th className="py-3 px-3">SKU</th>
                     <th className="py-3 px-3">Último Fornecedor</th>
                     <th className="py-3 px-3 text-right">Estoque Atual</th>
                     <th className="py-3 px-3 text-right">Estoque Mínimo</th>
@@ -366,18 +406,17 @@ export default function PurchasesDashboard() {
                 <tbody className="divide-y divide-divider/30 text-[11px]">
                   {alertasEstoque.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="py-8 text-center text-text-secondary font-semibold">
+                      <td colSpan={7} className="py-8 text-center text-text-secondary font-semibold">
                         Nenhum alerta de estoque encontrado com os filtros atuais.
                       </td>
                     </tr>
                   ) : (
                     alertasEstoque.map((p: any) => (
                       <tr key={p.produto_id} className="hover:bg-bg-secondary/40 transition-colors">
-                        <td className="py-2.5 px-3 max-w-[260px] truncate font-extrabold text-text-primary" title={p.produto}>
+                        <td className="py-2.5 px-3 max-w-[280px] truncate font-extrabold text-text-primary" title={p.produto}>
                           {p.produto}
                         </td>
-                        <td className="py-2.5 px-3 font-mono text-text-secondary">{p.sku || '-'}</td>
-                        <td className="py-2.5 px-3 max-w-[200px] truncate text-text-secondary font-semibold" title={p.fornecedor_nome}>
+                        <td className="py-2.5 px-3 max-w-[220px] truncate text-text-secondary font-semibold" title={p.fornecedor_nome}>
                           {p.fornecedor_nome || 'Sem Fornecedor Vinculado'}
                         </td>
                         <td className="py-2.5 px-3 text-right font-mono font-bold">
@@ -547,57 +586,120 @@ export default function PurchasesDashboard() {
         <div className="space-y-4 animate-in fade-in duration-200">
           
           {/* BARRA DE FILTROS E BUSCA */}
-          <div className="bg-bg-primary border border-border rounded-2xl p-4 shadow-card flex flex-col md:flex-row items-center gap-3">
-            <div className="relative flex-1 w-full">
-              <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
-              <input
-                type="text"
-                placeholder="Buscar fornecedor por nome, CNPJ, código ou e-mail..."
-                value={fornecedorSearch}
-                onChange={(e) => {
-                  setFornecedorSearch(e.target.value);
-                  setFornecedorPage(1);
-                }}
-                className="w-full bg-bg-secondary border border-border rounded-xl pl-9 pr-4 py-2 text-xs font-bold text-text-primary outline-none focus:border-brand-500 transition-all placeholder:text-text-muted"
-              />
-              {fornecedorSearch && (
+          <div className="bg-bg-primary border border-border rounded-2xl p-4 shadow-card space-y-3">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-3">
+              {/* Marcação de Saldo de Compras */}
+              <div className="flex items-center gap-1.5 bg-bg-secondary p-1 rounded-xl border border-divider text-xs w-full md:w-auto overflow-x-auto">
                 <button
-                  onClick={() => setFornecedorSearch('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary"
+                  type="button"
+                  onClick={() => {
+                    setFornecedorSaldo('com_saldo');
+                    setFornecedorPage(1);
+                  }}
+                  className={clsx(
+                    "px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap inline-flex items-center gap-1.5",
+                    fornecedorSaldo === 'com_saldo'
+                      ? "bg-emerald-500 text-white shadow-xs"
+                      : "text-text-secondary hover:text-text-primary"
+                  )}
                 >
-                  <X size={13} />
+                  <CheckCircle2 size={13} /> Com Saldo de Compras (Padrão)
                 </button>
-              )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFornecedorSaldo('todos');
+                    setFornecedorPage(1);
+                  }}
+                  className={clsx(
+                    "px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap",
+                    fornecedorSaldo === 'todos'
+                      ? "bg-bg-primary text-text-primary shadow-xs border border-border"
+                      : "text-text-secondary hover:text-text-primary"
+                  )}
+                >
+                  Todos os Fornecedores
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFornecedorSaldo('sem_saldo');
+                    setFornecedorPage(1);
+                  }}
+                  className={clsx(
+                    "px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap",
+                    fornecedorSaldo === 'sem_saldo'
+                      ? "bg-slate-700 text-white shadow-xs"
+                      : "text-text-secondary hover:text-text-primary"
+                  )}
+                >
+                  Sem Saldo / Sem Compras
+                </button>
+              </div>
+
+              {/* Informação da listagem: 50 em 50 e Ordem Alfabética */}
+              <div className="flex items-center gap-2 text-text-secondary text-xs font-semibold self-start md:self-auto">
+                <span className="bg-bg-secondary border border-border px-2.5 py-1 rounded-lg text-[11px] font-mono">
+                  Ordem Alfabética (A-Z)
+                </span>
+                <span className="bg-bg-secondary border border-border px-2.5 py-1 rounded-lg text-[11px] font-mono">
+                  50 por página
+                </span>
+              </div>
             </div>
 
-            {/* Filtro por Cidade */}
-            <select
-              value={fornecedorCidade}
-              onChange={(e) => {
-                setFornecedorCidade(e.target.value);
-                setFornecedorPage(1);
-              }}
-              className="w-full md:w-48 bg-bg-secondary border border-border rounded-xl px-3 py-2 text-xs font-bold text-text-primary outline-none cursor-pointer focus:border-brand-500 transition-all"
-            >
-              <option value="todas">Todas as Cidades</option>
-              {fornecedoresQuery.data?.cidades?.map((cid: string) => (
-                <option key={cid} value={cid}>{cid}</option>
-              ))}
-            </select>
+            <div className="flex flex-col md:flex-row items-center gap-3 pt-1 border-t border-divider/30">
+              <div className="relative flex-1 w-full">
+                <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Buscar fornecedor por nome, razão social, CNPJ, código ou e-mail..."
+                  value={fornecedorSearch}
+                  onChange={(e) => {
+                    setFornecedorSearch(e.target.value);
+                    setFornecedorPage(1);
+                  }}
+                  className="w-full bg-bg-secondary border border-border rounded-xl pl-9 pr-4 py-2 text-xs font-bold text-text-primary outline-none focus:border-brand-500 transition-all placeholder:text-text-muted"
+                />
+                {fornecedorSearch && (
+                  <button
+                    onClick={() => setFornecedorSearch('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary"
+                  >
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
 
-            {/* Filtro por Status */}
-            <select
-              value={fornecedorStatus}
-              onChange={(e) => {
-                setFornecedorStatus(e.target.value);
-                setFornecedorPage(1);
-              }}
-              className="w-full md:w-36 bg-bg-secondary border border-border rounded-xl px-3 py-2 text-xs font-bold text-text-primary outline-none cursor-pointer focus:border-brand-500 transition-all"
-            >
-              <option value="todos">Todos Status</option>
-              <option value="ativo">Ativos</option>
-              <option value="inativo">Inativos</option>
-            </select>
+              {/* Filtro por Cidade */}
+              <select
+                value={fornecedorCidade}
+                onChange={(e) => {
+                  setFornecedorCidade(e.target.value);
+                  setFornecedorPage(1);
+                }}
+                className="w-full md:w-48 bg-bg-secondary border border-border rounded-xl px-3 py-2 text-xs font-bold text-text-primary outline-none cursor-pointer focus:border-brand-500 transition-all"
+              >
+                <option value="todas">Todas as Cidades</option>
+                {fornecedoresQuery.data?.cidades?.map((cid: string) => (
+                  <option key={cid} value={cid}>{cid}</option>
+                ))}
+              </select>
+
+              {/* Filtro por Status */}
+              <select
+                value={fornecedorStatus}
+                onChange={(e) => {
+                  setFornecedorStatus(e.target.value);
+                  setFornecedorPage(1);
+                }}
+                className="w-full md:w-36 bg-bg-secondary border border-border rounded-xl px-3 py-2 text-xs font-bold text-text-primary outline-none cursor-pointer focus:border-brand-500 transition-all"
+              >
+                <option value="todos">Todos Status</option>
+                <option value="ativo">Ativos</option>
+                <option value="inativo">Inativos</option>
+              </select>
+            </div>
           </div>
 
           {/* TABELA DE FORNECEDORES */}
@@ -738,7 +840,7 @@ export default function PurchasesDashboard() {
               <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
               <input
                 type="text"
-                placeholder="Buscar por número do pedido, nota ou fornecedor..."
+                placeholder="Buscar por número do pedido, nota fiscal, fornecedor, CNPJ/CPF ou cidade..."
                 value={compraSearch}
                 onChange={(e) => {
                   setCompraSearch(e.target.value);
@@ -753,21 +855,27 @@ export default function PurchasesDashboard() {
               )}
             </div>
 
-            {/* Filtro Status */}
-            <select
-              value={compraStatus}
-              onChange={(e) => {
-                setCompraStatus(e.target.value);
-                setCompraPage(1);
-              }}
-              className="w-full md:w-44 bg-bg-secondary border border-border rounded-xl px-3 py-2 text-xs font-bold text-text-primary outline-none cursor-pointer focus:border-brand-500 transition-all"
-            >
-              <option value="todos">Todos Status</option>
-              <option value="Recebida">Recebida</option>
-              <option value="Pedido realizado">Pedido Realizado</option>
-              <option value="Recebida parcialmente">Parcial</option>
-              <option value="Cancelada">Cancelada</option>
-            </select>
+            <div className="flex items-center gap-2 w-full md:w-auto">
+              <span className="hidden sm:inline-block bg-bg-secondary border border-border px-2.5 py-2 rounded-xl text-[11px] font-mono text-text-secondary whitespace-nowrap">
+                50 por página
+              </span>
+
+              {/* Filtro Status */}
+              <select
+                value={compraStatus}
+                onChange={(e) => {
+                  setCompraStatus(e.target.value);
+                  setCompraPage(1);
+                }}
+                className="w-full md:w-44 bg-bg-secondary border border-border rounded-xl px-3 py-2 text-xs font-bold text-text-primary outline-none cursor-pointer focus:border-brand-500 transition-all"
+              >
+                <option value="todos">Todos Status</option>
+                <option value="Recebida">Recebida</option>
+                <option value="Pedido realizado">Pedido Realizado</option>
+                <option value="Recebida parcialmente">Parcial</option>
+                <option value="Cancelada">Cancelada</option>
+              </select>
+            </div>
           </div>
 
           {/* TABELA DE COMPRAS */}
@@ -967,12 +1075,11 @@ export default function PurchasesDashboard() {
             </div>
 
             <div className="overflow-x-auto w-full">
-              <table className="w-full min-w-[1100px] text-left text-xs whitespace-nowrap">
+              <table className="w-full min-w-[1000px] text-left text-xs whitespace-nowrap">
                 <thead>
                   <tr className="bg-bg-secondary/60 border-b border-divider text-[10px] text-text-secondary uppercase font-black tracking-wider">
                     <th className="py-3 px-3 w-10 text-center">Sel.</th>
-                    <th className="py-3 px-3 min-w-[220px]">Produto</th>
-                    <th className="py-3 px-3 min-w-[110px]">SKU</th>
+                    <th className="py-3 px-3 min-w-[240px]">Produto</th>
                     <th className="py-3 px-3 min-w-[100px]">Última Compra</th>
                     <th className="py-3 px-3 text-right min-w-[90px]">Custo Últ.</th>
                     <th className="py-3 px-3 text-right min-w-[100px]">Total Comprado</th>
@@ -986,13 +1093,13 @@ export default function PurchasesDashboard() {
                 <tbody className="divide-y divide-divider/30 text-[11px]">
                   {confrontoQuery.isLoading ? (
                     <tr>
-                      <td colSpan={11} className="py-12 text-center text-text-secondary font-semibold">
+                      <td colSpan={10} className="py-12 text-center text-text-secondary font-semibold">
                         Confrontando histórico de compras com estoque atual...
                       </td>
                     </tr>
                   ) : confrontoProdutos.length === 0 ? (
                     <tr>
-                      <td colSpan={11} className="py-12 text-center text-text-secondary font-bold">
+                      <td colSpan={10} className="py-12 text-center text-text-secondary font-bold">
                         Ainda não existem compras registradas para este fornecedor.
                       </td>
                     </tr>
@@ -1017,10 +1124,9 @@ export default function PurchasesDashboard() {
                               className="rounded border-border text-brand-500 focus:ring-0 cursor-pointer w-4 h-4"
                             />
                           </td>
-                          <td className="py-3 px-3 max-w-[240px] truncate font-extrabold text-text-primary" title={p.produto}>
+                          <td className="py-3 px-3 max-w-[260px] truncate font-extrabold text-text-primary" title={p.produto}>
                             {p.produto}
                           </td>
-                          <td className="py-3 px-3 font-mono text-text-secondary">{p.sku || '-'}</td>
                           <td className="py-3 px-3 text-text-secondary font-semibold">
                             {p.data_ultima_compra ? new Date(p.data_ultima_compra).toLocaleDateString('pt-BR') : '-'}
                           </td>
@@ -1231,7 +1337,6 @@ export default function PurchasesDashboard() {
                         <thead className="bg-bg-secondary/70 border-b border-divider text-[10px] font-bold text-text-secondary uppercase sticky top-0">
                           <tr>
                             <th className="py-2 px-3">Produto</th>
-                            <th className="py-2 px-3">SKU</th>
                             <th className="py-2 px-3 text-right">Qtd Comprada</th>
                             <th className="py-2 px-3 text-right">Custo Atual</th>
                             <th className="py-2 px-3 text-right">Estoque Atual</th>
@@ -1240,14 +1345,13 @@ export default function PurchasesDashboard() {
                         </thead>
                         <tbody className="divide-y divide-divider/30 text-[11px]">
                           {(fichaQuery.data.produtos_comprados || []).length === 0 ? (
-                            <tr><td colSpan={6} className="py-4 text-center text-text-secondary">Nenhum produto listado.</td></tr>
+                            <tr><td colSpan={5} className="py-4 text-center text-text-secondary">Nenhum produto listado.</td></tr>
                           ) : (
                             fichaQuery.data.produtos_comprados.map((p: any) => (
                               <tr key={p.produto_id} className="hover:bg-bg-secondary/30">
-                                <td className="py-2 px-3 font-extrabold text-text-primary max-w-[240px] truncate" title={p.produto}>
+                                <td className="py-2 px-3 font-extrabold text-text-primary max-w-[260px] truncate" title={p.produto}>
                                   {p.produto}
                                 </td>
-                                <td className="py-2 px-3 font-mono text-text-secondary">{p.sku || '-'}</td>
                                 <td className="py-2 px-3 text-right font-mono font-bold text-text-secondary">{formatNum(p.total_quantidade_comprada)}</td>
                                 <td className="py-2 px-3 text-right font-mono font-bold text-text-secondary">{formatBRL(p.custo_atual)}</td>
                                 <td className="py-2 px-3 text-right font-mono font-black">
@@ -1343,7 +1447,6 @@ export default function PurchasesDashboard() {
                   <thead className="bg-bg-secondary/70 border-b border-divider text-[10px] font-bold text-text-secondary uppercase">
                     <tr>
                       <th className="py-2.5 px-3">Produto</th>
-                      <th className="py-2.5 px-3">SKU</th>
                       <th className="py-2.5 px-3 text-right">Custo Unit.</th>
                       <th className="py-2.5 px-3 text-center w-28">Quantidade</th>
                       <th className="py-2.5 px-3 text-right">Total</th>
@@ -1353,7 +1456,7 @@ export default function PurchasesDashboard() {
                   <tbody className="divide-y divide-divider/30 text-[11px]">
                     {Object.keys(selectedProdutosConfronto).length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="py-8 text-center text-text-secondary font-bold">
+                        <td colSpan={5} className="py-8 text-center text-text-secondary font-bold">
                           Nenhum produto marcado. Selecione produtos na tabela de confronto.
                         </td>
                       </tr>
@@ -1366,10 +1469,9 @@ export default function PurchasesDashboard() {
 
                         return (
                           <tr key={prodId} className="hover:bg-bg-secondary/40">
-                            <td className="py-2.5 px-3 max-w-[220px] truncate font-extrabold text-text-primary" title={prod?.produto}>
+                            <td className="py-2.5 px-3 max-w-[240px] truncate font-extrabold text-text-primary" title={prod?.produto}>
                               {prod?.produto}
                             </td>
-                            <td className="py-2.5 px-3 font-mono text-text-secondary">{prod?.sku || '-'}</td>
                             <td className="py-2.5 px-3 text-right font-mono font-bold text-text-secondary">{formatBRL(custo)}</td>
                             <td className="py-2.5 px-3 text-center">
                               <input
