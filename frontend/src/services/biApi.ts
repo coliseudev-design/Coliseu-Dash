@@ -272,6 +272,34 @@ export const BIService = {
   criarPedidoCompra: async (payload: { fornecedor_id: number; produtos: any[]; status?: string; observacao?: string }): Promise<any> => {
     const { data } = await api.post('/bi/compras/pedidos', payload);
     return data;
+  },
+
+  // MOVIMENTAÇÕES DE ESTOQUE (BAIXAS E SAÍDAS / ENTRADAS)
+  getComprasClientesSelect: async (params?: { search?: string }): Promise<any[]> => {
+    const { data } = await api.get('/bi/compras/clientes-select', { params });
+    return data;
+  },
+
+  getComprasProdutosSelect: async (params?: { search?: string }): Promise<any[]> => {
+    const { data } = await api.get('/bi/compras/produtos-select', { params });
+    return data;
+  },
+
+  registrarMovimentacaoEstoque: async (payload: {
+    tipo: 'SAIDA' | 'ENTRADA';
+    cliente_id?: number;
+    cliente_nome?: string;
+    produto_id: number;
+    quantidade: number;
+    descricao?: string;
+  }): Promise<any> => {
+    const { data } = await api.post('/bi/compras/movimentacao', payload);
+    return data;
+  },
+
+  getComprasMovimentacoes: async (params?: any): Promise<any> => {
+    const { data } = await api.get('/bi/compras/movimentacoes', { params });
+    return data;
   }
 };
 

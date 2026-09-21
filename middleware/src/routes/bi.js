@@ -4041,5 +4041,224 @@ router.post('/compras/pedidos', async (req, res, next) => {
     } catch (err) { next(err); }
 });
 
+// Helper auto-migration para garantir a tabela de movimentações
+async function ensureMovimentacoesTable() {
+    await db.query(`
+        CREATE TABLE IF NOT EXISTS dash_movimentacoes_estoque (
+            id SERIAL PRIMARY KEY,
+            tenant_id UUID NOT NULL,
+            tipo VARCHAR(20) NOT NULL, -- 'SAIDA' ou 'ENTRADA'
+            cliente_id_firebird INTEGER,
+            cliente_nome VARCHAR(255),
+            produto_id_firebird INTEGER NOT NULL,
+            produto_nome VARCHAR(255),
+            produto_codigo VARCHAR(50),
+            quantidade DECIMAL(15,3) NOT NULL,
+            descricao TEXT,
+            usuario_nome VARCHAR(200),
+            data_movimentacao TIMESTAMPTZ DEFAULT NOW(),
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS idx_dash_mov_tenant_data ON dash_movimentacoes_estoque(tenant_id, data_movimentacao DESC);
+        CREATE INDEX IF NOT EXISTS idx_dash_mov_produto ON dash_movimentacoes_estoque(tenant_id, produto_id_firebird);
+    `);
+}
+
+// 8. GET /api/bi/compras/clientes-select (Clientes e Fornecedores para baixa/entrada)
+router.get('/compras/clientes-select', async (req, res, next) => {
+    try {
+        const tenantId = req.tenant.id;
+        const search = req.query.search ? req.query.search.trim() : null;
+        let query = `
+            SELECT id_firebird, nome, documento, tipo, cidade, estado
+            FROM dash_clientes
+            WHERE tenant_id = $1
+        `;
+        const params = [tenantId];
+
+        if (search) {
+            query += ` AND (nome ILIKE $2 OR documento ILIKE $2)`;
+            params.push(`%${search}%`);
+        }
+
+        query += ` ORDER BY nome ASC LIMIT 500`;
+
+        const r = await db.query(query, params);
+        res.json(r.rows);
+    } catch (err) { next(err); }
+});
+
+// 9. GET /api/bi/compras/produtos-select (Produtos com estoque atual para seleção rápida)
+router.get('/compras/produtos-select', async (req, res, next) => {
+    try {
+        const tenantId = req.tenant.id;
+        const search = req.query.search ? req.query.search.trim() : null;
+        let query = `
+            SELECT id_firebird, codigo, nome, COALESCE(estoque, 0) as estoque, categoria
+            FROM dash_produtos
+            WHERE tenant_id = $1
+        `;
+        const params = [tenantId];
+
+        if (search) {
+            query += ` AND (nome ILIKE $2 OR codigo ILIKE $2)`;
+            params.push(`%${search}%`);
+        }
+
+        query += ` ORDER BY nome ASC LIMIT 500`;
+
+        const r = await db.query(query, params);
+        res.json(r.rows);
+    } catch (err) { next(err); }
+});
+
+// 10. POST /api/bi/compras/movimentacao (Dar baixa ou entrada imediata no estoque)
+router.post('/compras/movimentacao', async (req, res, next) => {
+    try {
+        await ensureMovimentacoesTable();
+        const tenantId = req.tenant.id;
+        const { tipo, cliente_id, cliente_nome, produto_id, quantidade, descricao } = req.body;
+
+        const movTipo = (tipo || 'SAIDA').toUpperCase().trim();
+        if (!['SAIDA', 'ENTRADA'].includes(movTipo)) {
+            return res.status(400).json({ error: 'Tipo de movimentação inválido. Use SAIDA ou ENTRADA.' });
+        }
+
+        const qtd = parseFloat(quantidade);
+        if (isNaN(qtd) || qtd <= 0) {
+            return res.status(400).json({ error: 'Informe uma quantidade válida maior que zero.' });
+        }
+
+        if (!produto_id) {
+            return res.status(400).json({ error: 'Selecione o produto para a movimentação.' });
+        }
+
+        // Buscar dados atuais do produto
+        const prodRes = await db.query(`
+            SELECT id_firebird, nome, codigo, COALESCE(estoque, 0) as estoque
+            FROM dash_produtos
+            WHERE tenant_id = $1 AND id_firebird = $2
+        `, [tenantId, produto_id]);
+
+        if (prodRes.rows.length === 0) {
+            return res.status(404).json({ error: 'Produto não encontrado no cadastro.' });
+        }
+
+        const produto = prodRes.rows[0];
+
+        // Buscar nome do cliente caso não tenha vindo explícito
+        let finalClienteNome = cliente_nome || null;
+        if (cliente_id && !finalClienteNome) {
+            const cRes = await db.query(`
+                SELECT nome FROM dash_clientes WHERE tenant_id = $1 AND id_firebird = $2
+            `, [tenantId, cliente_id]);
+            if (cRes.rows.length > 0) {
+                finalClienteNome = cRes.rows[0].nome;
+            }
+        }
+
+        // Atualizar estoque do produto em tempo real
+        const estoqueUpdateOperator = movTipo === 'ENTRADA' ? '+' : '-';
+        const updateRes = await db.query(`
+            UPDATE dash_produtos
+            SET estoque = estoque ${estoqueUpdateOperator} $1
+            WHERE tenant_id = $2 AND id_firebird = $3
+            RETURNING estoque
+        `, [qtd, tenantId, produto_id]);
+
+        const novoEstoque = updateRes.rows[0]?.estoque;
+
+        const usuarioNome = req.user?.nome || req.user?.email || 'Usuário BI';
+
+        // Inserir registro na tabela de movimentações
+        const insertRes = await db.query(`
+            INSERT INTO dash_movimentacoes_estoque (
+                tenant_id, tipo, cliente_id_firebird, cliente_nome,
+                produto_id_firebird, produto_nome, produto_codigo,
+                quantidade, descricao, usuario_nome, data_movimentacao
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
+            RETURNING *
+        `, [
+            tenantId,
+            movTipo,
+            cliente_id || null,
+            finalClienteNome,
+            produto.id_firebird,
+            produto.nome,
+            produto.codigo,
+            qtd,
+            descricao ? descricao.trim() : null,
+            usuarioNome
+        ]);
+
+        res.json({
+            success: true,
+            message: movTipo === 'SAIDA' ? 'Baixa de estoque efetuada com sucesso!' : 'Entrada de estoque efetuada com sucesso!',
+            movimentacao: insertRes.rows[0],
+            novo_estoque: novoEstoque
+        });
+    } catch (err) { next(err); }
+});
+
+// 11. GET /api/bi/compras/movimentacoes (Histórico de baixas e saídas)
+router.get('/compras/movimentacoes', async (req, res, next) => {
+    try {
+        await ensureMovimentacoesTable();
+        const tenantId = req.tenant.id;
+        const page = parseInt(req.query.page || 1, 10);
+        const limit = Math.min(parseInt(req.query.limit || 50, 10), 100);
+        const offset = (page - 1) * limit;
+        const search = req.query.search ? req.query.search.trim() : null;
+        const tipo = req.query.tipo ? req.query.tipo.toUpperCase().trim() : null;
+
+        let whereClause = `WHERE tenant_id = $1`;
+        const params = [tenantId];
+        let idx = 2;
+
+        if (tipo && ['SAIDA', 'ENTRADA'].includes(tipo)) {
+            whereClause += ` AND tipo = $${idx}`;
+            params.push(tipo);
+            idx++;
+        }
+
+        if (search) {
+            whereClause += ` AND (produto_nome ILIKE $${idx} OR cliente_nome ILIKE $${idx} OR produto_codigo ILIKE $${idx} OR descricao ILIKE $${idx})`;
+            params.push(`%${search}%`);
+            idx++;
+        }
+
+        const countRes = await db.query(`
+            SELECT count(*) as total FROM dash_movimentacoes_estoque ${whereClause}
+        `, params);
+        const total = parseInt(countRes.rows[0]?.total || 0, 10);
+
+        const rowsRes = await db.query(`
+            SELECT *
+            FROM dash_movimentacoes_estoque
+            ${whereClause}
+            ORDER BY data_movimentacao DESC
+            LIMIT $${idx} OFFSET $${idx + 1}
+        `, [...params, limit, offset]);
+
+        // Resumo estatístico
+        const resumoRes = await db.query(`
+            SELECT 
+                COALESCE(SUM(CASE WHEN tipo = 'SAIDA' THEN quantidade ELSE 0 END), 0) as total_saidas,
+                COALESCE(SUM(CASE WHEN tipo = 'ENTRADA' THEN quantidade ELSE 0 END), 0) as total_entradas,
+                COUNT(*) as total_registros
+            FROM dash_movimentacoes_estoque
+            WHERE tenant_id = $1
+        `, [tenantId]);
+
+        res.json({
+            data: rowsRes.rows,
+            total,
+            page,
+            total_pages: Math.ceil(total / limit),
+            resumo: resumoRes.rows[0] || { total_saidas: 0, total_entradas: 0, total_registros: 0 }
+        });
+    } catch (err) { next(err); }
+});
+
 module.exports = router;
 

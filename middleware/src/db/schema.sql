@@ -315,6 +315,25 @@ CREATE TABLE IF NOT EXISTS dash_caixas (
     UNIQUE(tenant_id, id_firebird)
 );
 
+CREATE TABLE IF NOT EXISTS dash_movimentacoes_estoque (
+    id SERIAL PRIMARY KEY,
+    tenant_id UUID NOT NULL,
+    tipo VARCHAR(20) NOT NULL, -- 'SAIDA' ou 'ENTRADA'
+    cliente_id_firebird INTEGER,
+    cliente_nome VARCHAR(255),
+    produto_id_firebird INTEGER NOT NULL,
+    produto_nome VARCHAR(255),
+    produto_codigo VARCHAR(50),
+    quantidade DECIMAL(15,3) NOT NULL,
+    descricao TEXT,
+    usuario_nome VARCHAR(200),
+    data_movimentacao TIMESTAMPTZ DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_dash_mov_tenant_data ON dash_movimentacoes_estoque(tenant_id, data_movimentacao DESC);
+CREATE INDEX IF NOT EXISTS idx_dash_mov_produto ON dash_movimentacoes_estoque(tenant_id, produto_id_firebird);
+
 -- ------------------------------------------------------------
 -- SISTEMA WEB (Autenticação/Auditoria internas)
 -- ------------------------------------------------------------

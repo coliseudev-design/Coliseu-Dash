@@ -6,14 +6,15 @@ import {
   ShoppingCart, Users, AlertTriangle, PackageX, FileText, CheckCircle2, 
   Search, Filter, ChevronRight, X, Phone, Mail, MapPin, Building2, 
   Calendar, ArrowRight, PlusCircle, ExternalLink, RefreshCw, Clock,
-  DollarSign, PackageCheck, AlertCircle, Layers, ArrowUpRight
+  DollarSign, PackageCheck, AlertCircle, Layers, ArrowUpRight,
+  ArrowDownUp, ArrowDownCircle, ArrowUpCircle, History, PackageMinus, PackagePlus
 } from 'lucide-react';
 import clsx from 'clsx';
 import PeriodFilter from '../../components/PeriodFilter';
 
 export default function PurchasesDashboard() {
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<'resumo' | 'fornecedores' | 'compras' | 'confronto'>('resumo');
+  const [activeTab, setActiveTab] = useState<'resumo' | 'fornecedores' | 'compras' | 'confronto' | 'baixa_saida'>('resumo');
 
   // Estados dos filtros
   const [fornecedorSearch, setFornecedorSearch] = useState('');
@@ -36,6 +37,17 @@ export default function PurchasesDashboard() {
   const [observacaoNovaCompra, setObservacaoNovaCompra] = useState('');
   const [statusNovaCompra, setStatusNovaCompra] = useState<'Pedido realizado' | 'Rascunho'>('Pedido realizado');
   const [sucessoMsg, setSucessoMsg] = useState<string | null>(null);
+
+  // Estados da Aba Baixa e Saída (Tópico 5)
+  const [tipoMovimentacao, setTipoMovimentacao] = useState<'SAIDA' | 'ENTRADA'>('SAIDA');
+  const [selectedClienteId, setSelectedClienteId] = useState<number | null>(null);
+  const [selectedProdutoId, setSelectedProdutoId] = useState<number | null>(null);
+  const [quantidadeMov, setQuantidadeMov] = useState<string>('1');
+  const [descricaoMov, setDescricaoMov] = useState<string>('');
+  const [movSearch, setMovSearch] = useState<string>('');
+  const [movTipoFiltro, setMovTipoFiltro] = useState<'todos' | 'SAIDA' | 'ENTRADA'>('todos');
+  const [movPage, setMovPage] = useState<number>(1);
+  const [isBaixaModalOpen, setIsBaixaModalOpen] = useState<boolean>(false);
 
   // Filtro de alerta de estoque da aba Resumo
   const [filtroAlertaEstoque, setFiltroAlertaEstoque] = useState<'todos' | 'comprar' | 'atencao' | 'sem_cadastro'>('todos');
@@ -90,6 +102,49 @@ export default function PurchasesDashboard() {
   const fornecedoresSelectQuery = useQuery({
     queryKey: ['bi-compras-fornecedores-select'],
     queryFn: () => BIService.getComprasFornecedoresSelect(),
+  });
+
+  // 6. Query: Clientes e Fornecedores para Select de Baixa/Saída
+  const clientesSelectQuery = useQuery({
+    queryKey: ['bi-compras-clientes-select'],
+    queryFn: () => BIService.getComprasClientesSelect(),
+  });
+
+  // 7. Query: Produtos com Estoque para Select de Baixa/Saída
+  const produtosSelectQuery = useQuery({
+    queryKey: ['bi-compras-produtos-select'],
+    queryFn: () => BIService.getComprasProdutosSelect(),
+  });
+
+  // 8. Query: Histórico de Movimentações (Baixas e Entradas)
+  const movimentacoesQuery = useQuery({
+    queryKey: ['bi-compras-movimentacoes', movPage, movSearch, movTipoFiltro],
+    queryFn: () => BIService.getComprasMovimentacoes({
+      page: movPage,
+      limit: 50,
+      search: movSearch,
+      tipo: movTipoFiltro !== 'todos' ? movTipoFiltro : undefined
+    }),
+    enabled: activeTab === 'baixa_saida' || isBaixaModalOpen
+  });
+
+  // 9. Mutation: Registrar Baixa ou Entrada de Estoque
+  const registrarMovMutation = useMutation({
+    mutationFn: (payload: any) => BIService.registrarMovimentacaoEstoque(payload),
+    onSuccess: (data) => {
+      setSucessoMsg(data.message || 'Movimentação registrada com sucesso!');
+      setIsBaixaModalOpen(false);
+      setQuantidadeMov('1');
+      setDescricaoMov('');
+      queryClient.invalidateQueries({ queryKey: ['bi-compras-movimentacoes'] });
+      queryClient.invalidateQueries({ queryKey: ['bi-compras-produtos-select'] });
+      queryClient.invalidateQueries({ queryKey: ['bi-compras-resumo'] });
+      queryClient.invalidateQueries({ queryKey: ['bi-compras-confronto'] });
+      setTimeout(() => setSucessoMsg(null), 5000);
+    },
+    onError: (err: any) => {
+      alert(err.response?.data?.error || 'Erro ao registrar movimentação.');
+    }
   });
 
   // Auto-selecionar primeiro fornecedor se nenhum selecionado
@@ -174,6 +229,34 @@ export default function PurchasesDashboard() {
     });
   };
 
+  const selectedProdutoInfo = useMemo(() => {
+    if (!selectedProdutoId) return null;
+    return (produtosSelectQuery.data || []).find((p: any) => p.id_firebird === selectedProdutoId);
+  }, [selectedProdutoId, produtosSelectQuery.data]);
+
+  const handleConfirmarBaixa = () => {
+    if (!selectedProdutoId) {
+      alert('Selecione um produto para realizar a movimentação.');
+      return;
+    }
+    const qtdNum = parseFloat(quantidadeMov);
+    if (isNaN(qtdNum) || qtdNum <= 0) {
+      alert('Informe uma quantidade válida maior que zero.');
+      return;
+    }
+
+    const cliente = (clientesSelectQuery.data || []).find((c: any) => c.id_firebird === selectedClienteId);
+
+    registrarMovMutation.mutate({
+      tipo: tipoMovimentacao,
+      cliente_id: selectedClienteId || undefined,
+      cliente_nome: cliente?.nome || undefined,
+      produto_id: selectedProdutoId,
+      quantidade: qtdNum,
+      descricao: descricaoMov.trim() || undefined
+    });
+  };
+
   return (
     <div className="space-y-4 pb-12 animate-in fade-in duration-300" aria-label="Gestão de Compras por Fornecedor">
       
@@ -190,25 +273,26 @@ export default function PurchasesDashboard() {
         </div>
       )}
 
-      {/* 1. HEADER EXECUTIVO COM NAVEGAÇÃO DE ABAS */}
-      <div className="bg-bg-primary border border-border rounded-2xl p-4 sm:p-5 shadow-card flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-sky-500/10 border border-sky-500/20 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0 shadow-sm">
-            <ShoppingCart size={24} />
+      {/* 1. HEADER EXECUTIVO COM NAVEGAÇÃO DE ABAS (COMPACTO E ALINHADO À ESQUERDA) */}
+      <div className="bg-bg-primary border border-border rounded-2xl p-3 sm:p-4 shadow-card flex flex-col xl:flex-row xl:items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0 shadow-sm">
+            <ShoppingCart size={20} />
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-black text-text-primary tracking-tight">GESTÃO DE COMPRAS</h1>
-            <p className="text-xs text-text-secondary font-medium">Controle de fornecedores, compras por notas de entrada e confronto com estoque</p>
+            <h1 className="text-base sm:text-lg font-black text-text-primary tracking-tight whitespace-nowrap uppercase">
+              GESTÃO DE COMPRAS
+            </h1>
           </div>
         </div>
 
-        {/* NAVEGAÇÃO ENTRE AS 4 ABAS */}
-        <div className="flex items-center bg-bg-secondary p-1 rounded-xl border border-divider overflow-x-auto select-none">
+        {/* NAVEGAÇÃO ENTRE AS 5 ABAS */}
+        <div className="flex items-center gap-1 bg-bg-secondary p-1 rounded-xl border border-divider overflow-x-auto select-none max-w-full">
           <button
             type="button"
             onClick={() => setActiveTab('resumo')}
             className={clsx(
-              "px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1.5 whitespace-nowrap",
+              "px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1.5 whitespace-nowrap",
               activeTab === 'resumo'
                 ? "bg-bg-primary text-text-primary shadow-xs border border-border"
                 : "text-text-secondary hover:text-text-primary"
@@ -221,7 +305,7 @@ export default function PurchasesDashboard() {
             type="button"
             onClick={() => setActiveTab('fornecedores')}
             className={clsx(
-              "px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1.5 whitespace-nowrap",
+              "px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1.5 whitespace-nowrap",
               activeTab === 'fornecedores'
                 ? "bg-bg-primary text-text-primary shadow-xs border border-border"
                 : "text-text-secondary hover:text-text-primary"
@@ -234,7 +318,7 @@ export default function PurchasesDashboard() {
             type="button"
             onClick={() => setActiveTab('compras')}
             className={clsx(
-              "px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1.5 whitespace-nowrap",
+              "px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1.5 whitespace-nowrap",
               activeTab === 'compras'
                 ? "bg-bg-primary text-text-primary shadow-xs border border-border"
                 : "text-text-secondary hover:text-text-primary"
@@ -247,13 +331,40 @@ export default function PurchasesDashboard() {
             type="button"
             onClick={() => setActiveTab('confronto')}
             className={clsx(
-              "px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1.5 whitespace-nowrap",
+              "px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1.5 whitespace-nowrap",
               activeTab === 'confronto'
                 ? "bg-sky-500 text-white shadow-xs"
                 : "text-text-secondary hover:text-text-primary"
             )}
           >
-            <PackageCheck size={13} /> 4. Confronto por Fornecedor
+            <PackageCheck size={13} /> 4. Confronto
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('baixa_saida')}
+            className={clsx(
+              "px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1.5 whitespace-nowrap",
+              activeTab === 'baixa_saida'
+                ? "bg-emerald-600 text-white shadow-xs"
+                : "text-text-secondary hover:text-text-primary"
+            )}
+          >
+            <ArrowDownUp size={13} className={activeTab === 'baixa_saida' ? "text-white" : "text-emerald-500"} /> 5. Baixa e Saída
+          </button>
+        </div>
+
+        {/* BOTÃO DE AÇÃO RÁPIDA: NOVA BAIXA / SAÍDA */}
+        <div className="flex items-center shrink-0">
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('baixa_saida');
+              setIsBaixaModalOpen(true);
+            }}
+            className="w-full xl:w-auto px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer inline-flex items-center justify-center gap-1.5 whitespace-nowrap"
+          >
+            <PlusCircle size={14} /> Nova Baixa / Saída
           </button>
         </div>
       </div>
@@ -1185,6 +1296,358 @@ export default function PurchasesDashboard() {
       )}
 
       {/* ======================================================== */}
+      {/* ABA 5: BAIXA E SAÍDA (ENTRADA / SAÍDA MANUAL NO ESTOQUE) */}
+      {/* ======================================================== */}
+      {activeTab === 'baixa_saida' && (
+        <div className="space-y-4 animate-in fade-in duration-200">
+          
+          {/* CARD DE LANÇAMENTO IMEDIATO */}
+          <div className="bg-bg-primary border border-border rounded-2xl p-5 sm:p-6 shadow-card space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-divider/40 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center justify-center font-bold">
+                  <ArrowDownUp size={20} />
+                </div>
+                <div>
+                  <h3 className="font-black text-sm sm:text-base text-text-primary uppercase tracking-wider">
+                    Lançamento de Baixa & Entrada de Estoque
+                  </h3>
+                  <p className="text-xs text-text-secondary">
+                    Dê baixa ou entrada rápida no estoque vinculando ao cliente/fornecedor, sem valor financeiro.
+                  </p>
+                </div>
+              </div>
+
+              {/* SELEÇÃO DO TIPO: ENTRADA OU SAÍDA */}
+              <div className="flex items-center bg-bg-secondary p-1 rounded-xl border border-divider">
+                <button
+                  type="button"
+                  onClick={() => setTipoMovimentacao('SAIDA')}
+                  className={clsx(
+                    "px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer inline-flex items-center gap-2",
+                    tipoMovimentacao === 'SAIDA'
+                      ? "bg-rose-500 text-white shadow-xs"
+                      : "text-text-secondary hover:text-text-primary"
+                  )}
+                >
+                  <PackageMinus size={15} /> Baixa / Saída
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTipoMovimentacao('ENTRADA')}
+                  className={clsx(
+                    "px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer inline-flex items-center gap-2",
+                    tipoMovimentacao === 'ENTRADA'
+                      ? "bg-emerald-600 text-white shadow-xs"
+                      : "text-text-secondary hover:text-text-primary"
+                  )}
+                >
+                  <PackagePlus size={15} /> Entrada
+                </button>
+              </div>
+            </div>
+
+            {/* FORMULÁRIO DE LANÇAMENTO */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* 1. SELEÇÃO DO CLIENTE / FORNECEDOR */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-text-secondary uppercase tracking-wider block">
+                  Cliente / Fornecedor (Opcional):
+                </label>
+                <select
+                  value={selectedClienteId || ''}
+                  onChange={(e) => setSelectedClienteId(e.target.value ? Number(e.target.value) : null)}
+                  className="w-full bg-bg-secondary border border-border rounded-xl px-3 py-2.5 text-xs font-bold text-text-primary outline-none focus:border-brand-500 cursor-pointer"
+                >
+                  <option value="">Selecione um cliente / fornecedor (opcional)</option>
+                  {(clientesSelectQuery.data || []).map((c: any) => (
+                    <option key={c.id_firebird} value={c.id_firebird}>
+                      {c.nome} {c.documento ? `(${c.documento})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* 2. SELEÇÃO DO PRODUTO */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-text-secondary uppercase tracking-wider block">
+                  Produto do Estoque <span className="text-rose-500">*</span>:
+                </label>
+                <select
+                  value={selectedProdutoId || ''}
+                  onChange={(e) => setSelectedProdutoId(e.target.value ? Number(e.target.value) : null)}
+                  className="w-full bg-bg-secondary border border-border rounded-xl px-3 py-2.5 text-xs font-bold text-text-primary outline-none focus:border-brand-500 cursor-pointer"
+                >
+                  <option value="">Selecione o produto</option>
+                  {(produtosSelectQuery.data || []).map((p: any) => (
+                    <option key={p.id_firebird} value={p.id_firebird}>
+                      {p.nome} (Estoque: {formatNum(p.estoque)})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* 3. QUANTIDADE (SEM VALOR FINANCEIRO) */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-text-secondary uppercase tracking-wider block">
+                  Quantidade <span className="text-rose-500">*</span>:
+                </label>
+                <input
+                  type="number"
+                  min="0.001"
+                  step="any"
+                  value={quantidadeMov}
+                  onChange={(e) => setQuantidadeMov(e.target.value)}
+                  placeholder="Ex: 5"
+                  className="w-full bg-bg-secondary border border-border rounded-xl px-3 py-2.5 text-xs font-mono font-bold text-text-primary outline-none focus:border-brand-500"
+                />
+              </div>
+
+              {/* 4. DESCRIÇÃO / MOTIVO */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-text-secondary uppercase tracking-wider block">
+                  Descrição / Motivo da Baixa:
+                </label>
+                <input
+                  type="text"
+                  value={descricaoMov}
+                  onChange={(e) => setDescricaoMov(e.target.value)}
+                  placeholder="Ex: Consumo interno, avaria, perda, devolução..."
+                  className="w-full bg-bg-secondary border border-border rounded-xl px-3 py-2.5 text-xs font-medium text-text-primary outline-none focus:border-brand-500"
+                />
+              </div>
+            </div>
+
+            {/* PREVISÃO DE ESTOQUE E BOTÃO DE CONFIRMAÇÃO */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-divider/40">
+              <div className="text-xs text-text-secondary flex items-center gap-2">
+                {selectedProdutoInfo ? (
+                  <span className="bg-bg-secondary border border-border px-3 py-1.5 rounded-xl font-medium inline-flex items-center gap-2">
+                    <span>Estoque Atual: <strong className="font-mono text-text-primary">{formatNum(selectedProdutoInfo.estoque)}</strong></span>
+                    <span>→</span>
+                    <span>
+                      Pós-{tipoMovimentacao === 'SAIDA' ? 'Baixa' : 'Entrada'}:{' '}
+                      <strong className={clsx(
+                        "font-mono font-black",
+                        tipoMovimentacao === 'SAIDA'
+                          ? (Number(selectedProdutoInfo.estoque) - (parseFloat(quantidadeMov) || 0) < 0 ? "text-rose-600" : "text-amber-600")
+                          : "text-emerald-600"
+                      )}>
+                        {formatNum(
+                          tipoMovimentacao === 'SAIDA'
+                            ? Math.max(-999999, Number(selectedProdutoInfo.estoque) - (parseFloat(quantidadeMov) || 0))
+                            : Number(selectedProdutoInfo.estoque) + (parseFloat(quantidadeMov) || 0)
+                        )}
+                      </strong>
+                    </span>
+                  </span>
+                ) : (
+                  <span className="text-text-muted">Selecione um produto para visualizar a prévia do estoque.</span>
+                )}
+              </div>
+
+              <button
+                type="button"
+                disabled={registrarMovMutation.isPending}
+                onClick={handleConfirmarBaixa}
+                className={clsx(
+                  "px-6 py-2.5 text-white font-black text-xs rounded-xl shadow-md transition-all cursor-pointer inline-flex items-center justify-center gap-2",
+                  tipoMovimentacao === 'SAIDA'
+                    ? "bg-rose-600 hover:bg-rose-700"
+                    : "bg-emerald-600 hover:bg-emerald-700",
+                  registrarMovMutation.isPending && "opacity-50 pointer-events-none"
+                )}
+              >
+                {registrarMovMutation.isPending ? (
+                  <RefreshCw size={14} className="animate-spin" />
+                ) : tipoMovimentacao === 'SAIDA' ? (
+                  <PackageMinus size={15} />
+                ) : (
+                  <PackagePlus size={15} />
+                )}
+                {tipoMovimentacao === 'SAIDA' ? 'Dar Baixa no Momento' : 'Confirmar Entrada no Momento'}
+              </button>
+            </div>
+          </div>
+
+          {/* KPIS RESUMO DA ABA 5 */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+            <div className="bg-bg-primary rounded-2xl p-4 border border-border shadow-card flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-black text-rose-600 uppercase tracking-wider block">Total Saídas / Baixas</span>
+                <div className="text-2xl font-black text-rose-600 font-mono mt-1">
+                  {formatNum(movimentacoesQuery.data?.resumo?.total_saidas || 0)} un
+                </div>
+              </div>
+              <div className="p-2.5 rounded-xl bg-rose-500/10 text-rose-500"><PackageMinus size={20} /></div>
+            </div>
+
+            <div className="bg-bg-primary rounded-2xl p-4 border border-border shadow-card flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-black text-emerald-600 uppercase tracking-wider block">Total Entradas</span>
+                <div className="text-2xl font-black text-emerald-600 font-mono mt-1">
+                  {formatNum(movimentacoesQuery.data?.resumo?.total_entradas || 0)} un
+                </div>
+              </div>
+              <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-500"><PackagePlus size={20} /></div>
+            </div>
+
+            <div className="bg-bg-primary rounded-2xl p-4 border border-border shadow-card flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-black text-text-secondary uppercase tracking-wider block">Movimentações Registradas</span>
+                <div className="text-2xl font-black text-text-primary font-mono mt-1">
+                  {formatNum(movimentacoesQuery.data?.resumo?.total_registros || 0)}
+                </div>
+              </div>
+              <div className="p-2.5 rounded-xl bg-sky-500/10 text-sky-500"><History size={20} /></div>
+            </div>
+          </div>
+
+          {/* TABELA DE HISTÓRICO DE BAIXAS E SAÍDAS */}
+          <div className="bg-bg-primary border border-divider shadow-card rounded-2xl overflow-hidden flex flex-col">
+            <div className="p-4 border-b border-divider flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <div className="relative flex-1">
+                <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Buscar por produto, cliente/fornecedor, código ou descrição..."
+                  value={movSearch}
+                  onChange={(e) => {
+                    setMovSearch(e.target.value);
+                    setMovPage(1);
+                  }}
+                  className="w-full bg-bg-secondary border border-border rounded-xl pl-9 pr-4 py-2 text-xs font-bold text-text-primary outline-none focus:border-brand-500 transition-all placeholder:text-text-muted"
+                />
+                {movSearch && (
+                  <button onClick={() => setMovSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary">
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
+
+              {/* Filtro por Tipo */}
+              <div className="flex items-center gap-1 bg-bg-secondary p-1 rounded-xl border border-divider text-xs">
+                <button
+                  type="button"
+                  onClick={() => { setMovTipoFiltro('todos'); setMovPage(1); }}
+                  className={clsx("px-3 py-1 rounded-lg font-bold transition-all cursor-pointer", movTipoFiltro === 'todos' ? "bg-bg-primary text-text-primary shadow-xs" : "text-text-secondary")}
+                >
+                  Todas
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setMovTipoFiltro('SAIDA'); setMovPage(1); }}
+                  className={clsx("px-3 py-1 rounded-lg font-bold transition-all cursor-pointer", movTipoFiltro === 'SAIDA' ? "bg-rose-500 text-white shadow-xs" : "text-text-secondary")}
+                >
+                  Baixas / Saídas
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setMovTipoFiltro('ENTRADA'); setMovPage(1); }}
+                  className={clsx("px-3 py-1 rounded-lg font-bold transition-all cursor-pointer", movTipoFiltro === 'ENTRADA' ? "bg-emerald-600 text-white shadow-xs" : "text-text-secondary")}
+                >
+                  Entradas
+                </button>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto w-full">
+              <table className="w-full min-w-[950px] text-left text-xs whitespace-nowrap">
+                <thead>
+                  <tr className="bg-bg-secondary/60 border-b border-divider text-[10px] text-text-secondary uppercase font-black tracking-wider">
+                    <th className="py-3 px-3">Data / Hora</th>
+                    <th className="py-3 px-3 text-center">Tipo</th>
+                    <th className="py-3 px-3">Produto</th>
+                    <th className="py-3 px-3 text-right">Quantidade</th>
+                    <th className="py-3 px-3">Cliente / Fornecedor</th>
+                    <th className="py-3 px-3">Descrição / Motivo</th>
+                    <th className="py-3 px-3 text-center">Responsável</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-divider/30 text-[11px]">
+                  {movimentacoesQuery.isLoading ? (
+                    <tr>
+                      <td colSpan={7} className="py-12 text-center text-text-secondary font-semibold">
+                        Carregando histórico de movimentações...
+                      </td>
+                    </tr>
+                  ) : (movimentacoesQuery.data?.data || []).length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-12 text-center text-text-secondary font-bold">
+                        Nenhuma movimentação registrada até o momento. Utilize o formulário acima para lançar uma baixa ou entrada.
+                      </td>
+                    </tr>
+                  ) : (
+                    movimentacoesQuery.data.data.map((m: any) => (
+                      <tr key={m.id} className="hover:bg-bg-secondary/40 transition-colors">
+                        <td className="py-3 px-3 font-semibold text-text-secondary">
+                          {new Date(m.data_movimentacao).toLocaleString('pt-BR')}
+                        </td>
+                        <td className="py-3 px-3 text-center">
+                          <span className={clsx(
+                            "px-2.5 py-0.5 rounded-full text-[10px] font-black border inline-flex items-center gap-1",
+                            m.tipo === 'SAIDA'
+                              ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20"
+                              : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                          )}>
+                            {m.tipo === 'SAIDA' ? <PackageMinus size={11} /> : <PackagePlus size={11} />}
+                            {m.tipo === 'SAIDA' ? 'Saída' : 'Entrada'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 max-w-[260px] truncate font-extrabold text-text-primary" title={m.produto_nome}>
+                          {m.produto_nome}
+                        </td>
+                        <td className="py-3 px-3 text-right font-mono font-black text-xs">
+                          <span className={m.tipo === 'SAIDA' ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}>
+                            {m.tipo === 'SAIDA' ? '-' : '+'}{formatNum(m.quantidade)} un
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 max-w-[200px] truncate text-text-secondary font-medium" title={m.cliente_nome || '-'}>
+                          {m.cliente_nome || '-'}
+                        </td>
+                        <td className="py-3 px-3 max-w-[240px] truncate text-text-secondary font-medium" title={m.descricao || '-'}>
+                          {m.descricao || '-'}
+                        </td>
+                        <td className="py-3 px-3 text-center text-text-muted font-mono text-[10px]">
+                          {m.usuario_nome || '-'}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Paginação */}
+            {movimentacoesQuery.data?.total_pages > 1 && (
+              <div className="p-4 bg-bg-secondary/30 border-t border-divider flex items-center justify-between text-xs">
+                <div className="text-text-secondary">
+                  Página <strong>{movPage}</strong> de <strong>{movimentacoesQuery.data.total_pages}</strong> ({movimentacoesQuery.data.total} registros)
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    disabled={movPage <= 1}
+                    onClick={() => setMovPage(p => Math.max(1, p - 1))}
+                    className="px-3 py-1 bg-bg-primary border border-border rounded-lg font-bold disabled:opacity-50 cursor-pointer"
+                  >
+                    Anterior
+                  </button>
+                  <button
+                    disabled={movPage >= movimentacoesQuery.data.total_pages}
+                    onClick={() => setMovPage(p => p + 1)}
+                    className="px-3 py-1 bg-bg-primary border border-border rounded-lg font-bold disabled:opacity-50 cursor-pointer"
+                  >
+                    Próxima
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+        </div>
+      )}
+
+      {/* ======================================================== */}
       {/* MODAL / FICHA 360 DO FORNECEDOR                          */}
       {/* ======================================================== */}
       {selectedFornecedorId && (
@@ -1561,6 +2024,149 @@ export default function PurchasesDashboard() {
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* MODAL DE BAIXA E SAÍDA RÁPIDA                            */}
+      {/* ======================================================== */}
+      {isBaixaModalOpen && (
+        <div className="fixed inset-0 bg-slate-950/60 z-50 flex items-center justify-center p-3 sm:p-5 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-bg-primary border border-border shadow-2xl rounded-2xl w-full max-w-xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-4 sm:p-5 border-b border-divider flex items-center justify-between bg-bg-secondary/40">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center justify-center font-bold">
+                  <ArrowDownUp size={18} />
+                </div>
+                <div>
+                  <h3 className="font-black text-sm text-text-primary uppercase tracking-wide">
+                    {tipoMovimentacao === 'SAIDA' ? 'Dar Baixa / Saída de Estoque' : 'Registrar Entrada de Estoque'}
+                  </h3>
+                  <p className="text-[11px] text-text-secondary">Atualização instantânea do saldo de estoque sem valor monetário</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsBaixaModalOpen(false)}
+                className="p-1.5 text-text-secondary hover:text-text-primary hover:bg-bg-secondary rounded-lg transition-colors cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-4 sm:p-6 space-y-4 overflow-y-auto">
+              {/* Seletor Tipo */}
+              <div className="flex items-center bg-bg-secondary p-1 rounded-xl border border-divider">
+                <button
+                  type="button"
+                  onClick={() => setTipoMovimentacao('SAIDA')}
+                  className={clsx(
+                    "flex-1 py-2 rounded-lg text-xs font-black transition-all cursor-pointer inline-flex items-center justify-center gap-2",
+                    tipoMovimentacao === 'SAIDA' ? "bg-rose-500 text-white shadow-xs" : "text-text-secondary"
+                  )}
+                >
+                  <PackageMinus size={14} /> Baixa / Saída
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTipoMovimentacao('ENTRADA')}
+                  className={clsx(
+                    "flex-1 py-2 rounded-lg text-xs font-black transition-all cursor-pointer inline-flex items-center justify-center gap-2",
+                    tipoMovimentacao === 'ENTRADA' ? "bg-emerald-600 text-white shadow-xs" : "text-text-secondary"
+                  )}
+                >
+                  <PackagePlus size={14} /> Entrada
+                </button>
+              </div>
+
+              {/* Cliente */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-text-secondary uppercase">Cliente / Fornecedor (Opcional):</label>
+                <select
+                  value={selectedClienteId || ''}
+                  onChange={(e) => setSelectedClienteId(e.target.value ? Number(e.target.value) : null)}
+                  className="w-full bg-bg-secondary border border-border rounded-xl px-3 py-2 text-xs font-bold text-text-primary outline-none cursor-pointer"
+                >
+                  <option value="">Selecione um cliente / fornecedor (opcional)</option>
+                  {(clientesSelectQuery.data || []).map((c: any) => (
+                    <option key={c.id_firebird} value={c.id_firebird}>
+                      {c.nome} {c.documento ? `(${c.documento})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Produto */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-text-secondary uppercase">Produto <span className="text-rose-500">*</span>:</label>
+                <select
+                  value={selectedProdutoId || ''}
+                  onChange={(e) => setSelectedProdutoId(e.target.value ? Number(e.target.value) : null)}
+                  className="w-full bg-bg-secondary border border-border rounded-xl px-3 py-2 text-xs font-bold text-text-primary outline-none cursor-pointer"
+                >
+                  <option value="">Selecione o produto</option>
+                  {(produtosSelectQuery.data || []).map((p: any) => (
+                    <option key={p.id_firebird} value={p.id_firebird}>
+                      {p.nome} (Estoque atual: {formatNum(p.estoque)})
+                    </option>
+                  ))}
+                </select>
+                {selectedProdutoInfo && (
+                  <div className="text-[11px] font-medium text-text-secondary pt-0.5">
+                    Saldo atual: <strong className="text-text-primary font-mono">{formatNum(selectedProdutoInfo.estoque)}</strong> un
+                  </div>
+                )}
+              </div>
+
+              {/* Quantidade */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-text-secondary uppercase">Quantidade <span className="text-rose-500">*</span>:</label>
+                <input
+                  type="number"
+                  min="0.001"
+                  step="any"
+                  value={quantidadeMov}
+                  onChange={(e) => setQuantidadeMov(e.target.value)}
+                  placeholder="Ex: 5"
+                  className="w-full bg-bg-secondary border border-border rounded-xl px-3 py-2 text-xs font-mono font-bold text-text-primary outline-none"
+                />
+              </div>
+
+              {/* Descrição */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-text-secondary uppercase">Descrição / Motivo:</label>
+                <textarea
+                  rows={2}
+                  value={descricaoMov}
+                  onChange={(e) => setDescricaoMov(e.target.value)}
+                  placeholder="Justifique o motivo da baixa ou entrada..."
+                  className="w-full bg-bg-secondary border border-border rounded-xl px-3 py-2 text-xs text-text-primary outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-divider bg-bg-secondary/20 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsBaixaModalOpen(false)}
+                className="px-4 py-2 border border-border rounded-xl text-xs font-bold text-text-secondary hover:text-text-primary cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={registrarMovMutation.isPending}
+                onClick={handleConfirmarBaixa}
+                className={clsx(
+                  "px-5 py-2 text-white font-black text-xs rounded-xl shadow-xs transition-all cursor-pointer inline-flex items-center gap-1.5",
+                  tipoMovimentacao === 'SAIDA' ? "bg-rose-600 hover:bg-rose-700" : "bg-emerald-600 hover:bg-emerald-700",
+                  registrarMovMutation.isPending && "opacity-50 pointer-events-none"
+                )}
+              >
+                {registrarMovMutation.isPending && <RefreshCw size={13} className="animate-spin" />}
+                {tipoMovimentacao === 'SAIDA' ? 'Dar Baixa no Momento' : 'Confirmar Entrada no Momento'}
+              </button>
+            </div>
           </div>
         </div>
       )}
