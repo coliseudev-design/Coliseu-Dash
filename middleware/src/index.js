@@ -165,7 +165,7 @@ async function initializeRbac(db) {
             'clientes', 'vendas', 'usuarios', 'layout_1', 'layout_2', 'layout_3',
             'bi_seller_hub', 'bi_sales', 'bi_supplier', 'bi_abc', 'bi_finance', 
             'bi_customer', 'bi_comparative', 'bi_customer_analytics', 'bi_goals', 
-            'bi_heatmap', 'bi_ai_insights', 'bi_hub'
+            'bi_heatmap', 'bi_ai_insights', 'bi_hub', 'bi_compras', 'bi_compras_ia'
         ];
 
         for (const combo of userCombos) {

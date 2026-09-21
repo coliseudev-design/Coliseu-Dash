@@ -82,11 +82,10 @@ router.get('/:id/permissions', requireAdmin, async (req, res) => {
         const tenantId = req.tenant.id;
         const groupId = req.params.id;
 
-        // Verificar se o grupo pertence ao tenant
-        const groupCheck = await db.query(
-            'SELECT id FROM dash_grupos_acesso WHERE id = $1 AND tenant_id = $2',
-            [groupId, tenantId]
-        );
+        const isMaster = (req.user?.role || '').toLowerCase() === 'master';
+        const groupCheck = isMaster
+            ? await db.query('SELECT id FROM dash_grupos_acesso WHERE id = $1', [groupId])
+            : await db.query('SELECT id FROM dash_grupos_acesso WHERE id = $1 AND tenant_id = $2', [groupId, tenantId]);
 
         if (groupCheck.rowCount === 0) {
             return res.status(404).json({ error: 'Grupo não encontrado', code: 'NOT_FOUND' });
@@ -196,11 +195,10 @@ router.put('/:id/permissions', requireAdmin, async (req, res) => {
             return res.status(400).json({ error: 'Permissions deve ser um array de strings contendo os recursos autorizados.' });
         }
 
-        // Verificar se o grupo pertence ao tenant
-        const groupCheck = await db.query(
-            'SELECT id FROM dash_grupos_acesso WHERE id = $1 AND tenant_id = $2',
-            [groupId, tenantId]
-        );
+        const isMaster = (req.user?.role || '').toLowerCase() === 'master';
+        const groupCheck = isMaster
+            ? await db.query('SELECT id FROM dash_grupos_acesso WHERE id = $1', [groupId])
+            : await db.query('SELECT id FROM dash_grupos_acesso WHERE id = $1 AND tenant_id = $2', [groupId, tenantId]);
 
         if (groupCheck.rowCount === 0) {
             return res.status(404).json({ error: 'Grupo não encontrado', code: 'NOT_FOUND' });
@@ -220,8 +218,8 @@ router.put('/:id/permissions', requireAdmin, async (req, res) => {
         // Atualizar vendedores_todos se enviado
         if (vendedores_todos !== undefined) {
             await db.query(
-                'UPDATE dash_grupos_acesso SET vendedores_todos = $1 WHERE id = $2 AND tenant_id = $3',
-                [vendedores_todos === true, groupId, tenantId]
+                'UPDATE dash_grupos_acesso SET vendedores_todos = $1 WHERE id = $2',
+                [vendedores_todos === true, groupId]
             );
         }
 
@@ -252,11 +250,10 @@ router.delete('/:id', requireAdmin, async (req, res) => {
         const tenantId = req.tenant.id;
         const groupId = req.params.id;
 
-        // Verificar se o grupo pertence ao tenant
-        const groupCheck = await db.query(
-            'SELECT id FROM dash_grupos_acesso WHERE id = $1 AND tenant_id = $2',
-            [groupId, tenantId]
-        );
+        const isMaster = (req.user?.role || '').toLowerCase() === 'master';
+        const groupCheck = isMaster
+            ? await db.query('SELECT id FROM dash_grupos_acesso WHERE id = $1', [groupId])
+            : await db.query('SELECT id FROM dash_grupos_acesso WHERE id = $1 AND tenant_id = $2', [groupId, tenantId]);
 
         if (groupCheck.rowCount === 0) {
             return res.status(404).json({ error: 'Grupo não encontrado', code: 'NOT_FOUND' });

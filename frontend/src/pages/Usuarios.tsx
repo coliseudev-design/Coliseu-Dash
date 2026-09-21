@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '../services/api'
 import DataTable from '../components/DataTable'
@@ -601,8 +602,18 @@ export default function Usuarios() {
             </div>
             
             <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
-              <p className="text-sm text-text-secondary">
-                Associe o usuário a um grupo de acesso em cada uma das versões disponíveis.
+              <div className="p-3 bg-brand-50/70 border border-brand-200/60 rounded-xl text-xs space-y-1">
+                <p className="font-semibold text-brand-700">Associação de Grupos</p>
+                <p className="text-brand-600">
+                  Defina o grupo deste usuário para cada versão. Para editar os módulos e permissões de cada grupo (como Gestão de Compras, Vendas, etc.), acesse a tela de{' '}
+                  <Link to="/grupos" className="font-bold underline hover:text-brand-800">
+                    Grupos de Acesso
+                  </Link>.
+                </p>
+              </div>
+
+              <p className="text-xs text-text-secondary">
+                Selecione o grupo de acesso para cada versão disponível:
               </p>
 
               {['Dash 1.0', 'B.I IA.'].map((version) => {

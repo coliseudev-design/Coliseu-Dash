@@ -25,7 +25,8 @@ async function getUserPermissions(userId, tenantId) {
         'usuarios_criar', 'usuarios_grupos', 'usuarios_filiais', 'usuarios_status', 'usuarios_versao',
         'reset_senha', 'cadastro_metas', 'layout_1', 'layout_2', 'layout_3',
         'bi_sales', 'bi_hub', 'bi_supplier', 'bi_abc', 'bi_finance', 'bi_customer', 
-        'bi_comparative', 'bi_customer_analytics', 'bi_goals', 'bi_heatmap', 'bi_ai_insights'
+        'bi_comparative', 'bi_customer_analytics', 'bi_goals', 'bi_heatmap', 'bi_ai_insights',
+        'bi_compras', 'bi_compras_ia', 'bi_seller_hub'
     ];
 
     // Se for master, tem acesso irrestrito a todos os layouts e abas

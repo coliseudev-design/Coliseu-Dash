@@ -46,6 +46,7 @@ const BI_IA_MODULES: PermissionModule[] = [
   { id: 'bi_hub', label: 'Hub de Vendas', category: 'Módulos do Sistema' },
   { id: 'bi_supplier', label: 'Hub do Fornecedor', category: 'Módulos do Sistema' },
   { id: 'bi_abc', label: 'Gestão de Inventário', category: 'Módulos do Sistema' },
+  { id: 'bi_compras', label: 'Gestão de Compras (Fornecedores & Pedidos)', category: 'Módulos do Sistema', description: 'Permite acessar a gestão de compras por fornecedor, notas de entrada e sugestões de reposição' },
   { id: 'bi_finance', label: 'Financeiro', category: 'Módulos do Sistema' },
   { id: 'bi_customer', label: 'Radar 360', category: 'Módulos do Sistema' },
   { id: 'bi_comparative', label: 'Lucratividade', category: 'Módulos do Sistema' },
@@ -75,12 +76,11 @@ export default function Grupos() {
   const activeUser = useAuthStore((s) => s.user)
 
   const ALL_VERSIONS = ['Dash 1.0', 'B.I IA.']
-  const availableVersions = ALL_VERSIONS.filter(v => activeUser?.available_versions?.includes(v))
-  const displayVersions = availableVersions.length > 0 ? availableVersions : ['Dash 1.0']
+  const displayVersions = ALL_VERSIONS
 
   const [activeTab, setActiveTab] = useState(() => {
-    const currentLayout = activeUser?.versao || activeUser?.layout_version || 'Dash 1.0'
-    return displayVersions.includes(currentLayout) ? currentLayout : displayVersions[0]
+    const currentLayout = activeUser?.versao || activeUser?.layout_version || 'B.I IA.'
+    return displayVersions.includes(currentLayout) ? currentLayout : 'B.I IA.'
   })
 
   const [modalOpen, setModalOpen] = useState(false)
@@ -187,9 +187,13 @@ export default function Grupos() {
         .filter(p => p.pode_acessar && !['layout_1', 'layout_2', 'layout_3'].includes(p.recurso))
         .map(p => p.recurso)
 
-      // Se for o grupo Administrador e não tiver registros salvos ainda, marcar tudo por padrão
-      if (group.nome.toLowerCase() === 'administrador' && activeRecursos.length === 0) {
-        activeRecursos = groupModules.map(m => m.id)
+      // Se for o grupo Administrador, garantir que bi_compras venha marcado se não tiver sido explicitamente desmarcado
+      if (group.nome.toLowerCase() === 'administrador') {
+        if (activeRecursos.length === 0) {
+          activeRecursos = groupModules.map(m => m.id)
+        } else if (!activeRecursos.includes('bi_compras')) {
+          activeRecursos.push('bi_compras')
+        }
       }
 
       setSelectedPermissions(activeRecursos)
@@ -434,9 +438,33 @@ export default function Grupos() {
               </div>
               
               <div className="p-6 space-y-4">
-                <p className="text-sm text-text-secondary">
-                  Configure os recursos, páginas e ações permitidas para os membros deste grupo ({selectedGroup.versao}).
-                </p>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <p className="text-sm text-text-secondary">
+                    Configure os recursos permitidos para os membros deste grupo ({selectedGroup.versao}).
+                  </p>
+                  <div className="flex items-center gap-2 text-xs shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const allIds = modalModules.map(m => m.id);
+                        setSelectedPermissions(prev => Array.from(new Set([...prev, ...allIds])));
+                      }}
+                      className="px-2.5 py-1 rounded-md bg-brand-50 hover:bg-brand-100 text-brand-600 font-semibold transition-colors"
+                    >
+                      Marcar Todos
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const modalIds = new Set(modalModules.map(m => m.id));
+                        setSelectedPermissions(prev => prev.filter(id => !modalIds.has(id)));
+                      }}
+                      className="px-2.5 py-1 rounded-md bg-bg-secondary hover:bg-danger/10 text-text-muted hover:text-danger font-semibold transition-colors"
+                    >
+                      Desmarcar Todos
+                    </button>
+                  </div>
+                </div>
 
                 <div className="space-y-4 max-h-80 overflow-y-auto border border-divider rounded-xl p-3 bg-bg-secondary/10">
                   {Array.from(new Set(modalModules.map(m => m.category))).map(category => (
