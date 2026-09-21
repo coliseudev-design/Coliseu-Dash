@@ -78,17 +78,17 @@ const MENU_GROUPS = [
   },
   {
     id: 'compras',
-    label: 'Compras Inteligentes (IA)',
+    label: 'Compras & Suprimentos',
     icon: ShoppingCart,
     color: '#0284C7',
     items: [
       { 
-        to: '/bi/compras-ia', 
-        label: 'Recomendações de Compra', 
+        to: '/bi/compras', 
+        label: 'Gestão de Compras', 
         icon: ShoppingCart, 
-        id: 'bi_compras_ia', 
+        id: 'bi_compras', 
         color: '#0284C7', 
-        isComingSoon: true,
+        isComingSoon: false,
         iconClass: 'icon-compras'
       },
     ]
@@ -171,7 +171,7 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }: 
 
   const groupsWithAccess = MENU_GROUPS.map(group => {
     const allowedItems = group.items.filter(item => {
-      if (item.id === 'bi_compras_ia') return true
+      if (item.id === 'bi_compras_ia' || item.id === 'bi_compras') return true
       return hasAccess(item.id)
     })
     return { ...group, items: allowedItems }

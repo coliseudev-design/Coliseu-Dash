@@ -109,7 +109,7 @@ const TOP_MENU_GROUPS = [
     color: '#06B6D4',
     items: [
       { to: '/bi/abc', label: 'Dinâmica de Inventário', icon: Boxes, id: 'bi_abc', color: '#06B6D4' },
-      { to: '/bi/compras-ia', label: 'Recomendações de Compra', icon: ShoppingCart, id: 'bi_compras_ia', color: '#A855F7', isComingSoon: true },
+      { to: '/bi/compras', label: 'Gestão de Compras', icon: ShoppingCart, id: 'bi_compras', color: '#10B981' },
     ]
   }
 ]
@@ -147,7 +147,7 @@ export default function Header({ onMenuClick, activeRoute }: Props) {
 
   const allowedGroups = TOP_MENU_GROUPS.map(group => {
     const allowedItems = group.items.filter(item => {
-      if (item.id === 'bi_compras_ia') return true
+      if (item.id === 'bi_compras_ia' || item.id === 'bi_compras') return true
       return hasAccess(item.id)
     })
     return { ...group, items: allowedItems }

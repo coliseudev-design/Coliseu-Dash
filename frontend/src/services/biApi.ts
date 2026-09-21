@@ -234,5 +234,44 @@ export const BIService = {
   getSellerBrandProducts: async (vendedorId: number, brandName: string, mes: number, ano: number): Promise<any[]> => {
     const { data } = await api.get('/goals/seller-brand-products', { params: { vendedor_id: vendedorId, brand: brandName, mes, ano } });
     return data;
+  },
+
+  // ==========================================
+  // GESTÃO DE COMPRAS POR FORNECEDOR
+  // ==========================================
+  getComprasResumo: async (params?: any): Promise<any> => {
+    const { data } = await api.get('/bi/compras/resumo', { params });
+    return data;
+  },
+
+  getComprasFornecedores: async (params?: any): Promise<any> => {
+    const { data } = await api.get('/bi/compras/fornecedores', { params });
+    return data;
+  },
+
+  getComprasFornecedorFicha: async (fornecedorId: number): Promise<any> => {
+    const { data } = await api.get(`/bi/compras/fornecedor/${fornecedorId}`);
+    return data;
+  },
+
+  getComprasPedidos: async (params?: any): Promise<any> => {
+    const { data } = await api.get('/bi/compras/pedidos', { params });
+    return data;
+  },
+
+  getComprasConfronto: async (fornecedorId: number): Promise<any> => {
+    const { data } = await api.get('/bi/compras/confronto', { params: { fornecedor_id: fornecedorId } });
+    return data;
+  },
+
+  getComprasFornecedoresSelect: async (): Promise<any[]> => {
+    const { data } = await api.get('/bi/compras/fornecedores-select');
+    return data;
+  },
+
+  criarPedidoCompra: async (payload: { fornecedor_id: number; produtos: any[]; status?: string; observacao?: string }): Promise<any> => {
+    const { data } = await api.post('/bi/compras/pedidos', payload);
+    return data;
   }
 };
+

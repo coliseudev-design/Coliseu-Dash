@@ -3393,4 +3393,617 @@ router.get('/seller/summary', async (req, res, next) => {
     } catch (err) { next(err); }
 });
 
+// ==========================================
+// MÓDULO: GESTÃO DE COMPRAS POR FORNECEDOR
+// ==========================================
+
+// 1. GET /api/bi/compras/resumo
+router.get('/compras/resumo', async (req, res, next) => {
+    try {
+        const tenantId = req.tenant.id;
+        const { start, end } = await getBiDateRange(req, tenantId);
+        const { fornecedor_id, categoria, status_estoque } = req.query;
+
+        // 1. Total Fornecedores
+        const fCountRes = await db.query(
+            `SELECT count(*) as total FROM dash_clientes WHERE tenant_id = $1 AND tipo = '2'`,
+            [tenantId]
+        );
+        const total_fornecedores = parseInt(fCountRes.rows[0]?.total || 0, 10);
+
+        // 2. Compras no período
+        let comprasClause = '';
+        let comprasParams = [tenantId, toSafeSqlString(start), toSafeSqlString(end)];
+        if (fornecedor_id) {
+            comprasClause += ` AND c.id_firebird = $4`;
+            comprasParams.push(parseInt(fornecedor_id, 10));
+        }
+
+        const comprasRes = await db.query(`
+            SELECT 
+                COALESCE(SUM(v.valor_total), 0) as total_comprado,
+                COUNT(DISTINCT v.id_firebird) as total_pedidos,
+                COUNT(DISTINCT vi.produto_id_firebird) as produtos_comprados
+            FROM dash_vendas v
+            JOIN dash_clientes c ON c.tenant_id = v.tenant_id AND c.id_firebird = v.cliente_id_firebird
+            LEFT JOIN dash_vendas_itens vi ON vi.tenant_id = v.tenant_id AND vi.venda_id_firebird = v.id_firebird
+            WHERE v.tenant_id = $1 AND c.tipo = '2'
+              AND v.data_venda >= $2 AND v.data_venda <= $3
+              ${comprasClause}
+        `, comprasParams);
+
+        const total_comprado = parseFloat(comprasRes.rows[0]?.total_comprado || 0);
+        const total_pedidos = parseInt(comprasRes.rows[0]?.total_pedidos || 0, 10);
+        const produtos_comprados = parseInt(comprasRes.rows[0]?.produtos_comprados || 0, 10);
+
+        // 3. Indicadores de estoque
+        const estoqueKpiRes = await db.query(`
+            SELECT 
+                COUNT(*) FILTER (WHERE estoque <= estoque_minimo AND estoque_minimo > 0) as produtos_estoque_baixo,
+                COUNT(*) FILTER (WHERE COALESCE(estoque, 0) <= 0) as produtos_zerados,
+                COUNT(*) FILTER (WHERE COALESCE(estoque_minimo, 0) <= 0) as produtos_sem_minimo
+            FROM dash_produtos
+            WHERE tenant_id = $1 AND ativo = true
+        `, [tenantId]);
+
+        const produtos_estoque_baixo = parseInt(estoqueKpiRes.rows[0]?.produtos_estoque_baixo || 0, 10);
+        const produtos_zerados = parseInt(estoqueKpiRes.rows[0]?.produtos_zerados || 0, 10);
+        const produtos_sem_minimo = parseInt(estoqueKpiRes.rows[0]?.produtos_sem_minimo || 0, 10);
+
+        // 4. Últimas Compras realizadas (10 mais recentes)
+        const ultimasComprasRes = await db.query(`
+            SELECT 
+                v.id_firebird as id,
+                v.numero_pedido,
+                v.numero_nota,
+                v.data_venda as data_compra,
+                v.valor_total,
+                c.id_firebird as fornecedor_id,
+                c.nome as fornecedor_nome,
+                c.cidade,
+                c.estado,
+                COUNT(vi.id) as total_itens,
+                COALESCE(v.status, 'Recebida') as status
+            FROM dash_vendas v
+            JOIN dash_clientes c ON c.tenant_id = v.tenant_id AND c.id_firebird = v.cliente_id_firebird
+            LEFT JOIN dash_vendas_itens vi ON vi.tenant_id = v.tenant_id AND vi.venda_id_firebird = v.id_firebird
+            WHERE v.tenant_id = $1 AND c.tipo = '2'
+            GROUP BY v.id_firebird, v.numero_pedido, v.numero_nota, v.data_venda, v.valor_total, c.id_firebird, c.nome, c.cidade, c.estado, v.status
+            ORDER BY v.data_venda DESC
+            LIMIT 10
+        `, [tenantId]);
+
+        // 5. Fornecedores com maior valor comprado
+        const topFornecRes = await db.query(`
+            SELECT 
+                c.id_firebird,
+                c.nome,
+                c.documento,
+                c.cidade,
+                c.estado,
+                SUM(v.valor_total) as total_comprado,
+                COUNT(DISTINCT v.id_firebird) as qtd_pedidos,
+                MAX(v.data_venda) as ultima_compra
+            FROM dash_vendas v
+            JOIN dash_clientes c ON c.tenant_id = v.tenant_id AND c.id_firebird = v.cliente_id_firebird
+            WHERE v.tenant_id = $1 AND c.tipo = '2' AND c.nome NOT ILIKE '%CONSUMIDOR%'
+              AND v.data_venda >= $2 AND v.data_venda <= $3
+            GROUP BY c.id_firebird, c.nome, c.documento, c.cidade, c.estado
+            ORDER BY total_comprado DESC
+            LIMIT 6
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end)]);
+
+        // 6. Alertas de Estoque
+        let alertFilter = '';
+        if (status_estoque === 'comprar') {
+            alertFilter = 'AND (COALESCE(p.estoque, 0) <= 0)';
+        } else if (status_estoque === 'atencao') {
+            alertFilter = 'AND (p.estoque > 0 AND p.estoque <= p.estoque_minimo AND p.estoque_minimo > 0)';
+        } else if (status_estoque === 'sem_cadastro') {
+            alertFilter = 'AND (COALESCE(p.estoque_minimo, 0) <= 0)';
+        }
+
+        const alertasRes = await db.query(`
+            SELECT 
+                p.id_firebird as produto_id,
+                p.nome as produto,
+                p.codigo as sku,
+                p.categoria,
+                p.marca,
+                COALESCE(p.estoque, 0) as estoque_atual,
+                COALESCE(p.estoque_minimo, 0) as estoque_minimo,
+                p.custo,
+                c.nome as fornecedor_nome,
+                c.id_firebird as fornecedor_id,
+                GREATEST(0, COALESCE(p.estoque_minimo, 0) - COALESCE(p.estoque, 0)) as sugestao_compra,
+                CASE
+                    WHEN COALESCE(p.estoque_minimo, 0) <= 0 THEN 'sem_cadastro'
+                    WHEN COALESCE(p.estoque, 0) <= 0 THEN 'comprar'
+                    WHEN COALESCE(p.estoque, 0) <= COALESCE(p.estoque_minimo, 0) THEN 'atencao'
+                    ELSE 'normal'
+                END as status
+            FROM dash_produtos p
+            LEFT JOIN LATERAL (
+                SELECT v.cliente_id_firebird
+                FROM dash_vendas_itens vi
+                JOIN dash_vendas v ON v.tenant_id = vi.tenant_id AND v.id_firebird = vi.venda_id_firebird
+                JOIN dash_clientes c2 ON c2.tenant_id = v.tenant_id AND c2.id_firebird = v.cliente_id_firebird
+                WHERE vi.tenant_id = p.tenant_id AND vi.produto_id_firebird = p.id_firebird AND c2.tipo = '2'
+                ORDER BY v.data_venda DESC
+                LIMIT 1
+            ) ult ON true
+            LEFT JOIN dash_clientes c ON c.tenant_id = p.tenant_id AND c.id_firebird = ult.cliente_id_firebird
+            WHERE p.tenant_id = $1 AND p.ativo = true
+              AND (p.estoque <= p.estoque_minimo OR p.estoque <= 0 OR p.estoque_minimo <= 0)
+              ${alertFilter}
+            ORDER BY 
+                CASE 
+                    WHEN COALESCE(p.estoque, 0) <= 0 THEN 1
+                    WHEN p.estoque <= p.estoque_minimo AND p.estoque_minimo > 0 THEN 2
+                    ELSE 3
+                END,
+                p.estoque ASC
+            LIMIT 40
+        `, [tenantId]);
+
+        res.json({
+            kpis: {
+                total_fornecedores,
+                total_comprado,
+                total_pedidos,
+                produtos_comprados,
+                produtos_estoque_baixo,
+                produtos_zerados,
+                produtos_sem_minimo
+            },
+            ultimas_compras: ultimasComprasRes.rows,
+            top_fornecedores: topFornecRes.rows,
+            alertas_estoque: alertasRes.rows
+        });
+    } catch (err) { next(err); }
+});
+
+// 2. GET /api/bi/compras/fornecedores
+router.get('/compras/fornecedores', async (req, res, next) => {
+    try {
+        const tenantId = req.tenant.id;
+        const page = parseInt(req.query.page || 1, 10);
+        const limit = Math.min(parseInt(req.query.limit || 20, 10), 100);
+        const offset = (page - 1) * limit;
+        const search = req.query.search ? req.query.search.trim() : null;
+        const cidade = req.query.cidade ? req.query.cidade.trim() : null;
+        const status = req.query.status ? req.query.status.trim() : null;
+
+        let whereClause = `WHERE c.tenant_id = $1 AND c.tipo = '2'`;
+        const params = [tenantId];
+        let idx = 2;
+
+        if (search) {
+            whereClause += ` AND (c.nome ILIKE $${idx} OR c.documento ILIKE $${idx} OR c.id_firebird::text ILIKE $${idx} OR c.email ILIKE $${idx})`;
+            params.push(`%${search}%`);
+            idx++;
+        }
+
+        if (cidade && cidade !== 'todas') {
+            whereClause += ` AND c.cidade = $${idx}`;
+            params.push(cidade);
+            idx++;
+        }
+
+        if (status === 'ativo') {
+            whereClause += ` AND c.ativo = true`;
+        } else if (status === 'inativo') {
+            whereClause += ` AND c.ativo = false`;
+        }
+
+        // Count total
+        const countRes = await db.query(`
+            SELECT count(*) as total
+            FROM dash_clientes c
+            ${whereClause}
+        `, params);
+        const total = parseInt(countRes.rows[0]?.total || 0, 10);
+
+        // Fetch paginated suppliers with aggregated purchase stats
+        const queryParams = [...params, limit, offset];
+        const rowsRes = await db.query(`
+            SELECT 
+                c.id,
+                c.id_firebird,
+                c.nome,
+                c.documento,
+                c.email,
+                c.telefone,
+                c.cidade,
+                c.estado,
+                c.classificacao,
+                c.ativo,
+                c.data_cadastro,
+                COALESCE(compras.total_comprado, 0) as total_comprado,
+                COALESCE(compras.qtd_compras, 0) as qtd_compras,
+                compras.ultima_compra,
+                COALESCE(compras.produtos_fornecidos, 0) as produtos_fornecidos
+            FROM dash_clientes c
+            LEFT JOIN LATERAL (
+                SELECT 
+                    SUM(v.valor_total) as total_comprado,
+                    COUNT(DISTINCT v.id_firebird) as qtd_compras,
+                    MAX(v.data_venda) as ultima_compra,
+                    COUNT(DISTINCT vi.produto_id_firebird) as produtos_fornecidos
+                FROM dash_vendas v
+                LEFT JOIN dash_vendas_itens vi ON vi.tenant_id = v.tenant_id AND vi.venda_id_firebird = v.id_firebird
+                WHERE v.tenant_id = c.tenant_id AND v.cliente_id_firebird = c.id_firebird
+            ) compras ON true
+            ${whereClause}
+            ORDER BY COALESCE(compras.total_comprado, 0) DESC, c.nome ASC
+            LIMIT $${idx} OFFSET $${idx + 1}
+        `, queryParams);
+
+        // Distinct cities for filter dropdown
+        const citiesRes = await db.query(`
+            SELECT DISTINCT cidade 
+            FROM dash_clientes 
+            WHERE tenant_id = $1 AND tipo = '2' AND cidade IS NOT NULL AND TRIM(cidade) != ''
+            ORDER BY cidade ASC
+            LIMIT 50
+        `, [tenantId]);
+
+        res.json({
+            data: rowsRes.rows,
+            total,
+            page,
+            total_pages: Math.ceil(total / limit),
+            cidades: citiesRes.rows.map(r => r.cidade)
+        });
+    } catch (err) { next(err); }
+});
+
+// 3. GET /api/bi/compras/fornecedor/:id (Ficha do Fornecedor 360)
+router.get('/compras/fornecedor/:id', async (req, res, next) => {
+    try {
+        const tenantId = req.tenant.id;
+        const fornecedorId = parseInt(req.params.id, 10);
+
+        // 1. Dados cadastrais do fornecedor
+        const fRes = await db.query(`
+            SELECT 
+                c.id, c.id_firebird, c.nome, c.documento, c.email, c.telefone,
+                c.cidade, c.estado, c.classificacao, c.ativo, c.data_cadastro,
+                c.nome_fantasia, c.razao_social
+            FROM dash_clientes c
+            WHERE c.tenant_id = $1 AND c.id_firebird = $2
+        `, [tenantId, fornecedorId]);
+
+        if (fRes.rows.length === 0) {
+            return res.status(404).json({ error: 'Fornecedor não encontrado' });
+        }
+        const fornecedor = fRes.rows[0];
+
+        // 2. Resumo de compras
+        const resumoRes = await db.query(`
+            SELECT 
+                COALESCE(SUM(v.valor_total), 0) as total_comprado,
+                COUNT(DISTINCT v.id_firebird) as qtd_pedidos,
+                COUNT(DISTINCT vi.produto_id_firebird) as qtd_produtos,
+                MAX(v.data_venda) as ultima_compra,
+                MAX(v.valor_total) as maior_compra,
+                COALESCE(AVG(v.valor_total), 0) as media_compra
+            FROM dash_vendas v
+            LEFT JOIN dash_vendas_itens vi ON vi.tenant_id = v.tenant_id AND vi.venda_id_firebird = v.id_firebird
+            WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2
+        `, [tenantId, fornecedorId]);
+        const resumo = resumoRes.rows[0];
+
+        // 3. Histórico de compras
+        const pedidosRes = await db.query(`
+            SELECT 
+                v.id_firebird as compra_id,
+                v.numero_pedido,
+                v.numero_nota,
+                v.data_venda as data_compra,
+                v.valor_total,
+                v.especie,
+                COALESCE(v.status, 'Recebida') as status,
+                COUNT(vi.id) as total_itens
+            FROM dash_vendas v
+            LEFT JOIN dash_vendas_itens vi ON vi.tenant_id = v.tenant_id AND vi.venda_id_firebird = v.id_firebird
+            WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2
+            GROUP BY v.id_firebird, v.numero_pedido, v.numero_nota, v.data_venda, v.valor_total, v.especie, v.status
+            ORDER BY v.data_venda DESC
+            LIMIT 50
+        `, [tenantId, fornecedorId]);
+
+        // 4. Produtos comprados desse fornecedor
+        const produtosRes = await db.query(`
+            SELECT 
+                p.id_firebird as produto_id,
+                p.nome as produto,
+                p.codigo as sku,
+                p.categoria,
+                p.marca,
+                MAX(v.data_venda) as data_ultima_compra,
+                (
+                    SELECT vi2.quantidade 
+                    FROM dash_vendas_itens vi2 
+                    JOIN dash_vendas v2 ON v2.tenant_id = vi2.tenant_id AND v2.id_firebird = vi2.venda_id_firebird 
+                    WHERE vi2.tenant_id = $1 AND v2.cliente_id_firebird = $2 AND vi2.produto_id_firebird = p.id_firebird 
+                    ORDER BY v2.data_venda DESC 
+                    LIMIT 1
+                ) as qtd_ultima_compra,
+                (
+                    SELECT vi2.custo_unitario 
+                    FROM dash_vendas_itens vi2 
+                    JOIN dash_vendas v2 ON v2.tenant_id = vi2.tenant_id AND v2.id_firebird = vi2.venda_id_firebird 
+                    WHERE vi2.tenant_id = $1 AND v2.cliente_id_firebird = $2 AND vi2.produto_id_firebird = p.id_firebird 
+                    ORDER BY v2.data_venda DESC 
+                    LIMIT 1
+                ) as custo_atual,
+                SUM(vi.quantidade) as total_quantidade_comprada,
+                SUM(vi.valor_total) as total_valor_comprado,
+                COALESCE(p.estoque, 0) as estoque_atual,
+                COALESCE(p.estoque_minimo, 0) as estoque_minimo,
+                GREATEST(0, COALESCE(p.estoque_minimo, 0) - COALESCE(p.estoque, 0)) as necessidade,
+                CASE
+                    WHEN COALESCE(p.estoque_minimo, 0) <= 0 THEN 'sem_cadastro'
+                    WHEN COALESCE(p.estoque, 0) <= 0 THEN 'comprar'
+                    WHEN COALESCE(p.estoque, 0) <= COALESCE(p.estoque_minimo, 0) THEN 'atencao'
+                    ELSE 'normal'
+                END as status
+            FROM dash_vendas_itens vi
+            JOIN dash_vendas v ON v.tenant_id = vi.tenant_id AND v.id_firebird = vi.venda_id_firebird
+            JOIN dash_produtos p ON p.tenant_id = vi.tenant_id AND p.id_firebird = vi.produto_id_firebird
+            WHERE vi.tenant_id = $1 AND v.cliente_id_firebird = $2
+            GROUP BY p.id_firebird, p.nome, p.codigo, p.categoria, p.marca, p.estoque, p.estoque_minimo
+            ORDER BY necessidade DESC, total_valor_comprado DESC
+            LIMIT 100
+        `, [tenantId, fornecedorId]);
+
+        res.json({
+            dados_fornecedor: {
+                ...fornecedor,
+                condicao_pagamento: fornecedor.classificacao?.trim() || 'A Combinar',
+                prazo_medio_entrega: '3 a 7 dias úteis',
+                observacoes: fornecedor.observacao || 'Fornecedor cadastrado na base comercial.'
+            },
+            resumo_compras: resumo,
+            historico_compras: pedidosRes.rows,
+            produtos_comprados: produtosRes.rows
+        });
+    } catch (err) { next(err); }
+});
+
+// 4. GET /api/bi/compras/pedidos
+router.get('/compras/pedidos', async (req, res, next) => {
+    try {
+        const tenantId = req.tenant.id;
+        const page = parseInt(req.query.page || 1, 10);
+        const limit = Math.min(parseInt(req.query.limit || 20, 10), 100);
+        const offset = (page - 1) * limit;
+        const search = req.query.search ? req.query.search.trim() : null;
+        const status = req.query.status ? req.query.status.trim() : null;
+        const fornecedor_id = req.query.fornecedor_id ? parseInt(req.query.fornecedor_id, 10) : null;
+
+        let whereClause = `WHERE v.tenant_id = $1 AND c.tipo = '2'`;
+        const params = [tenantId];
+        let idx = 2;
+
+        if (search) {
+            whereClause += ` AND (v.numero_pedido ILIKE $${idx} OR v.numero_nota::text ILIKE $${idx} OR c.nome ILIKE $${idx})`;
+            params.push(`%${search}%`);
+            idx++;
+        }
+
+        if (fornecedor_id) {
+            whereClause += ` AND c.id_firebird = $${idx}`;
+            params.push(fornecedor_id);
+            idx++;
+        }
+
+        if (status && status !== 'todos') {
+            whereClause += ` AND v.status ILIKE $${idx}`;
+            params.push(`%${status}%`);
+            idx++;
+        }
+
+        const countRes = await db.query(`
+            SELECT count(DISTINCT v.id_firebird) as total
+            FROM dash_vendas v
+            JOIN dash_clientes c ON c.tenant_id = v.tenant_id AND c.id_firebird = v.cliente_id_firebird
+            ${whereClause}
+        `, params);
+        const total = parseInt(countRes.rows[0]?.total || 0, 10);
+
+        const rowsRes = await db.query(`
+            SELECT 
+                v.id_firebird as compra_id,
+                v.numero_pedido,
+                v.numero_nota,
+                v.data_venda as data_compra,
+                v.data_vencimento as data_prevista,
+                v.valor_total,
+                v.especie,
+                COALESCE(v.status, 'Recebida') as status,
+                c.id_firebird as fornecedor_id,
+                c.nome as fornecedor_nome,
+                c.documento as fornecedor_documento,
+                c.cidade as fornecedor_cidade,
+                c.estado as fornecedor_estado,
+                COUNT(vi.id) as total_itens,
+                COALESCE(SUM(vi.quantidade), 0) as total_quantidade
+            FROM dash_vendas v
+            JOIN dash_clientes c ON c.tenant_id = v.tenant_id AND c.id_firebird = v.cliente_id_firebird
+            LEFT JOIN dash_vendas_itens vi ON vi.tenant_id = v.tenant_id AND vi.venda_id_firebird = v.id_firebird
+            ${whereClause}
+            GROUP BY v.id_firebird, v.numero_pedido, v.numero_nota, v.data_venda, v.data_vencimento, v.valor_total, v.especie, v.status, c.id_firebird, c.nome, c.documento, c.cidade, c.estado
+            ORDER BY v.data_venda DESC
+            LIMIT $${idx} OFFSET $${idx + 1}
+        `, [...params, limit, offset]);
+
+        res.json({
+            data: rowsRes.rows,
+            total,
+            page,
+            total_pages: Math.ceil(total / limit)
+        });
+    } catch (err) { next(err); }
+});
+
+// 5. GET /api/bi/compras/confronto
+router.get('/compras/confronto', async (req, res, next) => {
+    try {
+        const tenantId = req.tenant.id;
+        const fornecedorId = parseInt(req.query.fornecedor_id, 10);
+
+        if (!fornecedorId) {
+            return res.status(400).json({ error: 'Parâmetro fornecedor_id é obrigatório.' });
+        }
+
+        // Dados do fornecedor
+        const fRes = await db.query(`
+            SELECT id_firebird, nome, documento, cidade, estado 
+            FROM dash_clientes 
+            WHERE tenant_id = $1 AND id_firebird = $2
+        `, [tenantId, fornecedorId]);
+
+        if (fRes.rows.length === 0) {
+            return res.status(404).json({ error: 'Fornecedor não encontrado.' });
+        }
+        const fornecedor = fRes.rows[0];
+
+        // Produtos comprados desse fornecedor confrontados com o estoque
+        const prodRes = await db.query(`
+            SELECT 
+                p.id_firebird as produto_id,
+                p.nome as produto,
+                p.codigo as sku,
+                p.categoria,
+                p.marca,
+                MAX(v.data_venda) as data_ultima_compra,
+                (
+                    SELECT vi2.quantidade 
+                    FROM dash_vendas_itens vi2 
+                    JOIN dash_vendas v2 ON v2.tenant_id = vi2.tenant_id AND v2.id_firebird = vi2.venda_id_firebird 
+                    WHERE vi2.tenant_id = $1 AND v2.cliente_id_firebird = $2 AND vi2.produto_id_firebird = p.id_firebird 
+                    ORDER BY v2.data_venda DESC 
+                    LIMIT 1
+                ) as qtd_ultima_compra,
+                (
+                    SELECT vi2.custo_unitario 
+                    FROM dash_vendas_itens vi2 
+                    JOIN dash_vendas v2 ON v2.tenant_id = vi2.tenant_id AND v2.id_firebird = vi2.venda_id_firebird 
+                    WHERE vi2.tenant_id = $1 AND v2.cliente_id_firebird = $2 AND vi2.produto_id_firebird = p.id_firebird 
+                    ORDER BY v2.data_venda DESC 
+                    LIMIT 1
+                ) as custo_ultima_compra,
+                SUM(vi.quantidade) as qtd_total_comprada,
+                SUM(vi.valor_total) as valor_total_comprado,
+                COALESCE(p.estoque, 0) as estoque_atual,
+                COALESCE(p.estoque_minimo, 0) as estoque_minimo,
+                0 as compras_pendentes,
+                GREATEST(0, COALESCE(p.estoque_minimo, 0) - COALESCE(p.estoque, 0)) as necessidade_estimada,
+                GREATEST(0, COALESCE(p.estoque_minimo, 0) - COALESCE(p.estoque, 0)) as sugestao_compra,
+                CASE
+                    WHEN COALESCE(p.estoque_minimo, 0) <= 0 THEN 'sem_cadastro'
+                    WHEN COALESCE(p.estoque, 0) <= 0 THEN 'comprar_agora'
+                    WHEN COALESCE(p.estoque, 0) <= COALESCE(p.estoque_minimo, 0) THEN 'atencao'
+                    ELSE 'normal'
+                END as status
+            FROM dash_vendas_itens vi
+            JOIN dash_vendas v ON v.tenant_id = vi.tenant_id AND v.id_firebird = vi.venda_id_firebird
+            JOIN dash_produtos p ON p.tenant_id = vi.tenant_id AND p.id_firebird = vi.produto_id_firebird
+            WHERE vi.tenant_id = $1 AND v.cliente_id_firebird = $2
+            GROUP BY p.id_firebird, p.nome, p.codigo, p.categoria, p.marca, p.estoque, p.estoque_minimo
+            ORDER BY 
+                CASE
+                    WHEN COALESCE(p.estoque, 0) <= 0 THEN 1
+                    WHEN p.estoque <= p.estoque_minimo AND p.estoque_minimo > 0 THEN 2
+                    ELSE 3
+                END,
+                necessidade_estimada DESC,
+                valor_total_comprado DESC
+        `, [tenantId, fornecedorId]);
+
+        const produtos = prodRes.rows;
+        const total_produtos = produtos.length;
+        const produtos_comprar = produtos.filter(p => p.status === 'comprar_agora').length;
+        const produtos_atencao = produtos.filter(p => p.status === 'atencao').length;
+        const produtos_normais = produtos.filter(p => p.status === 'normal').length;
+        const valor_sugerido_total = produtos.reduce((acc, p) => acc + (parseFloat(p.sugestao_compra || 0) * parseFloat(p.custo_ultima_compra || 0)), 0);
+
+        res.json({
+            fornecedor,
+            produtos,
+            resumo: {
+                total_produtos,
+                produtos_comprar,
+                produtos_atencao,
+                produtos_normais,
+                valor_sugerido_total
+            }
+        });
+    } catch (err) { next(err); }
+});
+
+// 6. GET /api/bi/compras/fornecedores-select
+router.get('/compras/fornecedores-select', async (req, res, next) => {
+    try {
+        const tenantId = req.tenant.id;
+        const listRes = await db.query(`
+            SELECT DISTINCT c.id_firebird, c.nome, c.documento, c.cidade, c.estado
+            FROM dash_clientes c
+            JOIN dash_vendas v ON v.tenant_id = c.tenant_id AND v.cliente_id_firebird = c.id_firebird
+            WHERE c.tenant_id = $1 AND c.tipo = '2' AND c.nome NOT ILIKE '%CONSUMIDOR%'
+            ORDER BY c.nome ASC
+            LIMIT 500
+        `, [tenantId]);
+        res.json(listRes.rows);
+    } catch (err) { next(err); }
+});
+
+// 7. POST /api/bi/compras/pedidos (Gravação de novo pedido sugerido)
+router.post('/compras/pedidos', async (req, res, next) => {
+    try {
+        const tenantId = req.tenant.id;
+        const { fornecedor_id, produtos, status, observacao } = req.body;
+
+        if (!fornecedor_id || !Array.isArray(produtos) || produtos.length === 0) {
+            return res.status(400).json({ error: 'Dados incompletos para criação de compra.' });
+        }
+
+        const total = produtos.reduce((acc, item) => acc + (Number(item.quantidade) * Number(item.custo_unitario || 0)), 0);
+        const numeroPedido = `PC-${Date.now().toString().slice(-6)}`;
+        const localFirebirdId = -Math.floor(Date.now() / 1000);
+
+        // Auto migration garantindo colunas adicionais
+        await db.query(`
+            ALTER TABLE dash_compras ADD COLUMN IF NOT EXISTS itens JSONB DEFAULT '[]'::jsonb;
+            ALTER TABLE dash_compras ADD COLUMN IF NOT EXISTS observacao TEXT;
+        `);
+
+        const insertRes = await db.query(`
+            INSERT INTO dash_compras (
+                tenant_id, id_firebird, numero_pedido, fornecedor_id_firebird,
+                data_pedido, valor_total, status, itens, observacao
+            ) VALUES ($1, $2, $3, $4, NOW(), $5, $6, $7, $8)
+            RETURNING *
+        `, [
+            tenantId,
+            localFirebirdId,
+            numeroPedido,
+            fornecedor_id,
+            total,
+            status || 'Pedido realizado',
+            JSON.stringify(produtos),
+            observacao || 'Pedido gerado via Confronto de Compras BI'
+        ]);
+
+        res.json({
+            success: true,
+            message: 'Pedido de compra registrado com sucesso.',
+            pedido: insertRes.rows[0]
+        });
+    } catch (err) { next(err); }
+});
+
 module.exports = router;
+
