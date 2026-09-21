@@ -15,6 +15,7 @@ import Home from './pages/Home'
 const ComparativoVendas = lazy(() => import('./pages/ComparativoVendas'))
 const FinanceiroEmDesenvolvimento = lazy(() => import('./pages/FinanceiroEmDesenvolvimento'))
 const FluxoCaixa = lazy(() => import('./pages/Financeiro'))
+const Financeiro = lazy(() => import('./pages/Financeiro'))
 const Comissoes = lazy(() => import('./pages/Comissoes'))
 const Ranking = lazy(() => import('./pages/Ranking'))
 const Estatisticas = lazy(() => import('./pages/Estatisticas'))
