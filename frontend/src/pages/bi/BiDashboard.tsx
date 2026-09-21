@@ -44,7 +44,7 @@ export default function BiDashboard() {
         <PageFilters>
           <div className="flex items-center gap-1.5 bg-bg-secondary/40 border border-border/40 p-1 rounded-xl text-xs shadow-sm">
             <span className="text-[9px] font-bold text-text-secondary/80 uppercase tracking-widest pl-1">Período:</span>
-            <PeriodFilter excludePeriods={['yesterday']} />
+            <PeriodFilter excludePeriods={['today', 'yesterday', 'last7']} />
           </div>
         </PageFilters>
       )}
@@ -87,7 +87,7 @@ export default function BiDashboard() {
               {/* Period Filter container */}
               <div className="space-y-2">
                 <span className="text-[10px] font-extrabold text-text-secondary uppercase tracking-wider block">Período</span>
-                <PeriodFilter excludePeriods={['yesterday']} compact={true} />
+                <PeriodFilter excludePeriods={['today', 'yesterday', 'last7']} compact={true} />
               </div>
             </div>
 

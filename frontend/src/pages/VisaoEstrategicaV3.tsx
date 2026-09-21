@@ -270,9 +270,9 @@ export default function VisaoEstrategicaV3() {
           </div>
         </div>
 
-        {/* Period Filter (HOJE, 7 DIAS, MÊS ATUAL, MÊS ANTERIOR, 12 MESES, PERSONALIZADO) */}
+        {/* Period Filter (MÊS ATUAL, MÊS ANTERIOR, 12 MESES, PERSONALIZADO) */}
         <div className="flex items-center">
-          <PeriodFilter />
+          <PeriodFilter excludePeriods={['today', 'yesterday', 'last7']} />
         </div>
       </div>
 
@@ -439,8 +439,8 @@ export default function VisaoEstrategicaV3() {
                   {crescYtd >= 0 ? <TrendingUp size={20} className="mb-0.5" /> : <TrendingDown size={20} className="mb-0.5" />}
                   <span className="text-sm font-extrabold">{crescYtd >= 0 ? '+' : ''}{crescYtd.toFixed(1)}%</span>
                 </div>
-                <span className="text-[10px] font-black text-text-secondary uppercase tracking-widest mt-2">
-                  Crescimento Acumulado (YTD)
+                <span className="text-[10px] font-black text-text-secondary uppercase tracking-widest mt-2 text-center">
+                  {crescYtd >= 0 ? 'Crescimento Acumulado (YTD)' : 'Queda Acumulada (YTD)'}
                 </span>
               </div>
 
@@ -529,8 +529,8 @@ export default function VisaoEstrategicaV3() {
                 {crescMesAnterior >= 0 ? <TrendingUp size={20} className="mb-0.5" /> : <TrendingDown size={20} className="mb-0.5" />}
                 <span className="text-sm font-extrabold">{crescMesAnterior >= 0 ? '+' : ''}{crescMesAnterior.toFixed(1)}%</span>
               </div>
-              <span className="text-[10px] font-black text-text-secondary uppercase tracking-widest mt-2">
-                Comparativo com Mês Anterior
+              <span className="text-[10px] font-black text-text-secondary uppercase tracking-widest mt-2 text-center">
+                {crescMesAnterior >= 0 ? 'Crescimento vs. Mês Anterior' : 'Queda vs. Mês Anterior'}
               </span>
             </div>
 
@@ -583,8 +583,8 @@ export default function VisaoEstrategicaV3() {
                 {crescMesmoMesAnoAnt >= 0 ? <TrendingUp size={20} className="mb-0.5" /> : <TrendingDown size={20} className="mb-0.5" />}
                 <span className="text-sm font-extrabold">{crescMesmoMesAnoAnt >= 0 ? '+' : ''}{crescMesmoMesAnoAnt.toFixed(1)}%</span>
               </div>
-              <span className="text-[10px] font-black text-text-secondary uppercase tracking-widest mt-2">
-                Comparativo vs Mesmo Mês ({prevYear})
+              <span className="text-[10px] font-black text-text-secondary uppercase tracking-widest mt-2 text-center">
+                {crescMesmoMesAnoAnt >= 0 ? `Crescimento vs. Mesmo Mês (${prevYear})` : `Queda vs. Mesmo Mês (${prevYear})`}
               </span>
             </div>
 
