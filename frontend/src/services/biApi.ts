@@ -289,8 +289,9 @@ export const BIService = {
     tipo: 'SAIDA' | 'ENTRADA';
     cliente_id?: number;
     cliente_nome?: string;
-    produto_id: number;
-    quantidade: number;
+    produto_id?: number;
+    quantidade?: number;
+    itens?: Array<{ produto_id: number; quantidade: number }>;
     descricao?: string;
   }): Promise<any> => {
     const { data } = await api.post('/bi/compras/movimentacao', payload);

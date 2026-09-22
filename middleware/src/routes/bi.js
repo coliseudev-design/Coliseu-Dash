@@ -4112,39 +4112,44 @@ router.get('/compras/produtos-select', async (req, res, next) => {
     } catch (err) { next(err); }
 });
 
-// 10. POST /api/bi/compras/movimentacao (Dar baixa ou entrada imediata no estoque)
+// 10. POST /api/bi/compras/movimentacao (Dar baixa ou entrada imediata no estoque - suporta 1 ou múltiplos itens)
 router.post('/compras/movimentacao', async (req, res, next) => {
     try {
         await ensureMovimentacoesTable();
         const tenantId = req.tenant.id;
-        const { tipo, cliente_id, cliente_nome, produto_id, quantidade, descricao } = req.body;
+        const { tipo, cliente_id, cliente_nome, produto_id, quantidade, descricao, itens } = req.body;
 
         const movTipo = (tipo || 'SAIDA').toUpperCase().trim();
         if (!['SAIDA', 'ENTRADA'].includes(movTipo)) {
             return res.status(400).json({ error: 'Tipo de movimentação inválido. Use SAIDA ou ENTRADA.' });
         }
 
-        const qtd = parseFloat(quantidade);
-        if (isNaN(qtd) || qtd <= 0) {
-            return res.status(400).json({ error: 'Informe uma quantidade válida maior que zero.' });
+        // Normalizar lista de itens: aceita array `itens` ou único `produto_id` + `quantidade`
+        let listaItens = [];
+        if (Array.isArray(itens) && itens.length > 0) {
+            listaItens = itens.map(it => ({
+                produto_id: it.produto_id || it.id_firebird,
+                quantidade: parseFloat(it.quantidade)
+            }));
+        } else if (produto_id) {
+            listaItens = [{
+                produto_id,
+                quantidade: parseFloat(quantidade)
+            }];
         }
 
-        if (!produto_id) {
-            return res.status(400).json({ error: 'Selecione o produto para a movimentação.' });
+        if (listaItens.length === 0) {
+            return res.status(400).json({ error: 'Selecione ao menos um produto para realizar a movimentação.' });
         }
 
-        // Buscar dados atuais do produto
-        const prodRes = await db.query(`
-            SELECT id_firebird, nome, codigo, COALESCE(estoque, 0) as estoque
-            FROM dash_produtos
-            WHERE tenant_id = $1 AND id_firebird = $2
-        `, [tenantId, produto_id]);
-
-        if (prodRes.rows.length === 0) {
-            return res.status(404).json({ error: 'Produto não encontrado no cadastro.' });
+        for (const it of listaItens) {
+            if (!it.produto_id) {
+                return res.status(400).json({ error: 'Identificador do produto ausente na lista de movimentação.' });
+            }
+            if (isNaN(it.quantidade) || it.quantidade <= 0) {
+                return res.status(400).json({ error: `Informe uma quantidade válida maior que zero para todos os produtos.` });
+            }
         }
-
-        const produto = prodRes.rows[0];
 
         // Buscar nome do cliente caso não tenha vindo explícito
         let finalClienteNome = cliente_nome || null;
@@ -4157,45 +4162,71 @@ router.post('/compras/movimentacao', async (req, res, next) => {
             }
         }
 
-        // Atualizar estoque do produto em tempo real
-        const estoqueUpdateOperator = movTipo === 'ENTRADA' ? '+' : '-';
-        const updateRes = await db.query(`
-            UPDATE dash_produtos
-            SET estoque = estoque ${estoqueUpdateOperator} $1
-            WHERE tenant_id = $2 AND id_firebird = $3
-            RETURNING estoque
-        `, [qtd, tenantId, produto_id]);
-
-        const novoEstoque = updateRes.rows[0]?.estoque;
-
         const usuarioNome = req.user?.nome || req.user?.email || 'Usuário BI';
+        const estoqueUpdateOperator = movTipo === 'ENTRADA' ? '+' : '-';
+        const movimentacoesRegistradas = [];
 
-        // Inserir registro na tabela de movimentações
-        const insertRes = await db.query(`
-            INSERT INTO dash_movimentacoes_estoque (
-                tenant_id, tipo, cliente_id_firebird, cliente_nome,
-                produto_id_firebird, produto_nome, produto_codigo,
-                quantidade, descricao, usuario_nome, data_movimentacao
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
-            RETURNING *
-        `, [
-            tenantId,
-            movTipo,
-            cliente_id || null,
-            finalClienteNome,
-            produto.id_firebird,
-            produto.nome,
-            produto.codigo,
-            qtd,
-            descricao ? descricao.trim() : null,
-            usuarioNome
-        ]);
+        // Processar cada item
+        for (const it of listaItens) {
+            const prodRes = await db.query(`
+                SELECT id_firebird, nome, codigo, COALESCE(estoque, 0) as estoque
+                FROM dash_produtos
+                WHERE tenant_id = $1 AND id_firebird = $2
+            `, [tenantId, it.produto_id]);
+
+            if (prodRes.rows.length === 0) {
+                return res.status(404).json({ error: `Produto ID ${it.produto_id} não encontrado no cadastro.` });
+            }
+
+            const produto = prodRes.rows[0];
+
+            // Atualizar estoque do produto em tempo real
+            const updateRes = await db.query(`
+                UPDATE dash_produtos
+                SET estoque = estoque ${estoqueUpdateOperator} $1
+                WHERE tenant_id = $2 AND id_firebird = $3
+                RETURNING estoque
+            `, [it.quantidade, tenantId, it.produto_id]);
+
+            const novoEstoque = updateRes.rows[0]?.estoque;
+
+            // Inserir registro na tabela de movimentações
+            const insertRes = await db.query(`
+                INSERT INTO dash_movimentacoes_estoque (
+                    tenant_id, tipo, cliente_id_firebird, cliente_nome,
+                    produto_id_firebird, produto_nome, produto_codigo,
+                    quantidade, descricao, usuario_nome, data_movimentacao
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
+                RETURNING *
+            `, [
+                tenantId,
+                movTipo,
+                cliente_id || null,
+                finalClienteNome,
+                produto.id_firebird,
+                produto.nome,
+                produto.codigo,
+                it.quantidade,
+                descricao ? descricao.trim() : null,
+                usuarioNome
+            ]);
+
+            movimentacoesRegistradas.push({
+                ...insertRes.rows[0],
+                novo_estoque: novoEstoque
+            });
+        }
+
+        const totalQtd = movimentacoesRegistradas.reduce((acc, cur) => acc + parseFloat(cur.quantidade || 0), 0);
 
         res.json({
             success: true,
-            message: movTipo === 'SAIDA' ? 'Baixa de estoque efetuada com sucesso!' : 'Entrada de estoque efetuada com sucesso!',
-            movimentacao: insertRes.rows[0],
-            novo_estoque: novoEstoque
+            message: movTipo === 'SAIDA'
+                ? `Baixa de estoque efetuada com sucesso para ${movimentacoesRegistradas.length} produto(s) (${totalQtd} un)!`
+                : `Entrada de estoque efetuada com sucesso para ${movimentacoesRegistradas.length} produto(s) (${totalQtd} un)!`,
+            total_itens: movimentacoesRegistradas.length,
+            movimentacoes: movimentacoesRegistradas,
+            novo_estoque: movimentacoesRegistradas[0]?.novo_estoque
         });
     } catch (err) { next(err); }
 });
