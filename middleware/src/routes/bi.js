@@ -897,7 +897,6 @@ router.get('/sales/abc-analysis', async (req, res, next) => {
             LEFT JOIN vendas_prod vp ON vp.produto_id_firebird = p.id_firebird
             WHERE p.tenant_id = $1 AND p.ativo = true
             ORDER BY vp.faturamento DESC NULLS LAST, p.nome ASC
-            LIMIT 5000
         `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...df.params]);
 
         // Calcular dias no período
