@@ -257,7 +257,8 @@ router.post('/:tabela', async (req, res) => {
                 const insertCols = ['tenant_id', ...usedCols];
                 const insertValues = [tenantId, ...usedCols.map(c => {
                     let val = row[c];
-                    if (val === '') {
+                    const isDateCol = c.startsWith('data_') || c.endsWith('_data') || c.includes('data_') || c.includes('_date');
+                    if (val === '' || (isDateCol && (val === '0' || val === 0))) {
                         // Campos NOT NULL com string vazia: usar fallbacks específicos
                         if (c === 'nome' && (tabela === 'dash_clientes' || tabela === 'dash_produtos' || tabela === 'dash_vendedores' || tabela === 'dash_fornecedores')) {
                             return `(sem nome - ID ${row['id_firebird'] || '?'})`;
