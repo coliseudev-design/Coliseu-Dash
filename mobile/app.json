@@ -1,0 +1,53 @@
+{
+  "expo": {
+    "name": "ColiseuDash",
+    "slug": "coliseudash",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "coliseudash",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#090D16"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "br.com.coliseusistemas.coliseudash",
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "Permita o uso do Face ID para acesso rápido e seguro ao ColiseuDash."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#090D16"
+      },
+      "package": "br.com.coliseusistemas.coliseudash",
+      "permissions": [
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Permita o uso do Face ID para acesso rápido e seguro ao ColiseuDash."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
