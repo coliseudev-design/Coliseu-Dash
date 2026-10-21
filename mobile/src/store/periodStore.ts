@@ -30,11 +30,13 @@ export const usePeriodStore = create<PeriodState>((set, get) => ({
   endDate: undefined,
   setPeriod: (period) => set({ period }),
   setCustomRange: (start, end) => set({ period: 'custom', startDate: start, endDate: end }),
-  getQueryParams: () => {
+  getQueryParams: (): Record<string, string> => {
     const { period, startDate, endDate } = get();
+    const params: Record<string, string> = { period };
     if (period === 'custom' && startDate && endDate) {
-      return { period, start_date: startDate, end_date: endDate };
+      params.start_date = startDate;
+      params.end_date = endDate;
     }
-    return { period };
+    return params;
   },
 }));
