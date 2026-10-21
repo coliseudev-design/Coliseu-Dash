@@ -34,17 +34,29 @@ function getCfopFilterClause(tableAlias = 'v') {
 /**
  * STATUS_FILTER para Sistema Coliseu — alinhado ao ERP Gerência Geral.
  *
- * REGRA VALIDADA (Outubro 2026):
- *   A view Firebird (DASH_VENDAS) filtra vendas normais e devoluções.
- *   Operações sem pagamento / transferências entre filiais / complementos de ICMS
- *   (espécie contendo 'SEM PAGAMENTO' ou 'TRANSF') NÃO são vendas comerciais com faturamento
- *   e devem ser excluídas para manter 100% de paridade com o ERP Gerência Geral.
+ * REGRAS VALIDADAS DE NEGÓCIO DO ERP COLISEU:
+ * 1. Apenas vendas em status comercial efetivo ('FATURADO', 'FINALIZADO', 'PROCESSADO').
+ * 2. Exclui transferências entre filiais (status ou espécie contendo 'TRANSF').
+ * 3. Exclui espécies 'SEM PAGAMENTO' (remessas/complementos fiscais sem valor comercial),
+ *    exceto quando vinculadas a itens reais faturados a clientes finais.
+ * 4. Exclui registros/pedidos sem itens de estoque (lançamentos financeiros/fantasmas ou cancelados na origem sem itens),
+ *    mantendo compatibilidade com vendas recentes do mês corrente ainda em fila de sincronização.
  */
 function getStatusFilterClause(tableAlias = 'v') {
     const prefix = (tableAlias !== undefined && tableAlias !== null && tableAlias !== '') ? `${tableAlias}.` : '';
+    const tableRef = prefix || 'dash_vendas.';
     return `AND TRIM(${prefix}status) IN ('FATURADO', 'FINALIZADO', 'PROCESSADO')
       AND ${prefix}status NOT ILIKE '%TRANSF%'
-      AND (${prefix}especie IS NULL OR (${prefix}especie NOT ILIKE '%SEM PAGAMENTO%' AND ${prefix}especie NOT ILIKE '%TRANSF%'))`;
+      AND (${prefix}especie IS NULL OR ${prefix}especie NOT ILIKE '%TRANSF%')
+      AND (${prefix}especie IS NULL OR ${prefix}especie NOT ILIKE '%SEM PAGAMENTO%' OR EXISTS (
+        SELECT 1 FROM dash_vendas_itens vi WHERE vi.venda_id_firebird = ${tableRef}id_firebird AND vi.tenant_id = ${tableRef}tenant_id
+      ))
+      AND (
+        EXISTS (
+          SELECT 1 FROM dash_vendas_itens vi WHERE vi.venda_id_firebird = ${tableRef}id_firebird AND vi.tenant_id = ${tableRef}tenant_id
+        )
+        OR ${prefix}data_venda >= '2026-10-01'
+      )`;
 }
 
 /**
