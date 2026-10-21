@@ -34,21 +34,17 @@ function getCfopFilterClause(tableAlias = 'v') {
 /**
  * STATUS_FILTER para Sistema Coliseu — alinhado ao ERP Gerência Geral.
  *
- * REGRA VALIDADA (Julho 2026):
- *   A view Firebird (DASH_VENDAS) já filtra na origem:
- *   - Apenas natureza_tipo = 1 (vendas normais — exclui garantias, NFe avulso, remessa)
- *   - Devoluções entram com valor_total negativo (abatimento automático)
- *
- *   O filtro antigo de es=1 OR PIX-BALCAO foi REMOVIDO — causava sub-contagem.
- *
- * RESULTADO DA VALIDAÇÃO vs ERP Gerência Geral (usando data_hora_proc):
- *   Abril 2026 : Dashboard R$608.765,02 | ERP R$608.765,12 | diff -R$0,10
- *   Maio  2026 : Dashboard R$1.775.312,83 | ERP R$1.775.313,10 | diff -R$0,27
- *   Junho 2026 : Dashboard R$1.486.129,92 | ERP R$1.486.130,10 | diff -R$0,18
+ * REGRA VALIDADA (Outubro 2026):
+ *   A view Firebird (DASH_VENDAS) filtra vendas normais e devoluções.
+ *   Operações sem pagamento / transferências entre filiais / complementos de ICMS
+ *   (espécie contendo 'SEM PAGAMENTO' ou 'TRANSF') NÃO são vendas comerciais com faturamento
+ *   e devem ser excluídas para manter 100% de paridade com o ERP Gerência Geral.
  */
 function getStatusFilterClause(tableAlias = 'v') {
-    const prefix = tableAlias ? `${tableAlias}.` : '';
-    return `AND TRIM(${prefix}status) IN ('FATURADO', 'FINALIZADO', 'PROCESSADO')`;
+    const prefix = (tableAlias !== undefined && tableAlias !== null && tableAlias !== '') ? `${tableAlias}.` : '';
+    return `AND TRIM(${prefix}status) IN ('FATURADO', 'FINALIZADO', 'PROCESSADO')
+      AND ${prefix}status NOT ILIKE '%TRANSF%'
+      AND (${prefix}especie IS NULL OR (${prefix}especie NOT ILIKE '%SEM PAGAMENTO%' AND ${prefix}especie NOT ILIKE '%TRANSF%'))`;
 }
 
 /**
