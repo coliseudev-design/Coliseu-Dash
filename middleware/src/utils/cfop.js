@@ -55,7 +55,7 @@ function getStatusFilterClause(tableAlias = 'v') {
         EXISTS (
           SELECT 1 FROM dash_vendas_itens vi WHERE vi.venda_id_firebird = ${tableRef}id_firebird AND vi.tenant_id = ${tableRef}tenant_id
         )
-        OR ${prefix}data_venda >= '2026-10-01'
+        OR ${prefix}data_venda >= (CURRENT_DATE - INTERVAL '30 days')
       )`;
 }
 

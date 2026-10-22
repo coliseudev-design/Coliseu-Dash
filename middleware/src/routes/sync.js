@@ -199,30 +199,25 @@ router.post('/:tabela', async (req, res) => {
                     row['data_venda'] = faturamentoDate;
                     row['data_vencimento'] = faturamentoDate;
 
-                    // Alinhamento de Valor Real do Pedido (Documentos Financeiros / Especie):
-                    // Em Firebird, PEDIDOS_DOCS (especie) contem o valor liquido final exato do pedido faturado.
-                    let realVal = 0;
-                    if (row['especie'] && typeof row['especie'] === 'string' && row['especie'].includes(':')) {
+                    // Alinhamento de Valor Real do Pedido:
+                    // Prioriza o valor_total oficial emitido pela view DASH_VENDAS do Firebird (alinhado ao ERP Gerência Geral).
+                    // Fallback para soma de documentos/espécie apenas se valor_total não vier preenchido.
+                    let realVal = parseFloat(row['valor_total']) || 0;
+                    if (!realVal && row['especie'] && typeof row['especie'] === 'string' && row['especie'].includes(':')) {
                         const tokens = row['especie'].split('|');
                         let docSum = 0;
-                        let hasDocs = false;
                         for (const t of tokens) {
                             const parts = t.split(':');
                             if (parts.length >= 2) {
                                 const num = parseFloat(parts[parts.length - 1]);
                                 if (!isNaN(num) && num > 0) {
                                     docSum += num;
-                                    hasDocs = true;
                                 }
                             }
                         }
-                        if (hasDocs && docSum > 0) {
+                        if (docSum > 0) {
                             realVal = docSum;
                         }
-                    }
-
-                    if (!realVal) {
-                        realVal = parseFloat(row['valor_total']) || 0;
                     }
 
                     let custo = parseFloat(row['valor_custo']) || 0;
