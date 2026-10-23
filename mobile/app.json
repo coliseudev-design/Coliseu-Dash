@@ -44,7 +44,8 @@
         {
           "faceIDPermission": "Permita o uso do Face ID para acesso rápido e seguro ao ColiseuDash."
         }
-      ]
+      ],
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true
