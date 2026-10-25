@@ -12,8 +12,8 @@ const TABELAS_MAP = {
     'dash_produtos': ['id_firebird', 'codigo', 'nome', 'descricao', 'categoria', 'marca', 'preco', 'custo', 'estoque', 'estoque_minimo', 'ativo', 'referencia', 'codigo_fabrica', 'marca_id', 'grupo_id'],
     'dash_vendedores': ['id_firebird', 'nome', 'email', 'ativo'],
     'dash_fornecedores': ['id_firebird', 'nome', 'documento', 'cidade', 'estado'],
-    'dash_vendas': ['id_firebird', 'numero_pedido', 'data_venda', 'data_vencimento', 'cliente_id_firebird', 'vendedor_id_firebird', 'valor_total', 'valor_custo', 'valor_desconto', 'status', 'marca', 'categoria', 'especie', 'depto_id', 'cfop', 'numero_nota', 'data_hora_proc', 'data_fat', 'es', 'processo'],
-    'dash_vendas_itens': ['id_firebird', 'venda_id_firebird', 'produto_id_firebird', 'quantidade', 'preco_unitario', 'custo_unitario', 'valor_total', 'desconto_item', 'vendedor', 'produto', 'marca', 'categoria', 'depto_id'],
+    'dash_vendas': ['id_firebird', 'numero_pedido', 'data_venda', 'data_vencimento', 'cliente_id_firebird', 'vendedor_id_firebird', 'valor_total', 'valor_custo', 'valor_desconto', 'status', 'marca', 'categoria', 'especie', 'depto_id', 'cfop', 'numero_nota', 'chave_nfe', 'data_hora_proc', 'data_fat', 'es', 'processo'],
+    'dash_vendas_itens': ['id_firebird', 'venda_id_firebird', 'produto_id_firebird', 'quantidade', 'preco_unitario', 'custo_unitario', 'valor_total', 'desconto_item', 'vendedor', 'produto', 'marca', 'categoria', 'depto_id', 'cfop', 'numero_nota', 'chave_nfe'],
     'dash_comissoes': ['id_firebird', 'vendedor_id_firebird', 'venda_id_firebird', 'periodo', 'valor_vendas', 'percentual', 'valor_comissao', 'data_referencia'],
     'dash_financeiro': ['id_firebird', 'tipo', 'tipo_documento', 'descricao', 'cliente_id_firebird', 'fornecedor_id_firebird', 'caixa_id_firebird', 'data_emissao', 'data_vencimento', 'data_pagamento', 'valor', 'valor_pago', 'status_pagamento', 'depto_id', 'centro_custo'],
     'dash_compras': ['id_firebird', 'numero_pedido', 'fornecedor_id_firebird', 'data_pedido', 'data_entrega', 'valor_total', 'status'],
@@ -24,7 +24,8 @@ const TABELAS_MAP = {
     'dash_grupos': ['id_firebird', 'nome'],
     'dash_produtos_depto': ['produto_id_firebird', 'depto_id', 'estoque', 'estoque_minimo'],
     'dash_metas_dashboard': ['id_firebird', 'tipo', 'referencia_id', 'data_referencia', 'valor_meta', 'periodo'],
-    'dash_metas_vendedor_marca': ['id_firebird', 'meta_vendedor_id', 'marca_id', 'valor_meta', 'mes', 'ano']
+    'dash_metas_vendedor_marca': ['id_firebird', 'meta_vendedor_id', 'marca_id', 'valor_meta', 'mes', 'ano'],
+    'dash_cargas': ['id_firebird', 'tipo_documento', 'chave_acesso', 'numero', 'serie', 'data_emissao', 'remetente_documento', 'remetente_nome', 'remetente_municipio', 'remetente_uf', 'destinatario_documento', 'destinatario_nome', 'destinatario_municipio', 'destinatario_uf', 'valor_total', 'valor_produtos', 'peso_bruto', 'peso_liquido', 'volume_m3', 'volumes', 'especie', 'produto_predominante', 'dados_nfe']
 };
 
 // Limites de tamanho para colunas VARCHAR — alinhado com migration 005
@@ -38,7 +39,7 @@ const COL_MAX_LENGTH = {
     categoria: 255, marca: 255, especie: 255, vendedor: 255,
     produto: 500, descricao: 500, motivo: 500,
     // dash_vendas
-    status: 100, numero_pedido: 100, numero_nota: 50,
+    status: 100, numero_pedido: 100, numero_nota: 50, chave_nfe: 44, cfop: 10,
     // dash_financeiro
     tipo: 100, tipo_documento: 100, centro_custo: 255,
     // dash_produtos
@@ -111,7 +112,7 @@ router.post('/:tabela', async (req, res) => {
     }
 
     const { id: tenantId } = req.tenant;
-    if (tabela === 'dash_vendas' || tabela === 'dash_vendas_itens' || tabela === 'dash_financeiro') {
+    if (tabela === 'dash_vendas' || tabela === 'dash_vendas_itens' || tabela === 'dash_financeiro' || tabela === 'dash_cargas') {
         logger.info(`[SyncDebug] Recebido sync para tabela ${tabela} com ${rows.length} linhas. Tenant: ${tenantId}`);
         if (rows.length > 0) {
             logger.info(`[SyncDebug] Primeira linha: ${JSON.stringify(rows[0])}`);
@@ -121,10 +122,62 @@ router.post('/:tabela', async (req, res) => {
     let inserted = 0;
     const errors = [];
 
+    const getConflictKey = (tbl) => {
+        if (tbl === 'dash_filiais') return 'depto_id';
+        if (tbl === 'dash_produtos_depto') return 'produto_id_firebird';
+        if (tbl === 'dash_cargas') return 'chave_acesso';
+        return 'id_firebird';
+    };
+
     // Pegamos um client único para aproveitar mesma conexão para o loop/batch
     const client = await db.pool.connect();
 
     try {
+        if (tabela === 'dash_vendas') {
+            await client.query(`ALTER TABLE dash_vendas ADD COLUMN IF NOT EXISTS chave_nfe VARCHAR(44)`).catch(() => {});
+        } else if (tabela === 'dash_vendas_itens') {
+            await client.query(`
+                ALTER TABLE dash_vendas_itens ADD COLUMN IF NOT EXISTS cfop VARCHAR(10);
+                ALTER TABLE dash_vendas_itens ADD COLUMN IF NOT EXISTS numero_nota VARCHAR(50);
+                ALTER TABLE dash_vendas_itens ADD COLUMN IF NOT EXISTS chave_nfe VARCHAR(44);
+            `).catch(() => {});
+        } else if (tabela === 'dash_cargas') {
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS dash_cargas (
+                    id SERIAL PRIMARY KEY,
+                    tenant_id UUID NOT NULL,
+                    id_firebird INTEGER,
+                    tipo_documento VARCHAR(10) DEFAULT 'NFE',
+                    chave_acesso VARCHAR(44) NOT NULL,
+                    numero VARCHAR(20),
+                    serie VARCHAR(5),
+                    data_emissao DATE,
+                    remetente_documento VARCHAR(20),
+                    remetente_nome VARCHAR(200),
+                    remetente_municipio VARCHAR(100),
+                    remetente_uf VARCHAR(2),
+                    destinatario_documento VARCHAR(20),
+                    destinatario_nome VARCHAR(200),
+                    destinatario_municipio VARCHAR(100),
+                    destinatario_uf VARCHAR(2),
+                    valor_total NUMERIC(15,2) DEFAULT 0,
+                    valor_produtos NUMERIC(15,2) DEFAULT 0,
+                    peso_bruto NUMERIC(15,4) DEFAULT 0,
+                    peso_liquido NUMERIC(15,4) DEFAULT 0,
+                    volume_m3 NUMERIC(15,4) DEFAULT 0,
+                    volumes INTEGER DEFAULT 1,
+                    especie VARCHAR(60) DEFAULT 'VOLUMES',
+                    produto_predominante VARCHAR(200),
+                    status VARCHAR(30) DEFAULT 'PENDENTE',
+                    cte_id INTEGER,
+                    mdfe_id INTEGER,
+                    dados_nfe JSONB,
+                    sincronizado_em TIMESTAMPTZ DEFAULT NOW(),
+                    UNIQUE(tenant_id, chave_acesso)
+                );
+            `).catch(() => {});
+        }
+
         await client.query('BEGIN');
 
         for (const rawRow of rows) {
@@ -145,7 +198,7 @@ router.post('/:tabela', async (req, res) => {
 
 
                 // Guarda: valida chave primária obrigatória
-                const conflictKeyCheck = tabela === 'dash_filiais' ? 'depto_id' : (tabela === 'dash_produtos_depto' ? 'produto_id_firebird' : 'id_firebird');
+                const conflictKeyCheck = getConflictKey(tabela);
                 const pkVal = row[conflictKeyCheck];
                 if (pkVal === null || pkVal === undefined || pkVal === '') {
                     errors.push(`Row sem ${conflictKeyCheck}: dados inválidos ignorados`);
@@ -160,14 +213,9 @@ router.post('/:tabela', async (req, res) => {
                     const status = row['status'] ? String(row['status']).trim().toUpperCase() : '';
                     const dataHoraProc = row['data_hora_proc'];
                     const dataVencimento = row['data_vencimento'];
-                    // data_fat = DT_FAT do Firebird ("Data Faturamento" visível no ERP admin)
-                    // Tem prioridade sobre data_hora_proc que pode ser o timestamp de confirmação
-                    // do sistema no dia seguinte (ex: pedido 3135 entrada 14:19 dia 27,
-                    // confirmado sistema 07:56 dia 28 → data_fat=27, data_hora_proc=28)
                     const dataFat = row['data_fat'];
                     
                     const isFaturado = ['FATURADO', 'FINALIZADO', 'PROCESSADO'].includes(status);
-                    // Prioridade: data_fat (DT_FAT real) > data_hora_proc > data_vencimento > data_venda
                     const faturamentoDate = (dataFat && dataFat !== '') ? dataFat :
                                            (dataHoraProc && dataHoraProc !== '') ? dataHoraProc :
                                            (dataVencimento && dataVencimento !== '' ? dataVencimento : row['data_venda']);
@@ -194,14 +242,9 @@ router.post('/:tabela', async (req, res) => {
                         continue;
                     }
                     
-                    // Alinhamento de Faturamento: usa data_fat (DT_FAT Firebird) como data_venda principal
-                    // Fallback: data_hora_proc > data_vencimento > data_venda original
                     row['data_venda'] = faturamentoDate;
                     row['data_vencimento'] = faturamentoDate;
 
-                    // Alinhamento de Valor Real do Pedido:
-                    // Prioriza o valor_total oficial emitido pela view DASH_VENDAS do Firebird (alinhado ao ERP Gerência Geral).
-                    // Fallback para soma de documentos/espécie apenas se valor_total não vier preenchido.
                     let realVal = parseFloat(row['valor_total']) || 0;
                     if (!realVal && row['especie'] && typeof row['especie'] === 'string' && row['especie'].includes(':')) {
                         const tokens = row['especie'].split('|');
@@ -254,20 +297,19 @@ router.post('/:tabela', async (req, res) => {
                     let val = row[c];
                     const isDateCol = c.startsWith('data_') || c.endsWith('_data') || c.includes('data_') || c.includes('_date');
                     if (val === '' || (isDateCol && (val === '0' || val === 0))) {
-                        // Campos NOT NULL com string vazia: usar fallbacks específicos
                         if (c === 'nome' && (tabela === 'dash_clientes' || tabela === 'dash_produtos' || tabela === 'dash_vendedores' || tabela === 'dash_fornecedores')) {
                             return `(sem nome - ID ${row['id_firebird'] || '?'})`;
                         }
                         return null;
                     }
                     if (val === null || val === undefined) {
-                        // Campos NOT NULL obrigatórios: usar fallback
                         if (c === 'nome' && (tabela === 'dash_clientes' || tabela === 'dash_produtos' || tabela === 'dash_vendedores' || tabela === 'dash_fornecedores')) {
                             return `(sem nome - ID ${row['id_firebird'] || '?'})`;
                         }
                         return null;
                     }
                     if (c === 'ativo') return val == 1 || String(val).toLowerCase() === 'true';
+                    if (c === 'dados_nfe' && val && typeof val === 'object') return JSON.stringify(val);
                     // Trunca strings que excedem o limite da coluna (previne "value too long")
                     return truncateCol(c, val);
                 })];
@@ -275,7 +317,7 @@ router.post('/:tabela', async (req, res) => {
                 // Geração posicional para o Pg (ex: $1, $2, $3)
                 const placeholders = insertCols.map((_, i) => `$${i + 1}`).join(', ');
 
-                const conflictKey = tabela === 'dash_filiais' ? 'depto_id' : (tabela === 'dash_produtos_depto' ? 'produto_id_firebird' : 'id_firebird');
+                const conflictKey = getConflictKey(tabela);
                 const conflictTarget = tabela === 'dash_filiais' 
                     ? '(tenant_id, depto_id)' 
                     : (tabela === 'dash_produtos_depto' ? '(tenant_id, produto_id_firebird, depto_id)' : `(tenant_id, ${conflictKey})`);
@@ -328,7 +370,7 @@ router.post('/:tabela', async (req, res) => {
                     throw rowErr; // re-lança para o catch externo da linha
                 }
             } catch (err) {
-                const conflictKey = tabela === 'dash_filiais' ? 'depto_id' : 'id_firebird';
+                const conflictKey = getConflictKey(tabela);
                 const idVal = row[conflictKey] || rawRow[conflictKey] || rawRow[conflictKey.toUpperCase()] || rawRow.ID_FIREBIRD || 'Unknown';
                 errors.push(`Row ID ${idVal}: ${err.message}`);
                 logger.error('[Sync] Falha em linha', { error: err.message, tenantId, rowId: idVal });
