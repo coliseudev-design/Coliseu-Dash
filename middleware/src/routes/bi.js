@@ -792,9 +792,10 @@ router.get('/sales/sellers', async (req, res, next) => {
 
         const { rows } = await db.query(`
             SELECT 
+                vend.id_firebird as vendedor_id_firebird,
                 vend.nome as nome_vendedor, 
                 SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) as faturamento, 
-                COUNT(v.id_firebird) as pedidos,
+                COUNT(DISTINCT v.id_firebird) as pedidos,
                 COALESCE(AVG(v.valor_total - COALESCE(v.valor_desconto, 0)), 0) as ticket_medio,
                 COALESCE(SUM(v.valor_total - COALESCE(v.valor_desconto, 0) - v.valor_custo), 0) as lucro,
                 MAX(COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda)) as ultima_venda
