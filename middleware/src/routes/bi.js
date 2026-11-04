@@ -187,17 +187,11 @@ router.get('/sales/executive-summary', async (req, res, next) => {
             SELECT 
                 COALESCE(vi.produto, p.nome, 'Produto ' || COALESCE(vi.produto_id_firebird::text, '?')) AS nome,
                 SUM(
-                    CASE 
-                        WHEN COALESCE(vi.desconto_item, 0) > 0 
-                            THEN vi.valor_total * (1 - vi.desconto_item / 100.0)
-                        WHEN spv.sum_itens > 0 
-                            THEN vi.valor_total * (vf.valor_total / spv.sum_itens)
-                        ELSE vi.valor_total * (CASE WHEN vf.valor_total < 0 THEN -1 ELSE 1 END)
-                    END
+                    (CASE WHEN vf.valor_total < 0 THEN -1 ELSE 1 END) * 
+                    (vi.valor_total * (1 - COALESCE(vi.desconto_item, 0) / 100.0))
                 ) as vendas
             FROM dash_vendas_itens vi
             JOIN vf ON vf.id_firebird = vi.venda_id_firebird AND vf.tenant_id = vi.tenant_id
-            JOIN spv ON spv.venda_id_firebird = vi.venda_id_firebird AND spv.tenant_id = vi.tenant_id
             LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
             WHERE vi.tenant_id = $1
               AND COALESCE(vi.produto, p.nome, vi.produto_id_firebird::text) IS NOT NULL
@@ -228,17 +222,11 @@ router.get('/sales/executive-summary', async (req, res, next) => {
             SELECT 
                 COALESCE(vi.marca, vf.venda_marca, p.marca, 'S/ MARCA') as nome,
                 SUM(
-                    CASE 
-                        WHEN COALESCE(vi.desconto_item, 0) > 0 
-                            THEN vi.valor_total * (1 - vi.desconto_item / 100.0)
-                        WHEN spv.sum_itens > 0 
-                            THEN vi.valor_total * (vf.valor_total / spv.sum_itens)
-                        ELSE vi.valor_total * (CASE WHEN vf.valor_total < 0 THEN -1 ELSE 1 END)
-                    END
+                    (CASE WHEN vf.valor_total < 0 THEN -1 ELSE 1 END) * 
+                    (vi.valor_total * (1 - COALESCE(vi.desconto_item, 0) / 100.0))
                 ) as vendas
             FROM dash_vendas_itens vi
             JOIN vf ON vf.id_firebird = vi.venda_id_firebird AND vf.tenant_id = vi.tenant_id
-            JOIN spv ON spv.venda_id_firebird = vi.venda_id_firebird AND spv.tenant_id = vi.tenant_id
             LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
             WHERE vi.tenant_id = $1
               AND COALESCE(vi.marca, vf.venda_marca, p.marca) IS NOT NULL AND COALESCE(vi.marca, vf.venda_marca, p.marca) != ''
@@ -284,17 +272,11 @@ router.get('/sales/executive-summary', async (req, res, next) => {
             SELECT 
                 COALESCE(vi.categoria, vf.venda_categoria, p.categoria, 'S/ GRUPO') as nome,
                 SUM(
-                    CASE 
-                        WHEN COALESCE(vi.desconto_item, 0) > 0 
-                            THEN vi.valor_total * (1 - vi.desconto_item / 100.0)
-                        WHEN spv.sum_itens > 0 
-                            THEN vi.valor_total * (vf.valor_total / spv.sum_itens)
-                        ELSE vi.valor_total * (CASE WHEN vf.valor_total < 0 THEN -1 ELSE 1 END)
-                    END
+                    (CASE WHEN vf.valor_total < 0 THEN -1 ELSE 1 END) * 
+                    (vi.valor_total * (1 - COALESCE(vi.desconto_item, 0) / 100.0))
                 ) as vendas
             FROM dash_vendas_itens vi
             JOIN vf ON vf.id_firebird = vi.venda_id_firebird AND vf.tenant_id = vi.tenant_id
-            JOIN spv ON spv.venda_id_firebird = vi.venda_id_firebird AND spv.tenant_id = vi.tenant_id
             LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
             WHERE vi.tenant_id = $1
               AND COALESCE(vi.categoria, vf.venda_categoria, p.categoria) IS NOT NULL AND COALESCE(vi.categoria, vf.venda_categoria, p.categoria) != ''
@@ -2091,15 +2073,11 @@ router.get('/comparative/summary', async (req, res, next) => {
             SELECT 
                 COALESCE(NULLIF(TRIM(vi.marca), ''), NULLIF(TRIM(vf.venda_marca), ''), NULLIF(TRIM(p.marca), ''), 'S/ MARCA') AS nome, 
                 SUM(
-                    CASE 
-                        WHEN COALESCE(vi.desconto_item, 0) > 0 
-                            THEN vi.valor_total * (1 - vi.desconto_item / 100.0)
-                        WHEN spv.sum_itens > 0 
-                            THEN vi.valor_total * (vf.valor_total / spv.sum_itens)
-                        ELSE vi.valor_total * (CASE WHEN vf.valor_total < 0 THEN -1 ELSE 1 END)
-                    END
+                    (CASE WHEN vf.valor_total < 0 THEN -1 ELSE 1 END) * 
+                    (vi.valor_total * (1 - COALESCE(vi.desconto_item, 0) / 100.0))
                 ) AS vendas,
                 SUM(
+                    (CASE WHEN vf.valor_total < 0 THEN -1 ELSE 1 END) *
                     CASE 
                         WHEN COALESCE(vi.custo_unitario, 0) > 0 
                             THEN vi.custo_unitario * vi.quantidade
@@ -2110,7 +2088,6 @@ router.get('/comparative/summary', async (req, res, next) => {
                 ) AS custo
             FROM dash_vendas_itens vi
             JOIN vf ON vf.id_firebird = vi.venda_id_firebird AND vf.tenant_id = vi.tenant_id
-            JOIN spv ON spv.venda_id_firebird = vi.venda_id_firebird AND spv.tenant_id = vi.tenant_id
             LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
             WHERE vi.tenant_id = $1
               AND COALESCE(NULLIF(TRIM(vi.marca), ''), NULLIF(TRIM(vf.venda_marca), ''), NULLIF(TRIM(p.marca), '')) IS NOT NULL
@@ -2158,15 +2135,11 @@ router.get('/comparative/summary', async (req, res, next) => {
             SELECT 
                 COALESCE(NULLIF(TRIM(vi.categoria), ''), NULLIF(TRIM(vf.venda_categoria), ''), NULLIF(TRIM(p.categoria), ''), 'S/ GRUPO') AS nome, 
                 SUM(
-                    CASE 
-                        WHEN COALESCE(vi.desconto_item, 0) > 0 
-                            THEN vi.valor_total * (1 - vi.desconto_item / 100.0)
-                        WHEN spv.sum_itens > 0 
-                            THEN vi.valor_total * (vf.valor_total / spv.sum_itens)
-                        ELSE vi.valor_total * (CASE WHEN vf.valor_total < 0 THEN -1 ELSE 1 END)
-                    END
+                    (CASE WHEN vf.valor_total < 0 THEN -1 ELSE 1 END) * 
+                    (vi.valor_total * (1 - COALESCE(vi.desconto_item, 0) / 100.0))
                 ) AS vendas,
                 SUM(
+                    (CASE WHEN vf.valor_total < 0 THEN -1 ELSE 1 END) *
                     CASE 
                         WHEN COALESCE(vi.custo_unitario, 0) > 0 
                             THEN vi.custo_unitario * vi.quantidade
@@ -2177,7 +2150,6 @@ router.get('/comparative/summary', async (req, res, next) => {
                 ) AS custo
             FROM dash_vendas_itens vi
             JOIN vf ON vf.id_firebird = vi.venda_id_firebird AND vf.tenant_id = vi.tenant_id
-            JOIN spv ON spv.venda_id_firebird = vi.venda_id_firebird AND spv.tenant_id = vi.tenant_id
             LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
             WHERE vi.tenant_id = $1
               AND COALESCE(NULLIF(TRIM(vi.categoria), ''), NULLIF(TRIM(vf.venda_categoria), ''), NULLIF(TRIM(p.categoria), '')) IS NOT NULL
