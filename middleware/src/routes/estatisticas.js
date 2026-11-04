@@ -327,14 +327,15 @@ router.get('/visao-estrategica', async (req, res, next) => {
 
             // Top Cliente
             db.query(`
-                SELECT COALESCE(c.nome, v.cliente_nome, 'CLIENTE') AS nome, SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) AS total
+                SELECT COALESCE(NULLIF(TRIM(c.nome), ''), NULLIF(TRIM(c.razao_social), ''), 'Consumidor Final') AS nome, 
+                       SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) AS total
                 FROM dash_vendas v
                 LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
                 WHERE v.tenant_id = $1 
                   AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 
                   AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3 
                   ${salesFilter} ${df.clause} ${vf.clause} ${marcaClause}
-                GROUP BY COALESCE(c.nome, v.cliente_nome, 'CLIENTE')
+                GROUP BY 1
                 ORDER BY total DESC LIMIT 1
             `, [tenantId, start, end, ...allExtraParams]),
 

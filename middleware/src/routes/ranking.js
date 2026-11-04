@@ -444,19 +444,27 @@ router.get('/ranking', async (req, res, next) => {
 
         const sellerIds = rows.map(r => r.id).filter(Boolean);
 
-        // Maior venda por vendedor
+        // Maior venda por vendedor (otimizado com CTE para evitar join pesado em varredura anual)
         const { rows: maxSales } = await db.query(`
-            SELECT DISTINCT ON (v.vendedor_id_firebird)
-                v.vendedor_id_firebird,
-                (v.valor_total - COALESCE(v.valor_desconto, 0)) AS valor_total,
+            WITH max_por_vendedor AS (
+                SELECT DISTINCT ON (v.vendedor_id_firebird)
+                    v.id_firebird,
+                    v.vendedor_id_firebird,
+                    v.cliente_id_firebird,
+                    (v.valor_total - COALESCE(v.valor_desconto, 0)) AS valor_total
+                FROM dash_vendas v
+                WHERE v.tenant_id = $1 
+                  AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 
+                  AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
+                  AND v.vendedor_id_firebird = ANY($4) ${salesFilter}
+                ORDER BY v.vendedor_id_firebird, (v.valor_total - COALESCE(v.valor_desconto, 0)) DESC
+            )
+            SELECT 
+                m.vendedor_id_firebird,
+                m.valor_total,
                 COALESCE(NULLIF(TRIM(c.nome), ''), 'Consumidor Final') AS cliente_nome
-            FROM dash_vendas v
-            LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
-            WHERE v.tenant_id = $1 
-              AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 
-              AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
-              AND v.vendedor_id_firebird = ANY($4) ${salesFilter}
-            ORDER BY v.vendedor_id_firebird, valor_total DESC
+            FROM max_por_vendedor m
+            LEFT JOIN dash_clientes c ON c.id_firebird = m.cliente_id_firebird AND c.tenant_id = $1
         `, [tenantId, start, end, sellerIds]);
 
         // Melhor produto por vendedor (com CTE e join correto)
