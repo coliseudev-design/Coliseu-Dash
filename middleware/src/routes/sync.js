@@ -245,26 +245,41 @@ router.post('/:tabela', async (req, res) => {
                     row['data_venda'] = faturamentoDate;
                     row['data_vencimento'] = faturamentoDate;
 
-                    let realVal = parseFloat(row['valor_total']) || 0;
-                    if (!realVal && row['especie'] && typeof row['especie'] === 'string' && row['especie'].includes(':')) {
+                    // Alinhamento Cirurgico com ERP Coliseu (Gerencia Geral):
+                    // Em Firebird/Coliseu ERP, PEDIDOS_DOCS (especie) contem os titulos/documentos financeiros reais
+                    // negociados e faturados da venda (com todos os descontos comerciais, prazos e condicoes acordadas).
+                    // Portanto, a soma de documentos de especie DEVE ter precedencia sobre o valor bruto de tabela (valor_total).
+                    let realVal = 0;
+                    if (row['especie'] && typeof row['especie'] === 'string' && row['especie'].includes(':')) {
                         const tokens = row['especie'].split('|');
                         let docSum = 0;
+                        let hasDocs = false;
                         for (const t of tokens) {
                             const parts = t.split(':');
                             if (parts.length >= 2) {
                                 const num = parseFloat(parts[parts.length - 1]);
                                 if (!isNaN(num) && num > 0) {
                                     docSum += num;
+                                    hasDocs = true;
                                 }
                             }
                         }
-                        if (docSum > 0) {
+                        if (hasDocs && docSum > 0) {
                             realVal = docSum;
                         }
                     }
 
+                    // Fallback para valor_total caso nao haja titulos financeiros discriminados
+                    if (!realVal) {
+                        realVal = parseFloat(row['valor_total']) || 0;
+                    }
+
                     let custo = parseFloat(row['valor_custo']) || 0;
-                    const isDevolucao = parseInt(row['es']) === 2 || parseInt(row['processo']) === 2 || ['DEVOLUCAO DE CLIENTE', 'GARANTIA'].includes(String(row['especie']).toUpperCase().trim());
+                    const especieUpper = String(row['especie'] || '').toUpperCase();
+                    const isDevolucao = parseInt(row['es']) === 2 || 
+                                        parseInt(row['processo']) === 2 || 
+                                        especieUpper.includes('DEVOLUCAO') || 
+                                        especieUpper.includes('GARANTIA');
                     if (isDevolucao) {
                         realVal = -Math.abs(realVal);
                         custo = -Math.abs(custo);
