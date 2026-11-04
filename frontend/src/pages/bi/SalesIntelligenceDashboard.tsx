@@ -1,48 +1,34 @@
-import { useState, useMemo, useEffect } from 'react';
-import { useOutletContext } from 'react-router-dom';
-import { useBiPeriodQuery } from '../../hooks/useBiPeriodQuery';
-import { useBranchPeriodQuery } from '../../hooks/useApi';
-import { BIService } from '../../services/biApi';
-import { BiPeriodFilter } from '../../types/bi.types';
-import { 
-  TrendingUp, TrendingDown, DollarSign, Box, Target, Trophy, 
-  BarChart3, FileText, ChevronLeft, ChevronRight, ArrowUpDown, 
-  Calendar, ShoppingBag, EyeOff
-} from 'lucide-react';
-import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, 
-  ResponsiveContainer
+import { useState, useMemo } from 'react';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  Cell
 } from 'recharts';
-import { formatBRL, formatBRLCompact, formatNum } from '../../utils/format';
+import {
+  TrendingUp, TrendingDown, DollarSign,
+  Users, Award, MapPin, Trophy, ChevronDown, LayoutDashboard,
+  Calendar, RotateCcw, Target, BarChart3,
+  SlidersHorizontal, ShoppingBag, EyeOff, Package, Box
+} from 'lucide-react';
+import { useBranchPeriodQuery } from '../../hooks/useApi';
+import PeriodFilter from '../../components/PeriodFilter';
+import { formatBRL, formatNum } from '../../utils/format';
+import FaturamentoPeriodoCard from '../../components/bi/FaturamentoPeriodoCard';
 import clsx from 'clsx';
-
-// Badge Comparativo
-const ComparisonBadge = ({ pct }: { pct: number }) => {
-  const isUp = pct > 0;
-  const isDown = pct < 0;
-  return (
-    <div className={clsx(
-      "flex items-center text-xs font-bold px-2 py-1 rounded-md mt-1 w-fit",
-      isUp ? "bg-success/10 text-success" : isDown ? "bg-danger/10 text-danger" : "bg-text-muted/10 text-text-muted"
-    )}>
-      {isUp && <TrendingUp size={14} className="mr-1" />}
-      {isDown && <TrendingDown size={14} className="mr-1" />}
-      {Math.abs(pct).toFixed(1)}% vs. anterior
-    </div>
-  );
-};
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-bg-primary border border-border shadow-card-hover p-3 rounded-lg z-50">
-        <p className="text-text-secondary text-xs mb-1 font-medium">{label}</p>
+      <div className="bg-bg-primary border border-border shadow-card-hover p-3 rounded-xl z-50 min-w-[160px]">
+        <p className="text-text-secondary text-xs mb-1.5 font-bold uppercase tracking-wider">{label}</p>
         {payload.map((entry: any, index: number) => (
-          <p key={index} className="text-sm font-bold" style={{ color: entry.color || 'var(--color-text-primary)' }}>
-            {entry.name === 'total' || entry.name === 'valor' || entry.name === 'value' || entry.name === 'vendas'
-              ? formatBRL(entry.value)
-              : entry.value}
-          </p>
+          <div key={index} className="flex items-center justify-between gap-3 text-xs font-bold text-text-primary">
+            <span style={{ color: entry.color || entry.fill }}>{entry.name || 'Valor'}:</span>
+            <span className="font-mono">
+              {typeof entry.value === 'number' && entry.value > 100
+                ? formatBRL(entry.value)
+                : entry.value}
+            </span>
+          </div>
         ))}
       </div>
     );
@@ -50,721 +36,717 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
-export default function SalesIntelligenceDashboard() {
-  const [isMobile, setIsMobile] = useState(false);
-  const [evolutionViewMode, setEvolutionViewMode] = useState<'chart' | 'text'>('chart');
+interface RankingCardProps {
+  title: string;
+  data: { name: string; value: number }[];
+  isLoading: boolean;
+  total: number;
+  icon: React.ElementType;
+  colorClass: string;
+  badgeBg: string;
+}
 
-  // Table sorting states
-  const [sortField, setSortField] = useState<'data' | 'valor' | 'cliente'>('data');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  // Table status filter state
-  const [statusFilter] = useState<string>('TODOS');
-  // Table pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 50;
-  const [evolutionGroupBy, setEvolutionGroupBy] = useState<'dia' | 'mes'>('dia');
-  const [selectedYear, setSelectedYear] = useState<string>('all');
-
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 640);
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  const context = useOutletContext<any>() || {};
-  const { filter } = context;
-
-  const [localVendedor, setLocalVendedor] = useState<string>('all');
-  const [localCidade, setLocalCidade] = useState<string>('all');
-
-  const selectedVendedor = context.selectedVendedor !== undefined ? context.selectedVendedor : localVendedor;
-  const setSelectedVendedor = context.setSelectedVendedor !== undefined ? context.setSelectedVendedor : setLocalVendedor;
-
-  const selectedCidade = context.selectedCidade !== undefined ? context.selectedCidade : localCidade;
-  const setSelectedCidade = context.setSelectedCidade !== undefined ? context.setSelectedCidade : setLocalCidade;
-
-  // List of sellers and cities unfiltered for the dropdown lists
-  const vdFull = useBranchPeriodQuery<any>('/ranking/vendedores', { limit: 100 });
-  const cidadesFull = useBranchPeriodQuery<any>('/ranking/cidades', { limit: 100 });
-
-  const activeFilter = useMemo(() => ({
-    ...filter,
-    vendedor_id: selectedVendedor !== 'all' ? selectedVendedor : undefined,
-    cidade: selectedCidade !== 'all' ? selectedCidade : undefined
-  }), [filter, selectedVendedor, selectedCidade]);
-
-  // Query both endpoints simultaneously
-  const { data: salesIntData, isLoading: isSalesIntLoading, isError: isSalesIntError } = useBiPeriodQuery(
-    ['bi', 'sales-intelligence'],
-    BIService.getSalesIntelligence,
-    activeFilter
-  );
-
-  const { data: salesHubData, isLoading: isSalesHubLoading, isError: isSalesHubError } = useBiPeriodQuery(
-    ['bi', 'sales-hub-kpis'],
-    BIService.getSalesHub,
-    activeFilter
-  );
-
-  const isLoading = isSalesIntLoading || isSalesHubLoading;
-  const isError = isSalesIntError || isSalesHubError;
-
-  const summary = salesIntData?.executive_summary || {
-    faturamento: 0, faturamento_anterior: 0, crescimento_pct: 0,
-    quantidade_pedidos: 0, quantidade_pedidos_anterior: 0, crescimento_pedidos_pct: 0,
-    ticket_medio: 0, ticket_medio_anterior: 0, crescimento_ticket_pct: 0,
-    clientes_ativos: 0
-  };
-
-  // Safe data transformations
-  const revenueTrajectory = useMemo(() => {
-    return (salesIntData?.revenue_trajectory || []).map(r => ({
-      dia: r.dia || r.date || '',
-      valor: Number(r.valor !== undefined ? r.valor : r.value || 0)
-    }));
-  }, [salesIntData?.revenue_trajectory]);
-
-  // Available years from trajectory data
-  const availableYears = useMemo(() => {
-    const years = new Set<string>();
-    revenueTrajectory.forEach((item: any) => {
-      if (item.dia && item.dia.includes('-')) {
-        years.add(item.dia.split('-')[0]);
-      }
-    });
-    return Array.from(years).sort();
-  }, [revenueTrajectory]);
-
-  // Filtered trajectory by selected year
-  const filteredTrajectory = useMemo(() => {
-    if (selectedYear === 'all') return revenueTrajectory;
-    return revenueTrajectory.filter((item: any) =>
-      item.dia && item.dia.startsWith(selectedYear)
-    );
-  }, [revenueTrajectory, selectedYear]);
-
-  // Grouped Evolution Data (Daily or Monthly)
-  const groupedEvolutionData = useMemo(() => {
-    if (evolutionGroupBy === 'dia') {
-      return filteredTrajectory.map((item: any) => {
-        let label = item.dia;
-        if (label && label.includes('-')) {
-          const parts = label.split('-');
-          if (parts.length >= 3) {
-            label = `${parts[2]}/${parts[1]}`;
-          }
-        }
-        return {
-          label,
-          value: item.valor
-        };
-      });
-    } else {
-      const groups: Record<string, { key: string; label: string; value: number }> = {};
-      filteredTrajectory.forEach((item: any) => {
-        let monthKey = '';
-        let monthLabel = '';
-        if (item.dia && item.dia.includes('-')) {
-          const parts = item.dia.split('-');
-          if (parts.length >= 2) {
-            const year = parts[0];
-            const month = parts[1];
-            monthKey = `${year}-${month}`;
-            const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-            const monthIdx = parseInt(month, 10) - 1;
-            const shortYear = year.slice(2);
-            if (monthIdx >= 0 && monthIdx < 12) {
-              monthLabel = `${monthNames[monthIdx]}/${shortYear}`;
-            } else {
-              monthLabel = `${month}/${year}`;
-            }
-          }
-        }
-        if (monthKey) {
-          if (!groups[monthKey]) {
-            groups[monthKey] = { key: monthKey, label: monthLabel, value: 0 };
-          }
-          groups[monthKey].value += item.valor || 0;
-        }
-      });
-      return Object.values(groups)
-        .sort((a, b) => a.key.localeCompare(b.key))
-        .map(g => ({
-          label: g.label,
-          value: g.value
-        }));
-    }
-  }, [filteredTrajectory, evolutionGroupBy]);
-
-  // Chronological Details per Day or Month (Ordenado pela data atual primeiro)
-  const chronologicalDetails = useMemo(() => {
-    if (evolutionGroupBy === 'dia') {
-      return revenueTrajectory.map((d) => {
-        let formattedDate = d.dia;
-        if (formattedDate && formattedDate.includes('-')) {
-          const parts = formattedDate.split('-');
-          if (parts.length >= 3) {
-            formattedDate = `${parts[2]}/${parts[1]}/${parts[0].slice(2)}`;
-          }
-        }
-        return {
-          label: formattedDate,
-          value: d.valor,
-          key: d.dia
-        };
-      }).sort((a, b) => b.key.localeCompare(a.key));
-    } else {
-      // Group by month (mês atual primeiro)
-      const groups: Record<string, { key: string; label: string; value: number }> = {};
-      revenueTrajectory.forEach((item: any) => {
-        let monthKey = '';
-        let monthLabel = '';
-        if (item.dia && item.dia.includes('-')) {
-          const parts = item.dia.split('-');
-          if (parts.length >= 2) {
-            const year = parts[0];
-            const month = parts[1];
-            monthKey = `${year}-${month}`;
-            const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-            const monthIdx = parseInt(month, 10) - 1;
-            const shortYear = year.slice(2);
-            if (monthIdx >= 0 && monthIdx < 12) {
-              monthLabel = `${monthNames[monthIdx]}/${shortYear}`;
-            } else {
-              monthLabel = `${month}/${year}`;
-            }
-          }
-        }
-        if (monthKey) {
-          if (!groups[monthKey]) {
-            groups[monthKey] = { key: monthKey, label: monthLabel, value: 0 };
-          }
-          groups[monthKey].value += item.valor || 0;
-        }
-      });
-      return Object.values(groups)
-        .sort((a, b) => b.key.localeCompare(a.key))
-        .map(g => ({
-          label: g.label,
-          value: g.value,
-          key: g.key
-        }));
-    }
-  }, [revenueTrajectory, evolutionGroupBy]);
-
-  // Order sorting & filtering logic
-  const { filteredOrders, currentOrders, totalPages } = useMemo(() => {
-    const orders = salesHubData?.recent_orders || [];
-    
-    // Sort
-    let result = [...orders].sort((a: any, b: any) => {
-      let comparison = 0;
-      if (sortField === 'data') {
-        comparison = new Date(a.data_emissao || a.data || 0).getTime() - new Date(b.data_emissao || b.data || 0).getTime();
-      } else if (sortField === 'valor') {
-        comparison = (a.valor_total || a.valor || 0) - (b.valor_total || b.valor || 0);
-      } else if (sortField === 'cliente') {
-        comparison = String(a.cliente_nome || a.cliente || '').localeCompare(String(b.cliente_nome || b.cliente || ''));
-      }
-      return sortOrder === 'asc' ? comparison : -comparison;
-    });
-
-    const totalPages = Math.ceil(result.length / itemsPerPage) || 1;
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const currentOrders = result.slice(startIndex, startIndex + itemsPerPage);
-    
-    return { filteredOrders: result, currentOrders, totalPages };
-  }, [salesHubData?.recent_orders, sortField, sortOrder, currentPage]);
-
-  // Reset page when filter changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [sortField, sortOrder, selectedVendedor, selectedCidade, filter]);
-
-  const handleSort = (field: 'data' | 'valor' | 'cliente') => {
-    if (sortField === field) {
-      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortOrder('desc');
-    }
-  };
-
-  const getRevenueTrajectorySummary = () => {
-    if (revenueTrajectory.length === 0) return "Nenhum dado de evolução disponível.";
-    const sorted = [...revenueTrajectory].sort((a: any, b: any) => b.valor - a.valor);
-    const peak = sorted[0];
-    const lowest = sorted[sorted.length - 1];
-    return `A evolução comercial indica variações de faturamento, com pico no dia ${peak.dia} (${formatBRL(peak.valor)}) e menor faturamento no dia ${lowest.dia} (${formatBRL(lowest.valor)}).`;
-  };
-
-  const isTrajectoryEmpty = revenueTrajectory.length === 0 || revenueTrajectory.every(r => r.valor === 0);
-
-  const totalNotesCount = filteredOrders.length;
-  const totalNotesSum = useMemo(() => {
-    return filteredOrders.reduce((sum: number, o: any) => sum + (o.valor_total || o.valor || 0), 0);
-  }, [filteredOrders]);
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-80 text-text-secondary">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-500 mr-3"></div>
-        Carregando Hub de vendas...
-      </div>
-    );
-  }
+function RankingCardWithToggle({
+  title,
+  data,
+  isLoading,
+  total,
+  icon: Icon,
+  colorClass,
+  badgeBg
+}: RankingCardProps) {
+  const [viewType, setViewType] = useState<'list' | 'chart'>('list');
 
   return (
-    <div className="space-y-4 animate-in fade-in duration-300">
-      
-      {/* HEADER SECTION */}
-      <div className="hidden sm:flex flex-row items-center gap-4 border-b border-divider/40 pb-3 mb-2">
-        {/* Vendedor Filter */}
-        <div className="flex flex-col gap-1 w-48 lg:w-56 text-left">
-          <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider pl-1">Vendedor</span>
-          <select
-            value={selectedVendedor}
-            onChange={(e) => setSelectedVendedor(e.target.value)}
-            className="h-10 px-3 bg-bg-primary border border-border text-text-primary rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all duration-300 w-full cursor-pointer shadow-sm"
-          >
-            <option value="all">Todos os Vendedores</option>
-            {vdFull.data?.data?.map((seller: any) => (
-              <option key={seller.id} value={seller.id}>
-                {seller.nome || seller.vendedor}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Cidade Filter */}
-        <div className="flex flex-col gap-1 w-48 lg:w-56 text-left">
-          <span className="text-[10px] font-bold text-text-muted uppercase tracking-wider pl-1">Cidade</span>
-          <select
-            value={selectedCidade}
-            onChange={(e) => setSelectedCidade(e.target.value)}
-            className="h-10 px-3 bg-bg-primary border border-border text-text-primary rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all duration-300 w-full cursor-pointer shadow-sm"
-          >
-            <option value="all">Todas as Cidades</option>
-            {cidadesFull.data?.data?.map((c: any, idx: number) => (
-              <option key={idx} value={c.nome}>
-                {c.nome}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* TOP KPIs - ASYMMETRIC GRID (1 MAIN LARGER + 4 SUPPORT CARDS) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
-        {/* FATURAMENTO (MAIN LARGER CARD) */}
-        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 relative overflow-hidden md:col-span-2 lg:col-span-2 flex flex-col justify-between">
-          <div className="absolute top-0 left-0 w-full h-[3px] bg-brand-500"></div>
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <div className="p-2 bg-brand-500/10 text-brand-500 rounded-lg">
-                <DollarSign size={20} />
-              </div>
-              <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Faturamento Total</span>
-            </div>
-            <div className="text-3xl font-black text-text-primary pl-1 my-2">
-              {formatBRL(summary.faturamento)}
-            </div>
+    <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-5 flex flex-col h-full animate-in fade-in duration-300">
+      <div className="flex justify-between items-center mb-4 border-b border-divider/40 pb-3">
+        <h3 className="font-black text-text-primary text-xs uppercase tracking-wider flex items-center gap-2">
+          <div className={clsx("p-1.5 rounded-lg", badgeBg, colorClass)}>
+            <Icon size={14} />
           </div>
-          <ComparisonBadge pct={summary.crescimento_pct || 0} />
-        </div>
-
-        {/* VOLUME DE ITENS */}
-        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 relative overflow-hidden flex flex-col justify-between">
-          <div className="absolute top-0 left-0 w-full h-[3px] bg-brand-500"></div>
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <div className="p-1.5 bg-brand-500/10 text-brand-500 rounded-lg">
-                <Box size={16} />
-              </div>
-              <span className="text-xs font-bold text-text-secondary uppercase tracking-wider block">Volume Itens</span>
-            </div>
-            <div className="text-xl font-extrabold text-text-primary pl-1 mb-1 mt-2">
-              {formatNum(summary.quantidade_itens || 0)}
-            </div>
-          </div>
-          <span className="text-[10px] text-text-muted mt-2 block font-medium">Itens comercializados</span>
-        </div>
-
-        {/* TICKET MÉDIO */}
-        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 relative overflow-hidden flex flex-col justify-between">
-          <div className="absolute top-0 left-0 w-full h-[3px] bg-brand-500"></div>
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <div className="p-1.5 bg-brand-500/10 text-brand-500 rounded-lg">
-                <Target size={16} />
-              </div>
-              <span className="text-xs font-bold text-text-secondary uppercase tracking-wider block">Ticket Médio</span>
-            </div>
-            <div className="text-xl font-extrabold text-text-primary pl-1 mb-1 mt-2">
-              {formatBRL(summary.ticket_medio || 0)}
-            </div>
-          </div>
-          <span className="text-[10px] text-text-muted mt-2 block font-medium">Média por faturamento</span>
-        </div>
-
-        {/* NOTAS E PEDIDOS */}
-        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 relative overflow-hidden flex flex-col justify-between">
-          <div className="absolute top-0 left-0 w-full h-[3px] bg-brand-500"></div>
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <div className="p-1.5 bg-brand-500/10 text-brand-500 rounded-lg">
-                <ShoppingBag size={16} />
-              </div>
-              <span className="text-xs font-bold text-text-secondary uppercase tracking-wider block">Notas / Pedidos</span>
-            </div>
-            <div className="text-xl font-extrabold text-text-primary pl-1 mb-1 mt-2">
-              {salesHubData?.recent_orders?.length || summary.quantidade_pedidos || 0}
-            </div>
-          </div>
-          <span className="text-[10px] text-text-muted mt-2 block font-medium">Documentos emitidos</span>
-        </div>
-      </div>
-
-      {/* EVOLUÇÃO TEMPORAL (TRAJETÓRIA) */}
-      <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-1">
-          <div className="flex items-center gap-2">
-            <TrendingUp size={16} className="text-brand-500" />
-            <h3 className="font-bold text-text-primary text-xs uppercase tracking-wider">Evolução Comercial</h3>
-          </div>
-          
-          <div className="flex items-center gap-2 flex-wrap justify-end">
-            {/* Filtro de Ano */}
-            {availableYears.length > 1 && (
-              <div className="flex items-center gap-1 bg-bg-secondary p-0.5 rounded-lg border border-divider">
-                <button
-                  onClick={() => setSelectedYear('all')}
-                  className={clsx(
-                    "px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer",
-                    selectedYear === 'all'
-                      ? "bg-bg-primary text-brand-500 shadow-sm"
-                      : "text-text-secondary hover:text-text-primary"
-                  )}
-                >
-                  Todos
-                </button>
-                {availableYears.map(year => (
-                  <button
-                    key={year}
-                    onClick={() => setSelectedYear(year)}
-                    className={clsx(
-                      "px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer",
-                      selectedYear === year
-                        ? "bg-bg-primary text-brand-500 shadow-sm"
-                        : "text-text-secondary hover:text-text-primary"
-                    )}
-                  >
-                    {year}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Agrupamento: Diário / Mensal */}
-            <div className="flex items-center gap-1 bg-bg-secondary p-0.5 rounded-lg border border-divider">
-              <button
-                onClick={() => setEvolutionGroupBy('dia')}
-                className={clsx(
-                  "px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer",
-                  evolutionGroupBy === 'dia'
-                    ? "bg-bg-primary text-brand-500 shadow-sm"
-                    : "text-text-secondary hover:text-text-primary"
-                )}
-              >
-                Diário
-              </button>
-              <button
-                onClick={() => setEvolutionGroupBy('mes')}
-                className={clsx(
-                  "px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer",
-                  evolutionGroupBy === 'mes'
-                    ? "bg-bg-primary text-brand-500 shadow-sm"
-                    : "text-text-secondary hover:text-text-primary"
-                )}
-              >
-                Mensal
-              </button>
-            </div>
-
-            {/* View Toggles */}
-            <div className="flex items-center gap-1 bg-bg-secondary p-0.5 rounded-lg border border-divider">
-              <button
-                onClick={() => setEvolutionViewMode('chart')}
-                disabled={isTrajectoryEmpty}
-                className={clsx(
-                  "p-1.5 rounded-md transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed",
-                  evolutionViewMode === 'chart'
-                    ? "bg-bg-primary text-brand-500 shadow-sm"
-                    : "text-text-secondary hover:text-text-primary"
-                )}
-                title="Ver Gráfico"
-              >
-                <BarChart3 size={14} />
-              </button>
-              <button
-                onClick={() => setEvolutionViewMode('text')}
-                className={clsx(
-                  "p-1.5 rounded-md transition-all cursor-pointer",
-                  evolutionViewMode === 'text'
-                    ? "bg-bg-primary text-brand-500 shadow-sm"
-                    : "text-text-secondary hover:text-text-primary"
-                )}
-                title="Ver Resumo Textual"
-              >
-                <FileText size={14} />
-              </button>
-            </div>
-          </div>
-        </div>
-        <p className="text-xs text-text-muted mb-4">Gráfico de faturamento realizado ao longo do período.</p>
+          {title}
+        </h3>
         
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-2">
-          {/* Left Chart column (col-span-2) */}
-          <div className="lg:col-span-2 h-[200px] sm:h-[260px] lg:h-[320px] w-full">
-            {isTrajectoryEmpty ? (
-              <div className="h-full flex flex-col items-center justify-center text-center p-6 border border-dashed border-border rounded-xl bg-bg-secondary/10">
-                <EyeOff size={32} className="text-text-muted mb-2 stroke-[1.5]" />
-                <p className="text-xs text-text-secondary font-medium">Sem dados suficientes para gerar a evolução neste período.</p>
-              </div>
-            ) : evolutionViewMode === 'chart' ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={groupedEvolutionData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" opacity={0.3} />
-                  <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} />
-                  <YAxis axisLine={false} tickLine={false} tickFormatter={(v) => formatBRLCompact(v)} tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} />
-                  <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.4 }} />
-                  <Bar dataKey="value" fill="#0D9488" radius={[4, 4, 0, 0]} maxBarSize={40} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="space-y-4 h-full flex flex-col justify-between">
-                <p className="text-xs text-text-secondary italic leading-relaxed border-l-2 border-brand-500 pl-3">
-                  {getRevenueTrajectorySummary()}
-                </p>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 overflow-y-auto max-h-[160px] pr-1">
-                  {groupedEvolutionData.map((item: any, index: number) => (
-                    <div key={index} className="p-2 rounded-xl bg-bg-secondary/40 border border-divider">
-                      <div className="text-[9px] text-text-secondary font-semibold uppercase">{item.label}</div>
-                      <div className="text-xs font-bold text-text-primary font-mono mt-0.5">{formatBRL(item.value)}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Right Column: Chronological Details per Day or Month */}
-          <div className="lg:col-span-1 flex flex-col justify-between h-[200px] sm:h-[260px] lg:h-[260px]">
-            <div className="flex items-center gap-1.5 border-b border-divider/40 pb-2 mb-2">
-              <Calendar size={14} className="text-brand-500" />
-              <span className="text-[10px] font-bold text-text-primary uppercase tracking-wider">
-                {evolutionGroupBy === 'dia' ? 'Faturamento por Dia' : 'Faturamento por Mês'}
-              </span>
-            </div>
-            <div className="flex-1 overflow-y-auto max-h-[220px] pr-1 text-[11px] scrollbar-none divide-y divide-divider/30">
-              {chronologicalDetails.map((item: any, index: number) => (
-                <div key={item.key} className="flex justify-between items-center py-2 px-1 hover:bg-bg-secondary/40 rounded transition-colors">
-                  <span className="text-text-secondary font-mono w-6 shrink-0">{index + 1}</span>
-                  <span className="text-text-primary flex-1 font-semibold pl-2">{item.label}</span>
-                  <span className="font-bold text-text-primary font-mono text-right shrink-0">{formatBRL(item.value)}</span>
-                </div>
-              ))}
-              {chronologicalDetails.length === 0 && (
-                <div className="text-center py-10 text-text-muted text-xs">Sem vendas registradas no período.</div>
-              )}
-            </div>
-          </div>
-        </div>
+        {/* Toggle Gráfico / Lista */}
+        <button
+          type="button"
+          onClick={() => setViewType(v => v === 'list' ? 'chart' : 'list')}
+          className="text-[11px] font-bold text-text-secondary hover:text-text-primary px-2.5 py-1 bg-bg-secondary hover:bg-bg-tertiary border border-border rounded-lg transition-all cursor-pointer inline-flex items-center gap-1.5 shadow-2xs"
+        >
+          {viewType === 'list' ? (
+            <>
+              <BarChart3 size={13} className="text-brand-500" /> Gráfico
+            </>
+          ) : (
+            <>
+              <SlidersHorizontal size={13} className="text-brand-500" /> Lista
+            </>
+          )}
+        </button>
       </div>
 
-      {/* PEDIDOS RECENTES (MODERN TABLE WITH 50-BY-50 PAGINATION & MOBILE FALLBACK) */}
-      <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-divider pb-4 mb-4">
-          <div>
-            <h3 className="font-bold text-text-primary text-sm uppercase tracking-wider">Relação de Notas</h3>
-            <p className="text-xs text-text-secondary mt-0.5">
-              Total: <span className="font-bold text-brand-500">{totalNotesCount} notas</span> faturadas no período • Acumulado: <span className="font-bold text-success">{formatBRL(totalNotesSum)}</span>
-            </p>
-          </div>
-        </div>
-
-        {/* Desktop Table View */}
-        <div className="hidden sm:block overflow-x-auto border border-divider/50 rounded-xl">
-          <table className="w-full text-left text-xs whitespace-nowrap">
-            <thead>
-              <tr className="border-b border-divider text-[10px] text-text-secondary uppercase font-extrabold tracking-wider bg-bg-secondary/60">
-                <th 
-                  onClick={() => handleSort('data')}
-                  className="py-3 px-4 cursor-pointer hover:bg-bg-secondary/80 select-none transition-colors w-32"
-                >
-                  <div className="flex items-center gap-1">
-                    DATA
-                    <ArrowUpDown size={11} className={clsx(sortField === 'data' ? "text-brand-500" : "text-text-muted")} />
-                  </div>
-                </th>
-                <th className="py-3 px-4 w-28">PEDIDO</th>
-                <th className="py-3 px-4 w-40">VENDEDOR</th>
-                <th 
-                  onClick={() => handleSort('cliente')}
-                  className="py-3 px-4 cursor-pointer hover:bg-bg-secondary/80 select-none transition-colors"
-                >
-                  <div className="flex items-center gap-1">
-                    CLIENTE
-                    <ArrowUpDown size={11} className={clsx(sortField === 'cliente' ? "text-brand-500" : "text-text-muted")} />
-                  </div>
-                </th>
-                <th className="py-3 px-4 w-28">TIPO</th>
-                <th 
-                  onClick={() => handleSort('valor')}
-                  className="py-3 px-4 text-right cursor-pointer hover:bg-bg-secondary/80 select-none transition-colors w-40"
-                >
-                  <div className="flex items-center gap-1 justify-end">
-                    VALOR TOTAL
-                    <ArrowUpDown size={11} className={clsx(sortField === 'valor' ? "text-brand-500" : "text-text-muted")} />
-                  </div>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-divider/20">
-              {currentOrders.map((order: any, idx: number) => {
-                const isDevolucao = order.es === 2 || order.processo === 2 || (order.valor_total || order.valor || 0) < 0;
-                return (
-                  <tr key={order.id || idx} className="hover:bg-bg-secondary/40 transition-colors">
-                    <td className="py-3 px-4 text-text-secondary font-medium">{order.data_emissao || order.data}</td>
-                    <td className="py-3 px-4 text-text-secondary font-mono">{order.numero_nota || order.numero_pedido || '-'}</td>
-                    <td className="py-3 px-4 text-text-secondary">{order.vendedor_nome || order.vendedor}</td>
-                    <td className="py-3 px-4 font-bold text-text-primary truncate max-w-[240px]" title={order.cliente_nome}>
-                      {order.cliente_nome || order.cliente}
-                    </td>
-                    <td className="py-3 px-4">
-                      {isDevolucao ? (
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-danger/10 text-danger">
-                          Devolução
-                        </span>
-                      ) : (
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-success/10 text-success">
-                          Venda
-                        </span>
-                      )}
-                    </td>
-                    <td className={clsx(
-                      "py-3 px-4 text-right font-mono font-extrabold",
-                      isDevolucao ? "text-danger" : "text-success"
-                    )}>
-                      {formatBRL(order.valor_total || order.valor)}
-                    </td>
-                  </tr>
-                );
-              })}
-              {currentOrders.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="py-8 text-center text-text-muted font-medium">
-                    Nenhuma nota encontrada para os filtros selecionados.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Mobile Card View Fallback */}
-        <div className="sm:hidden space-y-2">
-          {currentOrders.map((order: any, idx: number) => {
-            const isDevolucao = order.es === 2 || order.processo === 2 || (order.valor_total || order.valor || 0) < 0;
-            return (
-              <div key={order.id || idx} className="p-3 border border-divider rounded-xl bg-bg-secondary/10 flex flex-col gap-1.5">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h4 className="text-xs font-bold text-text-primary leading-tight truncate max-w-[190px] block" title={order.cliente_nome || order.cliente}>
-                      {order.cliente_nome || order.cliente}
-                    </h4>
-                    <div className="text-[10px] mt-1 flex items-center gap-1.5 leading-none">
-                      <span className="text-[#00a896] dark:text-[#00c2ad] font-semibold">
-                        {order.vendedor_nome || order.vendedor ? (order.vendedor_nome || order.vendedor).split(' ')[0] : '-'}
-                      </span>
-                      <span className="text-text-muted font-medium">•</span>
-                      <span className="text-indigo-600 dark:text-indigo-400 font-semibold font-mono">
-                        Ped: {order.numero_nota || order.numero_pedido || '-'}
+      <div className="flex-1 min-h-[260px] flex flex-col justify-center">
+        {isLoading ? (
+          <div className="h-48 flex items-center justify-center text-xs text-text-secondary">Carregando dados...</div>
+        ) : data.length === 0 ? (
+          <div className="h-48 flex items-center justify-center text-xs text-text-secondary">Sem dados registrados</div>
+        ) : viewType === 'list' ? (
+          <div className="space-y-1.5 overflow-y-auto max-h-[280px] pr-1">
+            {data.slice(0, 10).map((item, i) => {
+              const pct = total > 0 ? (item.value / total) * 100 : 0;
+              return (
+                <div key={i} className="flex items-center justify-between p-2 hover:bg-bg-secondary/60 rounded-xl transition-all duration-200 border border-transparent hover:border-divider/30">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-6 shrink-0 flex items-center justify-center">
+                      <span className={clsx(
+                        "text-xs font-black font-mono",
+                        i === 0 ? "text-amber-500" : i === 1 ? "text-slate-400" : i === 2 ? "text-amber-700" : "text-text-muted"
+                      )}>
+                        #{i + 1}
                       </span>
                     </div>
+                    <div className="text-xs font-bold text-text-primary uppercase truncate max-w-[160px] sm:max-w-[200px]" title={item.name}>
+                      {item.name}
+                    </div>
                   </div>
-                  {isDevolucao ? (
-                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-danger/10 text-danger shrink-0">
-                      Devolução
-                    </span>
-                  ) : (
-                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-success/10 text-success shrink-0">
-                      Venda
-                    </span>
-                  )}
-                </div>
-                <div className="flex justify-between items-center pt-1.5 border-t border-divider mt-0.5">
-                  <div className="flex items-center gap-1 text-[10px] text-text-muted">
-                    <Calendar size={12} />
-                    {order.data_emissao || order.data}
-                  </div>
-                  <div className={clsx(
-                    "text-xs font-mono font-bold",
-                    isDevolucao ? "text-danger" : "text-success"
-                  )}>
-                    {formatBRL(order.valor_total || order.valor)}
+                  <div className="text-right shrink-0">
+                    <div className="text-xs font-black text-text-primary font-mono">{formatBRL(item.value)}</div>
+                    <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-0.5">{pct.toFixed(1)}% share</div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-          {currentOrders.length === 0 && (
-            <div className="py-8 text-center text-text-muted text-xs">
-              Nenhuma nota encontrada.
-            </div>
-          )}
-        </div>
-
-        {/* PAGINATION CONTROLS */}
-        {totalPages > 1 && (
-          <div className="flex justify-between items-center mt-4 pt-4 border-t border-divider/20 text-xs">
-            <span className="text-[10px] sm:text-xs text-text-secondary">
-              Exibindo {currentOrders.length} de {filteredOrders.length} registros
-            </span>
-            
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="p-1 rounded-md border border-divider hover:bg-bg-secondary disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
-                aria-label="Anterior"
-              >
-                <ChevronLeft size={16} />
-              </button>
-              
-              <span className="font-semibold text-text-primary text-[10px] sm:text-xs">
-                {currentPage} de {totalPages}
-              </span>
-              
-              <button
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-                className="p-1 rounded-md border border-divider hover:bg-bg-secondary disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
-                aria-label="Próxima"
-              >
-                <ChevronRight size={16} />
-              </button>
-            </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="h-[260px] w-full pt-2">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data.slice(0, 8)} layout="vertical" margin={{ top: 0, right: 30, left: 10, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--color-border)" opacity={0.4} />
+                <XAxis type="number" hide />
+                <YAxis 
+                  dataKey="name" 
+                  type="category" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tickFormatter={(v) => String(v).length > 10 ? String(v).substring(0, 10) + '...' : v}
+                  tick={{ fontSize: 10, fill: 'var(--color-text-primary)', fontWeight: 600 }} 
+                  width={75} 
+                />
+                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.3 }} />
+                <Bar dataKey="value" name="Total" fill="#0D9488" radius={[0, 4, 4, 0]} maxBarSize={18} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         )}
       </div>
+    </div>
+  );
+}
 
-      {isError && (
-        <div className="bg-danger/10 border border-danger/20 text-danger p-3 rounded-lg text-sm mt-4">
-          Aviso: Os dados não puderam ser carregados devido a uma falha de conexão com o banco de dados/API.
+export default function SalesIntelligenceDashboard() {
+  // Modos de visualização do Card "Resultados de Vendas"
+  const [compareMode, setCompareMode] = useState<'mes_anterior' | 'mesmo_mes_ano_ant' | 'ano_acumulado'>('ano_acumulado');
+  const [viewMetric, setViewMetric] = useState<'faturamento' | 'metas'>('faturamento');
+
+  // Filtros locais Vendedor/Marca
+  const [selectedVendedor, setSelectedVendedor] = useState('todas');
+  const [selectedMarca, setSelectedMarca] = useState('todas');
+
+  const params = useMemo(() => ({
+    vendedor_id: selectedVendedor !== 'todas' ? selectedVendedor : undefined,
+    marca: selectedMarca !== 'todas' ? selectedMarca : undefined,
+    compare_mode: compareMode
+  }), [selectedVendedor, selectedMarca, compareMode]);
+
+  const visaoQuery = useBranchPeriodQuery<any>('/estatisticas/visao-estrategica', params);
+  const vd = useBranchPeriodQuery<any>('/ranking/vendedores', { limit: 100, marca: selectedMarca !== 'todas' ? selectedMarca : undefined });
+  const prod = useBranchPeriodQuery<any>('/ranking/produtos', { limit: 100, marca: selectedMarca !== 'todas' ? selectedMarca : undefined, vendedor_id: selectedVendedor !== 'todas' ? selectedVendedor : undefined });
+  const cli = useBranchPeriodQuery<any>('/ranking/clientes', { limit: 100, marca: selectedMarca !== 'todas' ? selectedMarca : undefined, vendedor_id: selectedVendedor !== 'todas' ? selectedVendedor : undefined });
+  const marcas = useBranchPeriodQuery<any>('/ranking/marcas', { limit: 100, vendedor_id: selectedVendedor !== 'todas' ? selectedVendedor : undefined });
+  const cidades = useBranchPeriodQuery<any>('/ranking/cidades', { limit: 100, marca: selectedMarca !== 'todas' ? selectedMarca : undefined, vendedor_id: selectedVendedor !== 'todas' ? selectedVendedor : undefined });
+  const categorias = useBranchPeriodQuery<any>('/ranking/categorias', { limit: 100, marca: selectedMarca !== 'todas' ? selectedMarca : undefined, vendedor_id: selectedVendedor !== 'todas' ? selectedVendedor : undefined });
+
+  const data = visaoQuery.data || {};
+  const currentYear = data?.years?.current || 2026;
+  const prevYear = data?.years?.prev || 2025;
+
+  // Cálculos do Card Resultados de Vendas
+  const faturamentoAtual = data?.faturamento_atual || 0;
+  const ytdAtual = data?.ytd_atual || 0;
+  const ytdAnterior = data?.ytd_anterior || 0;
+  const crescYtd = data?.cresc_ytd || 0;
+  const totalAnoAnterior12m = data?.total_ano_anterior_12m || 0;
+  const superacaoValor = data?.superacao_valor || 0;
+  const superacaoPct = data?.superacao_pct || 0;
+
+  const faturamentoMesAnterior = data?.faturamento_mes_anterior || 0;
+  const crescMesAnterior = data?.cresc_mes_anterior || 0;
+
+  const faturamentoMesmoMesAnoAnt = data?.faturamento_mesmo_mes_ano_ant || 0;
+  const crescMesmoMesAnoAnt = data?.cresc_mesmo_mes_ano_ant || 0;
+
+  const qtdPedidos = data?.qtd_pedidos || 0;
+  const ticketMedio = data?.ticket_medio || 0;
+  const taxaRecompra = data?.taxa_recompra || 0;
+  const clientesComCompra = data?.clientes_com_compra || 0;
+  const totalClientesBase = data?.total_clientes_base || 0;
+
+  // Highlights
+  const melhorVendedor = data?.highlights?.melhor_vendedor || { nome: '-', total: 0, pct_share: 0 };
+  const melhorCliente = data?.highlights?.melhor_cliente || { nome: '-', total: 0, pct_share: 0 };
+  const marcaMaisVendida = data?.highlights?.marca_mais_vendida || { nome: '-', total: 0, pct_share: 0 };
+  const cidadeDestaque = data?.highlights?.cidade_destaque || { nome: '-', total: 0, pct_share: 0 };
+
+  // Rankings
+  const mockTopSellers = useMemo(() => {
+    return vd.data?.data?.map((s: any) => ({ name: s.nome || s.vendedor, value: s.total || s.total_vendas })) || [];
+  }, [vd.data]);
+
+  const mockTopBrands = useMemo(() => {
+    return marcas.data?.data?.map((m: any) => ({ name: m.nome || m.marca, value: m.total })) || [];
+  }, [marcas.data]);
+
+  const mockTopCategories = useMemo(() => {
+    return categorias.data?.data?.map((c: any) => ({ name: c.nome || c.categoria, value: c.total })) || [];
+  }, [categorias.data]);
+
+  const mockTopCities = useMemo(() => {
+    return cidades.data?.data?.map((c: any) => ({ name: c.nome || c.cidade, value: c.total })) || [];
+  }, [cidades.data]);
+
+  const mockTopClients = useMemo(() => {
+    return cli.data?.data?.map((c: any) => ({ name: c.nome || c.cliente, value: c.total })) || [];
+  }, [cli.data]);
+
+  const totalSellersSum = useMemo(() => mockTopSellers.reduce((a: number, b: any) => a + (b.value || 0), 0), [mockTopSellers]);
+  const maxSellerVal = useMemo(() => Math.max(...mockTopSellers.map((s: any) => s.value || 0), 1), [mockTopSellers]);
+
+  const SELLER_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#06B6D4', '#EC4899', '#F97316', '#6366F1'];
+
+  return (
+    <div className="space-y-4 pb-10 animate-in fade-in duration-300" aria-label="Visão Estratégica BI">
+      
+      {/* 1. HEADER EXECUTIVO COM FILTROS DE PERÍODO */}
+      <div className="bg-bg-primary border border-border rounded-2xl p-5 shadow-card flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-2xl bg-teal-500/10 border border-teal-500/20 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0 shadow-sm">
+            <LayoutDashboard size={26} />
+          </div>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-black text-text-primary tracking-tight uppercase">VISÃO ESTRATÉGICA</h1>
+            <p className="text-xs text-text-secondary font-medium">Visão geral executiva da empresa, vendas acumuladas e clientes</p>
+          </div>
         </div>
-      )}
+
+        {/* Period Filter (HOJE, 7 DIAS, MÊS ATUAL, MÊS ANTERIOR, 12 MESES, PERSONALIZADO) */}
+        <div className="flex items-center">
+          <PeriodFilter />
+        </div>
+      </div>
+
+      {/* 2. BARRA DE FILTROS SECUNDÁRIOS: VENDEDOR & MARCA */}
+      <div className="bg-bg-primary border border-border rounded-2xl p-4.5 shadow-card grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Vendedor */}
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-black text-text-secondary uppercase tracking-wider block">
+            Vendedor
+          </label>
+          <div className="relative">
+            <select
+              value={selectedVendedor}
+              onChange={(e) => setSelectedVendedor(e.target.value)}
+              className="w-full bg-bg-secondary hover:bg-bg-tertiary border border-border rounded-xl px-3.5 py-2.5 text-xs font-bold text-text-primary outline-none cursor-pointer focus:border-brand-500 transition-all appearance-none pr-8 shadow-xs"
+            >
+              <option value="todas">Todos os Vendedores</option>
+              {vd.data?.data?.map((v: any) => (
+                <option key={v.id || v.nome} value={v.nome}>{v.nome}</option>
+              ))}
+            </select>
+            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+          </div>
+        </div>
+
+        {/* Marca */}
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-black text-text-secondary uppercase tracking-wider block">
+            Marca
+          </label>
+          <div className="relative">
+            <select
+              value={selectedMarca}
+              onChange={(e) => setSelectedMarca(e.target.value)}
+              className="w-full bg-bg-secondary hover:bg-bg-tertiary border border-border rounded-xl px-3.5 py-2.5 text-xs font-bold text-text-primary outline-none cursor-pointer focus:border-brand-500 transition-all appearance-none pr-8 shadow-xs uppercase"
+            >
+              <option value="todas">Todas as Marcas</option>
+              {marcas.data?.data?.map((m: any) => (
+                <option key={m.marca || m.nome} value={m.marca || m.nome}>{m.marca || m.nome}</option>
+              ))}
+            </select>
+            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+          </div>
+        </div>
+      </div>
+
+      {/* 3. CARD PRINCIPAL: RESULTADOS DE VENDAS */}
+      <div className="bg-bg-primary rounded-2xl border border-border shadow-card p-6 relative overflow-hidden flex flex-col gap-6">
+        <div className="absolute top-0 left-0 w-full h-1.5 bg-emerald-500"></div>
+
+        {/* Header Controls */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-divider/40 pb-4">
+          <div className="flex items-center gap-2">
+            <TrendingUp size={20} className="text-emerald-500" />
+            <h2 className="text-sm sm:text-base font-black text-text-primary uppercase tracking-wider">
+              Resultados de Vendas
+            </h2>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Comparativo Toggle Buttons */}
+            <div className="flex items-center bg-bg-secondary p-1 rounded-xl border border-divider">
+              <button
+                type="button"
+                onClick={() => setCompareMode('mes_anterior')}
+                className={clsx(
+                  "px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1.5",
+                  compareMode === 'mes_anterior'
+                    ? "bg-bg-primary text-text-primary shadow-xs border border-border"
+                    : "text-text-secondary hover:text-text-primary"
+                )}
+              >
+                <Calendar size={13} className="text-blue-500" /> Mês Anterior
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setCompareMode('mesmo_mes_ano_ant')}
+                className={clsx(
+                  "px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1.5",
+                  compareMode === 'mesmo_mes_ano_ant'
+                    ? "bg-bg-primary text-text-primary shadow-xs border border-border"
+                    : "text-text-secondary hover:text-text-primary"
+                )}
+              >
+                <RotateCcw size={13} className="text-teal-500" /> Mesmo Mês Ano Ant.
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setCompareMode('ano_acumulado')}
+                className={clsx(
+                  "px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1.5",
+                  compareMode === 'ano_acumulado'
+                    ? "bg-brand-500 text-white shadow-xs"
+                    : "text-text-secondary hover:text-text-primary"
+                )}
+              >
+                <TrendingUp size={13} /> Ano Acumulado
+              </button>
+            </div>
+
+            {/* View Mode: Faturamento / Metas */}
+            <div className="flex items-center bg-bg-secondary p-1 rounded-xl border border-divider">
+              <button
+                type="button"
+                onClick={() => setViewMetric('faturamento')}
+                className={clsx(
+                  "px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1.5",
+                  viewMetric === 'faturamento'
+                    ? "bg-bg-primary text-text-primary shadow-xs border border-border"
+                    : "text-text-secondary hover:text-text-primary"
+                )}
+              >
+                <DollarSign size={13} className="text-emerald-500" /> Faturamento
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setViewMetric('metas')}
+                className={clsx(
+                  "px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1.5",
+                  viewMetric === 'metas'
+                    ? "bg-bg-primary text-text-primary shadow-xs border border-border"
+                    : "text-text-secondary hover:text-text-primary"
+                )}
+              >
+                <Target size={13} className="text-amber-500" /> Metas
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Card Body: Comparativos */}
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 items-center gap-6">
+            {/* Esquerda: Faturamento Mês Atual / Acumulado */}
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 flex items-center justify-center shrink-0">
+                <TrendingUp size={28} />
+              </div>
+              <div>
+                <span className="text-[11px] font-black text-text-secondary uppercase tracking-wider block">
+                  {compareMode === 'ano_acumulado' ? `Faturamento Acumulado (${currentYear})` : 'Faturamento Mês Atual'}
+                </span>
+                <div className="text-2xl sm:text-3xl font-black text-text-primary font-mono tracking-tight my-0.5">
+                  {formatBRL(compareMode === 'ano_acumulado' ? ytdAtual : faturamentoAtual)}
+                </div>
+                <span className="text-[11px] text-text-muted font-semibold block">
+                  {data?.periodo_atual_label || 'Consolidado no período'}
+                </span>
+              </div>
+            </div>
+
+            {/* Centro: Gauge Circular */}
+            <div className="flex flex-col items-center justify-center">
+              <div className={clsx(
+                "w-20 h-20 rounded-full flex flex-col items-center justify-center border-4 font-black shadow-md transition-transform hover:scale-105",
+                (compareMode === 'ano_acumulado' ? crescYtd : crescMesAnterior) >= 0
+                  ? "bg-emerald-500/10 border-emerald-500 text-emerald-600 dark:text-emerald-400"
+                  : "bg-rose-500/10 border-rose-500 text-rose-600 dark:text-rose-400"
+              )}>
+                {(compareMode === 'ano_acumulado' ? crescYtd : crescMesAnterior) >= 0 ? <TrendingUp size={20} className="mb-0.5" /> : <TrendingDown size={20} className="mb-0.5" />}
+                <span className="text-sm font-extrabold">
+                  {(compareMode === 'ano_acumulado' ? crescYtd : crescMesAnterior) >= 0 ? '+' : ''}
+                  {(compareMode === 'ano_acumulado' ? crescYtd : crescMesAnterior).toFixed(1)}%
+                </span>
+              </div>
+              <span className="text-[10px] font-black text-text-secondary uppercase tracking-widest mt-2 text-center">
+                {compareMode === 'ano_acumulado' ? 'Crescimento Acumulado (YTD)' : 'vs. Mês Anterior'}
+              </span>
+            </div>
+
+            {/* Direita: Faturamento Anterior */}
+            <div className="flex items-center gap-4 md:justify-end text-left md:text-right">
+              <div className="order-2 md:order-1">
+                <span className="text-[11px] font-black text-text-secondary uppercase tracking-wider block">
+                  {compareMode === 'ano_acumulado' ? `Acumulado Ano Anterior (${prevYear})` : 'Faturamento Mês Anterior'}
+                </span>
+                <div className="text-2xl sm:text-3xl font-black text-text-primary/80 font-mono tracking-tight my-0.5">
+                  {formatBRL(compareMode === 'ano_acumulado' ? ytdAnterior : faturamentoMesAnterior)}
+                </div>
+                <span className="text-[11px] text-text-muted font-semibold block">
+                  {compareMode === 'ano_acumulado' ? `01/Jan a corte de ${prevYear}` : 'Mês completo anterior'}
+                </span>
+              </div>
+              <div className="w-14 h-14 rounded-2xl bg-bg-secondary border border-border text-amber-500 flex items-center justify-center shrink-0 order-1 md:order-2">
+                <Award size={28} />
+              </div>
+            </div>
+          </div>
+
+          {/* Faixa Inferior de Superação */}
+          {compareMode === 'ano_acumulado' && (
+            <div className="bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/25 rounded-2xl p-4.5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-2xs">
+              <div className="flex items-center gap-3.5">
+                <div className="p-2.5 bg-emerald-500 text-white rounded-xl shadow-xs">
+                  <Award size={22} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h4 className="font-black text-text-primary text-xs sm:text-sm uppercase tracking-wider">
+                      Meta de Superação do Ano Fechado ({prevYear})
+                    </h4>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                      {superacaoPct.toFixed(1)}% atingido
+                    </span>
+                  </div>
+                  <p className="text-xs text-text-secondary mt-0.5 font-medium">
+                    Faturamento total de {prevYear} (12 meses): <strong>{formatBRL(totalAnoAnterior12m)}</strong>
+                  </p>
+                </div>
+              </div>
+
+              <div className="text-right shrink-0">
+                <div className="text-[10px] font-black text-text-secondary uppercase tracking-widest">
+                  {superacaoValor >= 0 ? 'Superação Conquistada' : 'Falta para Superar'}
+                </div>
+                <div className={clsx(
+                  "text-xl sm:text-2xl font-black font-mono mt-0.5",
+                  superacaoValor >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"
+                )}>
+                  {superacaoValor >= 0 ? '+' : ''}{formatBRL(superacaoValor)}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 4. GRID DE 8 CARDS DE KPIS EXECUTIVOS (2 LINHAS X 4 COLUNAS) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Card 1: Melhor Vendedor */}
+        <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-4.5 flex items-center gap-3.5">
+          <div className="p-3 bg-amber-500/10 text-amber-500 rounded-xl shrink-0">
+            <Trophy size={20} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <span className="text-[10px] font-black text-text-secondary uppercase tracking-wider block">Melhor Vendedor</span>
+            <div className="text-sm font-black text-text-primary truncate mt-0.5 uppercase" title={melhorVendedor.nome}>
+              {melhorVendedor.nome}
+            </div>
+            <div className="text-xs font-black text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">
+              {formatBRL(melhorVendedor.total)}
+            </div>
+            <span className="text-[10px] text-text-secondary font-medium block">
+              {melhorVendedor.pct_share ? `${melhorVendedor.pct_share.toFixed(1)}% do faturamento total` : 'Líder em vendas'}
+            </span>
+          </div>
+        </div>
+
+        {/* Card 2: Melhor Cliente */}
+        <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-4.5 flex items-center gap-3.5">
+          <div className="p-3 bg-rose-500/10 text-rose-500 rounded-xl shrink-0">
+            <Award size={20} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <span className="text-[10px] font-black text-text-secondary uppercase tracking-wider block">Melhor Cliente</span>
+            <div className="text-sm font-black text-text-primary truncate mt-0.5 uppercase" title={melhorCliente.nome}>
+              {melhorCliente.nome}
+            </div>
+            <div className="text-xs font-black text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">
+              {formatBRL(melhorCliente.total)}
+            </div>
+            <span className="text-[10px] text-text-secondary font-medium block">
+              {melhorCliente.pct_share ? `${melhorCliente.pct_share.toFixed(1)}% do faturamento total` : 'Maior comprador'}
+            </span>
+          </div>
+        </div>
+
+        {/* Card 3: Marca Mais Vendida */}
+        <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-4.5 flex items-center gap-3.5">
+          <div className="p-3 bg-sky-500/10 text-sky-500 rounded-xl shrink-0">
+            <Tag size={20} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <span className="text-[10px] font-black text-text-secondary uppercase tracking-wider block">Marca Mais Vendida</span>
+            <div className="text-sm font-black text-text-primary truncate mt-0.5 uppercase" title={marcaMaisVendida.nome}>
+              {marcaMaisVendida.nome}
+            </div>
+            <div className="text-xs font-black text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">
+              {formatBRL(marcaMaisVendida.total)}
+            </div>
+            <span className="text-[10px] text-text-secondary font-medium block">
+              {marcaMaisVendida.pct_share ? `${marcaMaisVendida.pct_share.toFixed(1)}% do faturamento total` : 'Destaque em vendas'}
+            </span>
+          </div>
+        </div>
+
+        {/* Card 4: Cidade Destaque */}
+        <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-4.5 flex items-center gap-3.5">
+          <div className="p-3 bg-teal-500/10 text-teal-600 dark:text-teal-400 rounded-xl shrink-0">
+            <MapPin size={20} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <span className="text-[10px] font-black text-text-secondary uppercase tracking-wider block">Cidade Destaque</span>
+            <div className="text-sm font-black text-text-primary truncate mt-0.5 uppercase" title={cidadeDestaque.nome}>
+              {cidadeDestaque.nome}
+            </div>
+            <div className="text-xs font-black text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">
+              {formatBRL(cidadeDestaque.total)}
+            </div>
+            <span className="text-[10px] text-text-secondary font-medium block">
+              {cidadeDestaque.pct_share ? `${cidadeDestaque.pct_share.toFixed(1)}% do faturamento total` : 'Principal praça'}
+            </span>
+          </div>
+        </div>
+
+        {/* Card 5: Quantidade de Pedidos */}
+        <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-4.5 flex items-center gap-3.5">
+          <div className="p-3 bg-blue-500/10 text-blue-500 rounded-xl shrink-0">
+            <ShoppingBag size={20} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <span className="text-[10px] font-black text-text-secondary uppercase tracking-wider block">Quantidade de Pedidos</span>
+            <div className="text-xl font-black text-text-primary mt-0.5">
+              {formatNum(qtdPedidos)}
+            </div>
+            <span className="text-[10px] text-text-secondary font-medium block mt-0.5">Total de pedidos no período</span>
+          </div>
+        </div>
+
+        {/* Card 6: Ticket Médio */}
+        <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-4.5 flex items-center gap-3.5">
+          <div className="p-3 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl shrink-0">
+            <DollarSign size={20} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <span className="text-[10px] font-black text-text-secondary uppercase tracking-wider block">Ticket Médio</span>
+            <div className="text-xl font-black text-text-primary font-mono mt-0.5">
+              {formatBRL(ticketMedio)}
+            </div>
+            <span className="text-[10px] text-text-secondary font-medium block mt-0.5">Média por pedido/nota</span>
+          </div>
+        </div>
+
+        {/* Card 7: Taxa de Retenção */}
+        <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-4.5 flex items-center gap-3.5">
+          <div className="p-3 bg-indigo-500/10 text-indigo-500 rounded-xl shrink-0">
+            <RotateCcw size={20} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <span className="text-[10px] font-black text-text-secondary uppercase tracking-wider block">Taxa de Retenção</span>
+            <div className="text-xl font-black text-text-primary mt-0.5">
+              {taxaRecompra.toFixed(1)}%
+            </div>
+            <span className="text-[10px] text-text-secondary font-medium block mt-0.5">Clientes ativos vs carteira total</span>
+          </div>
+        </div>
+
+        {/* Card 8: Clientes com Compra */}
+        <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-4.5 flex items-center gap-3.5">
+          <div className="p-3 bg-teal-500/10 text-teal-600 dark:text-teal-400 rounded-xl shrink-0">
+            <Users size={20} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <span className="text-[10px] font-black text-text-secondary uppercase tracking-wider block">Clientes com Compra</span>
+            <div className="text-xl font-black text-text-primary mt-0.5">
+              {clientesComCompra} <span className="text-xs font-normal text-text-secondary">de {formatNum(totalClientesBase)}</span>
+            </div>
+            <span className="text-[10px] text-text-secondary font-medium block mt-0.5">Carteira ativa no período</span>
+          </div>
+        </div>
+      </div>
+
+      {/* 5. SEÇÃO: DESEMPENHO DOS VENDEDORES (GRÁFICO HORIZONTAL) & TOP 10 RANKING */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Esquerda: Gráfico de Barras Horizontais Coloridas */}
+        <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-5 flex flex-col min-h-[380px]">
+          <div className="border-b border-divider/40 pb-3 mb-4 flex items-center gap-2">
+            <BarChart3 size={18} className="text-brand-500" />
+            <h3 className="text-xs font-black text-text-primary uppercase tracking-wider">
+              Desempenho dos Vendedores (Gráfico)
+            </h3>
+          </div>
+
+          <div className="flex-1 w-full pt-2">
+            <ResponsiveContainer width="100%" height={320}>
+              <BarChart 
+                data={mockTopSellers.slice(0, 8)} 
+                layout="vertical" 
+                margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--color-border)" opacity={0.3} />
+                <XAxis type="number" hide />
+                <YAxis 
+                  dataKey="name" 
+                  type="category" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tickFormatter={(v) => String(v).length > 12 ? String(v).substring(0, 12) + '...' : v}
+                  tick={{ fontSize: 10, fill: 'var(--color-text-secondary)', fontWeight: 600 }} 
+                  width={90} 
+                />
+                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.3 }} />
+                <Bar dataKey="value" name="Faturamento" radius={[0, 4, 4, 0]} maxBarSize={20}>
+                  {mockTopSellers.slice(0, 8).map((entry: any, index: number) => (
+                    <Cell key={`cell-${index}`} fill={SELLER_COLORS[index % SELLER_COLORS.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Direita: TOP 10 VENDEDORES (RANKING) */}
+        <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-5 flex flex-col min-h-[380px]">
+          <div className="flex justify-between items-center border-b border-divider/40 pb-3 mb-4">
+            <h3 className="text-xs font-black text-text-primary uppercase tracking-wider flex items-center gap-2">
+              <Trophy size={16} className="text-amber-500" />
+              Top 10 Vendedores (Ranking)
+            </h3>
+            <span className="text-[10px] font-black text-brand-500 uppercase tracking-wider">
+              Mostrar Todos ({mockTopSellers.length})
+            </span>
+          </div>
+
+          <div className="space-y-1.5 flex-1 overflow-y-auto max-h-[320px] pr-1">
+            {mockTopSellers.slice(0, 10).map((s: any, idx: number) => {
+              const rank = idx + 1;
+              const share = totalSellersSum > 0 ? (s.value / totalSellersSum) * 100 : 0;
+              const barWidth = maxSellerVal > 0 ? (s.value / maxSellerVal) * 100 : 0;
+
+              return (
+                <div key={s.name || idx} className="relative flex justify-between items-center py-2 px-3 rounded-xl overflow-hidden group hover:bg-bg-secondary transition-all">
+                  <div 
+                    className="absolute left-0 top-0 bottom-0 bg-brand-500/10 group-hover:bg-brand-500/15 transition-all duration-500" 
+                    style={{ width: `${barWidth}%` }} 
+                  />
+                  <div className="relative z-10 flex items-center gap-2 min-w-0 mr-2 flex-1">
+                    <span className={clsx(
+                      "font-mono text-xs font-black min-w-[20px]",
+                      rank === 1 ? "text-amber-500" : rank === 2 ? "text-slate-400" : rank === 3 ? "text-amber-700" : "text-text-muted"
+                    )}>
+                      #{rank}
+                    </span>
+                    <span className="text-xs font-bold text-text-primary truncate uppercase" title={s.name}>{s.name}</span>
+                  </div>
+                  <div className="relative z-10 text-right shrink-0 flex items-center gap-1.5 font-mono text-xs">
+                    <span className="font-black text-text-primary">{formatBRL(s.value)}</span>
+                    <span className="text-[10px] text-text-secondary">({share.toFixed(1)}%)</span>
+                  </div>
+                </div>
+              );
+            })}
+            {mockTopSellers.length === 0 && (
+              <div className="py-8 text-center text-text-secondary text-xs font-semibold">Sem vendedores no período</div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* 6. CARDS DE DISTRIBUIÇÃO (4 CARDS: MARCAS, GRUPOS, CIDADES, CLIENTES) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Top Marcas */}
+        <RankingCardWithToggle
+          title="Top 10 Marcas"
+          data={mockTopBrands}
+          isLoading={marcas.isLoading}
+          total={faturamentoAtual || ytdAtual}
+          icon={Tag}
+          colorClass="text-emerald-600 dark:text-emerald-400"
+          badgeBg="bg-emerald-500/10"
+        />
+
+        {/* Top Grupos */}
+        <RankingCardWithToggle
+          title="Top 10 Grupos"
+          data={mockTopCategories}
+          isLoading={categorias.isLoading}
+          total={faturamentoAtual || ytdAtual}
+          icon={Box}
+          colorClass="text-blue-600 dark:text-blue-400"
+          badgeBg="bg-blue-500/10"
+        />
+
+        {/* Top Cidades */}
+        <RankingCardWithToggle
+          title="Top 10 Cidades"
+          data={mockTopCities}
+          isLoading={cidades.isLoading}
+          total={faturamentoAtual || ytdAtual}
+          icon={MapPin}
+          colorClass="text-amber-600 dark:text-amber-400"
+          badgeBg="bg-amber-500/10"
+        />
+
+        {/* Top Clientes */}
+        <RankingCardWithToggle
+          title="Top 15 Clientes"
+          data={mockTopClients}
+          isLoading={cli.isLoading}
+          total={faturamentoAtual || ytdAtual}
+          icon={Users}
+          colorClass="text-rose-600 dark:text-rose-400"
+          badgeBg="bg-rose-500/10"
+        />
+      </div>
+
+      {/* 7. RODAPÉ: FATURAMENTO NO PERÍODO (HISTÓRICO 12 MESES, DIÁRIO/MENSAL E COMPARAÇÃO) */}
+      <FaturamentoPeriodoCard
+        vendedorId={selectedVendedor !== 'todas' ? selectedVendedor : undefined}
+        marca={selectedMarca !== 'todas' ? selectedMarca : undefined}
+        subtitle="Histórico consolidado do faturamento líquido no período com comparativos mensais"
+        initialViewMode="grid"
+      />
 
     </div>
   );

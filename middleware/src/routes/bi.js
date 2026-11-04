@@ -3041,8 +3041,19 @@ router.get('/seller/summary', async (req, res, next) => {
               ${salesClauses}
         `, getQueryParams(start, end));
 
-        const clientes_novos = parseInt(newClientsRes.rows[0].total || 0, 10);
-        const clientes_ativos = parseInt(activeClientsRes.rows[0].total || 0, 10);
+        const portfolioClientsRes = await db.query(`
+            SELECT COUNT(DISTINCT v.cliente_id_firebird) AS total
+            FROM dash_vendas v
+            WHERE v.tenant_id = $1 
+              AND v.vendedor_id_firebird = $2
+        `, [tenantId, vendedorId]);
+
+        const clientes_novos = parseInt(newClientsRes.rows[0]?.total || 0, 10);
+        const clientes_ativos = parseInt(activeClientsRes.rows[0]?.total || 0, 10);
+        const clientes_na_carteira = parseInt(portfolioClientsRes.rows[0]?.total || 0, 10);
+        const cobertura_carteira = clientes_na_carteira > 0 
+            ? Math.round((clientes_ativos / clientes_na_carteira) * 1000) / 10 
+            : 0;
         const novos_pct = clientes_ativos > 0 ? (clientes_novos / clientes_ativos) * 100 : 0;
         const antigos_pct = 100 - novos_pct;
 
@@ -3061,37 +3072,36 @@ router.get('/seller/summary', async (req, res, next) => {
         const cidade_top = topCityRes.rowCount > 0 ? topCityRes.rows[0].cidade : 'N/A';
         const cidade_top_valor = topCityRes.rowCount > 0 ? parseFloat(topCityRes.rows[0].total || 0) : 0;
 
-        // 5. Top Lists (com rateio proporcional otimizado para alta performance)
+        // 5. Top Lists (com formula corrigida de devolucoes e descontos por item)
         const topBrandsRes = await db.query(`
-            WITH filtered_sales AS (
-                SELECT v.id_firebird, v.marca as v_marca, v.valor_total, v.valor_desconto
+            WITH vf AS (
+                SELECT v.id_firebird, v.marca as v_marca, (v.valor_total - COALESCE(v.valor_desconto, 0)) as valor_total
                 FROM dash_vendas v
                 ${needsCidadeJoin ? 'LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id' : ''}
                 WHERE v.tenant_id = $1 
                   AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
                   AND v.vendedor_id_firebird = $4
                   ${salesFilter} ${df.clause} ${cf.clause}
-            ),
-            sale_sums AS (
-                SELECT 
-                    vi.venda_id_firebird,
-                    SUM(vi.valor_total) as sum_items
-                FROM dash_vendas_itens vi
-                JOIN filtered_sales fs ON fs.id_firebird = vi.venda_id_firebird
-                WHERE vi.tenant_id = $1
-                GROUP BY vi.venda_id_firebird
             )
-            SELECT COALESCE(vi.marca, fs.v_marca, p.marca, 'S/ MARCA') AS nome, 
-                   SUM(CASE WHEN ss.sum_items > 0 THEN vi.valor_total * (fs.valor_total / ss.sum_items) ELSE vi.valor_total END) AS total
+            SELECT COALESCE(NULLIF(TRIM(vi.marca), ''), NULLIF(TRIM(vf.v_marca), ''), NULLIF(TRIM(p.marca), ''), 'S/ MARCA') AS nome, 
+                   SUM((CASE WHEN vf.valor_total < 0 THEN -1 ELSE 1 END) * (vi.valor_total * (1 - COALESCE(vi.desconto_item, 0) / 100.0))) AS total
             FROM dash_vendas_itens vi
-            JOIN filtered_sales fs ON fs.id_firebird = vi.venda_id_firebird
-            JOIN sale_sums ss ON ss.venda_id_firebird = vi.venda_id_firebird
+            JOIN vf ON vf.id_firebird = vi.venda_id_firebird
             LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
             WHERE vi.tenant_id = $1
               ${mf.clause}
             GROUP BY 1 ORDER BY total DESC LIMIT 15
         `, getQueryParams(start, end));
-        const top_marcas = topBrandsRes.rows.map((r, i) => ({ rank: i + 1, name: r.nome, value: parseFloat(r.total || 0) }));
+        const totalBrandsSum = topBrandsRes.rows.reduce((acc, r) => acc + Math.max(0, parseFloat(r.total || 0)), 0);
+        const top_marcas = topBrandsRes.rows.map((r, i) => {
+            const val = parseFloat(r.total || 0);
+            return {
+                rank: i + 1,
+                name: r.nome,
+                value: val,
+                share: totalBrandsSum > 0 ? Math.round((val / totalBrandsSum) * 1000) / 10 : 0
+            };
+        });
 
         const topClientsRes = await db.query(`
             SELECT COALESCE(c.nome, 'Cliente ' || COALESCE(v.cliente_id_firebird::text, '?')) AS nome, SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) AS total
@@ -3104,69 +3114,76 @@ router.get('/seller/summary', async (req, res, next) => {
               ${salesClauses}
             GROUP BY 1 ORDER BY total DESC LIMIT 10
         `, getQueryParams(start, end));
-        const top_clientes = topClientsRes.rows.map((r, i) => ({ rank: i + 1, name: r.nome, value: parseFloat(r.total || 0) }));
+        const totalClientsSum = topClientsRes.rows.reduce((acc, r) => acc + Math.max(0, parseFloat(r.total || 0)), 0);
+        const top_clientes = topClientsRes.rows.map((r, i) => {
+            const val = parseFloat(r.total || 0);
+            return {
+                rank: i + 1,
+                name: r.nome,
+                value: val,
+                share: totalClientsSum > 0 ? Math.round((val / totalClientsSum) * 1000) / 10 : 0
+            };
+        });
 
         const topGroupsRes = await db.query(`
-            WITH filtered_sales AS (
-                SELECT v.id_firebird, v.categoria as v_categoria, v.valor_total, v.valor_desconto
+            WITH vf AS (
+                SELECT v.id_firebird, v.categoria as v_categoria, (v.valor_total - COALESCE(v.valor_desconto, 0)) as valor_total
                 FROM dash_vendas v
                 ${needsCidadeJoin ? 'LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id' : ''}
                 WHERE v.tenant_id = $1 
                   AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
                   AND v.vendedor_id_firebird = $4
                   ${salesFilter} ${df.clause} ${cf.clause}
-            ),
-            sale_sums AS (
-                SELECT 
-                    vi.venda_id_firebird,
-                    SUM(vi.valor_total) as sum_items
-                FROM dash_vendas_itens vi
-                JOIN filtered_sales fs ON fs.id_firebird = vi.venda_id_firebird
-                WHERE vi.tenant_id = $1
-                GROUP BY vi.venda_id_firebird
             )
-            SELECT COALESCE(vi.categoria, fs.v_categoria, p.categoria, 'S/ GRUPO') AS nome, 
-                   SUM(CASE WHEN ss.sum_items > 0 THEN vi.valor_total * (fs.valor_total / ss.sum_items) ELSE vi.valor_total END) AS total
+            SELECT COALESCE(NULLIF(TRIM(vi.categoria), ''), NULLIF(TRIM(vf.v_categoria), ''), NULLIF(TRIM(p.categoria), ''), 'S/ GRUPO') AS nome, 
+                   SUM((CASE WHEN vf.valor_total < 0 THEN -1 ELSE 1 END) * (vi.valor_total * (1 - COALESCE(vi.desconto_item, 0) / 100.0))) AS total
             FROM dash_vendas_itens vi
-            JOIN filtered_sales fs ON fs.id_firebird = vi.venda_id_firebird
-            JOIN sale_sums ss ON ss.venda_id_firebird = vi.venda_id_firebird
+            JOIN vf ON vf.id_firebird = vi.venda_id_firebird
             LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
             WHERE vi.tenant_id = $1
               ${mf.clause}
             GROUP BY 1 ORDER BY total DESC LIMIT 10
         `, getQueryParams(start, end));
-        const top_grupos = topGroupsRes.rows.map((r, i) => ({ rank: i + 1, name: r.nome, value: parseFloat(r.total || 0) }));
+        const totalGroupsSum = topGroupsRes.rows.reduce((acc, r) => acc + Math.max(0, parseFloat(r.total || 0)), 0);
+        const top_grupos = topGroupsRes.rows.map((r, i) => {
+            const val = parseFloat(r.total || 0);
+            return {
+                rank: i + 1,
+                name: r.nome,
+                value: val,
+                share: totalGroupsSum > 0 ? Math.round((val / totalGroupsSum) * 1000) / 10 : 0
+            };
+        });
 
         const topProductsRes = await db.query(`
-            WITH filtered_sales AS (
-                SELECT v.id_firebird, v.valor_total, v.valor_desconto
+            WITH vf AS (
+                SELECT v.id_firebird, (v.valor_total - COALESCE(v.valor_desconto, 0)) as valor_total
                 FROM dash_vendas v
                 ${needsCidadeJoin ? 'LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id' : ''}
                 WHERE v.tenant_id = $1 
                   AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
                   AND v.vendedor_id_firebird = $4
                   ${salesFilter} ${df.clause} ${cf.clause}
-            ),
-            sale_sums AS (
-                SELECT 
-                    vi.venda_id_firebird,
-                    SUM(vi.valor_total) as sum_items
-                FROM dash_vendas_itens vi
-                JOIN filtered_sales fs ON fs.id_firebird = vi.venda_id_firebird
-                WHERE vi.tenant_id = $1
-                GROUP BY vi.venda_id_firebird
             )
-            SELECT COALESCE(vi.produto, p.nome, 'Produto ' || COALESCE(vi.produto_id_firebird::text, '?')) AS nome, 
-                   SUM(CASE WHEN ss.sum_items > 0 THEN vi.valor_total * (fs.valor_total / ss.sum_items) ELSE vi.valor_total END) AS total
+            SELECT COALESCE(NULLIF(TRIM(vi.produto), ''), NULLIF(TRIM(p.nome), ''), 'Produto ' || COALESCE(vi.produto_id_firebird::text, '?')) AS nome, 
+                   SUM((CASE WHEN vf.valor_total < 0 THEN -1 ELSE 1 END) * (vi.valor_total * (1 - COALESCE(vi.desconto_item, 0) / 100.0))) AS total
             FROM dash_vendas_itens vi
-            JOIN filtered_sales fs ON fs.id_firebird = vi.venda_id_firebird
-            JOIN sale_sums ss ON ss.venda_id_firebird = vi.venda_id_firebird
+            JOIN vf ON vf.id_firebird = vi.venda_id_firebird
             LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
             WHERE vi.tenant_id = $1
               ${mf.clause}
             GROUP BY 1 ORDER BY total DESC LIMIT 10
         `, getQueryParams(start, end));
-        const top_produtos = topProductsRes.rows.map((r, i) => ({ rank: i + 1, name: r.nome, value: parseFloat(r.total || 0) }));
+        const totalProductsSum = topProductsRes.rows.reduce((acc, r) => acc + Math.max(0, parseFloat(r.total || 0)), 0);
+        const top_produtos = topProductsRes.rows.map((r, i) => {
+            const val = parseFloat(r.total || 0);
+            return {
+                rank: i + 1,
+                name: r.nome,
+                value: val,
+                share: totalProductsSum > 0 ? Math.round((val / totalProductsSum) * 1000) / 10 : 0
+            };
+        });
 
         // 6. Histórico de Vendas (Evolução Diária)
         const trajectoryRes = await db.query(`
@@ -3347,7 +3364,9 @@ router.get('/seller/summary', async (req, res, next) => {
             cidade_top,
             cidade_top_valor,
             crescimento_pct,
-            meta_vendedor: 0, // Sem meta por padrão
+            meta_vendedor: 50000.00, // Meta mensal configurada
+            clientes_na_carteira,
+            cobertura_carteira,
             faturamento_anterior,
             top_marcas,
             top_clientes,
