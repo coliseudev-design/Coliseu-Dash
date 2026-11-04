@@ -13,6 +13,7 @@ import {
 import { formatBRL, formatBRLCompact, formatNum } from '../utils/format'
 import { usePeriodStore, PERIOD_OPTIONS, type PeriodKey } from '../store/periodStore'
 import PeriodFilter from '../components/PeriodFilter'
+import FaturamentoPeriodoCard from '../components/bi/FaturamentoPeriodoCard'
 import clsx from 'clsx'
 
 // ─── Sparkline Component ──────────────────────────────────────────────────────
@@ -155,7 +156,6 @@ export default function HomeV1() {
   // ─── API Queries ────────────────────────────────────────────────────────────
   const ov = useBranchPeriodQuery<any>('/estatisticas/overview', queryParams)
   const kpisQuery = useBranchPeriodQuery<any>('/estatisticas/kpis', queryParams)
-  const fatMes = useBranchPeriodQuery<any>('/vendas/faturadas', queryParams)
   const vd = useBranchPeriodQuery<any>('/ranking/vendedores', { ...queryParams, limit: 100 })
   const marcasQuery = useBranchPeriodQuery<any>('/ranking/marcas', { ...queryParams, limit: 100 })
   const cidadesQuery = useBranchPeriodQuery<any>('/ranking/cidades', { ...queryParams, limit: 100 })
@@ -166,10 +166,6 @@ export default function HomeV1() {
   const sellersDropdown = useBranchPeriodQuery<any>('/ranking/vendedores', { limit: 100 })
   const brandsDropdown = useBranchPeriodQuery<any>('/ranking/marcas', { limit: 100 })
   const citiesDropdown = useBranchPeriodQuery<any>('/ranking/cidades', { limit: 100 })
-
-  // ─── Chart Toggle State ──────────────────────────────────────────────────────
-  const [chartMode, setChartMode] = useState<'diario' | 'mensal' | 'anual'>('diario')
-  const [selectedYearChart, setSelectedYearChart] = useState<string>('all')
 
   // ─── Calculations ───────────────────────────────────────────────────────────
   const totalPeriodo = ov.data?.mes?.total || 0
@@ -215,61 +211,6 @@ export default function HomeV1() {
   const top10Clientes = useMemo(() => {
     return clientesQuery.data?.data || []
   }, [clientesQuery.data])
-
-  // ─── Chart Data ─────────────────────────────────────────────────────────────
-  const rawDailyData = useMemo(() => {
-    return fatMes.data?.data || []
-  }, [fatMes.data])
-
-  // Available years from chart data
-  const availableChartYears = useMemo(() => {
-    const years = new Set<string>()
-    rawDailyData.forEach((d: any) => {
-      if (d.data && d.data.length >= 4) years.add(d.data.substring(0, 4))
-    })
-    return Array.from(years).sort()
-  }, [rawDailyData])
-
-  const dailyChartData = useMemo(() => {
-    if (selectedYearChart === 'all') return rawDailyData
-    return rawDailyData.filter((d: any) => d.data && d.data.startsWith(selectedYearChart))
-  }, [rawDailyData, selectedYearChart])
-
-  const sparklineData = useMemo(() => {
-    return dailyChartData.map((d: any) => d.total || 0).slice(-20)
-  }, [dailyChartData])
-
-  const monthlyChartData = useMemo(() => {
-    const raw = selectedYearChart === 'all'
-      ? rawDailyData
-      : rawDailyData.filter((d: any) => d.data && d.data.startsWith(selectedYearChart))
-    const groups: Record<string, number> = {}
-    raw.forEach((d: any) => {
-      if (!d.data) return
-      const month = d.data.substring(0, 7) // "YYYY-MM"
-      groups[month] = (groups[month] || 0) + (d.total || 0)
-    })
-    return Object.entries(groups)
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([month, total]) => {
-        const [y, m] = month.split('-')
-        const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
-        const label = `${monthNames[parseInt(m) - 1]}/${y.substring(2)}`
-        return { label, total }
-      })
-  }, [rawDailyData, selectedYearChart])
-
-  const yearlyChartData = useMemo(() => {
-    const groups: Record<string, number> = {}
-    rawDailyData.forEach((d: any) => {
-      if (!d.data) return
-      const year = d.data.substring(0, 4) // "YYYY"
-      groups[year] = (groups[year] || 0) + (d.total || 0)
-    })
-    return Object.entries(groups)
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([year, total]) => ({ label: year, total }))
-  }, [rawDailyData])
 
   return (
     <div className={clsx("space-y-4 pb-8", isMobile ? "pb-28" : "pb-8")} aria-label="Visão Estratégica Dashboard">
@@ -515,157 +456,15 @@ export default function HomeV1() {
       </div>
       </>)}
 
-      {/* ── ROW 4: PERIOD EVOLUTION CHART (MOVED BETWEEN CARDS & SELLERS) ── */}
+      {/* ── ROW 4: PERIOD EVOLUTION CHART (FATURAMENTO NO PERÍODO - COLUNAS / 12 MESES) ── */}
       {(!isMobile || activeTab === 'receitas') && (
-        <>
-      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm">
-        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6">
-          <div>
-            <h3 className="font-extrabold text-slate-800 dark:text-white text-xs uppercase tracking-widest">
-              Faturamento no Período
-            </h3>
-            <span className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest block mt-0.5">
-              Valores Excluindo Departamento Equipamentos
-            </span>
-          </div>
-
-          {/* Filtro de Ano */}
-          <div className="flex items-center gap-2 flex-wrap shrink-0 self-start sm:self-auto">
-            {availableChartYears.length > 1 && (
-              <div className="bg-slate-100 p-0.5 rounded-lg flex items-center gap-0.5 border border-slate-200/50">
-                <button
-                  onClick={() => setSelectedYearChart('all')}
-                  className={clsx(
-                    'px-3 py-1 text-[10px] font-bold rounded-md uppercase tracking-wider transition-all duration-200 cursor-pointer',
-                    selectedYearChart === 'all'
-                      ? 'bg-white text-slate-800 shadow-sm'
-                      : 'text-slate-500 hover:text-slate-700'
-                  )}
-                >
-                  Todos
-                </button>
-                {availableChartYears.map(year => (
-                  <button
-                    key={year}
-                    onClick={() => setSelectedYearChart(year)}
-                    className={clsx(
-                      'px-3 py-1 text-[10px] font-bold rounded-md uppercase tracking-wider transition-all duration-200 cursor-pointer',
-                      selectedYearChart === year
-                        ? 'bg-white text-slate-800 shadow-sm'
-                        : 'text-slate-500 hover:text-slate-700'
-                    )}
-                  >
-                    {year}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Toggle buttons for chart mode */}
-            <div className="bg-slate-100 p-0.5 rounded-lg flex items-center border border-slate-200/50">
-              <button
-                onClick={() => setChartMode('diario')}
-                className={clsx(
-                  'px-3.5 py-1 text-[10px] font-bold rounded-md uppercase tracking-wider transition-all duration-200 cursor-pointer',
-                  chartMode === 'diario'
-                    ? 'bg-white text-slate-800 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-700'
-                )}
-              >
-                Diário
-              </button>
-              <button
-                onClick={() => setChartMode('mensal')}
-                className={clsx(
-                  'px-3.5 py-1 text-[10px] font-bold rounded-md uppercase tracking-wider transition-all duration-200 cursor-pointer',
-                  chartMode === 'mensal'
-                    ? 'bg-white text-slate-800 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-700'
-                )}
-              >
-                Mensal
-              </button>
-              <button
-                onClick={() => setChartMode('anual')}
-                className={clsx(
-                  'px-3.5 py-1 text-[10px] font-bold rounded-md uppercase tracking-wider transition-all duration-200 cursor-pointer',
-                  chartMode === 'anual'
-                    ? 'bg-white text-slate-800 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-700'
-                )}
-              >
-                Ano
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Recharts Container */}
-        <div className="h-64 sm:h-72">
-          {fatMes.isLoading ? (
-            <div className="h-full flex items-center justify-center text-xs text-slate-400">Carregando dados do faturamento...</div>
-          ) : (chartMode === 'diario' ? dailyChartData : chartMode === 'mensal' ? monthlyChartData : yearlyChartData).length === 0 ? (
-            <div className="h-full flex items-center justify-center text-xs text-slate-400">Sem faturamento registrado no período</div>
-          ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              {chartMode === 'diario' && dailyChartData.length > 20 ? (
-                <LineChart data={dailyChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" opacity={0.4} />
-                  <XAxis
-                    dataKey="data"
-                    tick={{ fontSize: 9, fill: 'var(--color-text-muted)', fontWeight: 700 }}
-                    tickFormatter={(d: string) => d?.slice(8) || d} // Show day only
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    tick={{ fontSize: 9, fill: 'var(--color-text-muted)', fontWeight: 700 }}
-                    tickFormatter={formatBRLCompact}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Line
-                    type="monotone"
-                    dataKey="total"
-                    stroke="#00a896"
-                    strokeWidth={2.5}
-                    dot={false}
-                    activeDot={{ r: 4, strokeWidth: 0 }}
-                  />
-                </LineChart>
-              ) : (
-                <BarChart
-                  data={chartMode === 'diario' ? dailyChartData : chartMode === 'mensal' ? monthlyChartData : yearlyChartData}
-                  margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" opacity={0.4} />
-                  <XAxis
-                    dataKey={chartMode === 'diario' ? 'data' : 'label'}
-                    tick={{ fontSize: 9, fill: 'var(--color-text-muted)', fontWeight: 700 }}
-                    tickFormatter={(d: string) => chartMode === 'diario' ? (d?.slice(5) || d) : d}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    tick={{ fontSize: 9, fill: 'var(--color-text-muted)', fontWeight: 700 }}
-                    tickFormatter={formatBRLCompact}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.3 }} />
-                  <Bar dataKey="total" radius={[4, 4, 0, 0]} maxBarSize={38} fill="#00a896">
-                    {(chartMode === 'diario' ? dailyChartData : chartMode === 'mensal' ? monthlyChartData : yearlyChartData).map((_: any, i: number) => (
-                      <Cell key={`cell-${i}`} fill={BAR_COLORS[i % BAR_COLORS.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              )}
-            </ResponsiveContainer>
-          )}
-        </div>
-      </div>
-    </>)}
+        <FaturamentoPeriodoCard
+          vendedorId={selectedVendedor !== 'todas' ? selectedVendedor : undefined}
+          marca={selectedMarca !== 'todas' ? selectedMarca : undefined}
+          subtitle="Valores Excluindo Departamento Equipamentos"
+          initialViewMode="grid"
+        />
+      )}
 
       {/* ── MIDDLE ROW: SELLERS CHART + RANKING LIST ─────────────────────── */}
       {(!isMobile || activeTab === 'vendedores') && (

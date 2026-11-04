@@ -16,6 +16,7 @@ import { PageFilters } from '../components/PageFilters'
 import { usePeriodStore } from '../store/periodStore'
 import { useBranch } from '../contexts/BranchContext'
 import { formatBRL, formatBRLCompact, formatNum } from '../utils/format'
+import FaturamentoPeriodoCard from '../components/bi/FaturamentoPeriodoCard'
 import clsx from 'clsx'
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -157,10 +158,6 @@ export default function VisaoEstrategicaV3() {
   const [selectedVendedor, setSelectedVendedor] = useState('todas')
   const [selectedMarca, setSelectedMarca] = useState('todas')
 
-  // Toggle do gráfico inferior: Período Diário/Mensal e Formato Barras/Linha
-  const [chartPeriodMode, setChartPeriodMode] = useState<'diario' | 'mensal'>('mensal')
-  const [chartType, setChartType] = useState<'bar' | 'line'>('bar')
-
   // Consultas da API
   const { filiais, selectedBranch } = useBranch()
 
@@ -171,9 +168,6 @@ export default function VisaoEstrategicaV3() {
   }), [selectedVendedor, selectedMarca, compareMode])
 
   const visaoQuery = useBranchPeriodQuery<any>('/estatisticas/visao-estrategica', params)
-  const fatMes = useBranchPeriodQuery<any>('/vendas/faturadas', {
-    vendedor_id: selectedVendedor !== 'todas' ? selectedVendedor : undefined
-  })
   const vd = useBranchPeriodQuery<any>('/ranking/vendedores', { limit: 100, marca: selectedMarca !== 'todas' ? selectedMarca : undefined })
   const prod = useBranchPeriodQuery<any>('/ranking/produtos', { limit: 100, marca: selectedMarca !== 'todas' ? selectedMarca : undefined, vendedor_id: selectedVendedor !== 'todas' ? selectedVendedor : undefined })
   const cli = useBranchPeriodQuery<any>('/ranking/clientes', { limit: 100, marca: selectedMarca !== 'todas' ? selectedMarca : undefined, vendedor_id: selectedVendedor !== 'todas' ? selectedVendedor : undefined })
@@ -232,28 +226,6 @@ export default function VisaoEstrategicaV3() {
   const mockTopClients = useMemo(() => {
     return cli.data?.data?.map((c: any) => ({ name: c.nome || c.cliente, value: c.total })) || []
   }, [cli.data])
-
-  const faturamentoPeriodoData = useMemo(() => {
-    if (fatMes.data?.data && fatMes.data.data.length > 0) {
-      return fatMes.data.data
-    }
-    return [
-      { data: 'Jan', total: 156000 },
-      { data: 'Fev', total: 142000 },
-      { data: 'Mar', total: 180000 },
-      { data: 'Abr', total: 175000 },
-      { data: 'Mai', total: 198000 },
-      { data: 'Jun', total: 210000 },
-      { data: 'Jul', total: 223838 },
-      { data: 'Ago', total: 240116 },
-      { data: 'Set', total: 310500 },
-    ]
-  }, [fatMes.data])
-
-  const barColors = [
-    '#3B82F6', '#10B981', '#06B6D4', '#F59E0B', '#EF4444', 
-    '#0D9488', '#EC4899', '#6366F1', '#14B8A6', '#F97316'
-  ]
 
   return (
     <div className="space-y-4 pb-8 animate-in fade-in duration-300" aria-label="Visão Estratégica">
@@ -865,103 +837,13 @@ export default function VisaoEstrategicaV3() {
         />
       </div>
 
-      {/* 8. GRÁFICO INFERIOR: FATURAMENTO NO PERÍODO */}
-      <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 border-b border-divider/40 pb-4">
-          <div>
-            <h3 className="font-black text-text-primary text-xs sm:text-sm uppercase tracking-wider flex items-center gap-2">
-              <TrendingUp size={16} className="text-emerald-500" /> Faturamento no Período
-            </h3>
-            <p className="text-[11px] text-text-muted mt-0.5">Evolução do faturamento das vendas faturadas</p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {/* Toggle Diário / Mensal */}
-            <div className="flex items-center bg-bg-secondary p-1 rounded-xl border border-divider">
-              <button
-                type="button"
-                onClick={() => setChartPeriodMode('diario')}
-                className={clsx(
-                  "px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer",
-                  chartPeriodMode === 'diario'
-                    ? "bg-bg-primary text-text-primary shadow-xs border border-border"
-                    : "text-text-secondary hover:text-text-primary"
-                )}
-              >
-                Diário
-              </button>
-              <button
-                type="button"
-                onClick={() => setChartPeriodMode('mensal')}
-                className={clsx(
-                  "px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer",
-                  chartPeriodMode === 'mensal'
-                    ? "bg-brand-500 text-white shadow-xs"
-                    : "text-text-secondary hover:text-text-primary"
-                )}
-              >
-                Mensal
-              </button>
-            </div>
-
-            {/* Toggle Bar / Line */}
-            <div className="flex items-center bg-bg-secondary p-1 rounded-xl border border-divider">
-              <button
-                type="button"
-                onClick={() => setChartType('bar')}
-                className={clsx(
-                  "p-1.5 rounded-lg text-xs transition-all cursor-pointer",
-                  chartType === 'bar'
-                    ? "bg-bg-primary text-text-primary shadow-xs border border-border"
-                    : "text-text-secondary hover:text-text-primary"
-                )}
-                title="Gráfico de Barras"
-              >
-                <BarChart3 size={14} />
-              </button>
-              <button
-                type="button"
-                onClick={() => setChartType('line')}
-                className={clsx(
-                  "p-1.5 rounded-lg text-xs transition-all cursor-pointer",
-                  chartType === 'line'
-                    ? "bg-bg-primary text-text-primary shadow-xs border border-border"
-                    : "text-text-secondary hover:text-text-primary"
-                )}
-                title="Gráfico de Linha"
-              >
-                <LineChartIcon size={14} />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="h-[240px] sm:h-[300px] lg:h-[340px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            {chartType === 'bar' ? (
-              <BarChart data={faturamentoPeriodoData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" opacity={0.4} />
-                <XAxis dataKey="data" axisLine={false} tickLine={false} tickFormatter={(v) => String(v).slice(0, 7)} tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }} />
-                <YAxis axisLine={false} tickLine={false} tickFormatter={(v) => formatBRLCompact(v)} tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }} />
-                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-bg-tertiary)', opacity: 0.3 }} />
-                <Bar dataKey="total" name="Faturamento" radius={[6, 6, 0, 0]} maxBarSize={45}>
-                  {faturamentoPeriodoData.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={barColors[index % barColors.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            ) : (
-              <LineChart data={faturamentoPeriodoData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" opacity={0.4} />
-                <XAxis dataKey="data" axisLine={false} tickLine={false} tickFormatter={(v) => String(v).slice(0, 7)} tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }} />
-                <YAxis axisLine={false} tickLine={false} tickFormatter={(v) => formatBRLCompact(v)} tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }} />
-                <Tooltip content={<CustomTooltip />} />
-                <Line type="monotone" dataKey="total" name="Faturamento" stroke="#10B981" strokeWidth={3} dot={{ r: 5, fill: '#10B981' }} activeDot={{ r: 7 }} />
-              </LineChart>
-            )}
-          </ResponsiveContainer>
-        </div>
-      </div>
+      {/* 8. GRÁFICO INFERIOR: FATURAMENTO NO PERÍODO (COLUNAS / 12 MESES) */}
+      <FaturamentoPeriodoCard
+        vendedorId={selectedVendedor !== 'todas' ? selectedVendedor : undefined}
+        marca={selectedMarca !== 'todas' ? selectedMarca : undefined}
+        subtitle="Evolução do faturamento das vendas faturadas"
+        initialViewMode="grid"
+      />
 
     </div>
   )
