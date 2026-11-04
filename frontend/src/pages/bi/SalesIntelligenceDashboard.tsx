@@ -7,7 +7,7 @@ import {
   TrendingUp, TrendingDown, DollarSign,
   Users, Award, MapPin, Trophy, ChevronDown, LayoutDashboard,
   Calendar, RotateCcw, Target, BarChart3,
-  SlidersHorizontal, ShoppingBag, EyeOff, Package, Box
+  SlidersHorizontal, ShoppingBag, EyeOff, Package, Box, Tag
 } from 'lucide-react';
 import { useBranchPeriodQuery } from '../../hooks/useApi';
 import PeriodFilter from '../../components/PeriodFilter';
