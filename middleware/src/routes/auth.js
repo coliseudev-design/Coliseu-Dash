@@ -122,7 +122,7 @@ router.post('/login', async (req, res) => {
         }
 
         // Buscar usuário localmente
-        const query = `SELECT id, tenant_id, email, nome, role, ativo, senha_hash, permissions, versao FROM dash_usuarios WHERE LOWER(TRIM(email)) = LOWER(TRIM($1))`;
+        const query = `SELECT id, tenant_id, email, nome, role, ativo, senha_hash, permissions, versao, precisa_trocar_senha FROM dash_usuarios WHERE LOWER(TRIM(email)) = LOWER(TRIM($1))`;
         const result = await db.query(query, [email]);
 
         if (result.rowCount === 0) {
@@ -141,8 +141,8 @@ router.post('/login', async (req, res) => {
             return res.status(401).json({ error: 'Senha incorreta', code: 'INVALID_LOGIN' });
         }
 
-        // Se a senha digitada for a senha padrão, solicita a alteração no frontend
-        if (password === '123456') {
+        // Solicita alteração de senha se a flag de troca obrigatória estiver ativa
+        if (user.precisa_trocar_senha === true) {
             return res.status(200).json({ requiresPasswordChange: true, email: user.email });
         }
 
@@ -338,7 +338,7 @@ router.post('/change-default-password', async (req, res) => {
 
         // Atualizar senha e versão no DB
         await db.query(
-            'UPDATE dash_usuarios SET senha_hash = $1, versao = $2 WHERE id = $3',
+            'UPDATE dash_usuarios SET senha_hash = $1, versao = $2, precisa_trocar_senha = false WHERE id = $3',
             [newSenhaHash, selectedVersion, user.id]
         );
 
@@ -494,6 +494,7 @@ router.post('/register', async (req, res) => {
             return res.status(500).json({ error: 'Erro de infraestrutura do sistema de licenças', code: 'CONFIG_ERROR' });
         }
 
+        let licenseData = {};
         try {
             const url = `${identityApiUrl}/internal/companies/${companyKey}/modules/${expectedModuleSlug}/info`;
             
@@ -516,15 +517,15 @@ router.post('/register', async (req, res) => {
                 return res.status(403).json({ error: reason, code: 'MODULE_BLOCKED' });
             }
 
-            const data = await response.json();
-            const deviceLimit = data.deviceLimit || 0;
+            licenseData = await response.json();
+            const deviceLimit = licenseData.deviceLimit || 0;
 
             // Checar a quantidade atual de usuários para este tenant
             const countQuery = `SELECT COUNT(*) as total FROM dash_usuarios WHERE tenant_id = $1`;
             const countResult = await db.query(countQuery, [companyKey]);
             const currentUsersCount = parseInt(countResult.rows[0].total, 10);
 
-            if (currentUsersCount >= deviceLimit) {
+            if (deviceLimit > 0 && currentUsersCount >= deviceLimit) {
                 return res.status(403).json({ 
                     error: `O limite de licenças (${deviceLimit}) para esta empresa foi atingido. Nenhuma nova conta pode ser criada.`, 
                     code: 'LICENSE_LIMIT_REACHED' 
@@ -549,27 +550,52 @@ router.post('/register', async (req, res) => {
 
         // Insere o usuário (default role: admin)
         const insertQuery = `
-            INSERT INTO dash_usuarios (tenant_id, email, nome, role, ativo, senha_hash, permissions, versao)
-            VALUES ($1, $2, $3, 'admin', true, $4, NULL, 'Dash 1.0')
+            INSERT INTO dash_usuarios (tenant_id, email, nome, role, ativo, senha_hash, permissions, versao, precisa_trocar_senha)
+            VALUES ($1, $2, $3, 'admin', true, $4, NULL, 'Dash 1.0', false)
             RETURNING id, tenant_id, email, nome, role, permissions, versao
         `;
         const result = await db.query(insertQuery, [companyKey, email, nome, senhaHash]);
         const user = result.rows[0];
 
-        logger.info('[Auth] Novo usuário cadastrado', { email: user.email, tenant: user.tenant_id });
+        logger.info('[Auth] Novo usuário cadastrado com sucesso', { email: user.email, tenant: user.tenant_id });
 
-        // Retorna sucesso. O front pode fazer auto-login depois.
+        // Gerar token JWT imediatamente para autenticação automática sem atrito
+        const companyName = licenseData.nomeDaEmpresa || licenseData.companyName || 'Empresa Cliente';
+        const selectedVersion = user.versao || 'Dash 1.0';
+        const token = jwt.sign(
+            {
+                sub: user.id,
+                email: user.email,
+                tenant: user.tenant_id,
+                tenantId: user.tenant_id,
+                module: expectedModuleSlug,
+                companyName: companyName,
+                role: user.role,
+                layoutVersion: selectedVersion
+            },
+            config.security.jwtDeviceKey,
+            { expiresIn: '12h' }
+        );
+
+        const permissions = await getUserPermissions(user.id, user.tenant_id);
+        const available_versions = (licenseData.versions && licenseData.versions.length > 0)
+            ? licenseData.versions
+            : ['Dash 1.0', 'B.I IA.'];
+
+        // Retorna sucesso com token e perfil para login instantâneo
         res.status(201).json({
             message: 'Usuário cadastrado com sucesso',
+            token,
             user: {
                 id: user.id,
                 tenant_id: user.tenant_id,
                 email: user.email,
                 nome: user.nome,
                 role: user.role,
-                permissions: user.permissions,
-                versao: user.versao,
-                layout_version: user.versao
+                permissions,
+                versao: selectedVersion,
+                layout_version: selectedVersion,
+                available_versions
             }
         });
     } catch (err) {

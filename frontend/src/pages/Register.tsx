@@ -20,8 +20,10 @@ export default function Register() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const ok = await register(nome, email, senha, companyKey.trim())
-    if (ok) navigate('/', { replace: true })
+    const ok = await register(nome.trim(), email.trim().toLowerCase(), senha, companyKey.trim())
+    if (ok) {
+      navigate('/', { replace: true })
+    }
   }
 
   return (

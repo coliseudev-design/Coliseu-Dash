@@ -129,10 +129,29 @@ export const useAuthStore = create<AuthState>((set) => ({
   register: async (nome, email, senha, companyKey) => {
     set({ loading: true, error: null })
     try {
-      await api.post('/auth/register', { nome, email, password: senha, companyKey })
-      // Se sucesso no cadastro, faz o login logo em seguida
+      const { data } = await api.post('/auth/register', { nome, email, password: senha, companyKey })
+      
+      // Se o backend já devolveu o token e usuário para login automático instantâneo:
+      if (data && data.token && data.user) {
+        const token = data.token
+        const user = data.user
+        user.versao = user.versao || user.layout_version || 'Dash 1.0'
+        user.layout_version = user.versao
+        user.available_versions = user.available_versions || [user.versao]
+
+        localStorage.setItem('coliseu_token', token)
+        localStorage.setItem('coliseu_user', JSON.stringify(user))
+
+        const w = (window as any).__syncWorker
+        if (w) w.postMessage({ type: 'SET_TOKEN', token })
+
+        set({ user, token, loading: false, error: null })
+        return true
+      }
+
+      // Fallback: efetua login em seguida se não veio token direto
       const res = await useAuthStore.getState().login(email, senha)
-      return res.success
+      return res.success || res.requiresPasswordChange || false
     } catch (e: unknown) {
       let msg = 'Erro ao cadastrar'
       if (axios.isAxiosError(e) && e.response?.data) {

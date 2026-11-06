@@ -52,7 +52,6 @@ async function query(text, params) {
  */
 async function checkConnection() {
     let mainOk = false;
-    let vetOk = false;
 
     // Check main database connection and run auto-migrations
     try {
@@ -139,7 +138,8 @@ async function checkConnection() {
             await pool.query(`ALTER TABLE dash_vendas ADD COLUMN IF NOT EXISTS numero_nota INTEGER DEFAULT NULL;`, []);
             await pool.query(`ALTER TABLE dash_vendas ADD COLUMN IF NOT EXISTS es INTEGER DEFAULT NULL;`, []);
             await pool.query(`ALTER TABLE dash_vendas ADD COLUMN IF NOT EXISTS processo INTEGER DEFAULT NULL;`, []);
-            await pool.query(`ALTER TABLE dash_usuarios ADD COLUMN IF NOT EXISTS use_vet_db BOOLEAN DEFAULT false;`, []);
+            await pool.query(`ALTER TABLE dash_usuarios ADD COLUMN IF NOT EXISTS precisa_trocar_senha BOOLEAN DEFAULT false;`, []);
+            await pool.query(`ALTER TABLE dash_usuarios DROP COLUMN IF EXISTS use_vet_db;`, []);
         } catch (migErr) {
             logger.warn('[DB] Migração silenciosa falhou ou já executada', { erro: migErr.message });
         }
