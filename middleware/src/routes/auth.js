@@ -89,8 +89,32 @@ router.post('/login', async (req, res) => {
                         companies: result.rows
                     });
                 } catch (dbErr) {
-                    logger.error('[Auth] Erro ao buscar empresas na base coliseu_identity', { error: dbErr.message });
-                    return res.status(500).json({ error: 'Erro ao conectar ao banco de licenças', code: 'IDENTITY_DB_ERROR' });
+                    logger.warn('[Auth] Fallback local ativado para listagem de empresas Super Admin', { error: dbErr.message });
+                    try {
+                        const fallbackRes = await db.query(`
+                            SELECT
+                                t.tenant_id AS id,
+                                COALESCE(
+                                    (SELECT f.nome FROM dash_filiais f WHERE f.tenant_id = t.tenant_id ORDER BY f.is_default DESC NULLS LAST, f.id ASC LIMIT 1),
+                                    (SELECT u.nome FROM dash_usuarios u WHERE u.tenant_id = t.tenant_id ORDER BY u.id ASC LIMIT 1),
+                                    t.tenant_id::text
+                                ) AS name
+                            FROM (
+                                SELECT DISTINCT tenant_id FROM dash_usuarios WHERE tenant_id != '00000000-0000-0000-0000-000000000000'
+                                UNION
+                                SELECT DISTINCT tenant_id FROM dash_sync_metadata WHERE tenant_id != '00000000-0000-0000-0000-000000000000'
+                            ) t
+                            ORDER BY name ASC
+                        `);
+                        return res.status(200).json({
+                            requiresSelection: true,
+                            requiresCompanySelection: true,
+                            companies: fallbackRes.rows
+                        });
+                    } catch (fbErr) {
+                        logger.error('[Auth] Erro ao buscar empresas no fallback local', { error: fbErr.message });
+                        return res.status(500).json({ error: 'Erro ao carregar lista de empresas', code: 'IDENTITY_DB_ERROR' });
+                    }
                 }
             } else {
                 let companyName = 'Empresa Selecionada';
