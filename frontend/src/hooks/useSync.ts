@@ -16,6 +16,7 @@ export function useSyncStatus() {
   const queryClient = useQueryClient()
 
   const fetchStatus = useCallback(async () => {
+    if (!localStorage.getItem('coliseu_token')) return
     try {
       const { data } = await api.get<{ status: SyncStatusItem[] }>('/sync/status')
       setStatusItems(data.status || [])

@@ -157,13 +157,14 @@ router.post('/', async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const senhaHash = await bcrypt.hash(password, salt);
 
-        // Insere o usuário (default role: admin)
+        // Insere o usuário (default role: admin; se criado com senha padrão 123456, exige troca no primeiro acesso)
+        const mustChangePassword = String(password) === '123456';
         const insertQuery = `
-            INSERT INTO dash_usuarios (tenant_id, email, nome, role, ativo, senha_hash, permissions, versao, filial_acesso, grupo_id)
-            VALUES ($1, $2, $3, 'admin', true, $4, NULL, 'Dash 1.0', 'todas', $5)
-            RETURNING id, tenant_id, email, nome, role, ativo, created_at, permissions, versao, filial_acesso, grupo_id
+            INSERT INTO dash_usuarios (tenant_id, email, nome, role, ativo, senha_hash, permissions, versao, filial_acesso, grupo_id, precisa_trocar_senha)
+            VALUES ($1, $2, $3, 'admin', true, $4, NULL, 'Dash 1.0', 'todas', $5, $6)
+            RETURNING id, tenant_id, email, nome, role, ativo, created_at, permissions, versao, filial_acesso, grupo_id, precisa_trocar_senha
         `;
-        const result = await db.query(insertQuery, [companyKey, email, nome, senhaHash, grupo_id || null]);
+        const result = await db.query(insertQuery, [companyKey, email, nome, senhaHash, grupo_id || null, mustChangePassword]);
         const newUser = result.rows[0];
 
         if (grupo_id) {
@@ -213,7 +214,7 @@ router.put('/:id/status', async (req, res) => {
         }
 
         // Não deixa a pessoa se desativar sozinha (segurança)
-        if (targetId === req.user.sub && !ativo) {
+        if (String(targetId) === String(req.user.sub || req.user.id) && !ativo) {
             return res.status(400).json({ error: 'Você não pode inativar seu próprio usuário.' });
         }
 
@@ -306,7 +307,7 @@ router.put('/:id/layout', async (req, res) => {
             return res.status(400).json({ error: 'Versão de layout inválida. Opções: Dash 1.0, B.I IA.' });
         }
 
-        if (req.user && req.user.email === 'admin@coliseu.com') {
+        if (req.user && (req.user.email === 'admin@coliseu.com' || (req.user.email === 'admin@coliseu.com.br' && req.user.role === 'master'))) {
             return res.json({
                 message: 'Versão do layout atualizada com sucesso (Super Usuário - Bypass banco local)',
                 user: {
@@ -633,7 +634,7 @@ router.post('/:id/reset-password', async (req, res) => {
         const targetId = req.params.id;
 
         // Verificar permissão
-        const permissions = await getUserPermissions(req.user.sub, req.tenant.id);
+        const permissions = await getUserPermissions(req.user.sub || req.user.id, req.tenant.id);
         const canReset = req.user.role === 'master' || req.user.role === 'admin' || permissions.includes('reset_senha');
 
         if (!canReset) {
@@ -657,12 +658,12 @@ router.post('/:id/reset-password', async (req, res) => {
             return res.status(403).json({ error: 'Você não tem permissão para resetar a senha deste usuário.' });
         }
 
-        // Criar hash da senha padrão "123456"
+        // Criar hash da senha padrão "123456" e marcar obrigatoriedade de troca no próximo acesso
         const salt = await bcrypt.genSalt(10);
         const defaultHash = await bcrypt.hash('123456', salt);
 
         await db.query(
-            'UPDATE dash_usuarios SET senha_hash = $1 WHERE id = $2',
+            'UPDATE dash_usuarios SET senha_hash = $1, precisa_trocar_senha = true WHERE id = $2',
             [defaultHash, targetId]
         );
 

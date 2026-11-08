@@ -49,12 +49,13 @@ async function requireWebJwt(req, res, next) {
             return res.status(403).json({ error: 'Módulo de acesso incorreto', code: 'INVALID_MODULE' });
         }
 
+        const userIdResolved = decoded.userId || decoded.sub;
         req.tenant = { id: tenantId, name: decoded.companyName || 'Unknown' };
         req.user = { 
-            id: decoded.userId || decoded.sub, 
+            id: userIdResolved,
+            sub: userIdResolved,
             email: decoded.email,
             layoutVersion: decoded.layoutVersion, 
-            useVetDb: decoded.useVetDb, 
             role: decoded.role 
         };
 
@@ -178,18 +179,16 @@ async function requireInternalAuth(req, res, next) {
 }
 
 /**
- * Middleware para vincular o contexto do banco de dados (AsyncLocalStorage).
- * Determina se o tenant ou usuário ativo pertence ao Layout 4 (Vet) e ativa o pool apropriado.
+ * Middleware para vincular o contexto do banco de dados (AsyncLocalStorage) exclusivo do Coliseu Dash.
  */
 async function bindDbContext(req, res, next) {
     const dbType = 'main';
-    const isVet = false;
 
     // Parse timezone offset header (e.g. -180 for Brasilia, -240 for UTC-4)
     const tzOffsetHeader = req.headers['x-timezone-offset'];
     const tzOffset = tzOffsetHeader !== undefined ? parseInt(tzOffsetHeader, 10) : -180;
 
-    db.dbContext.run({ dbType, isVet, tzOffset }, () => {
+    db.dbContext.run({ dbType, tzOffset }, () => {
         next();
     });
 }

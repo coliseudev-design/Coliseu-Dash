@@ -20,10 +20,6 @@ const SALES_STATUS_EXCLUDE = [
     'CANCELADO', 'ABERTO', 'PENDENTE', 'ORÇAMENTO', 'ORCAMENTO', 'NULO', 'TESTE'
 ];
 
-function isVetContext() {
-    return false;
-}
-
 /**
  * STRICT_SALES_FILTER (CFOP): sem filtro de CFOP para Sistema Coliseu.
  */
@@ -91,7 +87,6 @@ module.exports = {
     SALES_CFOPS,
     RETURN_CFOPS,
     SALES_STATUS_EXCLUDE,
-    isVetContext,
     getCfopFilterClause,
     getStatusFilterClause,
     getSalesFilterClause,

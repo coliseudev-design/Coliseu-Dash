@@ -11,17 +11,19 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
-  
+
+  config.headers['X-Target-App'] = 'coliseu-dash'
+
   // Inject client's timezone offset (in minutes, sign reversed to represent offset from UTC)
-  const offsetMinutes = -new Date().getTimezoneOffset();
-  config.headers['X-Timezone-Offset'] = offsetMinutes.toString();
+  const offsetMinutes = -new Date().getTimezoneOffset()
+  config.headers['X-Timezone-Offset'] = offsetMinutes.toString()
 
   try {
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
     if (tz) {
-      config.headers['X-User-Timezone'] = tz;
+      config.headers['X-User-Timezone'] = tz
     }
-  } catch (e) {
+  } catch {
     // ignore
   }
 
@@ -31,11 +33,25 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (r) => r,
   (err: AxiosError) => {
-    if (err.response?.status === 401) {
-      // Token expirado/inválido
+    const reqUrl = err.config?.url || ''
+    const isAuthAttempt =
+      reqUrl.includes('/auth/login') ||
+      reqUrl.includes('/auth/register') ||
+      reqUrl.includes('/auth/change-default-password')
+
+    if (err.response?.status === 401 && !isAuthAttempt) {
+      // Token expirado/inválido em rota autenticada
       localStorage.removeItem('coliseu_token')
       localStorage.removeItem('coliseu_user')
-      if (!window.location.pathname.startsWith('/login')) {
+      const w = (window as any).__syncWorker
+      if (w) {
+        try {
+          w.postMessage({ type: 'STOP' })
+        } catch {
+          // ignore
+        }
+      }
+      if (!window.location.pathname.startsWith('/login') && !window.location.pathname.startsWith('/register')) {
         window.location.href = '/login'
       }
     }

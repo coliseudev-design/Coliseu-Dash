@@ -31,7 +31,7 @@ interface AuthState {
   updateUserVersion: (versao: string) => void
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   token: null,
   loading: false,
@@ -150,7 +150,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       }
 
       // Fallback: efetua login em seguida se não veio token direto
-      const res = await useAuthStore.getState().login(email, senha)
+      const res = await get().login(email, senha)
       return res.success || res.requiresPasswordChange || false
     } catch (e: unknown) {
       let msg = 'Erro ao cadastrar'

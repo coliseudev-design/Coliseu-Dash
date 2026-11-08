@@ -1,12 +1,13 @@
 version: '3.8'
 
 services:
-  # Serviço 1: Frontend SPA (React/Vite + Nginx)
+  # Serviço 1: Frontend SPA (React/Vite + Nginx) — Exclusivo Coliseu Dash
   dashboard-frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: dashboard-frontend
+    hostname: coliseu-dash-frontend
     restart: unless-stopped
     ports:
       - "80"  # Permitir que Coolify mapie dinamicamente via Traefik
@@ -14,35 +15,35 @@ services:
       - coolify
     depends_on:
       - dashboard-middleware
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --spider http://127.0.0.1:80/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
-  # Serviço 2: API Node.js Express (Backend)
+  # Serviço 2: API Node.js Express (Backend) — Exclusivo Coliseu Dash
   dashboard-middleware:
     build: 
       context: ./middleware
       dockerfile: Dockerfile
     container_name: dashboard-middleware
+    hostname: coliseu-dash-middleware
     restart: unless-stopped
     networks:
       - coolify
     environment:
       - NODE_ENV=production
       - PORT=3200
+      - APP_ID=coliseu-dash
       
-      # Banco de dados (passar via secret/env variables no GitHub Actions / Coolify)
+      # Banco de dados exclusivo Coliseu Dash (coliseu_dashboard)
       - PG_HOST=${PG_HOST}
       - PG_PORT=5432
       - PG_DATABASE=${PG_DATABASE:-coliseu_dashboard}
       - PG_USER=${PG_USER}
       - PG_PASSWORD=${PG_PASSWORD}
       - PG_SSL=false
-
-      # Banco de dados Vet (Siscom Vet)
-      - PG_HOST_VET=${PG_HOST_VET:-coliseu-db}
-      - PG_PORT_VET=${PG_PORT_VET:-5432}
-      - PG_DATABASE_VET=${PG_DATABASE_VET:-coliseu_dashboard_vet}
-      - PG_USER_VET=${PG_USER_VET:-coliseu_admin}
-      - PG_PASSWORD_VET=${PG_PASSWORD_VET}
-      - PG_SSL_VET=false
       
       # Identity Server / Segurança
       - JWT_DEVICE_KEY=${JWT_DEVICE_KEY}
@@ -64,7 +65,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 45s
 
 # db-backup removido pois o Coolify cuida do backup da base central nativamente.
 

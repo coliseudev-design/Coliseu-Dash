@@ -7,7 +7,7 @@ const cors = require('cors');
 const config = require('./config/env');
 const { requireWebJwt, requireInternalAuth, bindDbContext } = require('./middleware/auth');
 const { errorHandler } = require('./middleware/errorHandler');
-const { defaultLimit } = require('./middleware/rateLimiter');
+const { defaultLimit, authLimit } = require('./middleware/rateLimiter');
 
 // Import Rotas
 const authRouter = require('./routes/auth');
@@ -29,20 +29,44 @@ const adminRouter = require('./routes/admin');
 
 const app = express();
 
+// Confia nos 2 saltos reversos da infraestrutura (Traefik -> Nginx -> Express) para capturar o IP real do cliente
+app.set('trust proxy', 2);
+
 app.use(helmet());
+
+// Trava de identidade de aplicação: garante que requisições destinadas a outros projetos jamais sejam processadas aqui
+app.use((req, res, next) => {
+    res.setHeader('X-Coliseu-App', config.app.id);
+    const targetApp = req.headers['x-target-app'];
+    if (targetApp && targetApp !== config.app.id) {
+        return res.status(421).json({
+            error: `Requisição direcionada ao sistema incorreto (${targetApp}). Este serviço é exclusivo do ${config.app.id}.`,
+            code: 'MISDIRECTED_APPLICATION',
+        });
+    }
+    next();
+});
 
 app.use(cors({
     origin: config.security.allowedOrigins.length > 0
         ? config.security.allowedOrigins
         : '*',
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'PUT'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Internal-Key', 'X-Tenant-Id'],
+    allowedHeaders: [
+        'Content-Type',
+        'Authorization',
+        'X-Internal-Key',
+        'X-Tenant-Id',
+        'X-Timezone-Offset',
+        'X-User-Timezone',
+        'X-Target-App'
+    ],
 }));
 
 // Payload maximo via sync interno será alto (batches de milhares de linhas)
 app.use(express.json({ limit: '50mb' }));
 
-app.use('/api/auth', authRouter); // Pública (limitada pelo rateLimiter adiante, mas no momento tá sem)
+app.use('/api/auth', authLimit, bindDbContext, authRouter);
 app.use('/health', healthRouter);
 app.use('/api/admin', bindDbContext, adminRouter); // Rotas administrativas (comunicação server-to-server)
 

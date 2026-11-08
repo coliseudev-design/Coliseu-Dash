@@ -50,10 +50,22 @@ async function loadCache(key: string): Promise<any | null> {
 }
 
 async function syncData() {
+  // Não dispara polling autenticado sem token JWT (evita 401 fantasmas na tela de login)
+  if (!token) return
   try {
-    const headers: Record<string, string> = {}
-    if (token) headers.Authorization = `Bearer ${token}`
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${token}`,
+      'X-Target-App': 'coliseu-dash',
+    }
     const res = await fetch('/api/sync/status', { headers })
+    if (res.status === 401) {
+      token = null
+      if (timer) {
+        clearInterval(timer)
+        timer = null
+      }
+      return
+    }
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const data = await res.json()
 
@@ -76,16 +88,24 @@ self.addEventListener('message', (evt: MessageEvent) => {
   const msg = evt.data as { type: string; token?: string }
   if (msg.type === 'INIT' || msg.type === 'SYNC_NOW') {
     if (msg.token) token = msg.token
+    if (token) {
+      syncData()
+      if (timer) clearInterval(timer)
+      timer = setInterval(syncData, SYNC_INTERVAL) as unknown as number
+    }
+  }
+  if (msg.type === 'SET_TOKEN' && msg.token) {
+    token = msg.token
     syncData()
     if (timer) clearInterval(timer)
     timer = setInterval(syncData, SYNC_INTERVAL) as unknown as number
   }
-  if (msg.type === 'SET_TOKEN' && msg.token) {
-    token = msg.token
-  }
-  if (msg.type === 'STOP' && timer) {
-    clearInterval(timer)
-    timer = null
+  if (msg.type === 'STOP') {
+    token = null
+    if (timer) {
+      clearInterval(timer)
+      timer = null
+    }
   }
   if (msg.type === 'LOAD_CACHE') {
     loadCache('sync_status').then((d) =>

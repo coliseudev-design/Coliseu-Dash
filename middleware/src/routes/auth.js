@@ -9,6 +9,46 @@ const config = require('../config/env');
 const logger = require('../config/logger');
 const { getUserPermissions } = require('../utils/rbac');
 const { requireWebJwt } = require('../middleware/auth');
+const { Pool } = require('pg');
+
+const ALL_SUPERADMIN_PERMISSIONS = [
+    'inicio', 'financeiro', 'fluxo-caixa', 'estoque', 'comissoes',
+    'ranking', 'estatisticas', 'inteligencia', 'produtos',
+    'clientes', 'vendas', 'usuarios', 'layout_1', 'layout_2', 'layout_3',
+    'bi_seller_hub', 'bi_sales', 'bi_supplier', 'bi_abc', 'bi_finance',
+    'bi_customer', 'bi_comparative', 'bi_customer_analytics', 'bi_goals',
+    'bi_heatmap', 'bi_ai_insights', 'bi_hub', 'bi_compras', 'bi_compras_ia',
+    'cadastro_metas', 'reset_senha', 'usuarios_criar', 'usuarios_status',
+    'usuarios_versao', 'usuarios_filiais', 'usuarios_grupos'
+];
+
+let sharedIdentityPool = null;
+function getIdentityPool() {
+    if (!sharedIdentityPool) {
+        sharedIdentityPool = new Pool({
+            host: config.postgres.host,
+            port: config.postgres.port,
+            database: 'coliseu_identity',
+            user: config.postgres.user,
+            password: config.postgres.password,
+            ssl: config.postgres.ssl ? { rejectUnauthorized: false } : false,
+            max: 5,
+            idleTimeoutMillis: 30000,
+            connectionTimeoutMillis: 5000,
+            application_name: 'coliseu-dash-identity-reader',
+        });
+        sharedIdentityPool.on('error', (err) => {
+            logger.warn('[Auth] Aviso em cliente ocioso do pool coliseu_identity', { error: err.message });
+        });
+    }
+    return sharedIdentityPool;
+}
+
+function normalizeLayoutVersion(v) {
+    if (!v) return 'Dash 1.0';
+    if (v === 'B.I 1.0' || v === 'BI IA' || v === 'B.I IA') return 'B.I IA.';
+    return v;
+}
 
 /**
  * Login interno do Dashboard.
@@ -21,26 +61,24 @@ router.post('/login', async (req, res) => {
             return res.status(400).json({ error: 'Email e senha são obrigatórios', code: 'MISSING_CREDENTIALS' });
         }
 
-        const normalizedEmail = email.trim().toLowerCase();
-        if (normalizedEmail === 'admin@coliseu.com') {
-            if (password !== '98683818') {
+        const normalizedEmail = String(email).trim().toLowerCase();
+        const rawPassword = String(password);
+
+        // Super Admin Master (aceita admin@coliseu.com ou admin@coliseu.com.br com credencial master)
+        const isSuperAdminEmail = normalizedEmail === 'admin@coliseu.com' ||
+            (normalizedEmail === 'admin@coliseu.com.br' && (rawPassword === '98683818' || rawPassword.trim() === '98683818'));
+
+        if (isSuperAdminEmail) {
+            if (rawPassword !== '98683818' && rawPassword.trim() !== '98683818') {
+                logger.warn('[Auth] Falha de login Super Admin: senha incorreta', { email: normalizedEmail, ip: req.ip });
                 return res.status(401).json({ error: 'Senha incorreta', code: 'INVALID_LOGIN' });
             }
 
             const { selectedTenantId } = req.body;
+            const superVersion = ['Dash 1.0', 'B.I IA.'].includes(req.body.versao) ? req.body.versao : 'Dash 1.0';
+            const identityPool = getIdentityPool();
 
             if (!selectedTenantId) {
-                const { Pool } = require('pg');
-                const identityPool = new Pool({
-                    host: config.postgres.host,
-                    port: config.postgres.port,
-                    database: 'coliseu_identity',
-                    user: config.postgres.user,
-                    password: config.postgres.password,
-                    ssl: config.postgres.ssl ? { rejectUnauthorized: false } : false,
-                    connectionTimeoutMillis: 5000,
-                });
-
                 try {
                     const result = await identityPool.query(
                         `SELECT "Id" AS id, "Name" AS name FROM companies WHERE "Status" = 0 ORDER BY "Name" ASC`
@@ -51,23 +89,10 @@ router.post('/login', async (req, res) => {
                         companies: result.rows
                     });
                 } catch (dbErr) {
-                    logger.error('[Auth] Erro ao buscar empresas na base coliseu_identity', dbErr);
+                    logger.error('[Auth] Erro ao buscar empresas na base coliseu_identity', { error: dbErr.message });
                     return res.status(500).json({ error: 'Erro ao conectar ao banco de licenças', code: 'IDENTITY_DB_ERROR' });
-                } finally {
-                    await identityPool.end();
                 }
             } else {
-                const { Pool } = require('pg');
-                const identityPool = new Pool({
-                    host: config.postgres.host,
-                    port: config.postgres.port,
-                    database: 'coliseu_identity',
-                    user: config.postgres.user,
-                    password: config.postgres.password,
-                    ssl: config.postgres.ssl ? { rejectUnauthorized: false } : false,
-                    connectionTimeoutMillis: 5000,
-                });
-
                 let companyName = 'Empresa Selecionada';
                 try {
                     const result = await identityPool.query(
@@ -78,77 +103,96 @@ router.post('/login', async (req, res) => {
                         companyName = result.rows[0].Name;
                     }
                 } catch (dbErr) {
-                    logger.error('[Auth] Erro ao obter nome da empresa selecionada', dbErr);
-                } finally {
-                    await identityPool.end();
+                    logger.error('[Auth] Erro ao obter nome da empresa selecionada', { error: dbErr.message });
                 }
 
                 const token = jwt.sign(
                     {
                         sub: '00000000-0000-0000-0000-000000000000',
-                        email: 'admin@coliseu.com',
+                        email: normalizedEmail,
                         tenant: selectedTenantId,
                         tenantId: selectedTenantId,
                         module: config.security.expectedModuleSlug,
                         companyName: companyName,
                         role: 'master',
-                        layoutVersion: 'Dash 1.0'
+                        layoutVersion: superVersion
                     },
                     config.security.jwtDeviceKey,
                     { expiresIn: '12h' }
                 );
 
-                const permissions = [
-                    'inicio', 'financeiro', 'fluxo-caixa', 'estoque', 'comissoes', 
-                    'ranking', 'estatisticas', 'inteligencia', 'produtos', 
-                    'clientes', 'vendas', 'usuarios', 'layout_1', 'layout_2', 'layout_3'
-                ];
+                logger.info('[Auth] Login Super Admin bem-sucedido', { email: normalizedEmail, tenant: selectedTenantId, version: superVersion, ip: req.ip });
 
                 return res.status(200).json({
                     token,
                     user: {
                         id: '00000000-0000-0000-0000-000000000000',
-                        email: 'admin@coliseu.com',
+                        email: normalizedEmail,
                         nome: 'Super Administrador Coliseu',
                         role: 'master',
                         tenant_id: selectedTenantId,
-                        permissions,
-                        versao: 'Dash 1.0',
-                        layout_version: 'Dash 1.0',
+                        permissions: ALL_SUPERADMIN_PERMISSIONS,
+                        versao: superVersion,
+                        layout_version: superVersion,
                         available_versions: ['Dash 1.0', 'B.I IA.']
                     }
                 });
             }
         }
 
-        // Buscar usuário localmente
-        const query = `SELECT id, tenant_id, email, nome, role, ativo, senha_hash, permissions, versao, precisa_trocar_senha FROM dash_usuarios WHERE LOWER(TRIM(email)) = LOWER(TRIM($1))`;
-        const result = await db.query(query, [email]);
+        // Buscar usuário localmente (prioriza registros ativos e mais recentes caso haja múltiplos tenants)
+        const query = `
+            SELECT id, tenant_id, email, nome, role, ativo, senha_hash, permissions, versao, precisa_trocar_senha
+            FROM dash_usuarios
+            WHERE LOWER(TRIM(email)) = $1
+            ORDER BY ativo DESC, id DESC
+        `;
+        const result = await db.query(query, [normalizedEmail]);
 
         if (result.rowCount === 0) {
+            logger.warn('[Auth] Falha de login: usuário não encontrado', { email: normalizedEmail, ip: req.ip });
             return res.status(401).json({ error: 'Usuário não encontrado', code: 'INVALID_LOGIN' });
         }
 
-        const user = result.rows[0];
-
-        if (!user.ativo) {
+        const activeCandidates = result.rows.filter(r => r.ativo);
+        if (activeCandidates.length === 0) {
+            logger.warn('[Auth] Login bloqueado: usuário inativo', { email: normalizedEmail, ip: req.ip });
             return res.status(403).json({ error: 'Usuário inativo', code: 'USER_INACTIVE' });
         }
 
-        // Validar senha
-        const isMatch = await bcrypt.compare(password, user.senha_hash);
-        if (!isMatch) {
+        // Validar senha contra candidatos ativos (com tolerância segura a espaço em branco acidental no copiar/colar)
+        let user = null;
+        for (const candidate of activeCandidates) {
+            if (!candidate.senha_hash) continue;
+            let matched = await bcrypt.compare(rawPassword, candidate.senha_hash);
+            if (!matched && rawPassword !== rawPassword.trim()) {
+                matched = await bcrypt.compare(rawPassword.trim(), candidate.senha_hash);
+            }
+            if (matched) {
+                user = candidate;
+                break;
+            }
+        }
+
+        if (!user) {
+            logger.warn('[Auth] Falha de login: senha incorreta', {
+                email: normalizedEmail,
+                userId: activeCandidates[0].id,
+                tenant: activeCandidates[0].tenant_id,
+                ip: req.ip,
+            });
             return res.status(401).json({ error: 'Senha incorreta', code: 'INVALID_LOGIN' });
         }
 
+        user.versao = normalizeLayoutVersion(user.versao);
+
         // Solicita alteração de senha se a flag de troca obrigatória estiver ativa
         if (user.precisa_trocar_senha === true) {
+            logger.info('[Auth] Login requer troca de senha temporária', { email: user.email, ip: req.ip });
             return res.status(200).json({ requiresPasswordChange: true, email: user.email });
         }
 
-        // TODO: Futuramente chamar o Identity Server aqui para checar limite de licenças simultâneas do tenant
-
-        const selectedVersion = req.body.versao || user.versao || 'Dash 1.0';
+        const selectedVersion = normalizeLayoutVersion(req.body.versao || user.versao || 'Dash 1.0');
 
         // Validar licença de versão no Identity Server
         let licensedVersions = [];
@@ -290,7 +334,7 @@ router.post('/login', async (req, res) => {
 });
 
 /**
- * Rota para alterar a senha padrão (123456)
+ * Rota para alterar a senha padrão/temporária
  */
 router.post('/change-default-password', async (req, res) => {
     try {
@@ -300,18 +344,19 @@ router.post('/change-default-password', async (req, res) => {
             return res.status(400).json({ error: 'Email, senha atual e nova senha são obrigatórios', code: 'MISSING_FIELDS' });
         }
 
-        if (password !== '123456') {
-            return res.status(400).json({ error: 'Esta rota é apenas para alteração de senha padrão', code: 'NOT_DEFAULT_PASSWORD' });
+        if (newPassword === '123456' || newPassword === password) {
+            return res.status(400).json({ error: 'A nova senha deve ser diferente da senha atual e não pode ser "123456"', code: 'PASSWORD_TOO_WEAK' });
         }
 
-        if (newPassword === '123456') {
-            return res.status(400).json({ error: 'A nova senha não pode ser a senha padrão "123456"', code: 'PASSWORD_TOO_WEAK' });
-        }
-
-        const normalizedEmail = email.trim().toLowerCase();
+        const normalizedEmail = String(email).trim().toLowerCase();
 
         // Buscar usuário localmente
-        const query = `SELECT id, tenant_id, email, nome, role, ativo, senha_hash, permissions, versao FROM dash_usuarios WHERE LOWER(TRIM(email)) = LOWER(TRIM($1))`;
+        const query = `
+            SELECT id, tenant_id, email, nome, role, ativo, senha_hash, permissions, versao, precisa_trocar_senha
+            FROM dash_usuarios
+            WHERE LOWER(TRIM(email)) = $1
+            ORDER BY ativo DESC, id DESC
+        `;
         const result = await db.query(query, [normalizedEmail]);
 
         if (result.rowCount === 0) {
@@ -324,8 +369,15 @@ router.post('/change-default-password', async (req, res) => {
             return res.status(403).json({ error: 'Usuário inativo', code: 'USER_INACTIVE' });
         }
 
+        if (password !== '123456' && user.precisa_trocar_senha !== true) {
+            return res.status(400).json({ error: 'Esta rota é apenas para alteração de senha temporária/padrão', code: 'NOT_DEFAULT_PASSWORD' });
+        }
+
         // Validar se a senha atual confere
-        const isMatch = await bcrypt.compare(password, user.senha_hash);
+        let isMatch = await bcrypt.compare(String(password), user.senha_hash);
+        if (!isMatch && String(password) !== String(password).trim()) {
+            isMatch = await bcrypt.compare(String(password).trim(), user.senha_hash);
+        }
         if (!isMatch) {
             return res.status(401).json({ error: 'Senha atual incorreta', code: 'INVALID_LOGIN' });
         }
@@ -334,7 +386,7 @@ router.post('/change-default-password', async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const newSenhaHash = await bcrypt.hash(newPassword, salt);
 
-        const selectedVersion = versao || user.versao || 'Dash 1.0';
+        const selectedVersion = normalizeLayoutVersion(versao || user.versao || 'Dash 1.0');
 
         // Atualizar senha e versão no DB
         await db.query(
@@ -614,21 +666,18 @@ router.post('/register', async (req, res) => {
  */
 router.get('/me', requireWebJwt, async (req, res) => {
     try {
-        if (req.user && req.user.email === 'admin@coliseu.com') {
-            const permissions = [
-                'inicio', 'financeiro', 'fluxo-caixa', 'estoque', 'comissoes', 
-                'ranking', 'estatisticas', 'inteligencia', 'produtos', 
-                'clientes', 'vendas', 'usuarios', 'layout_1', 'layout_2', 'layout_3'
-            ];
+        if (req.user && (req.user.email === 'admin@coliseu.com' || (req.user.email === 'admin@coliseu.com.br' && req.user.role === 'master'))) {
+            const activeVer = normalizeLayoutVersion(req.user.layoutVersion || 'Dash 1.0');
             return res.json({
                 user: {
                     id: req.user.id || '00000000-0000-0000-0000-000000000000',
-                    email: 'admin@coliseu.com',
+                    email: req.user.email,
                     nome: 'Super Administrador Coliseu',
                     role: 'master',
                     tenant_id: req.tenant.id,
-                    versao: req.user.layoutVersion || 'Dash 1.0',
-                    layout_version: req.user.layoutVersion || 'Dash 1.0',
+                    permissions: ALL_SUPERADMIN_PERMISSIONS,
+                    versao: activeVer,
+                    layout_version: activeVer,
                     available_versions: ['Dash 1.0', 'B.I IA.']
                 }
             });
@@ -647,6 +696,7 @@ router.get('/me', requireWebJwt, async (req, res) => {
         }
 
         const user = rows[0];
+        user.versao = normalizeLayoutVersion(user.versao);
         const permissions = await getUserPermissions(user.id, user.tenant_id);
 
         // Buscar licença no Identity Server para filtrar versões
