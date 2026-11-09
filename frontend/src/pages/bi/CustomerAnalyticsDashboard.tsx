@@ -92,59 +92,49 @@ export default function CustomerAnalyticsDashboard() {
   const totalPages = Math.ceil((list.data?.total || 0) / limit) || 1;
 
   return (
-    <div aria-label="Análise de Clientes Dashboard" className="space-y-6 animate-in fade-in duration-300">
+    <div aria-label="Análise de Clientes Dashboard" className="space-y-4 animate-in fade-in duration-300 min-w-0">
       
-      {/* CARD 1: PERÍODO DE ANÁLISE */}
-      <div className="bg-bg-primary border border-divider rounded-2xl p-4 flex items-center justify-between shadow-card animate-in slide-in-from-top duration-200">
-        <span className="text-[10px] font-bold text-text-secondary/80 uppercase tracking-widest pl-1">Período de Análise</span>
-        <div className="flex items-center min-w-0">
-          <PeriodFilter />
-        </div>
-      </div>
+      {/* BARRA ÚNICA COMPACTA DE FILTROS (PERÍODO + VENDEDOR + CIDADE) */}
+      <div className="bi-filter-bar">
+        <PeriodFilter />
 
-      {/* CARD 2: FILTROS DE SELEÇÃO */}
-      <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 flex flex-wrap gap-4 items-center animate-in slide-in-from-top duration-200">
-        <div className="flex flex-wrap gap-4 items-center w-full">
+        <div className="flex flex-wrap items-center gap-2 flex-1 sm:flex-initial justify-end ml-auto min-w-0">
           {/* Vendedor */}
-          <div className="flex flex-col gap-1 w-full sm:w-64">
-            <span className="text-[10px] font-bold text-text-secondary/70 uppercase tracking-wider pl-1">Vendedor</span>
-            <div className="relative w-full">
-              <select
-                value={selectedVendedor}
-                onChange={(e) => {
-                  setSelectedVendedor(e.target.value);
-                  setPage(1);
-                }}
-                className="appearance-none h-10 px-4 bg-bg-secondary border border-divider text-text-primary rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all duration-300 w-full cursor-pointer pr-10 shadow-sm"
-              >
-                <option value="todas">Todos os Vendedores</option>
-                {sellersQuery.data?.data?.map((v: any) => (
-                  <option key={v.id} value={v.id}>{v.nome}</option>
-                ))}
-              </select>
-              <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
-            </div>
+          <div className="relative flex-1 sm:flex-initial min-w-[175px] max-w-[250px]">
+            <select
+              aria-label="Filtrar por Vendedor"
+              value={selectedVendedor}
+              onChange={(e) => {
+                setSelectedVendedor(e.target.value);
+                setPage(1);
+              }}
+              className="bi-select w-full appearance-none pr-7 truncate"
+            >
+              <option value="todas">Vendedor: Todos</option>
+              {sellersQuery.data?.data?.map((v: any) => (
+                <option key={v.id} value={v.id}>{v.nome}</option>
+              ))}
+            </select>
+            <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
           </div>
 
           {/* Cidade */}
-          <div className="flex flex-col gap-1 w-full sm:w-64">
-            <span className="text-[10px] font-bold text-text-secondary/70 uppercase tracking-wider pl-1">Cidade</span>
-            <div className="relative w-full">
-              <select
-                value={selectedCidade}
-                onChange={(e) => {
-                  setSelectedCidade(e.target.value);
-                  setPage(1);
-                }}
-                className="appearance-none h-10 px-4 bg-bg-secondary border border-divider text-text-primary rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all duration-300 w-full cursor-pointer pr-10 shadow-sm uppercase"
-              >
-                <option value="todas">Todas as Cidades</option>
-                {citiesQuery.data?.data?.map((c: any) => (
-                  <option key={c.nome || c.cidade} value={c.nome || c.cidade}>{c.nome || c.cidade}</option>
-                ))}
-              </select>
-              <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
-            </div>
+          <div className="relative flex-1 sm:flex-initial min-w-[165px] max-w-[240px]">
+            <select
+              aria-label="Filtrar por Cidade"
+              value={selectedCidade}
+              onChange={(e) => {
+                setSelectedCidade(e.target.value);
+                setPage(1);
+              }}
+              className="bi-select w-full appearance-none pr-7 truncate uppercase"
+            >
+              <option value="todas">Cidade: Todas</option>
+              {citiesQuery.data?.data?.map((c: any) => (
+                <option key={c.nome || c.cidade} value={c.nome || c.cidade}>{c.nome || c.cidade}</option>
+              ))}
+            </select>
+            <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
           </div>
         </div>
       </div>
@@ -159,77 +149,76 @@ export default function CustomerAnalyticsDashboard() {
           {/* SEÇÃO 1: ATIVIDADE POR PERÍODO */}
           <div className="space-y-2">
             <span className="text-[10px] font-black text-text-secondary/80 uppercase tracking-wider pl-1 block">Atividade por Período</span>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5">
               
               {/* Card 1: Total de Clientes */}
-              <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 flex items-center justify-between">
-                <div className="space-y-0.5 min-w-0">
-                  <span className="text-[10px] font-bold text-text-secondary/70 uppercase tracking-wider block">Total de Clientes</span>
-                  <span className="text-2xl font-black text-text-primary block font-mono">
-                    {formatNum(kpis.total_clientes)}
-                  </span>
-                  <span className="text-[9px] text-text-secondary block font-bold">Base ativa cadastrada</span>
+              <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between min-w-0">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <span className="text-[10px] font-bold text-text-secondary/80 uppercase tracking-wider truncate">Total de Clientes</span>
+                  <div className="w-7 h-7 bg-brand-500/10 text-brand-500 rounded-lg flex items-center justify-center shrink-0">
+                    <Users size={15} />
+                  </div>
                 </div>
-                <div className="p-3 bg-brand-500/10 text-brand-500 rounded-2xl shrink-0">
-                  <Users size={18} />
-                </div>
+                <span className="font-black text-text-primary block font-mono bi-kpi-value">
+                  {formatNum(kpis.total_clientes)}
+                </span>
+                <span className="text-[10px] text-text-secondary block font-semibold mt-1 truncate">Base ativa cadastrada</span>
               </div>
 
               {/* Card 2: Mês Atual */}
-              <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 flex items-center justify-between">
-                <div className="space-y-0.5 min-w-0">
-                  <span className="text-[10px] font-bold text-text-secondary/70 uppercase tracking-wider block">Mês Atual</span>
-                  <span className="text-2xl font-black text-text-primary block font-mono">
-                    {formatNum(kpis.mes_atual)}
-                  </span>
-                  <span className="text-[9px] text-text-secondary block font-bold">Clientes com venda</span>
+              <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between min-w-0">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <span className="text-[10px] font-bold text-text-secondary/80 uppercase tracking-wider truncate">Mês Atual</span>
+                  <div className="w-7 h-7 bg-emerald-500/10 text-emerald-500 rounded-lg flex items-center justify-center shrink-0">
+                    <TrendingUp size={15} />
+                  </div>
                 </div>
-                <div className="p-3 bg-success/10 text-success rounded-2xl shrink-0">
-                  <TrendingUp size={18} className="text-emerald-500" />
-                </div>
+                <span className="font-black text-text-primary block font-mono bi-kpi-value">
+                  {formatNum(kpis.mes_atual)}
+                </span>
+                <span className="text-[10px] text-text-secondary block font-semibold mt-1 truncate">Clientes com venda</span>
               </div>
 
               {/* Card 3: Mês Anterior */}
-              <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 flex items-center justify-between">
-                <div className="space-y-0.5 min-w-0">
-                  <span className="text-[10px] font-bold text-text-secondary/70 uppercase tracking-wider block">Mês Anterior</span>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-2xl font-black text-text-primary block font-mono">
-                      {formatNum(kpis.mes_anterior)}
-                    </span>
-                    <span className={clsx(
-                      "text-[10px] font-mono font-extrabold flex items-center",
-                      (kpis.mes_atual - kpis.mes_anterior) >= 0 ? "text-success" : "text-red-500"
-                    )}>
-                      {(kpis.mes_atual - kpis.mes_anterior) >= 0 ? '▲' : '▼'}{' '}
-                      {Math.abs(kpis.mes_atual - kpis.mes_anterior)}
-                    </span>
+              <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between min-w-0">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <span className="text-[10px] font-bold text-text-secondary/80 uppercase tracking-wider truncate">Mês Anterior</span>
+                  <div className="w-7 h-7 bg-slate-500/10 text-slate-500 rounded-lg flex items-center justify-center shrink-0">
+                    <TrendingDown size={15} />
                   </div>
-                  <span className="text-[9px] text-text-secondary block font-bold">Clientes com venda</span>
                 </div>
-                <div className="p-3 bg-slate-500/10 text-slate-500 rounded-2xl shrink-0">
-                  <TrendingDown size={18} />
+                <div className="flex items-baseline gap-2 flex-wrap">
+                  <span className="font-black text-text-primary font-mono bi-kpi-value">
+                    {formatNum(kpis.mes_anterior)}
+                  </span>
+                  <span className={clsx(
+                    "text-[10.5px] font-mono font-extrabold flex items-center whitespace-nowrap",
+                    (kpis.mes_atual - kpis.mes_anterior) >= 0 ? "text-success" : "text-red-500"
+                  )}>
+                    {(kpis.mes_atual - kpis.mes_anterior) >= 0 ? '▲' : '▼'}{' '}
+                    {formatNum(Math.abs(kpis.mes_atual - kpis.mes_anterior))}
+                  </span>
                 </div>
+                <span className="text-[10px] text-text-secondary block font-semibold mt-1 truncate">Clientes com venda</span>
               </div>
 
               {/* Card 4: Retenção */}
-              <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 flex items-center justify-between">
-                <div className="space-y-0.5 min-w-0">
-                  <span className="text-[10px] font-bold text-text-secondary/70 uppercase tracking-wider block">Retenção</span>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-2xl font-black text-text-primary block font-mono">
-                      {retencaoPct.toFixed(1)}%
-                    </span>
-                    <span className="text-[9px] font-bold text-text-muted font-mono">Meta CS: 28.0%</span>
+              <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between min-w-0">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <span className="text-[10px] font-bold text-text-secondary/80 uppercase tracking-wider truncate">Retenção</span>
+                  <div className={clsx(
+                    "w-7 h-7 rounded-lg flex items-center justify-center shrink-0",
+                    retencaoPct >= 28 ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"
+                  )}>
+                    <Activity size={15} />
                   </div>
-                  <span className="text-[9px] text-text-secondary block font-bold">Peso sobre base total</span>
                 </div>
-                <div className={clsx(
-                  "p-3 rounded-2xl shrink-0",
-                  retencaoPct >= 28 ? "bg-success/10 text-success" : "bg-red-500/10 text-red-500"
-                )}>
-                  <Activity size={18} />
-                </div>
+                <span className="font-black text-text-primary block font-mono bi-kpi-value">
+                  {retencaoPct.toFixed(1)}%
+                </span>
+                <span className="text-[10px] text-text-secondary block font-semibold mt-1 truncate">
+                  Peso s/ base · <strong className="text-text-primary font-mono">Meta CS: 28.0%</strong>
+                </span>
               </div>
 
             </div>
@@ -238,77 +227,75 @@ export default function CustomerAnalyticsDashboard() {
           {/* SEÇÃO 2: OPORTUNIDADES E RISCO */}
           <div className="space-y-2">
             <span className="text-[10px] font-black text-text-secondary/80 uppercase tracking-wider pl-1 block">Oportunidades e Risco</span>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5">
               
               {/* Card 1: Novos Clientes */}
-              <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 flex items-center justify-between">
-                <div className="space-y-0.5 min-w-0">
-                  <span className="text-[10px] font-bold text-text-secondary/70 uppercase tracking-wider block">Novos Clientes</span>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-2xl font-black text-text-primary block font-mono">
-                      {formatNum(kpis.novos_clientes)}
-                    </span>
-                    <span className="text-[9px] font-bold text-text-muted font-mono">Meta: 21</span>
+              <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between min-w-0">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <span className="text-[10px] font-bold text-text-secondary/80 uppercase tracking-wider truncate">Novos Clientes</span>
+                  <div className="w-7 h-7 bg-brand-500/10 text-brand-500 rounded-lg flex items-center justify-center shrink-0">
+                    <UserPlus size={15} />
                   </div>
-                  <span className="text-[9px] text-text-secondary block font-bold">Novos cadastros no período</span>
                 </div>
-                <div className="p-3 bg-brand-500/10 text-brand-500 rounded-2xl shrink-0">
-                  <UserPlus size={18} />
-                </div>
+                <span className="font-black text-text-primary block font-mono bi-kpi-value">
+                  {formatNum(kpis.novos_clientes)}
+                </span>
+                <span className="text-[10px] text-text-secondary block font-semibold mt-1 truncate">
+                  Novos no período · <strong className="text-text-primary font-mono">Meta: 21</strong>
+                </span>
               </div>
 
               {/* Card 2: Sem Vendas (Mês Atual) */}
-              <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 flex items-center justify-between">
-                <div className="space-y-0.5 min-w-0">
-                  <span className="text-[10px] font-bold text-text-secondary/70 uppercase tracking-wider block">Sem Vendas (Mês Atual)</span>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-2xl font-black text-text-primary block font-mono">
-                      {formatNum(kpis.sem_vendas_atual)}
-                    </span>
-                    <span className="text-[9px] text-text-secondary font-mono">({semVendasAtualPct.toFixed(1)}%)</span>
+              <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between min-w-0">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <span className="text-[10px] font-bold text-text-secondary/80 uppercase tracking-wider truncate">Sem Vendas (Mês Atual)</span>
+                  <div className="w-7 h-7 bg-red-500/10 text-red-500 rounded-lg flex items-center justify-center shrink-0">
+                    <UserMinus size={15} />
                   </div>
-                  <span className="text-[9px] text-text-secondary block font-bold">Clientes sem compras no período</span>
                 </div>
-                <div className="p-3 bg-red-500/10 text-red-500 rounded-2xl shrink-0">
-                  <UserMinus size={18} />
+                <div className="flex items-baseline gap-2 flex-wrap">
+                  <span className="font-black text-text-primary font-mono bi-kpi-value">
+                    {formatNum(kpis.sem_vendas_atual)}
+                  </span>
+                  <span className="text-[10.5px] text-text-secondary font-mono font-bold">({semVendasAtualPct.toFixed(1)}%)</span>
                 </div>
+                <span className="text-[10px] text-text-secondary block font-semibold mt-1 truncate">Sem compras no período</span>
               </div>
 
               {/* Card 3: Sem Vendas (Mês Anterior) */}
-              <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 flex items-center justify-between">
-                <div className="space-y-0.5 min-w-0">
-                  <span className="text-[10px] font-bold text-text-secondary/70 uppercase tracking-wider block">Sem Vendas (Mês Anterior)</span>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-2xl font-black text-text-primary block font-mono">
-                      {formatNum(kpis.sem_vendas_anterior)}
-                    </span>
-                    <span className="text-[9px] text-text-secondary font-mono">({semVendasAnteriorPct.toFixed(1)}%)</span>
+              <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between min-w-0">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <span className="text-[10px] font-bold text-text-secondary/80 uppercase tracking-wider truncate">Sem Vendas (Mês Anterior)</span>
+                  <div className="w-7 h-7 bg-orange-500/10 text-orange-600 rounded-lg flex items-center justify-center shrink-0">
+                    <AlertCircle size={15} />
                   </div>
-                  <span className="text-[9px] text-text-secondary block font-bold">Inatividade histórica anterior</span>
                 </div>
-                <div className="p-3 bg-orange-500/10 text-orange-600 rounded-2xl shrink-0">
-                  <AlertCircle size={18} />
+                <div className="flex items-baseline gap-2 flex-wrap">
+                  <span className="font-black text-text-primary font-mono bi-kpi-value">
+                    {formatNum(kpis.sem_vendas_anterior)}
+                  </span>
+                  <span className="text-[10.5px] text-text-secondary font-mono font-bold">({semVendasAnteriorPct.toFixed(1)}%)</span>
                 </div>
+                <span className="text-[10px] text-text-secondary block font-semibold mt-1 truncate">Inatividade histórica anterior</span>
               </div>
 
               {/* Card 4: Risco de Churn */}
-              <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 flex items-center justify-between">
-                <div className="space-y-0.5 min-w-0">
-                  <span className="text-[10px] font-bold text-text-secondary/70 uppercase tracking-wider block">Risco de Churn</span>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-2xl font-black text-text-primary block font-mono">
-                      {churnPct.toFixed(1)}%
-                    </span>
-                    <span className="text-[9px] font-bold text-text-muted font-mono">Meta: 72.0%</span>
+              <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between min-w-0">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <span className="text-[10px] font-bold text-text-secondary/80 uppercase tracking-wider truncate">Risco de Churn</span>
+                  <div className={clsx(
+                    "w-7 h-7 rounded-lg flex items-center justify-center shrink-0",
+                    churnPct <= 72 ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"
+                  )}>
+                    <Activity size={15} />
                   </div>
-                  <span className="text-[9px] text-text-secondary block font-bold">Peso inativo / Base total</span>
                 </div>
-                <div className={clsx(
-                  "p-3 rounded-2xl shrink-0",
-                  churnPct <= 72 ? "bg-success/10 text-success" : "bg-red-500/10 text-red-500"
-                )}>
-                  <Activity size={18} />
-                </div>
+                <span className="font-black text-text-primary block font-mono bi-kpi-value">
+                  {churnPct.toFixed(1)}%
+                </span>
+                <span className="text-[10px] text-text-secondary block font-semibold mt-1 truncate">
+                  Inativos s/ base · <strong className="text-text-primary font-mono">Meta: 72.0%</strong>
+                </span>
               </div>
 
             </div>

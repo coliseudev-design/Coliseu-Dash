@@ -82,174 +82,175 @@ export default function ProfitabilityDashboard() {
   const overview = data?.overview || { faturamento: 0, custo: 0, lucro: 0, margem_pct: 0 };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300 pb-10">
+    <div className="space-y-4 animate-in fade-in duration-300 pb-10">
       
-      {/* FILTROS SUPERIORES COMPLETO (TELA IGUAL AO MODELO - SUBIDO TOTALMENTE) */}
-      <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 flex flex-wrap gap-4 items-end animate-in slide-in-from-top-4 duration-200">
-        
-        {/* Filtro Período */}
-        <div className="flex flex-col gap-1.5 w-full sm:w-auto">
-          <label htmlFor="select-month" className="text-[9px] font-black text-text-secondary/70 uppercase tracking-wider pl-1 flex items-center gap-2">
-            Período
-            <div className="inline-flex bg-bg-secondary p-0.5 rounded-lg border border-divider/10">
-              {(['MÊS', 'ACUMULADO'] as const).map((tab) => (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setSelectedPeriodTab(tab)}
-                  className={clsx(
-                    "px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider transition-all cursor-pointer",
-                    selectedPeriodTab === tab 
-                      ? "bg-brand-500 text-white" 
-                      : "text-text-secondary hover:text-text-primary"
-                  )}
-                >
-                  {tab}
-                </button>
-              ))}
-            </div>
-          </label>
-          <div className="flex gap-2">
-            <div className="relative">
-              <select 
-                id="select-month"
-                value={month} 
-                onChange={(e) => setMonth(Number(e.target.value))}
-                className="appearance-none h-10 px-3 bg-bg-secondary border border-divider text-text-primary rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all duration-300 w-32 cursor-pointer pr-8 shadow-sm"
+      {/* BARRA UNIFICADA COMPACTA DE FILTROS DE RENTABILIDADE */}
+      <div className="bi-filter-bar">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Alternador MÊS / ACUMULADO */}
+          <div className="inline-flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200/80 dark:border-slate-700 h-8">
+            {(['MÊS', 'ACUMULADO'] as const).map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setSelectedPeriodTab(tab)}
+                className={clsx(
+                  "px-2.5 h-full rounded-md text-[10.5px] font-black uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap",
+                  selectedPeriodTab === tab 
+                    ? "bg-brand-500 text-white shadow-xs" 
+                    : "text-text-secondary hover:text-text-primary"
+                )}
               >
-                <option value={1}>Janeiro</option>
-                <option value={2}>Fevereiro</option>
-                <option value={3}>Março</option>
-                <option value={4}>Abril</option>
-                <option value={5}>Maio</option>
-                <option value={6}>Junho</option>
-                <option value={7}>Julho</option>
-                <option value={8}>Agosto</option>
-                <option value={9}>Setembro</option>
-                <option value={10}>Outubro</option>
-                <option value={11}>Novembro</option>
-                <option value={12}>Dezembro</option>
-              </select>
-              <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
-            </div>
-            <div className="relative">
-              <select 
-                id="select-year"
-                aria-label="Ano"
-                value={year} 
-                onChange={(e) => setYear(Number(e.target.value))}
-                className="appearance-none h-10 px-3 bg-bg-secondary border border-divider text-text-primary rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all duration-300 w-24 cursor-pointer pr-8 shadow-sm"
-              >
-                <option value={2026}>2026</option>
-                <option value={2025}>2025</option>
-                <option value={2024}>2024</option>
-              </select>
-              <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
-            </div>
+                {tab}
+              </button>
+            ))}
+          </div>
+
+          {/* Mês */}
+          <div className="relative">
+            <select 
+              id="select-month"
+              aria-label="Mês"
+              value={month} 
+              onChange={(e) => setMonth(Number(e.target.value))}
+              className="bi-select appearance-none pr-7 w-28"
+            >
+              <option value={1}>Janeiro</option>
+              <option value={2}>Fevereiro</option>
+              <option value={3}>Março</option>
+              <option value={4}>Abril</option>
+              <option value={5}>Maio</option>
+              <option value={6}>Junho</option>
+              <option value={7}>Julho</option>
+              <option value={8}>Agosto</option>
+              <option value={9}>Setembro</option>
+              <option value={10}>Outubro</option>
+              <option value={11}>Novembro</option>
+              <option value={12}>Dezembro</option>
+            </select>
+            <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          </div>
+
+          {/* Ano */}
+          <div className="relative">
+            <select 
+              id="select-year"
+              aria-label="Ano"
+              value={year} 
+              onChange={(e) => setYear(Number(e.target.value))}
+              className="bi-select appearance-none pr-7 w-20"
+            >
+              <option value={2026}>2026</option>
+              <option value={2025}>2025</option>
+              <option value={2024}>2024</option>
+            </select>
+            <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           </div>
         </div>
 
-        {/* Filtro Vendedor */}
-        <div className="flex flex-col gap-1.5 w-full sm:flex-1 sm:min-w-0">
-          <label htmlFor="select-vendedor" className="text-[9px] font-black text-text-secondary/70 uppercase tracking-wider pl-1">Vendedor</label>
-          <div className="relative w-full">
+        <div className="flex flex-wrap items-center gap-2 flex-1 justify-end min-w-[260px]">
+          {/* Filtro Vendedor */}
+          <div className="relative flex-1 sm:flex-none sm:w-48">
             <select
               id="select-vendedor"
+              aria-label="Vendedor"
               value={selectedVendedor}
               onChange={(e) => setSelectedVendedor(e.target.value)}
-              className="appearance-none h-10 px-4 bg-bg-secondary border border-divider text-text-primary rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all duration-300 w-full cursor-pointer pr-10 shadow-sm"
+              className="bi-select appearance-none w-full pr-7"
             >
               <option value="todas">Todos os Vendedores</option>
               {sellersQuery.data?.data?.map((v: any) => (
                 <option key={v.id} value={v.id}>{v.nome}</option>
               ))}
             </select>
-            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+            <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           </div>
-        </div>
 
-        {/* Filtro Cidade */}
-        <div className="flex flex-col gap-1.5 w-full sm:flex-1 sm:min-w-0">
-          <label htmlFor="select-cidade" className="text-[9px] font-black text-text-secondary/70 uppercase tracking-wider pl-1">Cidade</label>
-          <div className="relative w-full">
+          {/* Filtro Cidade */}
+          <div className="relative flex-1 sm:flex-none sm:w-44">
             <select
               id="select-cidade"
+              aria-label="Cidade"
               value={selectedCidade}
               onChange={(e) => setSelectedCidade(e.target.value)}
-              className="appearance-none h-10 px-4 bg-bg-secondary border border-divider text-text-primary rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all duration-300 w-full cursor-pointer pr-10 shadow-sm uppercase"
+              className="bi-select appearance-none w-full pr-7 uppercase"
             >
               <option value="todas">Todas as Cidades</option>
               {citiesQuery.data?.data?.map((c: any) => (
                 <option key={c.nome || c.cidade} value={c.nome || c.cidade}>{c.nome || c.cidade}</option>
               ))}
             </select>
-            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+            <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           </div>
-        </div>
 
-        {/* Botão Filtrar */}
-        <button
-          onClick={handleFilterClick}
-          className="bg-brand-500 hover:bg-brand-600 text-white font-black px-6 py-2 rounded-xl flex items-center justify-center gap-2 h-10 text-xs transition-colors shadow-sm cursor-pointer shrink-0 uppercase tracking-wider"
-        >
-          <Filter size={14} /> FILTRAR
-        </button>
+          {/* Botão Filtrar */}
+          <button
+            onClick={handleFilterClick}
+            className="bg-brand-500 hover:bg-brand-600 text-white font-bold px-3.5 rounded-lg inline-flex items-center justify-center gap-1.5 h-8 text-xs transition-colors shadow-xs cursor-pointer shrink-0 whitespace-nowrap"
+          >
+            <Filter size={13} /> Filtrar
+          </button>
+        </div>
       </div>
 
-      {/* 4 KPIs DE RESULTADO (FONTES COMPACTAS E TRUNCATE PARA NÃO ESTOURAR EM ACUMULADO) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in duration-300">
+      {/* 4 KPIs DE RESULTADO AUTO-ADAPTÁVEIS */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5 animate-in fade-in duration-300">
         
         {/* Card 1: Faturamento Total */}
-        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-4 sm:p-5 flex flex-col justify-between overflow-hidden">
-          <div className="flex items-center gap-2 text-[9px] font-black text-text-secondary/70 uppercase tracking-widest mb-3">
-            <div className="p-1.5 bg-emerald-500/10 text-emerald-500 rounded-lg"><DollarSign size={14} /></div> FATURAMENTO TOTAL
+        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-4 flex flex-col justify-between min-w-0">
+          <div className="flex items-center justify-between gap-2 text-[10px] font-black text-text-secondary/70 uppercase tracking-widest mb-2">
+            <span className="truncate">Faturamento Total</span>
+            <div className="p-1.5 bg-emerald-500/10 text-emerald-500 rounded-lg shrink-0"><DollarSign size={14} /></div>
           </div>
           <div 
-            className="text-lg xl:text-xl font-black text-text-primary mb-0.5 font-mono truncate"
+            className="bi-kpi-value font-black text-text-primary mb-0.5 font-mono"
             title={formatCurrency(overview.faturamento)}
           >
             {formatCurrency(overview.faturamento)}
           </div>
-          <div className="text-[9px] text-text-secondary font-bold">Receita bruta do período</div>
+          <div className="text-[10px] text-text-secondary font-semibold">Receita bruta do período</div>
         </div>
 
         {/* Card 2: Custo Total */}
-        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-4 sm:p-5 flex flex-col justify-between overflow-hidden">
-          <div className="flex items-center gap-2 text-[9px] font-black text-text-secondary/70 uppercase tracking-widest mb-3">
-            <div className="p-1.5 bg-red-500/10 text-red-500 rounded-lg"><ArrowDown size={14} /></div> CUSTO TOTAL
+        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-4 flex flex-col justify-between min-w-0">
+          <div className="flex items-center justify-between gap-2 text-[10px] font-black text-text-secondary/70 uppercase tracking-widest mb-2">
+            <span className="truncate">Custo Total</span>
+            <div className="p-1.5 bg-red-500/10 text-red-500 rounded-lg shrink-0"><ArrowDown size={14} /></div>
           </div>
           <div 
-            className="text-lg xl:text-xl font-black text-text-primary mb-0.5 font-mono truncate"
+            className="bi-kpi-value font-black text-text-primary mb-0.5 font-mono"
             title={formatCurrency(overview.custo)}
           >
             {formatCurrency(overview.custo)}
           </div>
-          <div className="text-[9px] text-text-secondary font-bold">Custo dos produtos vendidos</div>
+          <div className="text-[10px] text-text-secondary font-semibold">Custo dos produtos vendidos</div>
         </div>
 
         {/* Card 3: Resultado Operacional */}
-        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-4 sm:p-5 flex flex-col justify-between overflow-hidden">
-          <div className="flex items-center gap-2 text-[9px] font-black text-text-secondary/70 uppercase tracking-widest mb-3">
-            <div className="p-1.5 bg-amber-500/10 text-amber-500 rounded-lg"><TrendingUp size={14} /></div> RESULTADO OPERACIONAL
+        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-4 flex flex-col justify-between min-w-0">
+          <div className="flex items-center justify-between gap-2 text-[10px] font-black text-text-secondary/70 uppercase tracking-widest mb-2">
+            <span className="truncate">Resultado Operacional</span>
+            <div className="p-1.5 bg-amber-500/10 text-amber-500 rounded-lg shrink-0"><TrendingUp size={14} /></div>
           </div>
           <div 
-            className="text-lg xl:text-xl font-black text-text-primary mb-0.5 font-mono truncate"
+            className="bi-kpi-value font-black text-text-primary mb-0.5 font-mono"
             title={formatCurrency(overview.lucro)}
           >
             {formatCurrency(overview.lucro)}
           </div>
-          <div className="text-[9px] text-text-secondary font-bold">Lucro após custos diretos</div>
+          <div className="text-[10px] text-text-secondary font-semibold">Lucro após custos diretos</div>
         </div>
 
         {/* Card 4: Margem de Lucro */}
-        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-4 sm:p-5 flex flex-col justify-between overflow-hidden">
-          <div className="flex items-center gap-2 text-[9px] font-black text-text-secondary/70 uppercase tracking-widest mb-3">
-            <div className="p-1.5 bg-cyan-500/10 text-cyan-500 rounded-lg"><Percent size={14} /></div> MARGEM DE LUCRO (%)
+        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-4 flex flex-col justify-between min-w-0">
+          <div className="flex items-center justify-between gap-2 text-[10px] font-black text-text-secondary/70 uppercase tracking-widest mb-2">
+            <span className="truncate">Margem de Lucro (%)</span>
+            <div className="p-1.5 bg-cyan-500/10 text-cyan-500 rounded-lg shrink-0"><Percent size={14} /></div>
           </div>
-          <div className="text-lg xl:text-xl font-black text-text-primary mb-0.5 font-mono">
+          <div className="bi-kpi-value font-black text-text-primary mb-0.5 font-mono">
             {overview.margem_pct.toFixed(2)}%
           </div>
-          <div className="text-[9px] text-text-secondary font-bold">Eficiência operacional</div>
+          <div className="text-[10px] text-text-secondary font-semibold">Eficiência operacional</div>
         </div>
       </div>
 

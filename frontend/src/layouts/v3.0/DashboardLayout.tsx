@@ -60,7 +60,7 @@ export default function DashboardLayout() {
       />
       <div className="flex-1 flex flex-col min-w-0">
         <Header onMenuClick={() => setMenuOpen(true)} activeRoute={activeRoute} />
-        <main className="flex-1 p-2 md:p-3 max-w-[1600px] w-full mx-auto flex flex-col gap-2.5">
+        <main className="flex-1 p-2 sm:p-3 max-w-[1720px] w-full mx-auto flex flex-col gap-2.5 min-w-0 overflow-x-hidden">
           <Outlet />
         </main>
       </div>

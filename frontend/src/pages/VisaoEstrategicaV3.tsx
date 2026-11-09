@@ -12,7 +12,6 @@ import {
 import { useBranchPeriodQuery, useApiQuery } from '../hooks/useApi'
 import { useAuthStore } from '../store/authStore'
 import PeriodFilter from '../components/PeriodFilter'
-import { PageFilters } from '../components/PageFilters'
 import { usePeriodStore } from '../store/periodStore'
 import { useBranch } from '../contexts/BranchContext'
 import { formatBRL, formatBRLCompact, formatNum } from '../utils/format'

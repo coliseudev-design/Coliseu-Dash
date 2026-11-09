@@ -186,39 +186,80 @@ CREATE TABLE IF NOT EXISTS dash_vendas_itens (
 );
 
 -- Migrações: adiciona colunas que podem não existir em instalações antigas
-DROP MATERIALIZED VIEW IF EXISTS mv_dash_vendas_diario;
 ALTER TABLE dash_vendas ADD COLUMN IF NOT EXISTS marca VARCHAR(255);
 ALTER TABLE dash_vendas ADD COLUMN IF NOT EXISTS categoria VARCHAR(255);
 ALTER TABLE dash_vendas ADD COLUMN IF NOT EXISTS especie VARCHAR(255);
+ALTER TABLE dash_vendas ADD COLUMN IF NOT EXISTS depto_id INTEGER DEFAULT NULL;
+ALTER TABLE dash_vendas ADD COLUMN IF NOT EXISTS cfop INTEGER DEFAULT NULL;
+ALTER TABLE dash_vendas ADD COLUMN IF NOT EXISTS chave_nfe VARCHAR(50) DEFAULT NULL;
+ALTER TABLE dash_vendas ADD COLUMN IF NOT EXISTS data_hora_proc TIMESTAMPTZ DEFAULT NULL;
+ALTER TABLE dash_vendas ADD COLUMN IF NOT EXISTS es INTEGER DEFAULT NULL;
 ALTER TABLE dash_vendas_itens ADD COLUMN IF NOT EXISTS desconto_item DECIMAL(10,2) DEFAULT 0;
 ALTER TABLE dash_vendas_itens ADD COLUMN IF NOT EXISTS vendedor VARCHAR(255);
 ALTER TABLE dash_vendas_itens ADD COLUMN IF NOT EXISTS produto VARCHAR(500);
 ALTER TABLE dash_vendas_itens ADD COLUMN IF NOT EXISTS marca VARCHAR(255);
 ALTER TABLE dash_vendas_itens ADD COLUMN IF NOT EXISTS categoria VARCHAR(255);
+ALTER TABLE dash_vendas_itens ADD COLUMN IF NOT EXISTS cfop VARCHAR(20) DEFAULT NULL;
+ALTER TABLE dash_vendas_itens ADD COLUMN IF NOT EXISTS numero_nota VARCHAR(50) DEFAULT NULL;
+ALTER TABLE dash_vendas_itens ADD COLUMN IF NOT EXISTS chave_nfe VARCHAR(50) DEFAULT NULL;
 ALTER TABLE dash_vendas_itens ALTER COLUMN produto_id_firebird DROP NOT NULL;
 
--- Migration 005: Aumentar limites VARCHAR para dados do SISCOM VET (2026-05-29)
-ALTER TABLE dash_clientes ALTER COLUMN email     TYPE VARCHAR(255);
-ALTER TABLE dash_clientes ALTER COLUMN cidade    TYPE VARCHAR(255);
-ALTER TABLE dash_clientes ALTER COLUMN telefone  TYPE VARCHAR(100);
-ALTER TABLE dash_clientes ALTER COLUMN documento TYPE VARCHAR(100);
-ALTER TABLE dash_vendedores ALTER COLUMN email TYPE VARCHAR(255);
-ALTER TABLE dash_fornecedores ALTER COLUMN cidade TYPE VARCHAR(255);
-ALTER TABLE dash_produtos ALTER COLUMN categoria     TYPE VARCHAR(255);
-ALTER TABLE dash_produtos ALTER COLUMN marca         TYPE VARCHAR(255);
-ALTER TABLE dash_produtos ALTER COLUMN referencia    TYPE VARCHAR(255);
-ALTER TABLE dash_produtos ALTER COLUMN codigo_fabrica TYPE VARCHAR(255);
-ALTER TABLE dash_vendas ALTER COLUMN marca         TYPE VARCHAR(255);
-ALTER TABLE dash_vendas ALTER COLUMN categoria     TYPE VARCHAR(255);
-ALTER TABLE dash_vendas ALTER COLUMN especie       TYPE VARCHAR(255);
-ALTER TABLE dash_vendas ALTER COLUMN status        TYPE VARCHAR(100);
-ALTER TABLE dash_vendas_itens ALTER COLUMN vendedor  TYPE VARCHAR(255);
-ALTER TABLE dash_vendas_itens ALTER COLUMN produto   TYPE VARCHAR(500);
-ALTER TABLE dash_vendas_itens ALTER COLUMN marca     TYPE VARCHAR(255);
-ALTER TABLE dash_vendas_itens ALTER COLUMN categoria TYPE VARCHAR(255);
+-- Migration 005: Aumentar limites VARCHAR apenas se ainda estiverem abaixo do tamanho alvo (evita lock exclusivo e drop desnecessário da MV)
+DO $
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'dash_vendas' AND column_name = 'status'
+          AND character_maximum_length IS NOT NULL AND character_maximum_length < 100
+    ) THEN
+        DROP MATERIALIZED VIEW IF EXISTS mv_dash_vendas_diario;
+        ALTER TABLE dash_clientes ALTER COLUMN email     TYPE VARCHAR(255);
+        ALTER TABLE dash_clientes ALTER COLUMN cidade    TYPE VARCHAR(255);
+        ALTER TABLE dash_clientes ALTER COLUMN telefone  TYPE VARCHAR(100);
+        ALTER TABLE dash_clientes ALTER COLUMN documento TYPE VARCHAR(100);
+        ALTER TABLE dash_vendedores ALTER COLUMN email TYPE VARCHAR(255);
+        ALTER TABLE dash_fornecedores ALTER COLUMN cidade TYPE VARCHAR(255);
+        ALTER TABLE dash_produtos ALTER COLUMN categoria     TYPE VARCHAR(255);
+        ALTER TABLE dash_produtos ALTER COLUMN marca         TYPE VARCHAR(255);
+        ALTER TABLE dash_produtos ALTER COLUMN referencia    TYPE VARCHAR(255);
+        ALTER TABLE dash_produtos ALTER COLUMN codigo_fabrica TYPE VARCHAR(255);
+        ALTER TABLE dash_vendas ALTER COLUMN marca         TYPE VARCHAR(255);
+        ALTER TABLE dash_vendas ALTER COLUMN categoria     TYPE VARCHAR(255);
+        ALTER TABLE dash_vendas ALTER COLUMN especie       TYPE VARCHAR(255);
+        ALTER TABLE dash_vendas ALTER COLUMN status        TYPE VARCHAR(100);
+        ALTER TABLE dash_vendas_itens ALTER COLUMN vendedor  TYPE VARCHAR(255);
+        ALTER TABLE dash_vendas_itens ALTER COLUMN produto   TYPE VARCHAR(500);
+        ALTER TABLE dash_vendas_itens ALTER COLUMN marca     TYPE VARCHAR(255);
+        ALTER TABLE dash_vendas_itens ALTER COLUMN categoria TYPE VARCHAR(255);
+    END IF;
+END $;
 
 CREATE INDEX IF NOT EXISTS idx_dash_vend_itens_venda ON dash_vendas_itens(tenant_id, venda_id_firebird);
 CREATE INDEX IF NOT EXISTS idx_dash_vend_itens_prod ON dash_vendas_itens(tenant_id, produto_id_firebird);
+
+CREATE MATERIALIZED VIEW IF NOT EXISTS mv_dash_vendas_diario AS
+SELECT
+    tenant_id,
+    depto_id,
+    DATE(COALESCE(
+        CASE WHEN TRIM(status) IN ('FATURADO', 'FINALIZADO') THEN data_hora_proc ELSE NULL END,
+        data_venda
+    )) AS data_venda,
+    COALESCE(SUM(valor_total), 0) AS faturamento,
+    COUNT(DISTINCT id_firebird) AS qtd_pedidos,
+    COALESCE(SUM(valor_desconto), 0) AS total_descontos,
+    COALESCE(AVG(valor_total), 0) AS ticket_medio
+FROM dash_vendas
+GROUP BY
+    tenant_id,
+    depto_id,
+    DATE(COALESCE(
+        CASE WHEN TRIM(status) IN ('FATURADO', 'FINALIZADO') THEN data_hora_proc ELSE NULL END,
+        data_venda
+    ));
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_vendas_diario
+    ON mv_dash_vendas_diario(tenant_id, depto_id, data_venda);
 
 CREATE TABLE IF NOT EXISTS dash_comissoes (
     id SERIAL PRIMARY KEY,

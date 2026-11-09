@@ -351,107 +351,91 @@ export default function PurchasesDashboard() {
         </div>
       )}
 
-      {/* 1. HEADER EXECUTIVO COM NAVEGAÇÃO DE ABAS PROPORCIONAIS */}
-      <div className="bg-bg-primary border border-border rounded-2xl p-3.5 sm:p-4 shadow-card flex flex-col gap-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0 shadow-sm">
-              <ShoppingCart size={20} />
-            </div>
-            <div>
-              <h1 className="text-base sm:text-lg font-black text-text-primary tracking-tight whitespace-nowrap uppercase">
-                GESTÃO DE COMPRAS
-              </h1>
-            </div>
-          </div>
-
-          {/* BOTÃO DE AÇÃO RÁPIDA: NOVA BAIXA / SAÍDA */}
-          <div className="flex items-center shrink-0">
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('baixa_saida');
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
-              className="w-full sm:w-auto px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer inline-flex items-center justify-center gap-1.5 whitespace-nowrap"
-            >
-              <PlusCircle size={15} /> Nova Baixa / Saída
-            </button>
-          </div>
-        </div>
-
-        {/* NAVEGAÇÃO ENTRE AS 5 ABAS: PROPORCIONAIS (20% CADA UMA, SEM CORTE) */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 bg-bg-secondary p-1.5 rounded-xl border border-divider w-full">
+      {/* 1. BARRA UNIFICADA COMPACTA DE ABAS E AÇÃO RÁPIDA (SEM TÍTULO DUPLICADO) */}
+      <div className="bi-filter-bar">
+        <div className="flex flex-wrap items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700 flex-1 min-w-[260px]">
           <button
             type="button"
             onClick={() => setActiveTab('resumo')}
             className={clsx(
-              "w-full py-2.5 px-2.5 sm:px-3 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 text-center",
+              "flex-1 min-w-[110px] h-8 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 text-center whitespace-nowrap",
               activeTab === 'resumo'
-                ? "bg-bg-primary text-text-primary shadow-xs border border-border font-black"
+                ? "bg-white dark:bg-slate-900 text-text-primary shadow-xs border border-border font-black"
                 : "text-text-secondary hover:text-text-primary hover:bg-bg-primary/50"
             )}
           >
-            <Layers size={14} className="text-sky-500 shrink-0" />
-            <span className="truncate">1. Resumo</span>
+            <Layers size={13} className="text-sky-500 shrink-0" />
+            <span>1. Resumo</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('fornecedores')}
             className={clsx(
-              "w-full py-2.5 px-2.5 sm:px-3 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 text-center",
+              "flex-1 min-w-[125px] h-8 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 text-center whitespace-nowrap",
               activeTab === 'fornecedores'
-                ? "bg-bg-primary text-text-primary shadow-xs border border-border font-black"
+                ? "bg-white dark:bg-slate-900 text-text-primary shadow-xs border border-border font-black"
                 : "text-text-secondary hover:text-text-primary hover:bg-bg-primary/50"
             )}
           >
-            <Building2 size={14} className="text-amber-500 shrink-0" />
-            <span className="truncate">2. Fornecedores</span>
+            <Building2 size={13} className="text-amber-500 shrink-0" />
+            <span>2. Fornecedores</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('compras')}
             className={clsx(
-              "w-full py-2.5 px-2.5 sm:px-3 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 text-center",
+              "flex-1 min-w-[110px] h-8 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 text-center whitespace-nowrap",
               activeTab === 'compras'
-                ? "bg-bg-primary text-text-primary shadow-xs border border-border font-black"
+                ? "bg-white dark:bg-slate-900 text-text-primary shadow-xs border border-border font-black"
                 : "text-text-secondary hover:text-text-primary hover:bg-bg-primary/50"
             )}
           >
-            <FileText size={14} className="text-blue-500 shrink-0" />
-            <span className="truncate">3. Compras</span>
+            <FileText size={13} className="text-blue-500 shrink-0" />
+            <span>3. Compras</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('confronto')}
             className={clsx(
-              "w-full py-2.5 px-2.5 sm:px-3 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 text-center",
+              "flex-1 min-w-[115px] h-8 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 text-center whitespace-nowrap",
               activeTab === 'confronto'
                 ? "bg-sky-500 text-white shadow-xs font-black"
                 : "text-text-secondary hover:text-text-primary hover:bg-bg-primary/50"
             )}
           >
-            <PackageCheck size={14} className="shrink-0" />
-            <span className="truncate">4. Confronto</span>
+            <PackageCheck size={13} className="shrink-0" />
+            <span>4. Confronto</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('baixa_saida')}
             className={clsx(
-              "w-full py-2.5 px-2.5 sm:px-3 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 text-center col-span-2 sm:col-span-1",
+              "flex-1 min-w-[130px] h-8 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 text-center whitespace-nowrap",
               activeTab === 'baixa_saida'
                 ? "bg-emerald-600 text-white shadow-xs font-black"
                 : "text-text-secondary hover:text-text-primary hover:bg-bg-primary/50"
             )}
           >
-            <ArrowDownUp size={14} className={clsx("shrink-0", activeTab === 'baixa_saida' ? "text-white" : "text-emerald-500")} />
-            <span className="truncate">5. Baixa e Saída</span>
+            <ArrowDownUp size={13} className={clsx("shrink-0", activeTab === 'baixa_saida' ? "text-white" : "text-emerald-500")} />
+            <span>5. Baixa e Saída</span>
           </button>
         </div>
+
+        {/* BOTÃO DE AÇÃO RÁPIDA: NOVA BAIXA / SAÍDA */}
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('baixa_saida');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          className="h-8 px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-xs transition-all cursor-pointer inline-flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0"
+        >
+          <PlusCircle size={14} /> Nova Baixa / Saída
+        </button>
       </div>
 
       {/* ======================================================== */}
@@ -460,55 +444,55 @@ export default function PurchasesDashboard() {
       {activeTab === 'resumo' && (
         <div className="space-y-4 animate-in fade-in duration-200">
           
-          {/* KPI CARDS RESUMO */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
+          {/* KPI CARDS RESUMO AUTO-ADAPTÁVEIS */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3.5">
             {/* Fornecedores Cadastrados */}
-            <div className="bg-bg-primary rounded-2xl p-4 border border-border shadow-card flex flex-col justify-between">
-              <div className="flex items-center justify-between text-[10px] font-black text-text-secondary uppercase tracking-wider mb-2">
-                <span>Fornecedores</span>
-                <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-500"><Building2 size={14} /></div>
+            <div className="bg-bg-primary rounded-2xl p-4 border border-border shadow-card flex flex-col justify-between min-w-0">
+              <div className="flex items-center justify-between gap-2 text-[10px] font-black text-text-secondary uppercase tracking-wider mb-2">
+                <span className="truncate">Fornecedores</span>
+                <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-500 shrink-0"><Building2 size={14} /></div>
               </div>
-              <div className="text-2xl font-black text-text-primary font-mono">{formatNum(kpis.total_fornecedores || 0)}</div>
+              <div className="bi-kpi-value font-black text-text-primary font-mono">{formatNum(kpis.total_fornecedores || 0)}</div>
               <div className="text-[10px] text-text-muted font-semibold mt-1">Homologados na base</div>
             </div>
 
             {/* Total Comprado */}
-            <div className="bg-bg-primary rounded-2xl p-4 border border-border shadow-card flex flex-col justify-between">
-              <div className="flex items-center justify-between text-[10px] font-black text-text-secondary uppercase tracking-wider mb-2">
-                <span>Total Comprado</span>
-                <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-500"><DollarSign size={14} /></div>
+            <div className="bg-bg-primary rounded-2xl p-4 border border-border shadow-card flex flex-col justify-between min-w-0">
+              <div className="flex items-center justify-between gap-2 text-[10px] font-black text-text-secondary uppercase tracking-wider mb-2">
+                <span className="truncate">Total Comprado</span>
+                <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-500 shrink-0"><DollarSign size={14} /></div>
               </div>
-              <div className="text-2xl font-black text-text-primary font-mono">{formatBRL(kpis.total_comprado || 0)}</div>
+              <div className="bi-kpi-value font-black text-text-primary font-mono">{formatBRL(kpis.total_comprado || 0)}</div>
               <div className="text-[10px] text-text-muted font-semibold mt-1">{formatNum(kpis.total_pedidos || 0)} compras registradas</div>
             </div>
 
             {/* Produtos Comprados */}
-            <div className="bg-bg-primary rounded-2xl p-4 border border-border shadow-card flex flex-col justify-between">
-              <div className="flex items-center justify-between text-[10px] font-black text-text-secondary uppercase tracking-wider mb-2">
-                <span>Itens Comprados</span>
-                <div className="p-1.5 rounded-lg bg-blue-500/10 text-blue-500"><ShoppingCart size={14} /></div>
+            <div className="bg-bg-primary rounded-2xl p-4 border border-border shadow-card flex flex-col justify-between min-w-0">
+              <div className="flex items-center justify-between gap-2 text-[10px] font-black text-text-secondary uppercase tracking-wider mb-2">
+                <span className="truncate">Itens Comprados</span>
+                <div className="p-1.5 rounded-lg bg-blue-500/10 text-blue-500 shrink-0"><ShoppingCart size={14} /></div>
               </div>
-              <div className="text-2xl font-black text-text-primary font-mono">{formatNum(kpis.produtos_comprados || 0)}</div>
+              <div className="bi-kpi-value font-black text-text-primary font-mono">{formatNum(kpis.produtos_comprados || 0)}</div>
               <div className="text-[10px] text-text-muted font-semibold mt-1">Variedade de Produtos</div>
             </div>
 
             {/* Estoque Baixo */}
-            <div className="bg-bg-primary rounded-2xl p-4 border border-border shadow-card flex flex-col justify-between">
-              <div className="flex items-center justify-between text-[10px] font-black text-text-secondary uppercase tracking-wider mb-2">
-                <span>Estoque Baixo</span>
-                <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-500"><AlertTriangle size={14} /></div>
+            <div className="bg-bg-primary rounded-2xl p-4 border border-border shadow-card flex flex-col justify-between min-w-0">
+              <div className="flex items-center justify-between gap-2 text-[10px] font-black text-text-secondary uppercase tracking-wider mb-2">
+                <span className="truncate">Estoque Baixo</span>
+                <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-500 shrink-0"><AlertTriangle size={14} /></div>
               </div>
-              <div className="text-2xl font-black text-amber-600 dark:text-amber-400 font-mono">{formatNum(kpis.produtos_estoque_baixo || 0)}</div>
+              <div className="bi-kpi-value font-black text-amber-600 dark:text-amber-400 font-mono">{formatNum(kpis.produtos_estoque_baixo || 0)}</div>
               <div className="text-[10px] text-text-muted font-semibold mt-1">Abaixo do mínimo</div>
             </div>
 
             {/* Produtos Zerados / Comprar */}
-            <div className="bg-bg-primary rounded-2xl p-4 border border-border shadow-card flex flex-col justify-between">
-              <div className="flex items-center justify-between text-[10px] font-black text-text-secondary uppercase tracking-wider mb-2">
-                <span>Comprar Agora</span>
-                <div className="p-1.5 rounded-lg bg-rose-500/10 text-rose-500"><PackageX size={14} /></div>
+            <div className="bg-bg-primary rounded-2xl p-4 border border-border shadow-card flex flex-col justify-between min-w-0">
+              <div className="flex items-center justify-between gap-2 text-[10px] font-black text-text-secondary uppercase tracking-wider mb-2">
+                <span className="truncate">Comprar Agora</span>
+                <div className="p-1.5 rounded-lg bg-rose-500/10 text-rose-500 shrink-0"><PackageX size={14} /></div>
               </div>
-              <div className="text-2xl font-black text-rose-600 dark:text-rose-400 font-mono">{formatNum(kpis.produtos_zerados || 0)}</div>
+              <div className="bi-kpi-value font-black text-rose-600 dark:text-rose-400 font-mono">{formatNum(kpis.produtos_zerados || 0)}</div>
               <div className="text-[10px] text-text-muted font-semibold mt-1">Estoque zerado</div>
             </div>
           </div>

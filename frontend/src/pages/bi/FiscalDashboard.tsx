@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   FileText, ArrowUpRight, ArrowDownLeft, Search, Download, Copy, Check,
-  Eye, X, RefreshCw, ChevronLeft, ChevronRight, Scale, Filter, Truck, Building2, Package
+  Eye, X, RefreshCw, ChevronLeft, ChevronRight, Scale, Filter, Truck, Building2, Package, ChevronDown, FileCheck2
 } from 'lucide-react'
 import clsx from 'clsx'
 import api from '../../services/api'
@@ -130,6 +130,7 @@ export default function FiscalDashboard() {
   const branchParam = useBranchParam()
 
   const [activeTab, setActiveTab] = useState<'SAIDA' | 'ENTRADA'>('SAIDA')
+  const [apenasNfe, setApenasNfe] = useState(false)
   const [searchInput, setSearchInput] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [selectedCfop, setSelectedCfop] = useState('todos')
@@ -147,17 +148,18 @@ export default function FiscalDashboard() {
 
   useEffect(() => {
     setPage(1)
-  }, [activeTab, selectedCfop, periodState.period, periodState.startDate, periodState.endDate, branchParam.depto_id])
+  }, [activeTab, apenasNfe, selectedCfop, periodState.period, periodState.startDate, periodState.endDate, branchParam.depto_id])
 
   const baseParams = useMemo(() => {
     const p: Record<string, string | number> = {
       ...periodToParams(periodState),
+      apenas_nfe: apenasNfe ? 'true' : 'false',
     }
     if (branchParam.depto_id) p.depto_id = branchParam.depto_id
     if (selectedCfop !== 'todos') p.cfop = selectedCfop
     if (debouncedSearch) p.search = debouncedSearch
     return p
-  }, [periodState, branchParam.depto_id, selectedCfop, debouncedSearch])
+  }, [periodState, apenasNfe, branchParam.depto_id, selectedCfop, debouncedSearch])
 
   const {
     data: resumo,
@@ -298,77 +300,107 @@ export default function FiscalDashboard() {
   }
 
   return (
-    <div className="space-y-4 pb-6">
-      {/* Barra Superior de Filtros */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3.5 sm:p-4 shadow-[0_4px_16px_rgba(15,23,42,0.04)] space-y-3">
-        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
-          <div className="flex items-center gap-2 overflow-x-auto">
-            <PeriodFilter />
-          </div>
+    <div className="space-y-3.5 pb-6">
+      {/* Barra Superior Compacta Unificada */}
+      <div className="bi-filter-bar">
+        <div className="min-w-0">
+          <PeriodFilter />
+        </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Filtro de CFOP */}
-            <div className="relative flex items-center">
-              <Filter size={14} className="absolute left-3 text-slate-400 pointer-events-none" />
-              <select
-                value={selectedCfop}
-                onChange={(e) => setSelectedCfop(e.target.value)}
-                className="pl-8 pr-7 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500/30 cursor-pointer"
-                aria-label="Filtrar por CFOP"
-              >
-                <option value="todos">Todos os CFOPs</option>
-                {cfopsDisponiveis.map((c) => (
-                  <option key={c.cfop} value={c.cfop}>
-                    CFOP {c.cfop} ({formatNum(c.qtd)} notas)
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Busca Rápida */}
-            <div className="relative flex-1 sm:w-72 min-w-[220px]">
-              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="Nº Nota, Chave NF-e, Cliente, CNPJ..."
-                className="w-full pl-9 pr-8 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-100 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-blue-500/30"
-              />
-              {searchInput && (
-                <button
-                  type="button"
-                  onClick={() => setSearchInput('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                  aria-label="Limpar busca"
-                >
-                  <X size={14} />
-                </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Alternador Rápido: Todos vs Somente c/ NF-e */}
+          <div className="inline-flex items-center p-0.5 bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-lg h-8">
+            <button
+              type="button"
+              onClick={() => setApenasNfe(false)}
+              className={clsx(
+                'px-2.5 h-full rounded-md text-[11px] font-bold transition-all cursor-pointer whitespace-nowrap',
+                !apenasNfe
+                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
               )}
-            </div>
-
-            <button
-              type="button"
-              onClick={() => {
-                refetchResumo()
-                refetchNotas()
-              }}
-              className="p-2 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
-              title="Atualizar dados fiscais"
+              title="Exibe todas as vendas faturadas e notas de entrada sincronizadas do ERP"
             >
-              <RefreshCw size={15} className={clsx((loadingResumo || fetchingNotas) && 'animate-spin text-blue-600')} />
+              Todos
             </button>
-
             <button
               type="button"
-              onClick={handleExportCsv}
-              disabled={!notasPage?.data?.length}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-900 dark:bg-blue-600 hover:bg-slate-800 dark:hover:bg-blue-500 disabled:opacity-40 text-white rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+              onClick={() => setApenasNfe(true)}
+              className={clsx(
+                'px-2.5 h-full rounded-md text-[11px] font-bold transition-all cursor-pointer inline-flex items-center gap-1 whitespace-nowrap',
+                apenasNfe
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+              )}
+              title="Filtra exclusivamente documentos com número ou chave NF-e / XML vinculado"
             >
-              <Download size={14} />
-              <span>Exportar CSV</span>
+              <FileCheck2 size={12} />
+              <span>Somente c/ NF-e</span>
             </button>
           </div>
+
+          {/* Filtro de CFOP */}
+          <div className="relative flex items-center">
+            <Filter size={13} className="absolute left-2.5 text-slate-400 pointer-events-none" />
+            <select
+              value={selectedCfop}
+              onChange={(e) => setSelectedCfop(e.target.value)}
+              className="bi-select appearance-none pl-7 pr-7"
+              aria-label="Filtrar por CFOP"
+            >
+              <option value="todos">Todos os CFOPs</option>
+              {cfopsDisponiveis.map((c) => (
+                <option key={c.cfop} value={c.cfop}>
+                  CFOP {c.cfop} ({formatNum(c.qtd)})
+                </option>
+              ))}
+            </select>
+            <ChevronDown size={13} className="absolute right-2 text-slate-400 pointer-events-none" />
+          </div>
+
+          {/* Busca Rápida */}
+          <div className="relative flex-1 sm:flex-none sm:w-56 lg:w-64 min-w-[190px]">
+            <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Nº Nota, Pedido, Chave, Cliente..."
+              className="w-full h-8 pl-8 pr-7 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-800 dark:text-slate-100 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-blue-500/30"
+            />
+            {searchInput && (
+              <button
+                type="button"
+                onClick={() => setSearchInput('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                aria-label="Limpar busca"
+              >
+                <X size={13} />
+              </button>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              refetchResumo()
+              refetchNotas()
+            }}
+            className="h-8 w-8 inline-flex items-center justify-center bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-300 transition-colors cursor-pointer shrink-0"
+            title="Atualizar dados fiscais"
+          >
+            <RefreshCw size={14} className={clsx((loadingResumo || fetchingNotas) && 'animate-spin text-blue-600')} />
+          </button>
+
+          <button
+            type="button"
+            onClick={handleExportCsv}
+            disabled={!notasPage?.data?.length}
+            className="inline-flex items-center gap-1.5 h-8 px-3 bg-slate-900 dark:bg-blue-600 hover:bg-slate-800 dark:hover:bg-blue-500 disabled:opacity-40 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap"
+          >
+            <Download size={13} />
+            <span>CSV</span>
+          </button>
         </div>
       </div>
 
@@ -379,31 +411,31 @@ export default function FiscalDashboard() {
           type="button"
           onClick={() => setActiveTab('SAIDA')}
           className={clsx(
-            'text-left bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border transition-all cursor-pointer shadow-[0_4px_16px_rgba(15,23,42,0.04)]',
+            'text-left bg-white dark:bg-slate-900 rounded-2xl p-4 border transition-all cursor-pointer shadow-[0_4px_16px_rgba(15,23,42,0.04)] flex flex-col justify-between min-w-0',
             activeTab === 'SAIDA'
               ? 'border-emerald-400/80 dark:border-emerald-500/60 ring-2 ring-emerald-500/10'
               : 'border-slate-200/80 dark:border-slate-800 hover:border-slate-300'
           )}
         >
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">
               Notas Fiscais Emitidas
             </span>
             <div
-              className="w-9 h-9 rounded-full flex items-center justify-center"
+              className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
               style={{ backgroundColor: '#10B98114', border: '1px solid #10B98133' }}
             >
-              <ArrowUpRight size={18} style={{ color: '#10B981' }} strokeWidth={2} />
+              <ArrowUpRight size={16} style={{ color: '#10B981' }} strokeWidth={2} />
             </div>
           </div>
-          <div className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+          <div className="bi-kpi-value font-extrabold font-mono text-slate-900 dark:text-white tracking-tight">
             {loadingResumo ? '...' : formatBRL(kpis.emitidas_valor)}
           </div>
-          <div className="mt-2 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-[11px] text-slate-500 dark:text-slate-400">
             <span>
-              <strong className="text-slate-700 dark:text-slate-200">{formatNum(kpis.emitidas_qtd)}</strong> notas de saída
+              <strong className="text-slate-700 dark:text-slate-200">{formatNum(kpis.emitidas_qtd)}</strong> saídas
             </span>
-            <span>Ticket: {formatBRL(kpis.emitidas_ticket_medio)}</span>
+            <span className="font-mono">Ticket: {formatBRL(kpis.emitidas_ticket_medio)}</span>
           </div>
         </button>
 
@@ -412,56 +444,56 @@ export default function FiscalDashboard() {
           type="button"
           onClick={() => setActiveTab('ENTRADA')}
           className={clsx(
-            'text-left bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border transition-all cursor-pointer shadow-[0_4px_16px_rgba(15,23,42,0.04)]',
+            'text-left bg-white dark:bg-slate-900 rounded-2xl p-4 border transition-all cursor-pointer shadow-[0_4px_16px_rgba(15,23,42,0.04)] flex flex-col justify-between min-w-0',
             activeTab === 'ENTRADA'
               ? 'border-blue-400/80 dark:border-blue-500/60 ring-2 ring-blue-500/10'
               : 'border-slate-200/80 dark:border-slate-800 hover:border-slate-300'
           )}
         >
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">
               Notas de Entrada
             </span>
             <div
-              className="w-9 h-9 rounded-full flex items-center justify-center"
+              className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
               style={{ backgroundColor: '#2563EB14', border: '1px solid #2563EB33' }}
             >
-              <ArrowDownLeft size={18} style={{ color: '#2563EB' }} strokeWidth={2} />
+              <ArrowDownLeft size={16} style={{ color: '#2563EB' }} strokeWidth={2} />
             </div>
           </div>
-          <div className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+          <div className="bi-kpi-value font-extrabold font-mono text-slate-900 dark:text-white tracking-tight">
             {loadingResumo ? '...' : formatBRL(kpis.entradas_valor)}
           </div>
-          <div className="mt-2 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-[11px] text-slate-500 dark:text-slate-400">
             <span>
-              <strong className="text-slate-700 dark:text-slate-200">{formatNum(kpis.entradas_qtd)}</strong> notas recebidas
+              <strong className="text-slate-700 dark:text-slate-200">{formatNum(kpis.entradas_qtd)}</strong> entradas
             </span>
-            <span>Média: {formatBRL(kpis.entradas_ticket_medio)}</span>
+            <span className="font-mono">Média: {formatBRL(kpis.entradas_ticket_medio)}</span>
           </div>
         </button>
 
         {/* Card 3: Saldo Fiscal */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-[0_4px_16px_rgba(15,23,42,0.04)]">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-[0_4px_16px_rgba(15,23,42,0.04)] flex flex-col justify-between min-w-0">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">
               Saldo Fiscal (Saídas − Entradas)
             </span>
             <div
-              className="w-9 h-9 rounded-full flex items-center justify-center"
+              className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
               style={{ backgroundColor: '#0D948814', border: '1px solid #0D948833' }}
             >
-              <Scale size={18} style={{ color: '#0D9488' }} strokeWidth={1.9} />
+              <Scale size={16} style={{ color: '#0D9488' }} strokeWidth={1.9} />
             </div>
           </div>
           <div
             className={clsx(
-              'text-xl sm:text-2xl font-bold tracking-tight',
+              'bi-kpi-value font-extrabold font-mono tracking-tight',
               kpis.saldo_fiscal >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'
             )}
           >
             {loadingResumo ? '...' : formatBRL(kpis.saldo_fiscal)}
           </div>
-          <div className="mt-2 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-[11px] text-slate-500 dark:text-slate-400">
             <span>Total: {formatNum(kpis.total_documentos)} docs</span>
             <span>
               Chaves XML: {formatNum(kpis.emitidas_chave_qtd + kpis.entradas_chave_qtd)}
@@ -470,16 +502,16 @@ export default function FiscalDashboard() {
         </div>
 
         {/* Card 4: CFOPs Predominantes da Aba */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-[0_4px_16px_rgba(15,23,42,0.04)]">
-          <div className="flex items-center justify-between mb-2.5">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-[0_4px_16px_rgba(15,23,42,0.04)] flex flex-col justify-between min-w-0">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">
               Top CFOPs ({activeTab === 'SAIDA' ? 'Saída' : 'Entrada'})
             </span>
             <div
-              className="w-9 h-9 rounded-full flex items-center justify-center"
+              className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
               style={{ backgroundColor: '#F59E0B14', border: '1px solid #F59E0B33' }}
             >
-              <FileText size={17} style={{ color: '#F59E0B' }} strokeWidth={1.9} />
+              <FileText size={16} style={{ color: '#F59E0B' }} strokeWidth={1.9} />
             </div>
           </div>
 

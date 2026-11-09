@@ -6,7 +6,7 @@ import { BiPeriodFilter } from '../../types/bi.types';
 import {
   DollarSign, AlertTriangle, Search, X, Eye, EyeOff,
   Boxes, TrendingUp, TrendingDown, Clock, Layers, BarChart2,
-  Package2, ChevronLeft, ChevronRight, Filter, CircleDollarSign,
+  Package2, ChevronLeft, ChevronRight, ChevronDown, Filter, CircleDollarSign,
   ShieldAlert, RefreshCw, Zap, Archive, CheckCircle2, AlertCircle
 } from 'lucide-react';
 import {
@@ -43,7 +43,7 @@ const BarTooltip = ({ active, payload, label }: any) => {
         {item?.pct_total !== undefined && (
           <div className="flex items-center justify-between gap-4">
             <span className="text-slate-300">% do Total:</span>
-            <span className="text-indigo-300 font-bold">{item.pct_total.toFixed(1)}%</span>
+            <span className="text-cyan-300 font-bold">{item.pct_total.toFixed(1)}%</span>
           </div>
         )}
       </div>
@@ -189,79 +189,121 @@ export default function InventoryManagementDashboard() {
   }
 
   return (
-    <div className="space-y-6 pb-12 animate-in fade-in duration-300">
-      {/* ══ HEADER ══════════════════════════════════════════ */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-text-primary tracking-tight">
-            Gestão de inventário
-          </h1>
-          <p className="text-xs sm:text-sm text-text-secondary font-medium mt-0.5">
-            Métricas gerenciais, perfil de estoque e controle de reposição/giro.
-          </p>
+    <div className="space-y-4 pb-12 animate-in fade-in duration-300">
+      {/* ══ BARRA UNIFICADA COMPACTA DE FILTROS DE INVENTÁRIO ════ */}
+      <div className="bi-filter-bar">
+        <div className="relative flex-1 min-w-[200px] max-w-sm">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            placeholder="Buscar código, EAN ou descrição do produto..."
+            className="w-full h-8 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg pl-8 pr-7 text-xs font-semibold text-text-primary placeholder:text-text-muted focus:ring-2 focus:ring-emerald-500/40 focus:outline-none transition-all"
+          />
+          {searchTerm && (
+            <button onClick={() => setSearchTerm('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary cursor-pointer">
+              <X size={13} />
+            </button>
+          )}
         </div>
-      </div>
 
-      {/* ══ FILTROS SUPERIORES ══════════════════════════════ */}
-      <div className="bg-bg-primary border border-divider/60 rounded-2xl p-4 shadow-sm">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <div>
-            <label className="block text-[10px] font-extrabold uppercase tracking-wider text-text-secondary mb-1">
-              Filtrar por Marca
-            </label>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative min-w-[155px] max-w-[200px]">
             <select
+              aria-label="Filtrar por Marca"
               value={marcaFilter}
               onChange={e => setMarcaFilter(e.target.value)}
-              className="w-full bg-bg-secondary/60 border border-border/80 rounded-xl px-3 py-2 text-xs font-semibold text-text-primary focus:ring-2 focus:ring-emerald-500 focus:outline-none transition-all"
+              className="bi-select appearance-none w-full pr-7"
             >
               <option value="">Todas as Marcas</option>
               {marcasDisponiveis.map(m => (
                 <option key={m} value={m}>{m}</option>
               ))}
             </select>
+            <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           </div>
 
-          <div>
-            <label className="block text-[10px] font-extrabold uppercase tracking-wider text-text-secondary mb-1">
-              Filtrar por Grupo
-            </label>
+          <div className="relative min-w-[155px] max-w-[200px]">
             <select
+              aria-label="Filtrar por Grupo"
               value={grupoFilter}
               onChange={e => setGrupoFilter(e.target.value)}
-              className="w-full bg-bg-secondary/60 border border-border/80 rounded-xl px-3 py-2 text-xs font-semibold text-text-primary focus:ring-2 focus:ring-emerald-500 focus:outline-none transition-all"
+              className="bi-select appearance-none w-full pr-7"
             >
               <option value="">Todos os Grupos</option>
               {gruposDisponiveis.map(g => (
                 <option key={g} value={g}>{g}</option>
               ))}
             </select>
+            <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           </div>
 
-          {(marcaFilter || grupoFilter) && (
-            <div className="flex items-end">
-              <button
-                onClick={() => { setMarcaFilter(''); setGrupoFilter(''); }}
-                className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-red-500 hover:bg-red-500/10 rounded-xl border border-red-500/20 transition-all cursor-pointer h-[34px]"
-              >
-                <X size={14} /> Limpar Filtros
-              </button>
-            </div>
+          <div className="relative min-w-[150px]">
+            <select
+              aria-label="Filtrar por Status de Giro"
+              value={statusGiroFilter}
+              onChange={e => setStatusGiroFilter(e.target.value)}
+              className="bi-select appearance-none w-full pr-7"
+            >
+              <option value="">Giro: Todos</option>
+              <option value="Ideal">Ideal</option>
+              <option value="Atenção">Atenção</option>
+              <option value="Crítico">Crítico</option>
+              <option value="Sem Giro">Sem Giro</option>
+              <option value="Ruptura">Ruptura</option>
+              <option value="Excesso">Excesso</option>
+            </select>
+            <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          </div>
+
+          <div className="relative min-w-[155px]">
+            <select
+              aria-label="Filtrar por Cobertura"
+              value={statusCoberturaFilter}
+              onChange={e => setStatusCoberturaFilter(e.target.value)}
+              className="bi-select appearance-none w-full pr-7"
+            >
+              <option value="">Cobertura: Todas</option>
+              <option value="critico">Crítico (&lt; 15 dias)</option>
+              <option value="atencao">Atenção (15-30d)</option>
+              <option value="ideal">Ideal (30-90d)</option>
+              <option value="excesso">Excesso (&gt; 90d)</option>
+              <option value="sem_giro">Sem Giro</option>
+            </select>
+            <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          </div>
+
+          {(marcaFilter || grupoFilter || statusGiroFilter || statusCoberturaFilter || searchTerm) && (
+            <button
+              onClick={() => {
+                setMarcaFilter('');
+                setGrupoFilter('');
+                setStatusGiroFilter('');
+                setStatusCoberturaFilter('');
+                setSearchTerm('');
+              }}
+              className="flex items-center gap-1 px-2.5 h-8 text-xs font-bold text-red-500 hover:bg-red-500/10 rounded-lg border border-red-500/20 transition-all cursor-pointer whitespace-nowrap"
+            >
+              <X size={13} /> Limpar
+            </button>
           )}
         </div>
       </div>
 
-      {/* ══ 8 KPI CARDS (2 LINHAS DE 4 CARDS) ════════════════ */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* ══ 8 KPI CARDS (2 LINHAS DE 4 CARDS AUTO-ADAPTÁVEIS) ════ */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5">
         {/* Linha 1 */}
         {/* Card 1: Valor Estoque Custo */}
-        <div className="bg-bg-primary border border-divider/70 rounded-2xl p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-text-secondary uppercase tracking-wider flex items-center gap-1.5">
-              <span className="text-emerald-500">💎</span> Valor Estoque (Custo)
+        <div className="bg-bg-primary border border-divider/70 rounded-2xl p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition-all min-w-0">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[10.5px] font-bold text-text-secondary uppercase tracking-wider truncate">
+              Valor Estoque (Custo)
             </span>
+            <DollarSign size={15} className="text-emerald-500 shrink-0" />
           </div>
           <div className="mt-2">
-            <div className="text-xl sm:text-2xl font-black font-mono text-text-primary tracking-tight">
+            <div className="bi-kpi-value font-black font-mono text-text-primary tracking-tight">
               {formatBRL(kpis.valor_estoque_custo)}
             </div>
             <div className="text-[10px] text-text-secondary font-medium mt-0.5">
@@ -271,14 +313,15 @@ export default function InventoryManagementDashboard() {
         </div>
 
         {/* Card 2: Valor Estoque Venda */}
-        <div className="bg-bg-primary border border-divider/70 rounded-2xl p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-text-secondary uppercase tracking-wider flex items-center gap-1.5">
-              <span className="text-blue-500">💲</span> Valor Estoque (Venda)
+        <div className="bg-bg-primary border border-divider/70 rounded-2xl p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition-all min-w-0">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[10.5px] font-bold text-text-secondary uppercase tracking-wider truncate">
+              Valor Estoque (Venda)
             </span>
+            <CircleDollarSign size={15} className="text-blue-500 shrink-0" />
           </div>
           <div className="mt-2">
-            <div className="text-xl sm:text-2xl font-black font-mono text-text-primary tracking-tight">
+            <div className="bi-kpi-value font-black font-mono text-text-primary tracking-tight">
               {formatBRL(kpis.valor_estoque_venda)}
             </div>
             <div className="text-[10px] text-text-secondary font-medium mt-0.5">
@@ -288,14 +331,15 @@ export default function InventoryManagementDashboard() {
         </div>
 
         {/* Card 3: Total Itens / Volume */}
-        <div className="bg-bg-primary border border-divider/70 rounded-2xl p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-text-secondary uppercase tracking-wider flex items-center gap-1.5">
-              <span className="text-cyan-500">📦</span> Total Itens / Volume
+        <div className="bg-bg-primary border border-divider/70 rounded-2xl p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition-all min-w-0">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[10.5px] font-bold text-text-secondary uppercase tracking-wider truncate">
+              Total Itens / Volume
             </span>
+            <Boxes size={15} className="text-cyan-500 shrink-0" />
           </div>
           <div className="mt-2">
-            <div className="text-xl sm:text-2xl font-black font-mono text-text-primary tracking-tight">
+            <div className="bi-kpi-value font-black font-mono text-text-primary tracking-tight">
               {formatNum(kpis.total_volume)}
             </div>
             <div className="text-[10px] text-text-secondary font-medium mt-0.5">
@@ -305,14 +349,15 @@ export default function InventoryManagementDashboard() {
         </div>
 
         {/* Card 4: Cobertura Média */}
-        <div className="bg-bg-primary border border-divider/70 rounded-2xl p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-text-secondary uppercase tracking-wider flex items-center gap-1.5">
-              <span className="text-amber-500">⏳</span> Cobertura Média
+        <div className="bg-bg-primary border border-divider/70 rounded-2xl p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition-all min-w-0">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[10.5px] font-bold text-text-secondary uppercase tracking-wider truncate">
+              Cobertura Média
             </span>
+            <Clock size={15} className="text-amber-500 shrink-0" />
           </div>
           <div className="mt-2">
-            <div className="text-xl sm:text-2xl font-black font-mono text-text-primary tracking-tight">
+            <div className="bi-kpi-value font-black font-mono text-text-primary tracking-tight">
               {kpis.cobertura_media_dias} dias
             </div>
             <div className="text-[10px] text-text-secondary font-medium mt-0.5">
@@ -323,32 +368,33 @@ export default function InventoryManagementDashboard() {
 
         {/* Linha 2 */}
         {/* Card 5: Giro / Turnover */}
-        <div className="bg-bg-primary border border-divider/70 rounded-2xl p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-text-secondary uppercase tracking-wider flex items-center gap-1.5">
-              <span className="text-emerald-500">⚡</span> Giro / Turnover
+        <div className="bg-bg-primary border border-divider/70 rounded-2xl p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition-all min-w-0">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[10.5px] font-bold text-text-secondary uppercase tracking-wider truncate">
+              Giro / Turnover
             </span>
+            <Zap size={15} className="text-emerald-500 shrink-0" />
           </div>
           <div className="mt-2">
-            <div className="text-xl sm:text-2xl font-black font-mono text-text-primary tracking-tight">
+            <div className="bi-kpi-value font-black font-mono text-text-primary tracking-tight">
               {kpis.giro_turnover}x
             </div>
             <div className="text-[10px] text-text-secondary font-medium mt-0.5">
-              O giro nos últimos meses
+              Giro nos últimos meses
             </div>
           </div>
         </div>
 
         {/* Card 6: Ruptura (Zerado) - Alerta Vermelho */}
-        <div className="bg-red-500/5 border-2 border-red-500/30 rounded-2xl p-4 shadow-sm flex flex-col justify-between relative overflow-hidden hover:shadow-md transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black text-red-500 uppercase tracking-wider">
-              RUPTURA (ZERADO)
+        <div className="bg-red-500/5 border-2 border-red-500/30 rounded-2xl p-4 shadow-sm flex flex-col justify-between relative overflow-hidden hover:shadow-md transition-all min-w-0">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[10.5px] font-black text-red-500 uppercase tracking-wider truncate">
+              Ruptura (Zerado)
             </span>
-            <AlertCircle size={15} className="text-red-500" />
+            <AlertCircle size={15} className="text-red-500 shrink-0" />
           </div>
           <div className="mt-2">
-            <div className="text-2xl sm:text-3xl font-black font-mono text-red-500 tracking-tight">
+            <div className="bi-kpi-value font-black font-mono text-red-500 tracking-tight">
               {formatNum(kpis.skus_zerados)}
             </div>
             <div className="text-[10px] text-red-400/90 font-semibold mt-0.5">
@@ -358,14 +404,15 @@ export default function InventoryManagementDashboard() {
         </div>
 
         {/* Card 7: Margem Crítica */}
-        <div className="bg-bg-primary border border-divider/70 rounded-2xl p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-text-secondary uppercase tracking-wider flex items-center gap-1.5">
-              <span className="text-amber-500">🔒</span> Margem Crítica
+        <div className="bg-bg-primary border border-divider/70 rounded-2xl p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition-all min-w-0">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[10.5px] font-bold text-text-secondary uppercase tracking-wider truncate">
+              Margem Crítica
             </span>
+            <ShieldAlert size={15} className="text-amber-500 shrink-0" />
           </div>
           <div className="mt-2">
-            <div className="text-xl sm:text-2xl font-black font-mono text-text-primary tracking-tight">
+            <div className="bi-kpi-value font-black font-mono text-text-primary tracking-tight">
               {formatNum(kpis.margem_critica)}
             </div>
             <div className="text-[10px] text-text-secondary font-medium mt-0.5">
@@ -375,14 +422,15 @@ export default function InventoryManagementDashboard() {
         </div>
 
         {/* Card 8: Estoque Morto */}
-        <div className="bg-bg-primary border border-divider/70 rounded-2xl p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-text-secondary uppercase tracking-wider flex items-center gap-1.5">
-              <span className="text-indigo-400">💰</span> Estoque Morto
+        <div className="bg-bg-primary border border-divider/70 rounded-2xl p-4 shadow-sm flex flex-col justify-between hover:shadow-md transition-all min-w-0">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[10.5px] font-bold text-text-secondary uppercase tracking-wider truncate">
+              Estoque Morto
             </span>
+            <Archive size={15} className="text-cyan-500 shrink-0" />
           </div>
           <div className="mt-2">
-            <div className="text-xl sm:text-2xl font-black font-mono text-text-primary tracking-tight">
+            <div className="bi-kpi-value font-black font-mono text-text-primary tracking-tight">
               {formatBRL(kpis.estoque_morto)}
             </div>
             <div className="text-[10px] text-text-secondary font-medium mt-0.5">

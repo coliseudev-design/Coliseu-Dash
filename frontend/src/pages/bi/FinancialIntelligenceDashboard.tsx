@@ -174,69 +174,58 @@ export default function FinancialIntelligenceDashboard() {
 
   const agingReceber = biData?.aging_receber || [];
   const agingPagar = biData?.aging_pagar || [];
+  const isInsideConsolidado = location.pathname.startsWith('/financeiro-consolidado');
 
   return (
-    <div aria-label="Módulo Financeiro" className="space-y-4 animate-in fade-in duration-300 pb-8">
+    <div aria-label="Módulo Financeiro" className="space-y-3.5 animate-in fade-in duration-300 pb-8">
       
-      {/* ── HEADER MODERNO DO MÓDULO FINANCEIRO (TÍTULO, ABAS & FILTROS) ────── */}
-      <div className="bg-bg-primary border border-divider rounded-2xl p-4 sm:p-5 flex flex-col gap-4 shadow-card">
-        
-        {/* Linha 1: Título e Abas de Navegação */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-black text-text-primary tracking-tight flex items-center gap-2 whitespace-nowrap">
-              <Wallet className="text-brand-500" size={24} />
-              Módulo Financeiro
-            </h1>
-            <p className="text-xs text-text-muted mt-0.5">Gestão de liquidez, projeção de caixa, títulos e extrato</p>
-          </div>
-
-          {/* Abas */}
-          <div className="flex flex-wrap bg-bg-secondary p-1 rounded-xl border border-divider shadow-xs gap-1">
-            {tabs.map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={clsx(
-                  "flex items-center justify-center gap-2 py-1.5 px-3.5 rounded-lg text-xs font-bold transition-all cursor-pointer",
-                  activeTab === tab.key
-                    ? "bg-brand-500 text-white shadow-sm"
-                    : "text-text-secondary hover:bg-bg-tertiary hover:text-text-primary"
-                )}
-              >
-                <tab.icon size={14} />
-                <span>{tab.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Linha 2: Barra de Filtros (Período sem corte + Dropdown de Caixa) */}
-        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 pt-3 border-t border-divider">
-          
-          {/* Seletor de Período Flexível (sem cortes) */}
-          <div className="flex-1 min-w-0 flex items-center overflow-x-auto pb-1 md:pb-0">
+      {/* ── BARRA COMPACTA UNIFICADA (PERÍODO + CAIXA + ABAS — APENAS FORA DE /financeiro-consolidado) ── */}
+      {!isInsideConsolidado && (
+        <div className="bi-filter-bar">
+          <div className="min-w-0">
             <PeriodFilter excludePeriods={['yesterday']} />
           </div>
 
-          {/* Seletor de Caixa */}
-          <div className="flex items-center gap-2 bg-bg-secondary/80 rounded-xl border border-divider px-3 py-1.5 shadow-xs shrink-0">
-            <Filter size={15} className="text-brand-500" />
-            <span className="text-xs font-bold text-text-secondary whitespace-nowrap">Caixa:</span>
-            <select
-              value={selectedCaixa}
-              onChange={(e) => setSelectedCaixa(e.target.value)}
-              className="bg-transparent border-none text-xs sm:text-sm font-bold text-text-primary focus:ring-0 cursor-pointer pr-6"
-              aria-label="Selecionar Caixa"
-            >
-              <option value="todos">Todos os Caixas ({caixas.length})</option>
-              {caixas.map((c: any) => (
-                <option key={c.id} value={c.id}>{c.nome}</option>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Seletor de Caixa */}
+            <div className="relative min-w-[170px] max-w-[230px]">
+              <Filter size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-brand-500 pointer-events-none" />
+              <select
+                value={selectedCaixa}
+                onChange={(e) => setSelectedCaixa(e.target.value)}
+                className="bi-select appearance-none w-full pl-7 pr-7"
+                aria-label="Selecionar Caixa"
+              >
+                <option value="todos">Todos os Caixas ({caixas.length})</option>
+                {caixas.map((c: any) => (
+                  <option key={c.id} value={c.id}>{c.nome}</option>
+                ))}
+              </select>
+              <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            </div>
+
+            {/* Abas Compactas */}
+            <div className="flex flex-wrap bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200/80 dark:border-slate-700 gap-0.5">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  className={clsx(
+                    "flex items-center justify-center gap-1.5 h-7 px-2.5 rounded-md text-[11px] font-bold transition-all cursor-pointer whitespace-nowrap",
+                    activeTab === tab.key
+                      ? "bg-brand-500 text-white shadow-xs"
+                      : "text-text-secondary hover:bg-bg-tertiary hover:text-text-primary"
+                  )}
+                >
+                  <tab.icon size={13} />
+                  <span className="hidden xl:inline">{tab.label}</span>
+                  <span className="xl:hidden">{tab.shortLabel}</span>
+                </button>
               ))}
-            </select>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* ── ABA 1: GESTÃO FINANCEIRA (VISÃO BI, KPIS, PROJEÇÃO, AGING) ───────── */}
       {activeTab === 'gestao' && (
@@ -249,15 +238,16 @@ export default function FinancialIntelligenceDashboard() {
           ) : (
             <>
               {/* TOP KPIs */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5">
                 {/* Total Recebido */}
-                <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between">
-                  <div className="flex items-center gap-2 text-text-muted mb-2 text-[10px] font-bold uppercase tracking-wider">
-                    <ArrowUpRight size={14} className="text-blue-500"/> Total Recebido
+                <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between min-w-0">
+                  <div className="flex items-center justify-between gap-2 text-text-muted mb-2 text-[10.5px] font-bold uppercase tracking-wider">
+                    <span className="truncate">Total Recebido</span>
+                    <ArrowUpRight size={15} className="text-blue-500 shrink-0"/>
                   </div>
                   <div>
                     <div
-                      className="text-xl sm:text-2xl font-extrabold text-text-primary mb-1 tracking-tight truncate font-mono"
+                      className="bi-kpi-value font-extrabold text-text-primary mb-1 tracking-tight font-mono"
                       title={formatBRL(biData?.recebimentos_realizados || 0)}
                     >{formatBRL(biData?.recebimentos_realizados || 0)}</div>
                     <div className="text-[10px] text-text-muted font-medium">No período selecionado</div>
@@ -265,13 +255,14 @@ export default function FinancialIntelligenceDashboard() {
                 </div>
 
                 {/* Total Pago */}
-                <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between">
-                  <div className="flex items-center gap-2 text-text-muted mb-2 text-[10px] font-bold uppercase tracking-wider">
-                    <ArrowDownRight size={14} className="text-warning"/> Total Pago
+                <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between min-w-0">
+                  <div className="flex items-center justify-between gap-2 text-text-muted mb-2 text-[10.5px] font-bold uppercase tracking-wider">
+                    <span className="truncate">Total Pago</span>
+                    <ArrowDownRight size={15} className="text-warning shrink-0"/>
                   </div>
                   <div>
                     <div
-                      className="text-xl sm:text-2xl font-extrabold text-text-primary mb-1 tracking-tight truncate font-mono"
+                      className="bi-kpi-value font-extrabold text-text-primary mb-1 tracking-tight font-mono"
                       title={formatBRL(biData?.pagamentos_realizados || 0)}
                     >{formatBRL(biData?.pagamentos_realizados || 0)}</div>
                     <div className="text-[10px] text-text-muted font-medium">No período selecionado</div>
@@ -279,13 +270,14 @@ export default function FinancialIntelligenceDashboard() {
                 </div>
 
                 {/* A Receber */}
-                <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between">
-                  <div className="flex items-center gap-2 text-text-muted mb-2 text-[10px] font-bold uppercase tracking-wider">
-                    <DollarSign size={14} className="text-brand-500"/> A Receber
+                <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between min-w-0">
+                  <div className="flex items-center justify-between gap-2 text-text-muted mb-2 text-[10.5px] font-bold uppercase tracking-wider">
+                    <span className="truncate">A Receber</span>
+                    <DollarSign size={15} className="text-brand-500 shrink-0"/>
                   </div>
                   <div>
                     <div
-                      className="text-xl sm:text-2xl font-extrabold text-text-primary mb-1 tracking-tight truncate font-mono"
+                      className="bi-kpi-value font-extrabold text-text-primary mb-1 tracking-tight font-mono"
                       title={formatBRL(biData?.contas_receber || 0)}
                     >{formatBRL(biData?.contas_receber || 0)}</div>
                     <div className="text-[10px] text-danger font-bold flex items-center gap-1">
@@ -295,13 +287,14 @@ export default function FinancialIntelligenceDashboard() {
                 </div>
 
                 {/* A Pagar */}
-                <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between">
-                  <div className="flex items-center gap-2 text-text-muted mb-2 text-[10px] font-bold uppercase tracking-wider">
-                    <CreditCard size={14} className="text-danger"/> A Pagar
+                <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between min-w-0">
+                  <div className="flex items-center justify-between gap-2 text-text-muted mb-2 text-[10.5px] font-bold uppercase tracking-wider">
+                    <span className="truncate">A Pagar</span>
+                    <CreditCard size={15} className="text-danger shrink-0"/>
                   </div>
                   <div>
                     <div
-                      className="text-xl sm:text-2xl font-extrabold text-text-primary mb-1 tracking-tight truncate font-mono"
+                      className="bi-kpi-value font-extrabold text-text-primary mb-1 tracking-tight font-mono"
                       title={formatBRL(biData?.contas_pagar || 0)}
                     >{formatBRL(biData?.contas_pagar || 0)}</div>
                     <div className="text-[10px] text-danger font-bold flex items-center gap-1">

@@ -17,7 +17,7 @@ import {
   ResponsiveContainer, AreaChart, Area, BarChart, Bar, XAxis, YAxis, 
   CartesianGrid, Tooltip, Cell
 } from 'recharts';
-import { formatBRL, formatNum, formatBRLCompact } from '../../utils/format';
+import { formatBRL, formatNum, formatBRLCompact, formatGrowthPct } from '../../utils/format';
 import clsx from 'clsx';
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -187,106 +187,81 @@ export default function SellerHubDashboard() {
   }
 
   return (
-    <div className="space-y-4 pb-10 animate-in fade-in duration-300">
+    <div className="space-y-3.5 pb-10 animate-in fade-in duration-300 min-w-0">
       
-      {/* 1. HEADER EXECUTIVO DO HUB DO VENDEDOR */}
-      <div className="bg-bg-primary border border-border rounded-2xl p-5 shadow-card flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-500 flex items-center justify-center shrink-0 shadow-sm">
-            <Trophy size={26} />
-          </div>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-black text-text-primary tracking-tight uppercase">HUB DO VENDEDOR</h1>
-            <p className="text-xs text-text-secondary font-medium">Estatísticas individuais, ranking de vendas e metas do vendedor</p>
-          </div>
-        </div>
-
-        {/* Period Filter (HOJE, 7 DIAS, MÊS ATUAL, MÊS ANTERIOR, 12 MESES, PERSONALIZADO) */}
+      {/* 1. BARRA ÚNICA COMPACTA DE FILTROS: PERÍODO + VENDEDOR + CIDADE + MARCA */}
+      <div className="bi-filter-bar">
         {!isInsideComercial && (
-          <div className="flex items-center">
-            <PeriodFilter />
-          </div>
+          <PeriodFilter />
         )}
-      </div>
 
-      {/* 2. BARRA DE FILTROS: VENDEDOR, CIDADE, MARCA */}
-      <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-4.5 grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {/* Vendedor */}
-        <div className="space-y-1.5">
-          <label className="text-[10px] font-black text-text-secondary uppercase tracking-wider block">
-            Vendedor
-          </label>
-          <div className="relative">
+        <div className="flex flex-wrap items-center gap-2 flex-1 sm:flex-initial justify-end ml-auto min-w-0">
+          {/* Vendedor */}
+          <div className="relative flex-1 sm:flex-initial min-w-[175px] max-w-[240px]">
             <select
+              aria-label="Selecionar Vendedor"
               value={selectedVendedor}
               onChange={(e) => setSelectedVendedor(e.target.value)}
-              className="w-full bg-bg-secondary hover:bg-bg-tertiary border border-border rounded-xl px-3.5 py-2.5 text-xs font-bold text-text-primary outline-none cursor-pointer focus:border-brand-500 transition-all appearance-none pr-8 shadow-xs"
+              className="bi-select w-full appearance-none pr-7 truncate"
             >
-              <option value="">Selecione um vendedor...</option>
+              <option value="">Vendedor: Todos / Selecione</option>
               {vdFull.data?.data?.map((v: any) => (
                 <option key={v.id} value={v.id}>{v.nome}</option>
               ))}
             </select>
-            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+            <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
           </div>
-        </div>
 
-        {/* Cidade */}
-        <div className="space-y-1.5">
-          <label className="text-[10px] font-black text-text-secondary uppercase tracking-wider block">
-            Cidade
-          </label>
-          <div className="relative">
+          {/* Cidade */}
+          <div className="relative flex-1 sm:flex-initial min-w-[155px] max-w-[220px]">
             <select
+              aria-label="Selecionar Cidade"
               value={selectedCidade}
               onChange={(e) => setSelectedCidade(e.target.value)}
-              className="w-full bg-bg-secondary hover:bg-bg-tertiary border border-border rounded-xl px-3.5 py-2.5 text-xs font-bold text-text-primary outline-none cursor-pointer focus:border-brand-500 transition-all appearance-none pr-8 shadow-xs uppercase"
+              className="bi-select w-full appearance-none pr-7 truncate uppercase"
             >
-              <option value="todas">Todas as Cidades</option>
+              <option value="todas">Cidade: Todas</option>
               {cidadesDropdown.data?.data?.map((c: any) => (
                 <option key={c.nome || c.cidade} value={c.nome || c.cidade}>{c.nome || c.cidade}</option>
               ))}
             </select>
-            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+            <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
           </div>
-        </div>
 
-        {/* Marca */}
-        <div className="space-y-1.5">
-          <label className="text-[10px] font-black text-text-secondary uppercase tracking-wider block">
-            Marca
-          </label>
-          <div className="relative">
+          {/* Marca */}
+          <div className="relative flex-1 sm:flex-initial min-w-[155px] max-w-[220px]">
             <select
+              aria-label="Selecionar Marca"
               value={selectedMarca}
               onChange={(e) => setSelectedMarca(e.target.value)}
-              className="w-full bg-bg-secondary hover:bg-bg-tertiary border border-border rounded-xl px-3.5 py-2.5 text-xs font-bold text-text-primary outline-none cursor-pointer focus:border-brand-500 transition-all appearance-none pr-8 shadow-xs uppercase"
+              className="bi-select w-full appearance-none pr-7 truncate uppercase"
             >
-              <option value="todas">Todas as Marcas</option>
+              <option value="todas">Marca: Todas</option>
               {marcasDropdown.data?.data?.map((m: any) => (
                 <option key={m.nome || m.marca} value={m.nome || m.marca}>{m.nome || m.marca}</option>
               ))}
             </select>
-            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+            <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
           </div>
         </div>
       </div>
 
-      {/* 3. CARD DESTACADO: PROGRESSO DA META MENSAL */}
-      <div className="bg-emerald-500/10 dark:bg-emerald-950/20 border border-emerald-500/30 rounded-2xl p-5 shadow-card flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-4 w-full md:w-auto">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-sm">
-            <Target size={24} />
+      {/* 2. CARD DESTACADO: PROGRESSO DA META MENSAL */}
+      <div className="bg-emerald-500/10 dark:bg-emerald-950/20 border border-emerald-500/30 rounded-2xl p-4 sm:p-4.5 shadow-card flex flex-col md:flex-row md:items-center justify-between gap-3.5">
+        <div className="flex items-center gap-3.5 min-w-0 flex-1">
+          <div className="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-sm">
+            <Target size={20} />
           </div>
-          <div>
+          <div className="min-w-0 flex-1">
             <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest block">
               Progresso da Meta Mensal
             </span>
-            <div className="text-base sm:text-lg font-black text-text-primary mt-0.5">
-              <span className="text-emerald-600 dark:text-emerald-400">{formatBRL(faturamento)}</span> realizados de <span className="text-text-secondary">{formatBRL(metaVendedor)}</span>
+            <div className="text-sm sm:text-base font-black text-text-primary mt-0.5 flex flex-wrap items-baseline gap-x-1.5 tabular-nums">
+              <span className="text-emerald-600 dark:text-emerald-400 font-mono">{formatBRL(faturamento)}</span>
+              <span className="text-xs font-semibold text-text-secondary">realizados de</span>
+              <span className="text-text-secondary font-mono">{formatBRL(metaVendedor)}</span>
             </div>
-            {/* Barra de progresso */}
-            <div className="w-full md:w-80 h-2 bg-emerald-500/20 rounded-full mt-2 overflow-hidden">
+            <div className="w-full max-w-md h-2 bg-emerald-500/20 rounded-full mt-2 overflow-hidden">
               <div 
                 className="h-full bg-emerald-500 rounded-full transition-all duration-700" 
                 style={{ width: `${Math.min(100, Math.max(0, metaAtingimentoPct))}%` }}
@@ -295,9 +270,9 @@ export default function SellerHubDashboard() {
           </div>
         </div>
 
-        <div className="text-right shrink-0">
-          <div className="text-3xl sm:text-4xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight">
-            {metaAtingimentoPct.toFixed(1)}%
+        <div className="md:text-right shrink-0">
+          <div className="font-black text-emerald-600 dark:text-emerald-400 tracking-tight font-mono bi-kpi-hero">
+            {formatGrowthPct(metaAtingimentoPct, 1, false)}
           </div>
           <span className="text-[10px] font-black text-text-secondary uppercase tracking-wider block mt-0.5">
             Atingimento
@@ -305,171 +280,174 @@ export default function SellerHubDashboard() {
         </div>
       </div>
 
-      {/* 4. CARD: FATURAMENTO ATUAL VS FATURAMENTO ANTERIOR */}
-      <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-6 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6">
+      {/* 3. CARD: FATURAMENTO ATUAL VS FATURAMENTO ANTERIOR */}
+      <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-4 sm:p-5 relative overflow-hidden flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div className="absolute top-0 bottom-0 left-0 w-1.5 bg-emerald-500"></div>
 
         {/* Faturamento Atual */}
-        <div className="flex items-center gap-4 flex-1 w-full">
-          <div className="p-3.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-2xl shrink-0 shadow-xs">
-            <DollarSign size={28} className="stroke-[2.5]" />
+        <div className="flex items-center gap-3.5 flex-1 min-w-0 pl-2">
+          <div className="w-11 h-11 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center shrink-0 shadow-xs">
+            <DollarSign size={22} className="stroke-[2.5]" />
           </div>
-          <div className="space-y-0.5">
+          <div className="space-y-0.5 min-w-0">
             <span className="text-[10px] font-black text-text-secondary uppercase tracking-widest block">Faturamento Atual</span>
-            <div className="text-2xl sm:text-3xl font-black text-text-primary tracking-tight">
+            <div className="font-black text-text-primary tracking-tight font-mono bi-kpi-hero">
               {formatBRL(faturamento)}
             </div>
-            <span className="text-xs text-text-secondary font-medium block">Período selecionado</span>
+            <span className="text-[11px] text-text-secondary font-medium block">Período selecionado</span>
           </div>
         </div>
 
-        {/* Badge Variação */}
-        <div className="flex flex-col items-center justify-center shrink-0 py-2.5 px-5 rounded-2xl bg-bg-secondary border border-border shadow-xs w-full md:w-auto">
+        {/* Badge Variação Seguro (Sem Estourar c/ Percentuais Extremos) */}
+        <div
+          title={`${crescimentoPct >= 0 ? '+' : ''}${crescimentoPct.toFixed(2)}%`}
+          className="flex flex-col items-center justify-center shrink-0 py-2 px-4 rounded-xl bg-bg-secondary border border-border shadow-xs self-start lg:self-center"
+        >
           <span className={clsx(
-            "text-xs font-black flex items-center gap-1",
+            "text-xs font-black flex items-center gap-1 tabular-nums whitespace-nowrap",
             crescimentoPct >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
           )}>
-            {crescimentoPct >= 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-            {crescimentoPct >= 0 ? "+" : ""}{crescimentoPct.toFixed(1)}%
+            {crescimentoPct >= 0 ? <TrendingUp size={15} /> : <TrendingDown size={15} />}
+            {formatGrowthPct(crescimentoPct, 1)}
           </span>
-          <span className="text-[9px] text-text-secondary font-bold uppercase tracking-wider mt-0.5">vs. mês anterior</span>
+          <span className="text-[9px] text-text-secondary font-bold uppercase tracking-wider mt-0.5 whitespace-nowrap">vs. período anterior</span>
         </div>
 
         {/* Faturamento Anterior */}
-        <div className="flex items-center gap-4 flex-1 md:justify-end text-left md:text-right w-full">
-          <div className="space-y-0.5 md:order-1 order-2 flex-1 md:flex-initial">
+        <div className="flex items-center gap-3.5 flex-1 lg:justify-end text-left lg:text-right min-w-0">
+          <div className="space-y-0.5 lg:order-1 order-2 min-w-0">
             <span className="text-[10px] font-black text-text-secondary uppercase tracking-widest block">Faturamento Anterior</span>
-            <div className="text-xl sm:text-2xl font-black text-text-primary tracking-tight">
+            <div className="font-black text-text-primary tracking-tight font-mono bi-kpi-value">
               {formatBRL(faturamentoAnterior)}
             </div>
-            <span className="text-xs text-text-secondary font-medium block">Mês completo anterior</span>
+            <span className="text-[11px] text-text-secondary font-medium block">Período anterior equivalente</span>
           </div>
-          <div className="p-3.5 bg-bg-secondary border border-border text-text-secondary rounded-2xl shrink-0 md:order-2 order-1 shadow-xs">
-            <DollarSign size={24} />
+          <div className="w-11 h-11 bg-bg-secondary border border-border text-text-secondary rounded-xl flex items-center justify-center shrink-0 lg:order-2 order-1 shadow-xs">
+            <DollarSign size={20} />
           </div>
         </div>
       </div>
 
-      {/* 5. GRID DE 8 CARDS DE KPIS EXECUTIVOS (2 LINHAS X 4 COLUNAS) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* 4. GRID DE 8 CARDS DE KPIS EXECUTIVOS (AUTO-ADAPTÁVEIS SEM CORTE) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5">
         {/* Card 1: Ticket Médio */}
-        <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-4.5 flex items-center gap-3.5">
-          <div className="p-3 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl shrink-0">
-            <Trophy size={20} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <span className="text-[10px] font-black text-text-secondary uppercase tracking-wider block">Ticket Médio</span>
-            <div className="text-base font-black text-text-primary truncate mt-0.5">
-              {formatBRL(ticketMedio)}
+        <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between min-w-0">
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <span className="text-[10px] font-black text-text-secondary uppercase tracking-wider truncate">Ticket Médio</span>
+            <div className="w-7 h-7 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg flex items-center justify-center shrink-0">
+              <Trophy size={15} />
             </div>
-            <span className="text-[10px] text-text-secondary font-medium block mt-0.5">Média por venda</span>
           </div>
+          <div className="font-black text-text-primary font-mono bi-kpi-value">
+            {formatBRL(ticketMedio)}
+          </div>
+          <span className="text-[10px] text-text-secondary font-medium block mt-1 truncate">Média por venda</span>
         </div>
 
         {/* Card 2: Notas Emitidas */}
-        <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-4.5 flex items-center gap-3.5">
-          <div className="p-3 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl shrink-0">
-            <FileText size={20} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <span className="text-[10px] font-black text-text-secondary uppercase tracking-wider block">Notas Emitidas</span>
-            <div className="text-base font-black text-text-primary truncate mt-0.5">
-              {formatNum(notasEmitidas)}
+        <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between min-w-0">
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <span className="text-[10px] font-black text-text-secondary uppercase tracking-wider truncate">Notas Emitidas</span>
+            <div className="w-7 h-7 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg flex items-center justify-center shrink-0">
+              <FileText size={15} />
             </div>
-            <span className="text-[10px] text-text-secondary font-medium block mt-0.5">Total documentos</span>
           </div>
+          <div className="font-black text-text-primary font-mono bi-kpi-value">
+            {formatNum(notasEmitidas)}
+          </div>
+          <span className="text-[10px] text-text-secondary font-medium block mt-1 truncate">Total documentos</span>
         </div>
 
         {/* Card 3: Clientes Atendidos */}
-        <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-4.5 flex items-center gap-3.5">
-          <div className="p-3 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl shrink-0">
-            <Users size={20} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <span className="text-[10px] font-black text-text-secondary uppercase tracking-wider block">Clientes Atendidos</span>
-            <div className="text-base font-black text-text-primary truncate mt-0.5">
-              {clientesAtivos}
+        <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between min-w-0">
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <span className="text-[10px] font-black text-text-secondary uppercase tracking-wider truncate">Clientes Atendidos</span>
+            <div className="w-7 h-7 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg flex items-center justify-center shrink-0">
+              <Users size={15} />
             </div>
-            <span className="text-[10px] text-text-secondary font-medium block mt-0.5">
-              {notasEmitidas} ped. de {clientesAtivos} cli
-            </span>
           </div>
+          <div className="font-black text-text-primary font-mono bi-kpi-value">
+            {formatNum(clientesAtivos)}
+          </div>
+          <span className="text-[10px] text-text-secondary font-medium block mt-1 truncate">
+            {formatNum(notasEmitidas)} ped. de {formatNum(clientesAtivos)} cli
+          </span>
         </div>
 
         {/* Card 4: Cidade Top */}
-        <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-4.5 flex items-center gap-3.5">
-          <div className="p-3 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl shrink-0">
-            <MapPin size={20} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <span className="text-[10px] font-black text-text-secondary uppercase tracking-wider block">Cidade Top</span>
-            <div className="text-base font-black text-text-primary truncate mt-0.5 uppercase" title={cidadeTop}>
-              {cidadeTop}
+        <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between min-w-0">
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <span className="text-[10px] font-black text-text-secondary uppercase tracking-wider truncate">Cidade Top</span>
+            <div className="w-7 h-7 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg flex items-center justify-center shrink-0">
+              <MapPin size={15} />
             </div>
-            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold block mt-0.5 truncate">
-              {formatBRL(cidadeTopValor)} faturados
-            </span>
+          </div>
+          <div className="text-xs sm:text-[13px] font-black text-text-primary truncate uppercase mb-0.5" title={cidadeTop}>
+            {cidadeTop}
+          </div>
+          <div className="font-black text-emerald-600 dark:text-emerald-400 font-mono bi-kpi-value">
+            {formatBRL(cidadeTopValor)}
           </div>
         </div>
 
         {/* Card 5: Principal Cliente */}
-        <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-4.5 flex items-center gap-3.5">
-          <div className="p-3 bg-rose-500/10 text-rose-500 rounded-xl shrink-0">
-            <Award size={20} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <span className="text-[10px] font-black text-text-secondary uppercase tracking-wider block">Principal Cliente</span>
-            <div className="text-base font-black text-text-primary truncate mt-0.5 uppercase" title={principalCliente?.name || 'N/A'}>
-              {principalCliente ? principalCliente.name : 'N/A'}
+        <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between min-w-0">
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <span className="text-[10px] font-black text-text-secondary uppercase tracking-wider truncate">Principal Cliente</span>
+            <div className="w-7 h-7 bg-rose-500/10 text-rose-500 rounded-lg flex items-center justify-center shrink-0">
+              <Award size={15} />
             </div>
-            <span className="text-[10px] text-rose-600 dark:text-rose-400 font-bold block mt-0.5 truncate">
-              {principalCliente ? `${formatBRL(principalCliente.value)} faturados` : 'Sem vendas'}
-            </span>
+          </div>
+          <div className="text-xs sm:text-[13px] font-black text-text-primary truncate uppercase mb-0.5" title={principalCliente?.name || 'N/A'}>
+            {principalCliente ? principalCliente.name : 'N/A'}
+          </div>
+          <div className="font-black text-rose-600 dark:text-rose-400 font-mono bi-kpi-value">
+            {principalCliente ? formatBRL(principalCliente.value) : 'R$ 0,00'}
           </div>
         </div>
 
         {/* Card 6: Melhor Mês */}
-        <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-4.5 flex items-center gap-3.5">
-          <div className="p-3 bg-teal-500/10 text-teal-600 dark:text-teal-400 rounded-xl shrink-0">
-            <Calendar size={20} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <span className="text-[10px] font-black text-text-secondary uppercase tracking-wider block">Melhor Mês (12m)</span>
-            <div className="text-base font-black text-emerald-600 dark:text-emerald-400 truncate mt-0.5 font-mono">
-              {melhorMes && melhorMes.valor > 0 ? formatBRL(melhorMes.valor) : 'Sem vendas'}
+        <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between min-w-0">
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <span className="text-[10px] font-black text-text-secondary uppercase tracking-wider truncate">Melhor Mês (12m)</span>
+            <div className="w-7 h-7 bg-teal-500/10 text-teal-600 dark:text-teal-400 rounded-lg flex items-center justify-center shrink-0">
+              <Calendar size={15} />
             </div>
-            <span className="text-[10px] text-text-secondary font-bold block mt-0.5">
-              {melhorMes && melhorMes.mes !== 'N/A' ? melhorMes.mes : 'N/A'}
-            </span>
           </div>
+          <div className="font-black text-emerald-600 dark:text-emerald-400 font-mono bi-kpi-value">
+            {melhorMes && melhorMes.valor > 0 ? formatBRL(melhorMes.valor) : 'Sem vendas'}
+          </div>
+          <span className="text-[10px] text-text-secondary font-bold block mt-1 truncate">
+            {melhorMes && melhorMes.mes !== 'N/A' ? melhorMes.mes : 'N/A'}
+          </span>
         </div>
 
         {/* Card 7: Clientes na Carteira */}
-        <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-4.5 flex items-center gap-3.5">
-          <div className="p-3 bg-blue-500/10 text-blue-500 rounded-xl shrink-0">
-            <Users size={20} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <span className="text-[10px] font-black text-text-secondary uppercase tracking-wider block">Clientes na Carteira</span>
-            <div className="text-base font-black text-text-primary truncate mt-0.5">
-              {clientesNaCarteira}
+        <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between min-w-0">
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <span className="text-[10px] font-black text-text-secondary uppercase tracking-wider truncate">Clientes na Carteira</span>
+            <div className="w-7 h-7 bg-blue-500/10 text-blue-500 rounded-lg flex items-center justify-center shrink-0">
+              <Users size={15} />
             </div>
-            <span className="text-[10px] text-text-secondary font-medium block mt-0.5">Clientes cadastrados</span>
           </div>
+          <div className="font-black text-text-primary font-mono bi-kpi-value">
+            {formatNum(clientesNaCarteira)}
+          </div>
+          <span className="text-[10px] text-text-secondary font-medium block mt-1 truncate">Clientes cadastrados</span>
         </div>
 
         {/* Card 8: Cobertura de Carteira */}
-        <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-4.5 flex items-center gap-3.5">
-          <div className="p-3 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl shrink-0">
-            <Activity size={20} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <span className="text-[10px] font-black text-text-secondary uppercase tracking-wider block">Cobertura de Carteira</span>
-            <div className="text-base font-black text-emerald-600 dark:text-emerald-400 truncate mt-0.5">
-              {coberturaCarteira}%
+        <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between min-w-0">
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <span className="text-[10px] font-black text-text-secondary uppercase tracking-wider truncate">Cobertura de Carteira</span>
+            <div className="w-7 h-7 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg flex items-center justify-center shrink-0">
+              <Activity size={15} />
             </div>
-            <span className="text-[10px] text-text-secondary font-medium block mt-0.5">Vendidos vs. Carteira</span>
           </div>
+          <div className="font-black text-emerald-600 dark:text-emerald-400 font-mono bi-kpi-value">
+            {coberturaCarteira}%
+          </div>
+          <span className="text-[10px] text-text-secondary font-medium block mt-1 truncate">Vendidos vs. Carteira</span>
         </div>
       </div>
 

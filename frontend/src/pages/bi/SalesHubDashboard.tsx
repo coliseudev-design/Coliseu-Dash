@@ -1,10 +1,11 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, useLocation } from 'react-router-dom';
 import { useBiPeriodQuery } from '../../hooks/useBiPeriodQuery';
 import { useBranchPeriodQuery } from '../../hooks/useApi';
 import { BIService } from '../../services/biApi';
 import { BiPeriodFilter } from '../../types/bi.types';
-import { Box, DollarSign, Target, CheckCircle2, X, Filter, Calendar } from 'lucide-react';
+import PeriodFilter from '../../components/PeriodFilter';
+import { Box, DollarSign, Target, CheckCircle2, X, Filter, Calendar, ChevronDown } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { formatBRL, formatNum, formatBRLCompact } from '../../utils/format';
 import clsx from 'clsx';
@@ -28,6 +29,8 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function SalesHubDashboard() {
+  const location = useLocation();
+  const isInsideBi = location.pathname.startsWith('/bi');
   const [isMobile, setIsMobile] = useState(false);
   const [showFiltersSheet, setShowFiltersSheet] = useState(false);
   useEffect(() => {
@@ -127,91 +130,106 @@ export default function SalesHubDashboard() {
 
       {/* DESKTOP FILTERS BAR */}
       {!isMobile && (
-        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-4 flex flex-wrap items-center gap-3 w-full animate-in fade-in duration-200">
-          <span className="text-[10px] font-black text-text-secondary uppercase tracking-widest mr-2 flex items-center gap-1.5">
-            <Filter size={13} className="text-brand-500" />
-            Filtros:
-          </span>
-          
-          {/* VENDEDOR */}
-          <select
-            aria-label="Selecionar Vendedor"
-            value={selectedVendedor}
-            onChange={(e) => setSelectedVendedor(e.target.value)}
-            className="px-3 py-1.5 bg-bg-secondary border border-divider text-text-primary rounded-lg text-xs font-bold shadow-sm focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300 cursor-pointer"
-          >
-            <option value="all">Todos os Vendedores</option>
-            {vdFull.data?.data?.map((seller: any) => (
-              <option key={seller.id} value={seller.id}>
-                {seller.nome}
-              </option>
-            ))}
-          </select>
+        <div className="bi-filter-bar">
+          {isInsideBi && (
+            <div className="min-w-0">
+              <PeriodFilter />
+            </div>
+          )}
 
-          {/* CIDADE */}
-          <select
-            aria-label="Selecionar Cidade"
-            value={selectedCidade}
-            onChange={(e) => setSelectedCidade(e.target.value)}
-            className="px-3 py-1.5 bg-bg-secondary border border-divider text-text-primary rounded-lg text-xs font-bold shadow-sm focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300 cursor-pointer"
-          >
-            <option value="all">Todas as Cidades</option>
-            {cidFull.data?.data?.map((city: any) => (
-              <option key={city.nome} value={city.nome}>
-                {city.nome}
-              </option>
-            ))}
-          </select>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* VENDEDOR */}
+            <div className="relative min-w-[165px] max-w-[220px]">
+              <select
+                aria-label="Selecionar Vendedor"
+                value={selectedVendedor}
+                onChange={(e) => setSelectedVendedor(e.target.value)}
+                className="bi-select appearance-none w-full pr-7"
+              >
+                <option value="all">Todos os Vendedores</option>
+                {vdFull.data?.data?.map((seller: any) => (
+                  <option key={seller.id} value={seller.id}>
+                    {seller.nome}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            </div>
 
-          {/* GRUPO */}
-          <select
-            aria-label="Selecionar Grupo"
-            value={selectedGrupo}
-            onChange={(e) => setSelectedGrupo(e.target.value)}
-            className="px-3 py-1.5 bg-bg-secondary border border-divider text-text-primary rounded-lg text-xs font-bold shadow-sm focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300 cursor-pointer"
-          >
-            <option value="all">Todos os Grupos</option>
-            <option value="Sem Grupo">Sem Grupo</option>
-            {catFull.data?.data?.map((cat: any) => (
-              cat.nome !== 'Sem Grupo' && cat.nome !== 'S/ GRUPO' && (
-                <option key={cat.nome} value={cat.nome}>
-                  {cat.nome}
-                </option>
-              )
-            ))}
-          </select>
+            {/* CIDADE */}
+            <div className="relative min-w-[155px] max-w-[210px]">
+              <select
+                aria-label="Selecionar Cidade"
+                value={selectedCidade}
+                onChange={(e) => setSelectedCidade(e.target.value)}
+                className="bi-select appearance-none w-full pr-7"
+              >
+                <option value="all">Todas as Cidades</option>
+                {cidFull.data?.data?.map((city: any) => (
+                  <option key={city.nome} value={city.nome}>
+                    {city.nome}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            </div>
 
-          {/* MARCA */}
-          <select
-            aria-label="Selecionar Marca"
-            value={selectedMarca}
-            onChange={(e) => setSelectedMarca(e.target.value)}
-            className="px-3 py-1.5 bg-bg-secondary border border-divider text-text-primary rounded-lg text-xs font-bold shadow-sm focus:outline-none focus:ring-1 focus:ring-brand-500 transition-all duration-300 cursor-pointer"
-          >
-            <option value="all">Todas as Marcas</option>
-            <option value="Sem Marca">Sem Marca</option>
-            {marFull.data?.data?.map((brand: any) => (
-              brand.nome !== 'Sem Marca' && brand.nome !== 'S/ MARCA' && (
-                <option key={brand.nome} value={brand.nome}>
-                  {brand.nome}
-                </option>
-              )
-            ))}
-          </select>
+            {/* GRUPO */}
+            <div className="relative min-w-[155px] max-w-[210px]">
+              <select
+                aria-label="Selecionar Grupo"
+                value={selectedGrupo}
+                onChange={(e) => setSelectedGrupo(e.target.value)}
+                className="bi-select appearance-none w-full pr-7"
+              >
+                <option value="all">Todos os Grupos</option>
+                <option value="Sem Grupo">Sem Grupo</option>
+                {catFull.data?.data?.map((cat: any) => (
+                  cat.nome !== 'Sem Grupo' && cat.nome !== 'S/ GRUPO' && (
+                    <option key={cat.nome} value={cat.nome}>
+                      {cat.nome}
+                    </option>
+                  )
+                ))}
+              </select>
+              <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            </div>
+
+            {/* MARCA */}
+            <div className="relative min-w-[155px] max-w-[210px]">
+              <select
+                aria-label="Selecionar Marca"
+                value={selectedMarca}
+                onChange={(e) => setSelectedMarca(e.target.value)}
+                className="bi-select appearance-none w-full pr-7"
+              >
+                <option value="all">Todas as Marcas</option>
+                <option value="Sem Marca">Sem Marca</option>
+                {marFull.data?.data?.map((brand: any) => (
+                  brand.nome !== 'Sem Marca' && brand.nome !== 'S/ MARCA' && (
+                    <option key={brand.nome} value={brand.nome}>
+                      {brand.nome}
+                    </option>
+                  )
+                ))}
+              </select>
+              <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            </div>
+          </div>
         </div>
       )}
 
       {/* TOP KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
         {/* VOLUME DE PEDIDOS */}
-        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 relative overflow-hidden">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="p-1.5 bg-success/10 text-success rounded-lg">
-              <Box size={16} />
+        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 relative overflow-hidden min-w-0">
+          <div className="flex items-center justify-between gap-2 mb-2.5">
+            <span className="text-[11px] font-bold text-text-secondary uppercase tracking-wider truncate">Volume de Pedidos</span>
+            <div className="p-1.5 bg-success/10 text-success rounded-lg shrink-0">
+              <Box size={15} />
             </div>
-            <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Volume de Pedidos</span>
           </div>
-          <div className="text-3xl font-extrabold text-text-primary pl-1 mb-1">
+          <div className="bi-kpi-value font-extrabold font-mono text-text-primary mb-1">
             {formatNum(data?.total_pedidos || 0)} <span className="text-xs font-medium text-text-muted lowercase">pedidos</span>
           </div>
           <div className="flex justify-end text-[10px] text-success font-bold mt-1">100% atingido</div>
@@ -221,14 +239,14 @@ export default function SalesHubDashboard() {
         </div>
 
         {/* FATURAMENTO */}
-        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 relative overflow-hidden">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="p-1.5 bg-warning/10 text-warning rounded-lg">
-              <DollarSign size={16} />
+        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 relative overflow-hidden min-w-0">
+          <div className="flex items-center justify-between gap-2 mb-2.5">
+            <span className="text-[11px] font-bold text-text-secondary uppercase tracking-wider truncate">Faturamento</span>
+            <div className="p-1.5 bg-warning/10 text-warning rounded-lg shrink-0">
+              <DollarSign size={15} />
             </div>
-            <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Faturamento</span>
           </div>
-          <div className="text-3xl font-extrabold text-text-primary pl-1 mb-1">
+          <div className="bi-kpi-value font-extrabold font-mono text-text-primary mb-1">
             {formatBRL(data?.faturamento_total || 0)}
           </div>
           <div className="flex justify-end text-[10px] text-warning font-bold mt-1">85% atingido</div>
@@ -238,14 +256,14 @@ export default function SalesHubDashboard() {
         </div>
 
         {/* TICKET MÉDIO */}
-        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 relative overflow-hidden">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="p-1.5 bg-cyan-500/10 text-cyan-500 rounded-lg">
-              <Target size={16} />
+        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 relative overflow-hidden min-w-0">
+          <div className="flex items-center justify-between gap-2 mb-2.5">
+            <span className="text-[11px] font-bold text-text-secondary uppercase tracking-wider truncate">Ticket Médio</span>
+            <div className="p-1.5 bg-cyan-500/10 text-cyan-500 rounded-lg shrink-0">
+              <Target size={15} />
             </div>
-            <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Ticket Médio</span>
           </div>
-          <div className="text-3xl font-extrabold text-text-primary pl-1 mb-1">
+          <div className="bi-kpi-value font-extrabold font-mono text-text-primary mb-1">
             {formatBRL(data?.ticket_medio || 0)}
           </div>
           <div className="flex justify-end text-[10px] text-cyan-500 font-bold mt-1">92% atingido</div>

@@ -33,6 +33,19 @@ export const formatPct = (v: unknown, asDecimal = false) => {
   return asDecimal ? PCT.format(n) : `${n.toFixed(2).replace('.', ',')}%`
 }
 
+/**
+ * Formata variações percentuais para badges de KPI sem estourar o card
+ * quando a base anterior for irrisória (ex: +31043261.1% -> > +999%).
+ */
+export const formatGrowthPct = (v: unknown, decimals = 1, showPlus = true) => {
+  const n = Number(v ?? 0)
+  if (!Number.isFinite(n)) return '0,0%'
+  if (n > 999) return '> +999%'
+  if (n < -999) return '< -999%'
+  const sign = showPlus && n > 0 ? '+' : ''
+  return `${sign}${n.toFixed(decimals).replace('.', ',')}%`
+}
+
 export const formatDate = (v: unknown) => {
   if (!v) return '—'
   try {

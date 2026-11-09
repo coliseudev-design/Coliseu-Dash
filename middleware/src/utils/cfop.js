@@ -45,7 +45,25 @@ function getNfFilterClause(tableAlias = 'v') {
         return '';
     }
     const prefix = (tableAlias !== undefined && tableAlias !== null && tableAlias !== '') ? `${tableAlias}.` : '';
-    return `AND ((${prefix}numero_nota IS NOT NULL AND ${prefix}numero_nota > 0) OR (${prefix}chave_nfe IS NOT NULL AND TRIM(${prefix}chave_nfe) <> ''))`;
+    const tableRef = prefix || 'dash_vendas.';
+    return `AND (
+        (${prefix}numero_nota IS NOT NULL AND ${prefix}numero_nota > 0)
+        OR (${prefix}chave_nfe IS NOT NULL AND TRIM(${prefix}chave_nfe) <> '')
+        OR EXISTS (
+            SELECT 1 FROM dash_vendas_itens vi_nf
+            WHERE vi_nf.venda_id_firebird = ${tableRef}id_firebird
+              AND vi_nf.tenant_id = ${tableRef}tenant_id
+              AND (
+                  (vi_nf.numero_nota IS NOT NULL AND TRIM(vi_nf.numero_nota::text) NOT IN ('', '0'))
+                  OR (vi_nf.chave_nfe IS NOT NULL AND TRIM(vi_nf.chave_nfe) <> '')
+              )
+        )
+        OR EXISTS (
+            SELECT 1 FROM dash_cargas cg_nf
+            WHERE cg_nf.tenant_id = ${tableRef}tenant_id
+              AND (cg_nf.dados_nfe->>'id_pedido') = ${tableRef}id_firebird::text
+        )
+    )`;
 }
 
 /**
@@ -55,7 +73,19 @@ function getDevolucaoNfFilterClause(vendaAlias = 'v2', devAlias = 'd') {
     if (!isOnlyNfSalesActive()) {
         return '';
     }
-    return ` AND (${devAlias}.venda_id_firebird IS NULL OR ((${vendaAlias}.numero_nota IS NOT NULL AND ${vendaAlias}.numero_nota > 0) OR (${vendaAlias}.chave_nfe IS NOT NULL AND TRIM(${vendaAlias}.chave_nfe) <> '')))`;
+    return ` AND (${devAlias}.venda_id_firebird IS NULL OR (
+        (${vendaAlias}.numero_nota IS NOT NULL AND ${vendaAlias}.numero_nota > 0)
+        OR (${vendaAlias}.chave_nfe IS NOT NULL AND TRIM(${vendaAlias}.chave_nfe) <> '')
+        OR EXISTS (
+            SELECT 1 FROM dash_vendas_itens vi_nf
+            WHERE vi_nf.venda_id_firebird = ${vendaAlias}.id_firebird
+              AND vi_nf.tenant_id = ${vendaAlias}.tenant_id
+              AND (
+                  (vi_nf.numero_nota IS NOT NULL AND TRIM(vi_nf.numero_nota::text) NOT IN ('', '0'))
+                  OR (vi_nf.chave_nfe IS NOT NULL AND TRIM(vi_nf.chave_nfe) <> '')
+              )
+        )
+    ))`;
 }
 
 /**

@@ -25,21 +25,35 @@ async function resolveFilialDoc(tenantId, deptoId) {
 }
 
 /**
- * Constrói CTE SQL unificada das Notas Fiscais (Emitidas / Saída + Entrada)
- * combinando XMLs completos de `dash_cargas` + notas fiscais do ERP em `dash_vendas` sem duplicar.
+ * Constrói CTE SQL unificada dos Documentos Fiscais / Faturados (Emitidas / Saída + Entrada)
+ * combinando XMLs completos de `dash_cargas` + documentos de saída/entrada em `dash_vendas` sem duplicar.
  */
-function buildFiscalUnifiedCte({ startDateOnly, endDateOnly, startTs, endTs, deptoId, filialDoc, cfop, search, tipo }) {
+function buildFiscalUnifiedCte({
+    startDateOnly,
+    endDateOnly,
+    startTs,
+    endTs,
+    deptoId,
+    filialDoc,
+    cfop,
+    search,
+    tipo,
+    apenasNfe = false,
+}) {
     const params = [];
     const pushParam = (val) => {
         params.push(val);
         return `$${params.length}`;
     };
 
-    const pTenant = pushParam(null); // $1 será preenchido pelo chamador
+    const pTenant = pushParam(null); // $1 preenchido pelo chamador
     const pStartDate = pushParam(startDateOnly);
     const pEndDate = pushParam(endDateOnly);
     const pStartTs = pushParam(startTs);
     const pEndTs = pushParam(endTs);
+
+    const isEntradaExpr = `(v.es = 2 OR COALESCE(c.tipo, '1') = '2' OR (v.cfop IS NOT NULL AND v.cfop >= 1000 AND v.cfop < 4000))`;
+    const vendaDateExpr = `CASE WHEN ${isEntradaExpr} THEN COALESCE(v.data_hora_proc, v.data_venda) ELSE COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) END`;
 
     let cargasDeptoClause = '';
     let vendasDeptoClause = '';
@@ -81,18 +95,45 @@ function buildFiscalUnifiedCte({ startDateOnly, endDateOnly, startTs, endTs, dep
     let vendasTipoClause = '';
     if (tipo === 'SAIDA') {
         cargasTipoClause = ` AND UPPER(COALESCE(cg.dados_nfe->>'tipo_operacao', 'SAIDA')) <> 'ENTRADA'`;
-        vendasTipoClause = ` AND NOT (v.es = 2 OR COALESCE(c.tipo, '1') = '2' OR (v.cfop IS NOT NULL AND v.cfop < 4000))`;
+        vendasTipoClause = ` AND NOT ${isEntradaExpr}`;
     } else if (tipo === 'ENTRADA') {
         cargasTipoClause = ` AND UPPER(COALESCE(cg.dados_nfe->>'tipo_operacao', 'SAIDA')) = 'ENTRADA'`;
-        vendasTipoClause = ` AND (v.es = 2 OR COALESCE(c.tipo, '1') = '2' OR (v.cfop IS NOT NULL AND v.cfop < 4000))`;
+        vendasTipoClause = ` AND ${isEntradaExpr}`;
     }
+
+    const vendasOnlyNfeClause = apenasNfe
+        ? ` AND (
+            (v.numero_nota IS NOT NULL AND v.numero_nota > 0)
+            OR (v.chave_nfe IS NOT NULL AND TRIM(v.chave_nfe) <> '')
+            OR EXISTS (
+                SELECT 1 FROM dash_vendas_itens vi_nf
+                WHERE vi_nf.tenant_id = v.tenant_id
+                  AND vi_nf.venda_id_firebird = v.id_firebird
+                  AND (
+                      (vi_nf.numero_nota IS NOT NULL AND TRIM(vi_nf.numero_nota::text) NOT IN ('', '0'))
+                      OR (vi_nf.chave_nfe IS NOT NULL AND TRIM(vi_nf.chave_nfe) <> '')
+                  )
+            )
+        )`
+        : '';
 
     let outerFilter = 'WHERE 1=1';
     if (cfop && String(cfop).trim() !== '' && cfop !== 'todos' && cfop !== 'todas') {
         const cleanCfop = String(cfop).replace(/\D/g, '');
         if (cleanCfop) {
             const pCfop = pushParam(cleanCfop);
-            outerFilter += ` AND nf.cfop = ${pCfop}`;
+            outerFilter += ` AND (
+                nf.cfop = ${pCfop}
+                OR (
+                    nf.origem = 'vendas'
+                    AND EXISTS (
+                        SELECT 1 FROM dash_vendas_itens vi_cf
+                        WHERE vi_cf.tenant_id = ${pTenant}
+                          AND vi_cf.venda_id_firebird = nf.registro_id
+                          AND regexp_replace(COALESCE(vi_cf.cfop, ''), '\\D', '', 'g') = ${pCfop}
+                    )
+                )
+            )`;
         }
     }
 
@@ -174,23 +215,25 @@ function buildFiscalUnifiedCte({ startDateOnly, endDateOnly, startTs, endTs, dep
                 'vendas'::text AS origem,
                 v.id_firebird::bigint AS registro_id,
                 CASE
-                    WHEN (v.es = 2 OR COALESCE(c.tipo, '1') = '2' OR (v.cfop IS NOT NULL AND v.cfop < 4000)) THEN 'ENTRADA'
+                    WHEN ${isEntradaExpr} THEN 'ENTRADA'
                     ELSE 'SAIDA'
                 END AS tipo_operacao,
                 CASE
-                    WHEN v.chave_nfe IS NOT NULL AND LENGTH(TRIM(v.chave_nfe)) >= 40 THEN 'NF-e / NFC-e'
-                    ELSE 'Nota ERP'
+                    WHEN (v.chave_nfe IS NOT NULL AND LENGTH(TRIM(v.chave_nfe)) >= 40)
+                         OR (v.numero_nota IS NOT NULL AND v.numero_nota > 0)
+                    THEN 'NF-e / NFC-e'
+                    WHEN ${isEntradaExpr} THEN 'Entrada ERP'
+                    ELSE 'Faturado ERP'
                 END::text AS modelo_doc,
                 COALESCE(NULLIF(v.numero_nota, 0)::text, NULLIF(TRIM(v.numero_pedido), ''), v.id_firebird::text) AS numero_nota,
                 '1'::text AS serie,
                 COALESCE(NULLIF(TRIM(v.numero_pedido), ''), v.id_firebird::text) AS numero_pedido,
                 NULLIF(TRIM(v.chave_nfe), '')::text AS chave_nfe,
-                COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda)::timestamptz AS data_emissao,
+                (${vendaDateExpr})::timestamptz AS data_emissao,
                 COALESCE(
                     NULLIF(TRIM(c.nome), ''),
-                    NULLIF(TRIM(c.razao_social), ''),
                     CASE
-                        WHEN (v.es = 2 OR COALESCE(c.tipo, '1') = '2' OR (v.cfop IS NOT NULL AND v.cfop < 4000))
+                        WHEN ${isEntradaExpr}
                         THEN 'Fornecedor #' || COALESCE(v.cliente_id_firebird::text, '-')
                         ELSE 'Consumidor Final'
                     END
@@ -202,23 +245,46 @@ function buildFiscalUnifiedCte({ startDateOnly, endDateOnly, startTs, endTs, dep
                 COALESCE(
                     NULLIF(TRIM(v.especie), ''),
                     CASE
-                        WHEN (v.es = 2 OR COALESCE(c.tipo, '1') = '2' OR (v.cfop IS NOT NULL AND v.cfop < 4000))
+                        WHEN ${isEntradaExpr}
                         THEN 'Nota de Entrada'
                         ELSE 'Venda Faturada'
                     END
                 )::text AS natureza_operacao,
                 ABS(COALESCE(v.valor_total - COALESCE(v.valor_desconto, 0), 0))::numeric(15,2) AS valor_total,
-                COALESCE(NULLIF(TRIM(v.status), ''), 'FATURADO')::text AS status,
+                COALESCE(NULLIF(TRIM(v.status), ''), CASE WHEN ${isEntradaExpr} THEN 'RECEBIDA' ELSE 'FATURADO' END)::text AS status,
                 0::int AS qtd_itens
             FROM dash_vendas v
             LEFT JOIN dash_clientes c ON c.tenant_id = v.tenant_id AND c.id_firebird = v.cliente_id_firebird
             WHERE v.tenant_id = ${pTenant}
-              AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= ${pStartTs}
-              AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= ${pEndTs}
-              AND ((v.numero_nota IS NOT NULL AND v.numero_nota > 0) OR (v.chave_nfe IS NOT NULL AND TRIM(v.chave_nfe) <> ''))
-              AND UPPER(TRIM(COALESCE(v.status, ''))) NOT IN ('CANCELADO', 'ABERTO', 'PENDENTE', 'ORÇAMENTO', 'ORCAMENTO', 'NULO', 'TESTE')
+              AND (${vendaDateExpr}) >= ${pStartTs}
+              AND (${vendaDateExpr}) <= ${pEndTs}
+              AND UPPER(TRIM(COALESCE(v.status, ''))) NOT IN ('CANCELADO', 'CANCELADA', 'ABERTO', 'PENDENTE', 'ORÇAMENTO', 'ORCAMENTO', 'NULO', 'TESTE')
               AND COALESCE(v.status, '') NOT ILIKE '%TRANSF%'
               AND (v.especie IS NULL OR v.especie NOT ILIKE '%TRANSF%')
+              AND (
+                  ${isEntradaExpr}
+                  OR (
+                      UPPER(TRIM(COALESCE(v.status, ''))) IN ('FATURADO', 'FINALIZADO', 'PROCESSADO')
+                      AND (
+                          v.especie IS NULL
+                          OR v.especie NOT ILIKE '%SEM PAGAMENTO%'
+                          OR EXISTS (
+                              SELECT 1 FROM dash_vendas_itens vi_sp
+                              WHERE vi_sp.venda_id_firebird = v.id_firebird AND vi_sp.tenant_id = v.tenant_id
+                          )
+                      )
+                      AND (
+                          (v.numero_nota IS NOT NULL AND v.numero_nota > 0)
+                          OR (v.chave_nfe IS NOT NULL AND TRIM(v.chave_nfe) <> '')
+                          OR EXISTS (
+                              SELECT 1 FROM dash_vendas_itens vi_ex
+                              WHERE vi_ex.venda_id_firebird = v.id_firebird AND vi_ex.tenant_id = v.tenant_id
+                          )
+                          OR v.data_venda >= (CURRENT_DATE - INTERVAL '30 days')
+                      )
+                  )
+              )
+              ${vendasOnlyNfeClause}
               ${vendasTipoClause}
               ${vendasDeptoClause}
               AND NOT EXISTS (
@@ -239,6 +305,12 @@ function buildFiscalUnifiedCte({ startDateOnly, endDateOnly, startTs, endTs, dep
     return { cteSql, params };
 }
 
+function parseApenasNfe(val) {
+    if (val === undefined || val === null) return false;
+    const s = String(val).trim().toLowerCase();
+    return s === 'true' || s === '1' || s === 'sim';
+}
+
 /**
  * GET /api/fiscal/resumo
  * Retorna KPIs consolidados de Notas Emitidas (Saída) e Notas de Entrada, CFOPs disponíveis e evolução no período.
@@ -247,7 +319,8 @@ router.get('/resumo', async (req, res, next) => {
     try {
         const tenantId = req.tenant.id;
         const period = req.query.period || 'thisMonth';
-        const { start_date, end_date, depto_id, cfop, search } = req.query;
+        const { start_date, end_date, depto_id, cfop, search, apenas_nfe } = req.query;
+        const apenasNfe = parseApenasNfe(apenas_nfe);
 
         const store = db.dbContext.getStore();
         const tzOffset = store ? store.tzOffset : -180;
@@ -268,6 +341,7 @@ router.get('/resumo', async (req, res, next) => {
             cfop,
             search,
             tipo: null,
+            apenasNfe,
         });
         params[0] = tenantId;
 
@@ -277,10 +351,16 @@ router.get('/resumo', async (req, res, next) => {
                 SELECT
                     COUNT(*) FILTER (WHERE tipo_operacao = 'SAIDA') AS emitidas_qtd,
                     COALESCE(SUM(valor_total) FILTER (WHERE tipo_operacao = 'SAIDA'), 0) AS emitidas_valor,
-                    COUNT(*) FILTER (WHERE tipo_operacao = 'SAIDA' AND chave_nfe IS NOT NULL AND chave_nfe <> '') AS emitidas_chave_qtd,
+                    COUNT(*) FILTER (
+                        WHERE tipo_operacao = 'SAIDA'
+                          AND (origem = 'cargas' OR modelo_doc = 'NF-e / NFC-e' OR (chave_nfe IS NOT NULL AND chave_nfe <> ''))
+                    ) AS emitidas_chave_qtd,
                     COUNT(*) FILTER (WHERE tipo_operacao = 'ENTRADA') AS entradas_qtd,
                     COALESCE(SUM(valor_total) FILTER (WHERE tipo_operacao = 'ENTRADA'), 0) AS entradas_valor,
-                    COUNT(*) FILTER (WHERE tipo_operacao = 'ENTRADA' AND chave_nfe IS NOT NULL AND chave_nfe <> '') AS entradas_chave_qtd
+                    COUNT(*) FILTER (
+                        WHERE tipo_operacao = 'ENTRADA'
+                          AND (origem = 'cargas' OR modelo_doc = 'NF-e / NFC-e' OR (chave_nfe IS NOT NULL AND chave_nfe <> ''))
+                    ) AS entradas_chave_qtd
                 FROM notas_filtradas
             `, params),
             db.query(`
@@ -310,6 +390,32 @@ router.get('/resumo', async (req, res, next) => {
             `, params),
         ]);
 
+        let cfopRows = cfopListRes.rows;
+        if (cfopRows.length === 0) {
+            const fallbackCfopRes = await db.query(
+                `SELECT
+                    regexp_replace(TRIM(vi.cfop), '\\D', '', 'g') AS cfop,
+                    CASE
+                        WHEN regexp_replace(TRIM(vi.cfop), '\\D', '', 'g') ~ '^[123]' THEN 'ENTRADA'
+                        ELSE 'SAIDA'
+                    END AS tipo_operacao,
+                    COUNT(DISTINCT vi.venda_id_firebird) AS qtd,
+                    COALESCE(SUM(vi.valor_total), 0) AS valor
+                 FROM dash_vendas_itens vi
+                 JOIN dash_vendas v ON v.tenant_id = vi.tenant_id AND v.id_firebird = vi.venda_id_firebird
+                 WHERE vi.tenant_id = $1
+                   AND vi.cfop IS NOT NULL AND TRIM(vi.cfop) <> '' AND TRIM(vi.cfop) <> '0'
+                   AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2
+                   AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
+                 GROUP BY 1, 2
+                 HAVING regexp_replace(TRIM(vi.cfop), '\\D', '', 'g') <> ''
+                 ORDER BY valor DESC
+                 LIMIT 20`,
+                [tenantId, start, end]
+            ).catch(() => ({ rows: [] }));
+            cfopRows = fallbackCfopRes.rows;
+        }
+
         const k = kpiRes.rows[0] || {};
         const emitidasQtd = parseInt(k.emitidas_qtd || 0, 10);
         const emitidasValor = parseFloat(k.emitidas_valor || 0);
@@ -320,6 +426,7 @@ router.get('/resumo', async (req, res, next) => {
 
         res.json({
             period: { start, end, label: period },
+            apenas_nfe: apenasNfe,
             kpis: {
                 emitidas_qtd: emitidasQtd,
                 emitidas_valor: emitidasValor,
@@ -332,7 +439,7 @@ router.get('/resumo', async (req, res, next) => {
                 saldo_fiscal: emitidasValor - entradasValor,
                 total_documentos: emitidasQtd + entradasQtd,
             },
-            cfops: cfopListRes.rows.map((r) => ({
+            cfops: cfopRows.map((r) => ({
                 cfop: r.cfop,
                 tipo_operacao: r.tipo_operacao,
                 qtd: parseInt(r.qtd || 0, 10),
@@ -359,7 +466,8 @@ router.get('/notas', async (req, res, next) => {
     try {
         const tenantId = req.tenant.id;
         const period = req.query.period || 'thisMonth';
-        const { start_date, end_date, depto_id, cfop, search } = req.query;
+        const { start_date, end_date, depto_id, cfop, search, apenas_nfe } = req.query;
+        const apenasNfe = parseApenasNfe(apenas_nfe);
         const tipo = String(req.query.tipo || 'SAIDA').toUpperCase() === 'ENTRADA' ? 'ENTRADA' : 'SAIDA';
         const page = Math.max(1, parseInt(req.query.page || '1', 10));
         const limit = Math.min(200, Math.max(10, parseInt(req.query.limit || '50', 10)));
@@ -384,6 +492,7 @@ router.get('/notas', async (req, res, next) => {
             cfop,
             search,
             tipo,
+            apenasNfe,
         });
         params[0] = tenantId;
 
@@ -410,7 +519,7 @@ router.get('/notas', async (req, res, next) => {
 
         const rows = rowsRes.rows;
 
-        // Enriquecer qtd_itens e CFOP para as linhas vindas de dash_vendas (apenas página atual <= 200 itens)
+        // Enriquecer qtd_itens, CFOP, numero_nota e chave_nfe a partir de dash_vendas_itens na página atual
         const vendaIds = rows.filter((r) => r.origem === 'vendas').map((r) => Number(r.registro_id));
         const vendaStatsMap = new Map();
         if (vendaIds.length > 0) {
@@ -418,7 +527,9 @@ router.get('/notas', async (req, res, next) => {
                 `SELECT
                     venda_id_firebird,
                     COUNT(*) AS qtd_itens,
-                    MAX(NULLIF(TRIM(cfop), '')) AS item_cfop
+                    MAX(NULLIF(TRIM(cfop), '')) AS item_cfop,
+                    MAX(NULLIF(NULLIF(TRIM(numero_nota::text), ''), '0')) AS item_numero_nota,
+                    MAX(NULLIF(TRIM(chave_nfe), '')) AS item_chave_nfe
                  FROM dash_vendas_itens
                  WHERE tenant_id = $1 AND venda_id_firebird = ANY($2::int[])
                  GROUP BY venda_id_firebird`,
@@ -427,22 +538,33 @@ router.get('/notas', async (req, res, next) => {
             for (const st of statsRes.rows) {
                 vendaStatsMap.set(Number(st.venda_id_firebird), {
                     qtd_itens: parseInt(st.qtd_itens || 0, 10),
-                    cfop: st.item_cfop || '',
+                    cfop: st.item_cfop && st.item_cfop !== '0' ? st.item_cfop : '',
+                    numero_nota: st.item_numero_nota || null,
+                    chave_nfe: st.item_chave_nfe || null,
                 });
             }
         }
 
         const data = rows.map((r) => {
             const extra = r.origem === 'vendas' ? vendaStatsMap.get(Number(r.registro_id)) : null;
+            const resolvedChave = r.chave_nfe || extra?.chave_nfe || null;
+            const hasHeaderNf = r.modelo_doc === 'NF-e / NFC-e';
+            const resolvedNumeroNota = (hasHeaderNf || r.origem === 'cargas')
+                ? r.numero_nota
+                : (extra?.numero_nota || r.numero_nota);
+            const resolvedModelo = r.origem === 'cargas'
+                ? r.modelo_doc
+                : ((hasHeaderNf || extra?.numero_nota || resolvedChave) ? 'NF-e / NFC-e' : r.modelo_doc);
+
             return {
                 origem: r.origem,
                 registro_id: Number(r.registro_id),
                 tipo_operacao: r.tipo_operacao,
-                modelo_doc: r.modelo_doc,
-                numero_nota: r.numero_nota,
+                modelo_doc: resolvedModelo,
+                numero_nota: resolvedNumeroNota,
                 serie: r.serie,
                 numero_pedido: r.numero_pedido,
-                chave_nfe: r.chave_nfe || null,
+                chave_nfe: resolvedChave,
                 data_emissao: r.data_emissao,
                 parceiro_nome: r.parceiro_nome,
                 parceiro_documento: r.parceiro_documento,
@@ -458,6 +580,7 @@ router.get('/notas', async (req, res, next) => {
 
         res.json({
             tipo,
+            apenas_nfe: apenasNfe,
             total,
             soma_valor: somaValor,
             page,
@@ -564,7 +687,6 @@ router.get('/notas/:origem/:id', async (req, res, next) => {
             `SELECT
                 v.*,
                 c.nome AS cliente_nome,
-                c.razao_social AS cliente_razao,
                 c.documento AS cliente_documento,
                 c.cidade AS cliente_cidade,
                 c.estado AS cliente_uf,
@@ -586,7 +708,7 @@ router.get('/notas/:origem/:id', async (req, res, next) => {
         }
 
         const v = vRows[0];
-        const isEntrada = v.es === 2 || String(v.cliente_tipo || '1') === '2' || (v.cfop !== null && Number(v.cfop) < 4000);
+        const isEntrada = v.es === 2 || String(v.cliente_tipo || '1') === '2' || (v.cfop !== null && Number(v.cfop) >= 1000 && Number(v.cfop) < 4000);
 
         const { rows: itemRows } = await db.query(
             `SELECT
@@ -594,7 +716,9 @@ router.get('/notas/:origem/:id', async (req, res, next) => {
                 vi.produto_id_firebird,
                 COALESCE(NULLIF(TRIM(p.codigo), ''), vi.produto_id_firebird::text) AS codigo,
                 COALESCE(NULLIF(TRIM(vi.produto), ''), NULLIF(TRIM(p.nome), ''), 'Produto #' || COALESCE(vi.produto_id_firebird::text, '?')) AS descricao,
-                COALESCE(NULLIF(TRIM(vi.cfop), ''), NULLIF(v.cfop, 0)::text, '') AS cfop,
+                COALESCE(NULLIF(NULLIF(TRIM(vi.cfop), ''), '0'), NULLIF(v.cfop, 0)::text, '') AS cfop,
+                NULLIF(NULLIF(TRIM(vi.numero_nota::text), ''), '0') AS item_numero_nota,
+                NULLIF(TRIM(vi.chave_nfe), '') AS item_chave_nfe,
                 COALESCE(vi.quantidade, 0) AS quantidade,
                 COALESCE(vi.preco_unitario, 0) AS valor_unitario,
                 COALESCE(vi.desconto_item, 0) AS desconto_pct,
@@ -606,6 +730,9 @@ router.get('/notas/:origem/:id', async (req, res, next) => {
              ORDER BY vi.id ASC`,
             [tenantId, idNum]
         );
+
+        const firstItemNf = itemRows.find((i) => i.item_numero_nota)?.item_numero_nota || null;
+        const firstItemChave = itemRows.find((i) => i.item_chave_nfe)?.item_chave_nfe || null;
 
         const itens = itemRows.map((it, idx) => {
             const bruto = parseFloat(it.valor_total || 0);
@@ -626,22 +753,27 @@ router.get('/notas/:origem/:id', async (req, res, next) => {
             };
         });
 
-        const parceiroNome = v.cliente_nome || v.cliente_razao || (isEntrada ? 'Fornecedor' : 'Consumidor Final');
+        const parceiroNome = v.cliente_nome || (isEntrada ? 'Fornecedor' : 'Consumidor Final');
         const empresaNome = v.filial_nome || 'Empresa Emitente';
+        const resolvedChave = (v.chave_nfe && String(v.chave_nfe).trim()) || firstItemChave || null;
+        const resolvedNumeroNota = (v.numero_nota && Number(v.numero_nota) > 0)
+            ? String(v.numero_nota)
+            : (firstItemNf || v.numero_pedido || String(v.id_firebird));
+        const hasNfMetadata = Boolean((v.numero_nota && Number(v.numero_nota) > 0) || firstItemNf || resolvedChave);
 
         return res.json({
             origem: 'vendas',
             registro_id: Number(v.id_firebird),
             tipo_operacao: isEntrada ? 'ENTRADA' : 'SAIDA',
-            modelo_doc: v.chave_nfe && String(v.chave_nfe).trim().length >= 40 ? 'NF-e / NFC-e' : 'Nota ERP',
-            numero_nota: v.numero_nota && Number(v.numero_nota) > 0 ? String(v.numero_nota) : (v.numero_pedido || String(v.id_firebird)),
+            modelo_doc: hasNfMetadata ? 'NF-e / NFC-e' : (isEntrada ? 'Entrada ERP' : 'Faturado ERP'),
+            numero_nota: resolvedNumeroNota,
             serie: '1',
             numero_pedido: v.numero_pedido || String(v.id_firebird),
-            chave_nfe: v.chave_nfe ? String(v.chave_nfe).trim() : null,
+            chave_nfe: resolvedChave,
             protocolo: null,
             natureza_operacao: v.especie || (isEntrada ? 'Nota de Entrada' : 'Venda Faturada'),
-            data_emissao: v.data_hora_proc || v.data_vencimento || v.data_venda,
-            status: v.status || 'FATURADO',
+            data_emissao: isEntrada ? (v.data_hora_proc || v.data_venda) : (v.data_hora_proc || v.data_vencimento || v.data_venda),
+            status: v.status || (isEntrada ? 'RECEBIDA' : 'FATURADO'),
             vendedor_nome: v.vendedor_nome || null,
             valor_produtos: Math.abs(parseFloat(v.valor_total || 0)),
             valor_frete: 0,

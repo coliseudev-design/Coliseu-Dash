@@ -192,103 +192,89 @@ export default function Radar360Dashboard() {
           <div className="absolute bottom-[15%] right-[10%] w-[40%] h-[40%] rounded-full bg-cyan-500/5 blur-[150px]"></div>
         </div>
 
-        {/* CABEÇALHO & FILTROS INTEGRADOS (COMPACTO E ULTRA-MODERNO) */}
-        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-4 space-y-3">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-            <div className="space-y-0.5">
-              <h1 className="text-xl font-black tracking-tight text-text-primary flex items-center gap-2">
-                <span className="text-brand-500">⚡</span> Cliente 360 — Carteira de Clientes
-              </h1>
-              <p className="text-[11px] text-text-secondary font-medium">
-                Selecione um cliente para abrir a Ficha Antecipatória com DNA de compras e inteligência comercial.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2 shrink-0">
-              <div className="px-3 py-1 bg-bg-secondary border border-border rounded-xl text-xs font-bold text-text-secondary flex items-center gap-2 shadow-sm">
-                <Users size={14} className="text-brand-500" />
-                <span><strong className="text-text-primary font-mono">{formatNum(totalClients)}</strong> clientes filtrados</span>
-              </div>
-            </div>
+        {/* BARRA UNIFICADA COMPACTA DE FILTROS DA CARTEIRA */}
+        <div className="bi-filter-bar">
+          {/* BUSCA TEXTUAL */}
+          <div className="relative flex-1 min-w-[220px]">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <input
+              type="text"
+              value={clientSearch}
+              onChange={(e) => setClientSearch(e.target.value)}
+              placeholder="Buscar por Código, Razão Social, CNPJ/CPF, Cidade ou E-mail..."
+              className="w-full h-8 pl-8 pr-7 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold text-slate-800 dark:text-slate-100 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-brand-500 transition-all"
+            />
+            {clientSearch && (
+              <button
+                onClick={() => setClientSearch('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary p-0.5 cursor-pointer"
+              >
+                <X size={13} />
+              </button>
+            )}
           </div>
 
-          {/* BARRA DE FILTROS */}
-          <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-2.5 pt-2 border-t border-divider/40">
-            {/* BUSCA TEXTUAL */}
-            <div className="relative flex-1">
-              <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
-              <input
-                type="text"
-                value={clientSearch}
-                onChange={(e) => setClientSearch(e.target.value)}
-                placeholder="Buscar por Código, Razão Social, CNPJ/CPF, Cidade ou E-mail..."
-                className="w-full pl-9 pr-8 py-2 bg-bg-secondary border border-border rounded-xl text-xs font-semibold text-text-primary placeholder:text-text-muted outline-none focus:ring-2 focus:ring-brand-500 transition-all shadow-sm"
-              />
-              {clientSearch && (
-                <button
-                  onClick={() => setClientSearch('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary p-1"
-                >
-                  <X size={13} />
-                </button>
-              )}
-            </div>
-
+          <div className="flex flex-wrap items-center gap-2">
             {/* FILTRO POR CIDADE */}
-            <div className="relative min-w-[180px]">
+            <div className="relative min-w-[160px] max-w-[210px]">
               <select
                 value={selectedCity}
                 onChange={(e) => {
                   setSelectedCity(e.target.value);
                   setClientPage(1);
                 }}
-                className="appearance-none w-full h-[36px] pl-3 pr-8 bg-bg-secondary border border-border rounded-xl text-xs font-bold text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all cursor-pointer shadow-sm uppercase"
+                className="bi-select appearance-none w-full pr-7 uppercase"
               >
-                <option value="todas">📍 Todas as Cidades</option>
+                <option value="todas">Todas as Cidades</option>
                 {availableCities.map((cidade) => (
-                  <option key={cidade} value={cidade}>📍 {cidade}</option>
+                  <option key={cidade} value={cidade}>{cidade}</option>
                 ))}
               </select>
-              <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+              <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             </div>
 
             {/* FILTRO POR SALDO */}
-            <div className="relative min-w-[170px]">
+            <div className="relative min-w-[155px]">
               <select
                 value={saldoFilter}
                 onChange={(e) => {
                   setSaldoFilter(e.target.value as any);
                   setClientPage(1);
                 }}
-                className="appearance-none w-full h-[36px] pl-3 pr-8 bg-bg-secondary border border-border rounded-xl text-xs font-bold text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all cursor-pointer shadow-sm"
+                className="bi-select appearance-none w-full pr-7"
               >
-                <option value="todos">💳 Todos os Saldos</option>
-                <option value="com_saldo">🔴 Com Saldo Devedor</option>
-                <option value="sem_saldo">🟢 Em Dia / Sem Saldo</option>
+                <option value="todos">Todos os Saldos</option>
+                <option value="com_saldo">Com Saldo Devedor</option>
+                <option value="sem_saldo">Em Dia / Sem Saldo</option>
               </select>
-              <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+              <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             </div>
 
             {/* ORDENAÇÃO */}
-            <div className="relative min-w-[195px]">
+            <div className="relative min-w-[175px]">
               <select
                 value={sortOrder}
                 onChange={(e) => {
                   setSortOrder(e.target.value);
                   setClientPage(1);
                 }}
-                className="appearance-none w-full h-[36px] pl-3 pr-8 bg-bg-secondary border border-border rounded-xl text-xs font-bold text-text-primary focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all cursor-pointer shadow-sm"
+                className="bi-select appearance-none w-full pr-7"
               >
-                <option value="nome_asc">🔤 Ordem Alfabética (A-Z)</option>
-                <option value="nome_desc">🔤 Ordem Alfabética (Z-A)</option>
-                <option value="cod_asc">🔢 Código (Crescente)</option>
-                <option value="cod_desc">🔢 Código (Decrescente)</option>
-                <option value="saldo_desc">💰 Maior Saldo Devedor</option>
-                <option value="ltv_desc">📈 Maior Faturamento (LTV)</option>
-                <option value="pedidos_desc">📦 Mais Pedidos</option>
-                <option value="recente">🕒 Última Compra (Recentes)</option>
+                <option value="nome_asc">Ordem (A-Z)</option>
+                <option value="nome_desc">Ordem (Z-A)</option>
+                <option value="cod_asc">Código (Crescente)</option>
+                <option value="cod_desc">Código (Decrescente)</option>
+                <option value="saldo_desc">Maior Saldo Devedor</option>
+                <option value="ltv_desc">Maior Faturamento (LTV)</option>
+                <option value="pedidos_desc">Mais Pedidos</option>
+                <option value="recente">Última Compra</option>
               </select>
-              <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+              <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            </div>
+
+            <div className="h-8 px-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 inline-flex items-center gap-1.5 whitespace-nowrap">
+              <Users size={13} className="text-brand-500" />
+              <span><strong className="text-slate-900 dark:text-white font-mono">{formatNum(totalClients)}</strong> clientes</span>
             </div>
           </div>
         </div>
@@ -523,25 +509,22 @@ export default function Radar360Dashboard() {
         <div className="absolute bottom-[-5%] right-[-5%] w-[40%] h-[40%] rounded-full bg-cyan-500/5 blur-[150px]"></div>
       </div>
 
-      {/* HEADER DE NAVEGAÇÃO E BUSCA */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-divider/10 pb-4">
-        <div className="flex items-center gap-3">
+      {/* BARRA DE NAVEGAÇÃO E BUSCA COMPACTA DA FICHA 360 */}
+      <div className="bi-filter-bar">
+        <div className="flex items-center gap-2.5">
           <button
             onClick={handleClearCustomer}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-bg-secondary hover:bg-bg-tertiary border border-divider text-text-primary text-xs font-bold rounded-xl transition-all cursor-pointer shadow-sm"
+            className="h-8 flex items-center gap-1.5 px-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-text-primary text-xs font-bold rounded-lg transition-all cursor-pointer"
           >
-            <ArrowLeft size={14} /> Voltar
+            <ArrowLeft size={13} /> Voltar à Carteira
           </button>
-          <div>
-            <h2 className="text-xl font-extrabold text-text-primary tracking-tight flex items-center gap-2">
-              <span className="text-brand-500">⚡</span> Radar 360
-            </h2>
-            <p className="text-[10px] text-text-secondary/70 font-bold uppercase tracking-wider">Interface Antecipatória de Cliente</p>
-          </div>
+          <span className="text-xs font-semibold text-text-secondary hidden sm:inline">
+            Ficha Antecipatória do Cliente
+          </span>
         </div>
 
         {/* Seletor flutuante de busca de outro cliente */}
-        <div className="w-full md:w-80 z-40">
+        <div className="w-full sm:w-80 z-40">
           <CommandCenter onSelectCustomer={handleSelectCustomer} />
         </div>
       </div>
@@ -850,42 +833,42 @@ export default function Radar360Dashboard() {
       </div>
 
       {/* KPI BOXES HISTÓRICOS */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         
         {/* Box 1: Faturamento Vitalício */}
-        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 flex items-center gap-4">
-          <div className="p-3 bg-brand-500/10 text-brand-500 rounded-2xl border border-brand-500/10">
-            <DollarSign size={20} />
+        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-4 flex flex-col justify-between min-w-0">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <span className="text-[10px] font-black text-text-secondary/70 uppercase tracking-widest truncate">Faturamento Vitalício (LTV)</span>
+            <div className="w-8 h-8 flex items-center justify-center bg-brand-500/10 text-brand-500 rounded-lg border border-brand-500/15 shrink-0">
+              <DollarSign size={16} />
+            </div>
           </div>
-          <div>
-            <span className="text-[9px] font-black text-text-secondary/70 uppercase tracking-widest block mb-0.5">Faturamento Vitalício (LTV)</span>
-            <span className="text-lg font-black text-text-primary block font-mono leading-tight">{formatCurrency(dna.ltv)}</span>
-            <span className="text-[9px] text-text-secondary font-bold">Faturamento total acumulado na empresa</span>
-          </div>
+          <span className="bi-kpi-value font-black text-text-primary block font-mono">{formatCurrency(dna.ltv)}</span>
+          <span className="text-[10px] text-text-secondary font-semibold mt-1">Faturamento total acumulado na empresa</span>
         </div>
 
         {/* Box 2: Ticket Médio Histórico */}
-        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 flex items-center gap-4">
-          <div className="p-3 bg-cyan-500/10 text-cyan-500 rounded-2xl border border-cyan-500/10">
-            <TrendingUp size={20} />
+        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-4 flex flex-col justify-between min-w-0">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <span className="text-[10px] font-black text-text-secondary/70 uppercase tracking-widest truncate">Ticket Médio Histórico</span>
+            <div className="w-8 h-8 flex items-center justify-center bg-cyan-500/10 text-cyan-500 rounded-lg border border-cyan-500/15 shrink-0">
+              <TrendingUp size={16} />
+            </div>
           </div>
-          <div>
-            <span className="text-[9px] font-black text-text-secondary/70 uppercase tracking-widest block mb-0.5">Ticket Médio Histórico</span>
-            <span className="text-lg font-black text-text-primary block font-mono leading-tight">{formatCurrency(behavior.ticket_medio_historico)}</span>
-            <span className="text-[9px] text-text-secondary font-bold">Média de valor faturado por pedido</span>
-          </div>
+          <span className="bi-kpi-value font-black text-text-primary block font-mono">{formatCurrency(behavior.ticket_medio_historico)}</span>
+          <span className="text-[10px] text-text-secondary font-semibold mt-1">Média de valor faturado por pedido</span>
         </div>
 
         {/* Box 3: Compras Totais */}
-        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 flex items-center gap-4">
-          <div className="p-3 bg-indigo-500/10 text-indigo-500 rounded-2xl border border-indigo-500/10">
-            <Package size={20} />
+        <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-4 flex flex-col justify-between min-w-0">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <span className="text-[10px] font-black text-text-secondary/70 uppercase tracking-widest truncate">Compras Totais</span>
+            <div className="w-8 h-8 flex items-center justify-center bg-teal-500/10 text-teal-500 rounded-lg border border-teal-500/15 shrink-0">
+              <Package size={16} />
+            </div>
           </div>
-          <div>
-            <span className="text-[9px] font-black text-text-secondary/70 uppercase tracking-widest block mb-0.5">Compras Totais</span>
-            <span className="text-lg font-black text-text-primary block font-mono leading-tight">{dna.qtd_pedidos || 0} compras</span>
-            <span className="text-[9px] text-text-secondary font-bold">Faturamento de pedidos realizados</span>
-          </div>
+          <span className="bi-kpi-value font-black text-text-primary block font-mono">{formatNum(dna.qtd_pedidos || 0)} compras</span>
+          <span className="text-[10px] text-text-secondary font-semibold mt-1">Total de pedidos realizados</span>
         </div>
 
       </div>
@@ -929,10 +912,10 @@ export default function Radar360Dashboard() {
               />
               <Tooltip
                 formatter={(value: number) => [formatCurrency(value), 'Faturamento']}
-                cursor={{ fill: 'rgba(99,102,241,0.06)', radius: 6 } as any}
+                cursor={{ fill: 'rgba(6,182,212,0.06)', radius: 6 } as any}
                 contentStyle={{
                   background: 'rgba(15,23,42,0.92)',
-                  border: '1px solid rgba(99,102,241,0.3)',
+                  border: '1px solid rgba(6,182,212,0.3)',
                   borderRadius: 10,
                   boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
                   fontSize: 11,
@@ -946,12 +929,11 @@ export default function Radar360Dashboard() {
                 {(behavior.sazonalidade || []).map((entry: any, idx: number) => {
                   const maxVal = Math.max(...(behavior.sazonalidade || []).map((x: any) => x.total), 1);
                   const ratio = maxVal > 0 ? entry.total / maxVal : 0;
-                  // Gradiente de cor: baixo = índigo apagado, alto = brand vibrante
                   const alpha = Math.round(80 + ratio * 175);
                   const hexAlpha = alpha.toString(16).padStart(2, '0');
                   const isMaior = entry.mes === behavior.mes_maior_volume;
                   const isMenor = entry.mes === behavior.mes_menor_volume;
-                  const fill = isMaior ? '#10B981' : isMenor ? '#EF4444' : `#4F46E5${hexAlpha}`;
+                  const fill = isMaior ? '#10B981' : isMenor ? '#EF4444' : `#0284C7${hexAlpha}`;
                   return <Cell key={idx} fill={fill} />;
                 })}
               </Bar>
@@ -966,7 +948,7 @@ export default function Radar360Dashboard() {
             Mês de maior volume
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded-sm" style={{ background: '#4F46E5' }} />
+            <span className="w-3 h-3 rounded-sm" style={{ background: '#0284C7' }} />
             Meses normais
           </div>
           <div className="flex items-center gap-1.5">

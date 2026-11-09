@@ -8,8 +8,7 @@ import {
 } from 'lucide-react'
 import { useApiQuery, useBranchPeriodQuery } from '../hooks/useApi'
 import { useBranch } from '../contexts/BranchContext'
-import { PageFilters } from '../components/PageFilters'
-import { formatBRL, formatBRLCompact, formatNum } from '../utils/format'
+import { formatBRL, formatBRLCompact, formatNum, formatGrowthPct } from '../utils/format'
 import clsx from 'clsx'
 
 // Tooltip customizado premium
@@ -273,12 +272,11 @@ export default function ComparativoVendas() {
 
   return (
     <div className="space-y-4 pb-6 animate-in fade-in duration-300">
-      {/* Teleportamos todos os filtros da página para o cabeçalho superior unificado */}
-      {/* Painel de Filtros da Página - Posicionado abaixo do título da tela */}
-      <div className="bg-bg-primary border border-border shadow-sm rounded-xl p-3.5 flex flex-col gap-3.5 text-xs w-full animate-in slide-in-from-top-3 duration-250">
+      {/* Barra Unificada Compacta de Filtros de Comparação */}
+      <div className="bg-bg-primary border border-border shadow-sm rounded-xl p-2.5 sm:p-3 flex flex-col gap-2.5 text-xs w-full">
         
         {/* LINHA 1: PERÍODOS DE COMPARAÇÃO */}
-        <div className="flex flex-wrap items-center gap-4 w-full border-b border-divider/45 pb-3">
+        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 w-full border-b border-divider/45 pb-2.5">
           {/* Mode Toggle */}
           <div className="bg-bg-secondary p-0.5 rounded-lg flex items-center border border-border shrink-0">
             <button
@@ -302,45 +300,45 @@ export default function ComparativoVendas() {
           </div>
 
           {/* Análise Period */}
-          <div className="flex items-center gap-2 pr-2 pl-1 shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0">
             <span className="text-[10px] text-blue-500 font-bold uppercase tracking-wider">ANÁLISE</span>
             {tipoPeriodo === 'mes' ? (
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1">
                 <div className="relative">
                   <select
                     value={analiseMes}
                     onChange={(e) => handleAnaliseMesChange(Number(e.target.value))}
-                    className="bg-bg-secondary border border-border rounded-lg px-2.5 py-1.5 text-xs font-semibold text-text-primary outline-none cursor-pointer pr-7"
+                    className="appearance-none h-8 bg-bg-secondary border border-border rounded-lg pl-2.5 pr-6 text-xs font-semibold text-text-primary outline-none cursor-pointer"
                   >
                     {MONTHS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                   </select>
-                  <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+                  <ChevronDown size={12} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
                 </div>
                 <div className="relative">
                   <select
                     value={analiseAno}
                     onChange={(e) => handleAnaliseAnoChange(Number(e.target.value))}
-                    className="bg-bg-secondary border border-border rounded-lg px-2.5 py-1.5 text-xs font-semibold text-text-primary outline-none cursor-pointer pr-7"
+                    className="appearance-none h-8 bg-bg-secondary border border-border rounded-lg pl-2.5 pr-6 text-xs font-semibold text-text-primary outline-none cursor-pointer"
                   >
                     {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
                   </select>
-                  <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+                  <ChevronDown size={12} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
                 </div>
               </div>
             ) : (
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1">
                 <input
                   type="date"
                   value={customAnaliseStart}
                   onChange={(e) => setCustomAnaliseStart(e.target.value)}
-                  className="bg-bg-secondary border border-border rounded-lg px-2 py-1 text-xs font-semibold text-text-primary outline-none max-w-[110px]"
+                  className="h-8 bg-bg-secondary border border-border rounded-lg px-2 text-xs font-semibold text-text-primary outline-none max-w-[125px]"
                 />
                 <span className="text-xs text-text-muted">a</span>
                 <input
                   type="date"
                   value={customAnaliseEnd}
                   onChange={(e) => setCustomAnaliseEnd(e.target.value)}
-                  className="bg-bg-secondary border border-border rounded-lg px-2 py-1 text-xs font-semibold text-text-primary outline-none max-w-[110px]"
+                  className="h-8 bg-bg-secondary border border-border rounded-lg px-2 text-xs font-semibold text-text-primary outline-none max-w-[125px]"
                 />
               </div>
             )}
@@ -348,13 +346,13 @@ export default function ComparativoVendas() {
 
           {/* SUTIL SWITCH / MARCAÇÃO "ANO" ENTRE OS PERÍODOS */}
           {tipoPeriodo === 'mes' && (
-            <div className="flex items-center px-1 border-x border-divider/40">
+            <div className="flex items-center px-1">
               <button
                 type="button"
                 onClick={toggleYearComparison}
                 title={isYearComparison ? "Ativo: comparando com o mesmo mês do ano anterior (ex: Set/2026 vs Set/2025)" : "Clique para comparar com o mesmo mês do ano anterior (Ano a Ano)"}
                 className={clsx(
-                  "flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer select-none",
+                  "flex items-center gap-1.5 px-2.5 h-8 rounded-lg text-[10px] font-bold border transition-all cursor-pointer select-none",
                   isYearComparison 
                     ? "bg-emerald-500/15 border-emerald-500/50 text-emerald-600 dark:text-emerald-400 shadow-sm"
                     : "bg-bg-secondary border-border text-text-secondary hover:text-text-primary hover:border-border/80"
@@ -373,111 +371,111 @@ export default function ComparativoVendas() {
           )}
 
           {/* Comparação Period */}
-          <div className="flex items-center gap-2 pr-4 shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0">
             <span className="text-[10px] text-orange-500 font-bold uppercase tracking-wider">COMPARAÇÃO</span>
             {tipoPeriodo === 'mes' ? (
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1">
                 <div className="relative">
                   <select
                     value={comparacaoMes}
                     onChange={(e) => setComparacaoMes(Number(e.target.value))}
-                    className="bg-bg-secondary border border-border rounded-lg px-2.5 py-1.5 text-xs font-semibold text-text-primary outline-none cursor-pointer pr-7"
+                    className="appearance-none h-8 bg-bg-secondary border border-border rounded-lg pl-2.5 pr-6 text-xs font-semibold text-text-primary outline-none cursor-pointer"
                   >
                     {MONTHS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                   </select>
-                  <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+                  <ChevronDown size={12} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
                 </div>
                 <div className="relative">
                   <select
                     value={comparacaoAno}
                     onChange={(e) => setComparacaoAno(Number(e.target.value))}
-                    className="bg-bg-secondary border border-border rounded-lg px-2.5 py-1.5 text-xs font-semibold text-text-primary outline-none cursor-pointer pr-7"
+                    className="appearance-none h-8 bg-bg-secondary border border-border rounded-lg pl-2.5 pr-6 text-xs font-semibold text-text-primary outline-none cursor-pointer"
                   >
                     {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
                   </select>
-                  <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+                  <ChevronDown size={12} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
                 </div>
               </div>
             ) : (
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1">
                 <input
                   type="date"
                   value={customComparacaoStart}
                   onChange={(e) => setCustomComparacaoStart(e.target.value)}
-                  className="bg-bg-secondary border border-border rounded-lg px-2 py-1 text-xs font-semibold text-text-primary outline-none max-w-[110px]"
+                  className="h-8 bg-bg-secondary border border-border rounded-lg px-2 text-xs font-semibold text-text-primary outline-none max-w-[125px]"
                 />
                 <span className="text-xs text-text-muted">a</span>
                 <input
                   type="date"
                   value={customComparacaoEnd}
                   onChange={(e) => setCustomComparacaoEnd(e.target.value)}
-                  className="bg-bg-secondary border border-border rounded-lg px-2 py-1 text-xs font-semibold text-text-primary outline-none max-w-[110px]"
+                  className="h-8 bg-bg-secondary border border-border rounded-lg px-2 text-xs font-semibold text-text-primary outline-none max-w-[125px]"
                 />
               </div>
             )}
           </div>
         </div>
 
-        {/* LINHA 2: CONTEXTOS DE FILTRAGEM (DISTRIBUÍDO EM GRID) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 w-full items-center pt-1">
+        {/* LINHA 2: CONTEXTOS DE FILTRAGEM (AUTO-ADAPTÁVEL SEM CORTAR TEXTOS) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-2.5 w-full items-center">
           {/* Vendedor */}
-          <div className="relative w-full">
+          <div className="relative w-full min-w-0">
             <select
               value={vendedor}
               onChange={(e) => setVendedor(e.target.value)}
-              className="bg-bg-secondary border border-border rounded-lg px-3 py-2 text-xs font-bold text-text-primary outline-none w-full cursor-pointer pr-8"
+              className="appearance-none h-8 bg-bg-secondary border border-border rounded-lg pl-2.5 pr-7 text-xs font-semibold text-text-primary outline-none w-full cursor-pointer truncate"
             >
               <option value="todas">Vendedor: Todos</option>
               {sellersDropdown.data?.data?.map((s: any) => (
                 <option key={s.id || s.nome} value={s.id}>{s.nome}</option>
               ))}
             </select>
-            <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+            <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
           </div>
 
           {/* Cidade */}
-          <div className="relative w-full">
+          <div className="relative w-full min-w-0">
             <select
               value={cidade}
               onChange={(e) => setCidade(e.target.value)}
-              className="bg-bg-secondary border border-border rounded-lg px-3 py-2 text-xs font-bold text-text-primary outline-none w-full cursor-pointer pr-8"
+              className="appearance-none h-8 bg-bg-secondary border border-border rounded-lg pl-2.5 pr-7 text-xs font-semibold text-text-primary outline-none w-full cursor-pointer truncate"
             >
               <option value="todas">Cidade: Todas</option>
               {citiesDropdown.data?.data?.map((c: any) => (
                 <option key={c.nome || c.cidade} value={c.nome || c.cidade}>{c.nome || c.cidade}</option>
               ))}
             </select>
-            <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+            <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
           </div>
 
           {/* Marca */}
-          <div className="relative w-full">
+          <div className="relative w-full min-w-0">
             <select
               value={marca}
               onChange={(e) => setMarca(e.target.value)}
-              className="bg-bg-secondary border border-border rounded-lg px-3 py-2 text-xs font-bold text-text-primary outline-none w-full cursor-pointer pr-8"
+              className="appearance-none h-8 bg-bg-secondary border border-border rounded-lg pl-2.5 pr-7 text-xs font-semibold text-text-primary outline-none w-full cursor-pointer truncate"
             >
               <option value="todas">Marca: Todas</option>
               {brandsDropdown.data?.data?.map((m: any) => (
                 <option key={m.nome || m.marca} value={m.nome || m.marca}>{m.nome || m.marca}</option>
               ))}
             </select>
-            <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+            <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
           </div>
 
           {/* Categoria */}
-          <div className="relative w-full">
+          <div className="relative w-full min-w-0">
             <select
               value={categoria}
               onChange={(e) => setCategoria(e.target.value)}
-              className="bg-bg-secondary border border-border rounded-lg px-3 py-2 text-xs font-bold text-text-primary outline-none w-full cursor-pointer pr-8"
+              className="appearance-none h-8 bg-bg-secondary border border-border rounded-lg pl-2.5 pr-7 text-xs font-semibold text-text-primary outline-none w-full cursor-pointer truncate"
             >
               <option value="todas">Categoria: Todas</option>
               {categoriesDropdown.data?.data?.map((c: any) => (
                 <option key={c.nome || c.categoria} value={c.nome || c.categoria}>{c.nome || c.categoria}</option>
               ))}
             </select>
-            <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+            <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
           </div>
 
           {/* Compare Button */}
@@ -488,7 +486,7 @@ export default function ComparativoVendas() {
               rankAnalise.refetch();
               rankComparacao.refetch();
             }}
-            className="bg-[#10B981] hover:bg-emerald-600 text-white font-black px-4 py-2 rounded-lg text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 w-full shadow-sm hover:shadow active:scale-[0.97] border border-transparent h-full min-h-[36px]"
+            className="sm:col-span-2 xl:col-span-1 bg-[#10B981] hover:bg-emerald-600 text-white font-black px-4 h-8 rounded-lg text-xs uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 w-full shadow-sm hover:shadow active:scale-[0.97]"
           >
             <Play size={12} fill="white" />
             Comparar
@@ -497,37 +495,41 @@ export default function ComparativoVendas() {
       </div>
 
       {/* TIER 3: COMPARISON KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
         {/* Faturamento KPI */}
-        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex flex-col justify-between hover:border-blue-500/30 transition-colors">
-          <div className="flex items-center gap-2 text-[10px] font-bold text-text-secondary uppercase tracking-wider mb-4 border-b border-divider/30 pb-2">
-            <div className="p-1 bg-blue-500/10 rounded-lg text-blue-500"><DollarSign size={14} /></div> FATURAMENTO TOTAL
+        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between hover:border-blue-500/30 transition-colors min-w-0">
+          <div className="flex items-center justify-between gap-2 text-[10px] font-bold text-text-secondary uppercase tracking-wider mb-3 border-b border-divider/30 pb-2">
+            <span>FATURAMENTO TOTAL</span>
+            <div className="w-6 h-6 bg-blue-500/10 rounded-md text-blue-500 flex items-center justify-center shrink-0"><DollarSign size={13} /></div>
           </div>
-          <div className="space-y-2 flex-1">
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-1.5 text-xs text-text-secondary">
+          <div className="space-y-1.5 flex-1">
+            <div className="flex justify-between items-center gap-2">
+              <div className="flex items-center gap-1.5 text-[11px] text-text-secondary">
                 <span className="w-2 h-2 rounded-full bg-blue-500" /> ANÁLISE
               </div>
-              <span className="text-xs text-text-muted font-semibold">({tipoPeriodo === 'mes' ? labelAnalise : 'Análise'})</span>
+              <span className="text-[11px] text-text-muted font-semibold truncate">({tipoPeriodo === 'mes' ? labelAnalise : 'Análise'})</span>
             </div>
-            <div className="text-xl font-black text-text-primary">{formatBRL(fatAnalise)}</div>
+            <div className="font-black text-text-primary mono bi-kpi-value">{formatBRL(fatAnalise)}</div>
 
-            <div className="flex justify-between items-center pt-2">
-              <div className="flex items-center gap-1.5 text-xs text-text-secondary">
+            <div className="flex justify-between items-center gap-2 pt-1.5">
+              <div className="flex items-center gap-1.5 text-[11px] text-text-secondary">
                 <span className="w-2 h-2 rounded-full bg-orange-500" /> COMPARAÇÃO
               </div>
-              <span className="text-xs text-text-muted font-semibold">({tipoPeriodo === 'mes' ? labelComparacao : 'Comparação'})</span>
+              <span className="text-[11px] text-text-muted font-semibold truncate">({tipoPeriodo === 'mes' ? labelComparacao : 'Comparação'})</span>
             </div>
-            <div className="text-xl font-black text-text-primary">{formatBRL(fatComparacao)}</div>
+            <div className="font-black text-text-primary mono bi-kpi-value">{formatBRL(fatComparacao)}</div>
           </div>
-          <div className="mt-4 flex items-center gap-2">
-            <div className={clsx(
-              "px-2.5 py-1 rounded-lg text-xs font-black flex items-center gap-1",
-              fatPct >= 0 ? "bg-success/15 text-success" : "bg-danger/15 text-danger"
-            )}>
-              {fatPct >= 0 ? '+' : ''}{fatPct.toFixed(2)}%
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <div
+              title={`${fatPct >= 0 ? '+' : ''}${fatPct.toFixed(2)}%`}
+              className={clsx(
+                "px-2 py-0.5 rounded-lg text-[11px] font-black flex items-center gap-1 tabular-nums whitespace-nowrap",
+                fatPct >= 0 ? "bg-success/15 text-success" : "bg-danger/15 text-danger"
+              )}
+            >
+              {formatGrowthPct(fatPct, 2)}
             </div>
-            <div className="text-[10px] text-text-secondary font-bold">
+            <div className="text-[10.5px] text-text-secondary font-bold tabular-nums">
               Dif: <span className={clsx("font-extrabold", fatDiff >= 0 ? "text-success" : "text-danger")}>
                 {fatDiff >= 0 ? '+' : ''}{formatBRL(fatDiff)}
               </span>
@@ -536,35 +538,39 @@ export default function ComparativoVendas() {
         </div>
 
         {/* Quantidade Pedidos KPI */}
-        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex flex-col justify-between hover:border-emerald-500/30 transition-colors">
-          <div className="flex items-center gap-2 text-[10px] font-bold text-text-secondary uppercase tracking-wider mb-4 border-b border-divider/30 pb-2">
-            <div className="p-1 bg-emerald-500/10 rounded-lg text-emerald-500"><ShoppingBag size={14} /></div> QUANTIDADE DE PEDIDOS
+        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between hover:border-emerald-500/30 transition-colors min-w-0">
+          <div className="flex items-center justify-between gap-2 text-[10px] font-bold text-text-secondary uppercase tracking-wider mb-3 border-b border-divider/30 pb-2">
+            <span>QUANTIDADE DE PEDIDOS</span>
+            <div className="w-6 h-6 bg-emerald-500/10 rounded-md text-emerald-500 flex items-center justify-center shrink-0"><ShoppingBag size={13} /></div>
           </div>
-          <div className="space-y-2 flex-1">
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-1.5 text-xs text-text-secondary">
+          <div className="space-y-1.5 flex-1">
+            <div className="flex justify-between items-center gap-2">
+              <div className="flex items-center gap-1.5 text-[11px] text-text-secondary">
                 <span className="w-2 h-2 rounded-full bg-blue-500" /> ANÁLISE
               </div>
-              <span className="text-xs text-text-muted font-semibold">({tipoPeriodo === 'mes' ? labelAnalise : 'Análise'})</span>
+              <span className="text-[11px] text-text-muted font-semibold truncate">({tipoPeriodo === 'mes' ? labelAnalise : 'Análise'})</span>
             </div>
-            <div className="text-xl font-black text-text-primary">{formatNum(pedAnalise)}</div>
+            <div className="font-black text-text-primary mono bi-kpi-value">{formatNum(pedAnalise)}</div>
 
-            <div className="flex justify-between items-center pt-2">
-              <div className="flex items-center gap-1.5 text-xs text-text-secondary">
+            <div className="flex justify-between items-center gap-2 pt-1.5">
+              <div className="flex items-center gap-1.5 text-[11px] text-text-secondary">
                 <span className="w-2 h-2 rounded-full bg-orange-500" /> COMPARAÇÃO
               </div>
-              <span className="text-xs text-text-muted font-semibold">({tipoPeriodo === 'mes' ? labelComparacao : 'Comparação'})</span>
+              <span className="text-[11px] text-text-muted font-semibold truncate">({tipoPeriodo === 'mes' ? labelComparacao : 'Comparação'})</span>
             </div>
-            <div className="text-xl font-black text-text-primary">{formatNum(pedComparacao)}</div>
+            <div className="font-black text-text-primary mono bi-kpi-value">{formatNum(pedComparacao)}</div>
           </div>
-          <div className="mt-4 flex items-center gap-2">
-            <div className={clsx(
-              "px-2.5 py-1 rounded-lg text-xs font-black flex items-center gap-1",
-              pedPct >= 0 ? "bg-success/15 text-success" : "bg-danger/15 text-danger"
-            )}>
-              {pedPct >= 0 ? '+' : ''}{pedPct.toFixed(2)}%
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <div
+              title={`${pedPct >= 0 ? '+' : ''}${pedPct.toFixed(2)}%`}
+              className={clsx(
+                "px-2 py-0.5 rounded-lg text-[11px] font-black flex items-center gap-1 tabular-nums whitespace-nowrap",
+                pedPct >= 0 ? "bg-success/15 text-success" : "bg-danger/15 text-danger"
+              )}
+            >
+              {formatGrowthPct(pedPct, 2)}
             </div>
-            <div className="text-[10px] text-text-secondary font-bold">
+            <div className="text-[10.5px] text-text-secondary font-bold tabular-nums">
               Dif: <span className={clsx("font-extrabold", pedDiff >= 0 ? "text-success" : "text-danger")}>
                 {pedDiff >= 0 ? '+' : ''}{formatNum(pedDiff)} ped.
               </span>
@@ -573,35 +579,39 @@ export default function ComparativoVendas() {
         </div>
 
         {/* Ticket Médio KPI */}
-        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 flex flex-col justify-between hover:border-warning/30 transition-colors">
-          <div className="flex items-center gap-2 text-[10px] font-bold text-text-secondary uppercase tracking-wider mb-4 border-b border-divider/30 pb-2">
-            <div className="p-1 bg-warning/10 rounded-lg text-warning"><Award size={14} /></div> TICKET MÉDIO
+        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between hover:border-warning/30 transition-colors min-w-0">
+          <div className="flex items-center justify-between gap-2 text-[10px] font-bold text-text-secondary uppercase tracking-wider mb-3 border-b border-divider/30 pb-2">
+            <span>TICKET MÉDIO</span>
+            <div className="w-6 h-6 bg-warning/10 rounded-md text-warning flex items-center justify-center shrink-0"><Award size={13} /></div>
           </div>
-          <div className="space-y-2 flex-1">
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-1.5 text-xs text-text-secondary">
+          <div className="space-y-1.5 flex-1">
+            <div className="flex justify-between items-center gap-2">
+              <div className="flex items-center gap-1.5 text-[11px] text-text-secondary">
                 <span className="w-2 h-2 rounded-full bg-blue-500" /> ANÁLISE
               </div>
-              <span className="text-xs text-text-muted font-semibold">({tipoPeriodo === 'mes' ? labelAnalise : 'Análise'})</span>
+              <span className="text-[11px] text-text-muted font-semibold truncate">({tipoPeriodo === 'mes' ? labelAnalise : 'Análise'})</span>
             </div>
-            <div className="text-xl font-black text-text-primary">{formatBRL(tktAnalise)}</div>
+            <div className="font-black text-text-primary mono bi-kpi-value">{formatBRL(tktAnalise)}</div>
 
-            <div className="flex justify-between items-center pt-2">
-              <div className="flex items-center gap-1.5 text-xs text-text-secondary">
+            <div className="flex justify-between items-center gap-2 pt-1.5">
+              <div className="flex items-center gap-1.5 text-[11px] text-text-secondary">
                 <span className="w-2 h-2 rounded-full bg-orange-500" /> COMPARAÇÃO
               </div>
-              <span className="text-xs text-text-muted font-semibold">({tipoPeriodo === 'mes' ? labelComparacao : 'Comparação'})</span>
+              <span className="text-[11px] text-text-muted font-semibold truncate">({tipoPeriodo === 'mes' ? labelComparacao : 'Comparação'})</span>
             </div>
-            <div className="text-xl font-black text-text-primary">{formatBRL(tktComparacao)}</div>
+            <div className="font-black text-text-primary mono bi-kpi-value">{formatBRL(tktComparacao)}</div>
           </div>
-          <div className="mt-4 flex items-center gap-2">
-            <div className={clsx(
-              "px-2.5 py-1 rounded-lg text-xs font-black flex items-center gap-1",
-              tktPct >= 0 ? "bg-success/15 text-success" : "bg-danger/15 text-danger"
-            )}>
-              {tktPct >= 0 ? '+' : ''}{tktPct.toFixed(2)}%
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <div
+              title={`${tktPct >= 0 ? '+' : ''}${tktPct.toFixed(2)}%`}
+              className={clsx(
+                "px-2 py-0.5 rounded-lg text-[11px] font-black flex items-center gap-1 tabular-nums whitespace-nowrap",
+                tktPct >= 0 ? "bg-success/15 text-success" : "bg-danger/15 text-danger"
+              )}
+            >
+              {formatGrowthPct(tktPct, 2)}
             </div>
-            <div className="text-[10px] text-text-secondary font-bold">
+            <div className="text-[10.5px] text-text-secondary font-bold tabular-nums">
               Dif: <span className={clsx("font-extrabold", tktDiff >= 0 ? "text-success" : "text-danger")}>
                 {tktDiff >= 0 ? '+' : ''}{formatBRL(tktDiff)}
               </span>

@@ -9,9 +9,9 @@ import {
   MapPin, Users, ShoppingCart, Activity, ShieldCheck, Box, ChevronDown, Search, AlertCircle, Trophy, X, ShieldAlert
 } from 'lucide-react';
 import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { formatBRL, formatBRLCompact, formatNum } from '../../utils/format';
+import { formatBRL, formatBRLCompact, formatNum, formatGrowthPct } from '../../utils/format';
 import clsx from 'clsx';
-import { PromptViewer } from '../../components/PromptViewer';
+import PeriodFilter from '../../components/PeriodFilter';
 
 
 // Badge Comparativo para tabelas
@@ -21,12 +21,12 @@ const DeltaBadge = ({ pct }: { pct: number | null }) => {
   const isDown = pct < 0;
   return (
     <div className={clsx(
-      "inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-md",
+      "inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-md whitespace-nowrap",
       isUp ? "bg-success/10 text-success" : isDown ? "bg-danger/10 text-danger" : "bg-text-muted/10 text-text-muted"
     )}>
       {isUp && <TrendingUp size={12} className="mr-1" />}
       {isDown && <TrendingDown size={12} className="mr-1" />}
-      {Math.abs(pct).toFixed(1)}%
+      {formatGrowthPct(Math.abs(pct), 1, false)}
     </div>
   );
 };
@@ -143,89 +143,53 @@ export default function SupplierAnalyticsDashboard() {
   })();
 
   return (
-    <div aria-label="Fornecedores Dashboard" className="space-y-4 animate-in fade-in duration-300 pb-10">
+    <div aria-label="Fornecedores Dashboard" className="space-y-3.5 animate-in fade-in duration-300 pb-10">
       
-      {/* HEADER BANNER */}
-      <div className="bg-gradient-to-r from-orange-500 to-amber-600 rounded-2xl p-5 shadow-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-white relative overflow-hidden">
-        {/* Subtle background decoration */}
-        <div className="absolute right-0 top-0 w-64 h-64 bg-white opacity-5 rounded-full blur-3xl transform translate-x-1/2 -translate-y-1/2"></div>
-        
-        <div className="flex items-center gap-3.5 z-10">
-          <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl shrink-0">
-            <Target size={28} className="text-white" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl md:text-2xl font-black tracking-tight">{selectedBrand || 'Todas as Marcas'}</h2>
-              {selectedCity && (
-                <span className="px-2 py-0.5 rounded-md bg-white/20 text-white text-[11px] font-bold">
-                  📍 {selectedCity}
-                </span>
-              )}
-            </div>
-            <p className="text-orange-100 font-medium text-xs mt-0.5">
-              Hub de Inteligência Comercial e Performance de Fornecedores
-            </p>
-          </div>
+      {/* BARRA UNIFICADA COMPACTA DE PERÍODO + FILTROS + INDICADORES DA MARCA */}
+      <div className="bi-filter-bar">
+        <div className="min-w-0">
+          <PeriodFilter />
         </div>
 
-        <div className="flex items-center gap-3 z-10 w-full md:w-auto justify-end">
-          <div className="bg-white text-orange-600 rounded-xl px-3.5 py-2 flex items-center gap-2.5 shadow-md">
-            <div className="text-lg font-black bg-orange-100 rounded-lg w-8 h-8 flex items-center justify-center">{currentRank}</div>
-            <div className="flex flex-col">
-              <span className="text-[9px] font-black uppercase tracking-wider text-orange-400">Posição</span>
-              <span className="text-[11px] font-extrabold text-orange-600">Ranking</span>
-            </div>
-          </div>
-          <div className="bg-white/20 backdrop-blur-sm border border-white/30 rounded-xl px-3.5 py-2 flex flex-col justify-center shadow-md">
-            <span className="text-[9px] font-black uppercase tracking-wider text-orange-100">Share da Empresa</span>
-            <span className="text-base font-black text-white">{currentShare}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* BARRA DE FILTROS DEDICADA (SEM CORTAR) */}
-      <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-3 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-[280px]">
+        <div className="flex flex-wrap items-center gap-2">
           {/* SELETOR DE MARCA */}
-          <div className="relative flex-1 min-w-[200px] max-w-[320px]">
+          <div className="relative min-w-[175px] max-w-[240px]">
             <select 
               aria-label="Selecionar Marca"
-              className="appearance-none w-full h-[38px] pl-3.5 pr-8 bg-bg-secondary border border-border rounded-xl text-xs font-bold text-text-primary focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all cursor-pointer shadow-sm"
+              className="bi-select appearance-none w-full pr-7"
               value={selectedBrand}
               onChange={(e) => setSelectedBrand(e.target.value)}
             >
-              <option value="">🏷️ Todas as Marcas ({availableBrands.length})</option>
+              <option value="">Todas as Marcas ({availableBrands.length})</option>
               {availableBrands.map((b: string) => (
                 <option key={b} value={b}>{b}</option>
               ))}
             </select>
-            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+            <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           </div>
 
           {/* SELETOR DE CIDADE */}
-          <div className="relative flex-1 min-w-[180px] max-w-[280px]">
+          <div className="relative min-w-[155px] max-w-[210px]">
             <select 
               aria-label="Selecionar Cidade"
-              className="appearance-none w-full h-[38px] pl-3.5 pr-8 bg-bg-secondary border border-border rounded-xl text-xs font-bold text-text-primary focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all cursor-pointer shadow-sm uppercase"
+              className="bi-select appearance-none w-full pr-7 uppercase"
               value={selectedCity}
               onChange={(e) => setSelectedCity(e.target.value)}
             >
-              <option value="">📍 Todas as Cidades</option>
+              <option value="">Todas as Cidades</option>
               {availableCities.map((c: string) => (
-                <option key={c} value={c}>📍 {c}</option>
+                <option key={c} value={c}>{c}</option>
               ))}
             </select>
-            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+            <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           </div>
 
-          {/* BOTÃO ATUALIZAR / FILTRAR */}
           <button 
             type="button"
             onClick={() => refetch()}
-            className="h-[38px] bg-orange-500 hover:bg-orange-600 text-white font-extrabold px-4 rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-sm active:scale-[0.97] cursor-pointer"
+            className="h-8 bg-orange-500 hover:bg-orange-600 text-white font-bold px-3 rounded-lg text-xs inline-flex items-center gap-1.5 transition-all shadow-xs cursor-pointer whitespace-nowrap"
           >
-            <Search size={13} className="text-white" /> Atualizar
+            <Search size={12} className="text-white" /> Atualizar
           </button>
 
           {(selectedBrand || selectedCity) && (
@@ -235,39 +199,53 @@ export default function SupplierAnalyticsDashboard() {
                 setSelectedBrand('');
                 setSelectedCity('');
               }}
-              className="h-[38px] px-3 bg-bg-secondary hover:bg-bg-tertiary text-text-secondary border border-border rounded-xl text-xs font-bold flex items-center gap-1 transition-all cursor-pointer"
+              className="h-8 px-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold inline-flex items-center gap-1 transition-all cursor-pointer whitespace-nowrap"
             >
-              <X size={13} /> Limpar
+              <X size={12} /> Limpar
             </button>
           )}
+
+          {/* Badges compactos de Ranking e Share */}
+          <div className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg bg-orange-500/10 border border-orange-500/25 text-orange-700 dark:text-orange-300 text-xs font-bold whitespace-nowrap">
+            <span>Rank: <strong>{currentRank}</strong></span>
+            <span className="opacity-40">•</span>
+            <span>Share: <strong>{currentShare}</strong></span>
+          </div>
         </div>
       </div>
 
-      {/* TABS */}
-      <div className="flex items-center gap-6 border-b border-border px-2">
-        {['Visão Geral de Vendas', 'Ranking de Marcas', 'Análise de Estoque', 'Catálogo'].map(tab => (
-          <button 
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={clsx(
-              "pb-3 text-sm font-bold uppercase tracking-wide transition-colors relative flex items-center gap-2 cursor-pointer",
-              activeTab === tab ? "text-orange-600 dark:text-orange-400" : "text-text-muted hover:text-text-primary"
-            )}
-          >
-            {tab === 'Visão Geral de Vendas' && <Activity size={16} />}
-            {tab === 'Ranking de Marcas' && <Target size={16} />}
-            {tab === 'Análise de Estoque' && <Box size={16} />}
-            {tab === 'Catálogo' && <ShoppingCart size={16} />}
-            {tab}
-            {activeTab === tab && (
-              <div className="absolute bottom-0 left-0 w-full h-0.5 bg-orange-500 rounded-t-full"></div>
-            )}
-          </button>
-        ))}
+      {/* TABS INTERNAS AUTO-ADAPTÁVEIS */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-1">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
+          {['Visão Geral de Vendas', 'Ranking de Marcas', 'Análise de Estoque', 'Catálogo'].map(tab => (
+            <button 
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={clsx(
+                "pb-2.5 pt-1 text-xs sm:text-[13px] font-bold uppercase tracking-wide transition-colors relative flex items-center gap-1.5 cursor-pointer whitespace-nowrap",
+                activeTab === tab ? "text-orange-600 dark:text-orange-400" : "text-text-muted hover:text-text-primary"
+              )}
+            >
+              {tab === 'Visão Geral de Vendas' && <Activity size={14} />}
+              {tab === 'Ranking de Marcas' && <Target size={14} />}
+              {tab === 'Análise de Estoque' && <Box size={14} />}
+              {tab === 'Catálogo' && <ShoppingCart size={14} />}
+              {tab}
+              {activeTab === tab && (
+                <div className="absolute bottom-0 left-0 w-full h-0.5 bg-orange-500 rounded-t-full"></div>
+              )}
+            </button>
+          ))}
+        </div>
+        {selectedBrand && (
+          <span className="text-xs font-bold text-orange-600 dark:text-orange-400 pb-2">
+            Marca ativa: {selectedBrand}
+          </span>
+        )}
       </div>
 
       {activeTab === 'Visão Geral de Vendas' && (
-        <div className="space-y-6 animate-in fade-in duration-300">
+        <div className="space-y-4 animate-in fade-in duration-300">
           {/* PERFORMANCE MENSAL TABLE */}
           <div className="bg-bg-primary border border-border shadow-card rounded-xl overflow-hidden flex flex-col">
         <div className="p-4 border-b border-divider">
@@ -300,103 +278,113 @@ export default function SupplierAnalyticsDashboard() {
       </div>
 
       {/* KPI GRID */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 gap-3.5">
         {/* ROW 1 */}
-        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between hover:border-success/50 transition-colors">
-          <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">
-            <DollarSign size={14} className="text-success" /> Receita Total
+        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between hover:border-success/50 transition-colors min-w-0">
+          <div className="flex items-center justify-between gap-2 text-[10.5px] font-bold text-text-muted uppercase tracking-wider mb-2">
+            <span className="truncate">Receita Total</span>
+            <DollarSign size={14} className="text-success shrink-0" />
           </div>
           <div>
-            <div className="text-xl font-extrabold text-text-primary mb-1">{formatBRL(overview.receita)}</div>
-            <div className="flex items-center gap-1 text-[10px] text-text-muted font-bold">Baseado nas vendas da marca</div>
+            <div className="bi-kpi-value font-extrabold font-mono text-text-primary mb-1">{formatBRL(overview.receita)}</div>
+            <div className="text-[10px] text-text-muted font-semibold">Baseado nas vendas da marca</div>
           </div>
         </div>
-        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between hover:border-danger/50 transition-colors">
-          <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">
-            <DollarSign size={14} className="text-danger" /> Custo
+        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between hover:border-danger/50 transition-colors min-w-0">
+          <div className="flex items-center justify-between gap-2 text-[10.5px] font-bold text-text-muted uppercase tracking-wider mb-2">
+            <span className="truncate">Custo</span>
+            <DollarSign size={14} className="text-danger shrink-0" />
           </div>
           <div>
-            <div className="text-xl font-extrabold text-text-primary mb-1">{formatBRL(overview.custo)}</div>
+            <div className="bi-kpi-value font-extrabold font-mono text-text-primary mb-1">{formatBRL(overview.custo)}</div>
             <div className="text-[10px] text-text-muted">Custo das vendas</div>
           </div>
         </div>
-        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between hover:border-brand-500/50 transition-colors">
-          <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">
-            <Target size={14} className="text-brand-500" /> Margem
+        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between hover:border-brand-500/50 transition-colors min-w-0">
+          <div className="flex items-center justify-between gap-2 text-[10.5px] font-bold text-text-muted uppercase tracking-wider mb-2">
+            <span className="truncate">Margem</span>
+            <Target size={14} className="text-brand-500 shrink-0" />
           </div>
           <div>
-            <div className="text-xl font-extrabold text-text-primary mb-1">{margem.toFixed(1)}%</div>
+            <div className="bi-kpi-value font-extrabold font-mono text-text-primary mb-1">{margem.toFixed(1)}%</div>
             <div className="text-[10px] text-text-muted">Rentabilidade bruta</div>
           </div>
         </div>
-        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between">
-          <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">
-            <Box size={14} className="text-warning" /> Volume de Pedidos
+        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between min-w-0">
+          <div className="flex items-center justify-between gap-2 text-[10.5px] font-bold text-text-muted uppercase tracking-wider mb-2">
+            <span className="truncate">Volume de Pedidos</span>
+            <Box size={14} className="text-warning shrink-0" />
           </div>
           <div>
-            <div className="text-xl font-extrabold text-text-primary mb-1">{overview.pedidos}</div>
+            <div className="bi-kpi-value font-extrabold font-mono text-text-primary mb-1">{formatNum(overview.pedidos)}</div>
             <div className="text-[10px] text-text-muted">Pedidos no período</div>
           </div>
         </div>
-        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between">
-          <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">
-            <ShoppingCart size={14} className="text-cyan-500" /> Valor Médio de Compra
+        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between min-w-0">
+          <div className="flex items-center justify-between gap-2 text-[10.5px] font-bold text-text-muted uppercase tracking-wider mb-2">
+            <span className="truncate">Valor Médio Compra</span>
+            <ShoppingCart size={14} className="text-cyan-500 shrink-0" />
           </div>
           <div>
-            <div className="text-xl font-extrabold text-text-primary mb-1">{formatBRL(ticketMedio)}</div>
+            <div className="bi-kpi-value font-extrabold font-mono text-text-primary mb-1">{formatBRL(ticketMedio)}</div>
             <div className="text-[10px] text-text-muted">Valor médio por pedido</div>
           </div>
         </div>
 
         {/* ROW 2 */}
-        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between">
-          <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">
-            <Award size={14} className="text-blue-500" /> Principal Cliente
+        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between min-w-0">
+          <div className="flex items-center justify-between gap-2 text-[10.5px] font-bold text-text-muted uppercase tracking-wider mb-2">
+            <span className="truncate">Principal Cliente</span>
+            <Award size={14} className="text-blue-500 shrink-0" />
           </div>
           <div>
             <div className="text-sm font-extrabold text-text-primary mb-1 leading-tight break-words line-clamp-2" title={data?.top_client || 'N/A'}>
               {data?.top_client || 'N/A'}
             </div>
-            <div className="text-[10px] text-text-muted mt-2">Maior comprador</div>
+            <div className="text-[10px] text-text-muted mt-1">Maior comprador</div>
           </div>
         </div>
-        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between">
-          <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">
-            <MapPin size={14} className="text-text-secondary" /> Cidade Destaque
+        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between min-w-0">
+          <div className="flex items-center justify-between gap-2 text-[10.5px] font-bold text-text-muted uppercase tracking-wider mb-2">
+            <span className="truncate">Cidade Destaque</span>
+            <MapPin size={14} className="text-text-secondary shrink-0" />
           </div>
           <div>
-            <div className="text-base font-extrabold text-text-primary mb-1 truncate" title={data?.top_city || 'N/A'}>
+            <div className="text-sm font-extrabold text-text-primary mb-1 truncate" title={data?.top_city || 'N/A'}>
               {data?.top_city || 'N/A'}
             </div>
             <div className="text-[10px] text-text-muted">Maior volume no período</div>
           </div>
         </div>
-        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between">
-          <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">
-            <Users size={14} className="text-brand-500" /> Vendedor Destaque
+        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between min-w-0">
+          <div className="flex items-center justify-between gap-2 text-[10.5px] font-bold text-text-muted uppercase tracking-wider mb-2">
+            <span className="truncate">Vendedor Destaque</span>
+            <Users size={14} className="text-brand-500 shrink-0" />
           </div>
           <div>
-            <div className="text-base font-extrabold text-text-primary mb-1 truncate" title={data?.top_seller || 'N/A'}>
+            <div className="text-sm font-extrabold text-text-primary mb-1 truncate" title={data?.top_seller || 'N/A'}>
               {data?.top_seller || 'N/A'}
             </div>
             <div className="text-[10px] text-text-muted">Maior volume em vendas</div>
           </div>
         </div>
-        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between">
-          <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">
-            <Box size={14} className="text-text-secondary" /> SKUs Vendidos
+        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between min-w-0">
+          <div className="flex items-center justify-between gap-2 text-[10.5px] font-bold text-text-muted uppercase tracking-wider mb-2">
+            <span className="truncate">SKUs Vendidos</span>
+            <Box size={14} className="text-text-secondary shrink-0" />
           </div>
           <div>
-            <div className="text-xl font-extrabold text-text-primary mb-1">{data?.skus_count || topProducts.length || 0}</div>
+            <div className="bi-kpi-value font-extrabold font-mono text-text-primary mb-1">{formatNum(data?.skus_count || topProducts.length || 0)}</div>
             <div className="text-[10px] text-text-muted">Produtos distintos</div>
           </div>
         </div>
-        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between">
-          <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">
-            <Building2 size={14} className="text-cyan-500" /> Clientes Ativos
+        <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 flex flex-col justify-between min-w-0">
+          <div className="flex items-center justify-between gap-2 text-[10.5px] font-bold text-text-muted uppercase tracking-wider mb-2">
+            <span className="truncate">Clientes Ativos</span>
+            <Building2 size={14} className="text-cyan-500 shrink-0" />
           </div>
           <div>
-            <div className="text-xl font-extrabold text-text-primary mb-1">{overview.clientes}</div>
+            <div className="bi-kpi-value font-extrabold font-mono text-text-primary mb-1">{formatNum(overview.clientes)}</div>
             <div className="text-[10px] text-text-muted">Compraram no período</div>
           </div>
         </div>
@@ -697,38 +685,42 @@ export default function SupplierAnalyticsDashboard() {
           </div>
 
           {/* 1. Resumo Financeiro */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 hover:border-danger/40 transition-colors">
-              <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">
-                <DollarSign size={14} className="text-danger" /> Custo Total em Estoque
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5">
+            <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 hover:border-danger/40 transition-colors min-w-0">
+              <div className="flex items-center justify-between gap-2 text-[10.5px] font-bold text-text-muted uppercase tracking-wider mb-2">
+                <span className="truncate">Custo Total em Estoque</span>
+                <DollarSign size={14} className="text-danger shrink-0" />
               </div>
-              <div className="text-2xl font-extrabold text-text-primary mb-1 font-mono">{formatBRL(stockKpis.custo_total)}</div>
+              <div className="bi-kpi-value font-extrabold text-text-primary mb-1 font-mono">{formatBRL(stockKpis.custo_total)}</div>
               <div className="text-[10px] text-text-secondary font-semibold">Capital imobilizado</div>
             </div>
             
-            <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 hover:border-success/40 transition-colors">
-              <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">
-                <DollarSign size={14} className="text-success" /> Preço Venda Total
+            <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 hover:border-success/40 transition-colors min-w-0">
+              <div className="flex items-center justify-between gap-2 text-[10.5px] font-bold text-text-muted uppercase tracking-wider mb-2">
+                <span className="truncate">Preço Venda Total</span>
+                <DollarSign size={14} className="text-success shrink-0" />
               </div>
-              <div className="text-2xl font-extrabold text-text-primary mb-1 font-mono">{formatBRL(stockKpis.venda_total)}</div>
+              <div className="bi-kpi-value font-extrabold text-text-primary mb-1 font-mono">{formatBRL(stockKpis.venda_total)}</div>
               <div className="text-[10px] text-text-secondary font-semibold">Valor potencial de venda</div>
             </div>
             
-            <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 hover:border-brand-500/40 transition-colors">
-              <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">
-                <Box size={14} className="text-brand-500" /> Volume Total Físico
+            <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 hover:border-brand-500/40 transition-colors min-w-0">
+              <div className="flex items-center justify-between gap-2 text-[10.5px] font-bold text-text-muted uppercase tracking-wider mb-2">
+                <span className="truncate">Volume Total Físico</span>
+                <Box size={14} className="text-brand-500 shrink-0" />
               </div>
-              <div className="text-2xl font-extrabold text-text-primary mb-1 font-mono">
+              <div className="bi-kpi-value font-extrabold text-text-primary mb-1 font-mono">
                 {formatNum(stockKpis.volume_total)} un.
               </div>
               <div className="text-[10px] text-text-secondary font-semibold">Quantidade total em estoque</div>
             </div>
 
-            <div className="bg-bg-primary border border-border shadow-card rounded-xl p-5 border-l-4 border-l-emerald-500 hover:shadow-md transition-all">
-              <div className="flex items-center gap-2 text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">
-                <Target size={14} className="text-emerald-500" /> Margem Média
+            <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 border-l-4 border-l-emerald-500 hover:shadow-md transition-all min-w-0">
+              <div className="flex items-center justify-between gap-2 text-[10.5px] font-bold text-text-muted uppercase tracking-wider mb-2">
+                <span className="truncate">Margem Média</span>
+                <Target size={14} className="text-emerald-500 shrink-0" />
               </div>
-              <div className="text-2xl font-extrabold text-emerald-500 mb-1 font-mono">{stockMargem.toFixed(1)}%</div>
+              <div className="bi-kpi-value font-extrabold text-emerald-500 mb-1 font-mono">{stockMargem.toFixed(1)}%</div>
               <div className="text-[10px] text-text-secondary font-semibold">Ganho médio planejado</div>
             </div>
           </div>

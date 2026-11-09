@@ -1,17 +1,18 @@
 import { useState, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   Cell
 } from 'recharts';
 import {
   TrendingUp, TrendingDown, DollarSign,
-  Users, Award, MapPin, Trophy, ChevronDown, LayoutDashboard,
+  Users, Award, MapPin, Trophy, ChevronDown,
   Calendar, RotateCcw, Target, BarChart3,
-  SlidersHorizontal, ShoppingBag, EyeOff, Package, Box, Tag
+  ShoppingBag, Tag
 } from 'lucide-react';
 import { useBranchPeriodQuery } from '../../hooks/useApi';
 import PeriodFilter from '../../components/PeriodFilter';
-import { formatBRL, formatNum } from '../../utils/format';
+import { formatBRL, formatNum, formatGrowthPct } from '../../utils/format';
 import FaturamentoPeriodoCard from '../../components/bi/FaturamentoPeriodoCard';
 import clsx from 'clsx';
 
@@ -144,6 +145,9 @@ function RankingCardWithToggle({
 }
 
 export default function SalesIntelligenceDashboard() {
+  const location = useLocation();
+  const isInsideComercial = location.pathname.startsWith('/comercial');
+
   // Modos de visualização do Card "Resultados de Vendas"
   const [compareMode, setCompareMode] = useState<'mes_anterior' | 'mesmo_mes_ano_ant' | 'ano_acumulado'>('ano_acumulado');
   const [viewMetric, setViewMetric] = useState<'faturamento' | 'metas'>('faturamento');
@@ -221,246 +225,248 @@ export default function SalesIntelligenceDashboard() {
   const totalSellersSum = useMemo(() => mockTopSellers.reduce((a: number, b: any) => a + (b.value || 0), 0), [mockTopSellers]);
   const maxSellerVal = useMemo(() => Math.max(...mockTopSellers.map((s: any) => s.value || 0), 1), [mockTopSellers]);
 
-  const SELLER_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#06B6D4', '#EC4899', '#F97316', '#6366F1'];
+  const SELLER_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#0EA5E9', '#06B6D4', '#EC4899', '#F97316', '#14B8A6'];
+
+  const activeGrowthPct = compareMode === 'ano_acumulado'
+    ? crescYtd
+    : compareMode === 'mesmo_mes_ano_ant'
+      ? crescMesmoMesAnoAnt
+      : crescMesAnterior;
+
+  const activePrevValue = compareMode === 'ano_acumulado'
+    ? ytdAnterior
+    : compareMode === 'mesmo_mes_ano_ant'
+      ? faturamentoMesmoMesAnoAnt
+      : faturamentoMesAnterior;
 
   return (
-    <div className="space-y-4 pb-10 animate-in fade-in duration-300" aria-label="Visão Estratégica BI">
+    <div className="space-y-3.5 pb-10 animate-in fade-in duration-300 min-w-0" aria-label="Monitor de Vendas BI">
       
-      {/* 1. HEADER EXECUTIVO COM FILTROS DE PERÍODO */}
-      <div className="bg-bg-primary border border-border rounded-2xl p-5 shadow-card flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-teal-500/10 border border-teal-500/20 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0 shadow-sm">
-            <LayoutDashboard size={26} />
-          </div>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-black text-text-primary tracking-tight uppercase">VISÃO ESTRATÉGICA</h1>
-            <p className="text-xs text-text-secondary font-medium">Visão geral executiva da empresa, vendas acumuladas e clientes</p>
-          </div>
-        </div>
-
-        {/* Period Filter (HOJE, 7 DIAS, MÊS ATUAL, MÊS ANTERIOR, 12 MESES, PERSONALIZADO) */}
-        <div className="flex items-center">
+      {/* 1. BARRA ÚNICA COMPACTA E AUTO-ADAPTÁVEL DE FILTROS */}
+      <div className="bi-filter-bar">
+        {!isInsideComercial && (
           <PeriodFilter />
-        </div>
-      </div>
+        )}
 
-      {/* 2. BARRA DE FILTROS SECUNDÁRIOS: VENDEDOR & MARCA */}
-      <div className="bg-bg-primary border border-border rounded-2xl p-4.5 shadow-card grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Vendedor */}
-        <div className="space-y-1.5">
-          <label className="text-[10px] font-black text-text-secondary uppercase tracking-wider block">
-            Vendedor
-          </label>
-          <div className="relative">
+        <div className="flex flex-wrap items-center gap-2 flex-1 sm:flex-initial justify-end ml-auto min-w-0">
+          {/* Vendedor */}
+          <div className="relative flex-1 sm:flex-initial min-w-[175px] max-w-[260px]">
             <select
+              aria-label="Filtrar por Vendedor"
               value={selectedVendedor}
               onChange={(e) => setSelectedVendedor(e.target.value)}
-              className="w-full bg-bg-secondary hover:bg-bg-tertiary border border-border rounded-xl px-3.5 py-2.5 text-xs font-bold text-text-primary outline-none cursor-pointer focus:border-brand-500 transition-all appearance-none pr-8 shadow-xs"
+              className="bi-select w-full appearance-none pr-7 truncate"
             >
-              <option value="todas">Todos os Vendedores</option>
+              <option value="todas">Vendedor: Todos</option>
               {vd.data?.data?.map((v: any) => (
                 <option key={v.id || v.nome} value={v.nome}>{v.nome}</option>
               ))}
             </select>
-            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+            <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
           </div>
-        </div>
 
-        {/* Marca */}
-        <div className="space-y-1.5">
-          <label className="text-[10px] font-black text-text-secondary uppercase tracking-wider block">
-            Marca
-          </label>
-          <div className="relative">
+          {/* Marca */}
+          <div className="relative flex-1 sm:flex-initial min-w-[165px] max-w-[240px]">
             <select
+              aria-label="Filtrar por Marca"
               value={selectedMarca}
               onChange={(e) => setSelectedMarca(e.target.value)}
-              className="w-full bg-bg-secondary hover:bg-bg-tertiary border border-border rounded-xl px-3.5 py-2.5 text-xs font-bold text-text-primary outline-none cursor-pointer focus:border-brand-500 transition-all appearance-none pr-8 shadow-xs uppercase"
+              className="bi-select w-full appearance-none pr-7 truncate uppercase"
             >
-              <option value="todas">Todas as Marcas</option>
+              <option value="todas">Marca: Todas</option>
               {marcas.data?.data?.map((m: any) => (
                 <option key={m.marca || m.nome} value={m.marca || m.nome}>{m.marca || m.nome}</option>
               ))}
             </select>
-            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
+            <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary pointer-events-none" />
           </div>
         </div>
       </div>
 
-      {/* 3. CARD PRINCIPAL: RESULTADOS DE VENDAS */}
-      <div className="bg-bg-primary rounded-2xl border border-border shadow-card p-6 relative overflow-hidden flex flex-col gap-6">
-        <div className="absolute top-0 left-0 w-full h-1.5 bg-emerald-500"></div>
+      {/* 2. CARD PRINCIPAL: RESULTADOS DE VENDAS */}
+      <div className="bg-bg-primary rounded-2xl border border-border shadow-card p-4 sm:p-5 relative overflow-hidden flex flex-col gap-4">
+        <div className="absolute top-0 left-0 w-full h-1 bg-emerald-500"></div>
 
         {/* Header Controls */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-divider/40 pb-4">
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-2.5 border-b border-divider/40 pb-3">
           <div className="flex items-center gap-2">
-            <TrendingUp size={20} className="text-emerald-500" />
-            <h2 className="text-sm sm:text-base font-black text-text-primary uppercase tracking-wider">
+            <TrendingUp size={18} className="text-emerald-500 shrink-0" />
+            <h2 className="text-xs sm:text-sm font-black text-text-primary uppercase tracking-wider">
               Resultados de Vendas
             </h2>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2">
             {/* Comparativo Toggle Buttons */}
-            <div className="flex items-center bg-bg-secondary p-1 rounded-xl border border-divider">
+            <div className="flex flex-wrap items-center bg-bg-secondary p-0.5 rounded-xl border border-divider gap-0.5">
               <button
                 type="button"
                 onClick={() => setCompareMode('mes_anterior')}
                 className={clsx(
-                  "px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1.5",
+                  "px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer inline-flex items-center gap-1 whitespace-nowrap",
                   compareMode === 'mes_anterior'
                     ? "bg-bg-primary text-text-primary shadow-xs border border-border"
                     : "text-text-secondary hover:text-text-primary"
                 )}
               >
-                <Calendar size={13} className="text-blue-500" /> Mês Anterior
+                <Calendar size={12} className="text-blue-500" /> Mês Anterior
               </button>
 
               <button
                 type="button"
                 onClick={() => setCompareMode('mesmo_mes_ano_ant')}
                 className={clsx(
-                  "px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1.5",
+                  "px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer inline-flex items-center gap-1 whitespace-nowrap",
                   compareMode === 'mesmo_mes_ano_ant'
                     ? "bg-bg-primary text-text-primary shadow-xs border border-border"
                     : "text-text-secondary hover:text-text-primary"
                 )}
               >
-                <RotateCcw size={13} className="text-teal-500" /> Mesmo Mês Ano Ant.
+                <RotateCcw size={12} className="text-teal-500" /> Mesmo Mês Ano Ant.
               </button>
 
               <button
                 type="button"
                 onClick={() => setCompareMode('ano_acumulado')}
                 className={clsx(
-                  "px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1.5",
+                  "px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer inline-flex items-center gap-1 whitespace-nowrap",
                   compareMode === 'ano_acumulado'
                     ? "bg-brand-500 text-white shadow-xs"
                     : "text-text-secondary hover:text-text-primary"
                 )}
               >
-                <TrendingUp size={13} /> Ano Acumulado
+                <TrendingUp size={12} /> Ano Acumulado
               </button>
             </div>
 
             {/* View Mode: Faturamento / Metas */}
-            <div className="flex items-center bg-bg-secondary p-1 rounded-xl border border-divider">
+            <div className="flex items-center bg-bg-secondary p-0.5 rounded-xl border border-divider gap-0.5">
               <button
                 type="button"
                 onClick={() => setViewMetric('faturamento')}
                 className={clsx(
-                  "px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1.5",
+                  "px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer inline-flex items-center gap-1 whitespace-nowrap",
                   viewMetric === 'faturamento'
                     ? "bg-bg-primary text-text-primary shadow-xs border border-border"
                     : "text-text-secondary hover:text-text-primary"
                 )}
               >
-                <DollarSign size={13} className="text-emerald-500" /> Faturamento
+                <DollarSign size={12} className="text-emerald-500" /> Faturamento
               </button>
 
               <button
                 type="button"
                 onClick={() => setViewMetric('metas')}
                 className={clsx(
-                  "px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-1.5",
+                  "px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer inline-flex items-center gap-1 whitespace-nowrap",
                   viewMetric === 'metas'
                     ? "bg-bg-primary text-text-primary shadow-xs border border-border"
                     : "text-text-secondary hover:text-text-primary"
                 )}
               >
-                <Target size={13} className="text-amber-500" /> Metas
+                <Target size={12} className="text-amber-500" /> Metas
               </button>
             </div>
           </div>
         </div>
 
         {/* Card Body: Comparativos */}
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 items-center gap-6">
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 items-center gap-4">
             {/* Esquerda: Faturamento Mês Atual / Acumulado */}
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 flex items-center justify-center shrink-0">
-                <TrendingUp size={28} />
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-11 h-11 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 flex items-center justify-center shrink-0">
+                <TrendingUp size={22} />
               </div>
-              <div>
-                <span className="text-[11px] font-black text-text-secondary uppercase tracking-wider block">
+              <div className="min-w-0">
+                <span className="text-[10px] font-black text-text-secondary uppercase tracking-wider block truncate">
                   {compareMode === 'ano_acumulado' ? `Faturamento Acumulado (${currentYear})` : 'Faturamento Mês Atual'}
                 </span>
-                <div className="text-2xl sm:text-3xl font-black text-text-primary font-mono tracking-tight my-0.5">
+                <div className="font-black text-text-primary font-mono tracking-tight my-0.5 bi-kpi-hero">
                   {formatBRL(compareMode === 'ano_acumulado' ? ytdAtual : faturamentoAtual)}
                 </div>
-                <span className="text-[11px] text-text-muted font-semibold block">
+                <span className="text-[10.5px] text-text-muted font-semibold block truncate">
                   {data?.periodo_atual_label || 'Consolidado no período'}
                 </span>
               </div>
             </div>
 
-            {/* Centro: Gauge Circular */}
+            {/* Centro: Badge Auto-Adaptável de Crescimento */}
             <div className="flex flex-col items-center justify-center">
-              <div className={clsx(
-                "w-20 h-20 rounded-full flex flex-col items-center justify-center border-4 font-black shadow-md transition-transform hover:scale-105",
-                (compareMode === 'ano_acumulado' ? crescYtd : crescMesAnterior) >= 0
-                  ? "bg-emerald-500/10 border-emerald-500 text-emerald-600 dark:text-emerald-400"
-                  : "bg-rose-500/10 border-rose-500 text-rose-600 dark:text-rose-400"
-              )}>
-                {(compareMode === 'ano_acumulado' ? crescYtd : crescMesAnterior) >= 0 ? <TrendingUp size={20} className="mb-0.5" /> : <TrendingDown size={20} className="mb-0.5" />}
-                <span className="text-sm font-extrabold">
-                  {(compareMode === 'ano_acumulado' ? crescYtd : crescMesAnterior) >= 0 ? '+' : ''}
-                  {(compareMode === 'ano_acumulado' ? crescYtd : crescMesAnterior).toFixed(1)}%
+              <div
+                title={`${activeGrowthPct >= 0 ? '+' : ''}${activeGrowthPct.toFixed(2)}%`}
+                className={clsx(
+                  "min-w-[4.75rem] px-3.5 h-14 rounded-2xl flex flex-col items-center justify-center border-2 font-black shadow-xs tabular-nums whitespace-nowrap",
+                  activeGrowthPct >= 0
+                    ? "bg-emerald-500/10 border-emerald-500 text-emerald-600 dark:text-emerald-400"
+                    : "bg-rose-500/10 border-rose-500 text-rose-600 dark:text-rose-400"
+                )}
+              >
+                {activeGrowthPct >= 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
+                <span className="text-xs sm:text-[13px] font-extrabold">
+                  {formatGrowthPct(activeGrowthPct, 1)}
                 </span>
               </div>
-              <span className="text-[10px] font-black text-text-secondary uppercase tracking-widest mt-2 text-center">
-                {compareMode === 'ano_acumulado' ? 'Crescimento Acumulado (YTD)' : 'vs. Mês Anterior'}
+              <span className="text-[10px] font-black text-text-secondary uppercase tracking-widest mt-1.5 text-center">
+                {compareMode === 'ano_acumulado'
+                  ? 'Crescimento Acumulado (YTD)'
+                  : compareMode === 'mesmo_mes_ano_ant'
+                    ? 'vs. Mesmo Mês Ano Ant.'
+                    : 'vs. Mês Anterior'}
               </span>
             </div>
 
             {/* Direita: Faturamento Anterior */}
-            <div className="flex items-center gap-4 md:justify-end text-left md:text-right">
-              <div className="order-2 md:order-1">
-                <span className="text-[11px] font-black text-text-secondary uppercase tracking-wider block">
-                  {compareMode === 'ano_acumulado' ? `Acumulado Ano Anterior (${prevYear})` : 'Faturamento Mês Anterior'}
+            <div className="flex items-center gap-3 lg:justify-end text-left lg:text-right min-w-0">
+              <div className="order-2 lg:order-1 min-w-0">
+                <span className="text-[10px] font-black text-text-secondary uppercase tracking-wider block truncate">
+                  {compareMode === 'ano_acumulado'
+                    ? `Acumulado Ano Anterior (${prevYear})`
+                    : compareMode === 'mesmo_mes_ano_ant'
+                      ? `Mesmo Mês (${prevYear})`
+                      : 'Faturamento Mês Anterior'}
                 </span>
-                <div className="text-2xl sm:text-3xl font-black text-text-primary/80 font-mono tracking-tight my-0.5">
-                  {formatBRL(compareMode === 'ano_acumulado' ? ytdAnterior : faturamentoMesAnterior)}
+                <div className="font-black text-text-primary/85 font-mono tracking-tight my-0.5 bi-kpi-hero">
+                  {formatBRL(activePrevValue)}
                 </div>
-                <span className="text-[11px] text-text-muted font-semibold block">
-                  {compareMode === 'ano_acumulado' ? `01/Jan a corte de ${prevYear}` : 'Mês completo anterior'}
+                <span className="text-[10.5px] text-text-muted font-semibold block truncate">
+                  {compareMode === 'ano_acumulado' ? `01/Jan a corte de ${prevYear}` : 'Referência comparativa'}
                 </span>
               </div>
-              <div className="w-14 h-14 rounded-2xl bg-bg-secondary border border-border text-amber-500 flex items-center justify-center shrink-0 order-1 md:order-2">
-                <Award size={28} />
+              <div className="w-11 h-11 rounded-xl bg-bg-secondary border border-border text-amber-500 flex items-center justify-center shrink-0 order-1 lg:order-2">
+                <Award size={22} />
               </div>
             </div>
           </div>
 
           {/* Faixa Inferior de Superação */}
           {compareMode === 'ano_acumulado' && (
-            <div className="bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/25 rounded-2xl p-4.5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-2xs">
-              <div className="flex items-center gap-3.5">
-                <div className="p-2.5 bg-emerald-500 text-white rounded-xl shadow-xs">
-                  <Award size={22} />
+            <div className="bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/25 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-2 bg-emerald-500 text-white rounded-lg shadow-xs shrink-0">
+                  <Award size={18} />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h4 className="font-black text-text-primary text-xs sm:text-sm uppercase tracking-wider">
+                    <h4 className="font-black text-text-primary text-xs uppercase tracking-wider">
                       Meta de Superação do Ano Fechado ({prevYear})
                     </h4>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 whitespace-nowrap">
                       {superacaoPct.toFixed(1)}% atingido
                     </span>
                   </div>
                   <p className="text-xs text-text-secondary mt-0.5 font-medium">
-                    Faturamento total de {prevYear} (12 meses): <strong>{formatBRL(totalAnoAnterior12m)}</strong>
+                    Faturamento total de {prevYear} (12 meses): <strong className="tabular-nums">{formatBRL(totalAnoAnterior12m)}</strong>
                   </p>
                 </div>
               </div>
 
-              <div className="text-right shrink-0">
+              <div className="sm:text-right shrink-0">
                 <div className="text-[10px] font-black text-text-secondary uppercase tracking-widest">
                   {superacaoValor >= 0 ? 'Superação Conquistada' : 'Falta para Superar'}
                 </div>
                 <div className={clsx(
-                  "text-xl sm:text-2xl font-black font-mono mt-0.5",
+                  "font-black font-mono mt-0.5 bi-kpi-value",
                   superacaoValor >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"
                 )}>
                   {superacaoValor >= 0 ? '+' : ''}{formatBRL(superacaoValor)}
@@ -471,138 +477,138 @@ export default function SalesIntelligenceDashboard() {
         </div>
       </div>
 
-      {/* 4. GRID DE 8 CARDS DE KPIS EXECUTIVOS (2 LINHAS X 4 COLUNAS) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* 3. GRID DE 8 CARDS DE KPIS EXECUTIVOS (2 LINHAS X 4 COLUNAS AUTO-ADAPTÁVEIS) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5">
         {/* Card 1: Melhor Vendedor */}
-        <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-4.5 flex items-center gap-3.5">
-          <div className="p-3 bg-amber-500/10 text-amber-500 rounded-xl shrink-0">
-            <Trophy size={20} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <span className="text-[10px] font-black text-text-secondary uppercase tracking-wider block">Melhor Vendedor</span>
-            <div className="text-sm font-black text-text-primary truncate mt-0.5 uppercase" title={melhorVendedor.nome}>
-              {melhorVendedor.nome}
+        <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between min-w-0">
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <span className="text-[10px] font-black text-text-secondary uppercase tracking-wider truncate">Melhor Vendedor</span>
+            <div className="w-7 h-7 bg-amber-500/10 text-amber-500 rounded-lg flex items-center justify-center shrink-0">
+              <Trophy size={15} />
             </div>
-            <div className="text-xs font-black text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">
-              {formatBRL(melhorVendedor.total)}
-            </div>
-            <span className="text-[10px] text-text-secondary font-medium block">
-              {melhorVendedor.pct_share ? `${melhorVendedor.pct_share.toFixed(1)}% do faturamento total` : 'Líder em vendas'}
-            </span>
           </div>
+          <div className="text-xs sm:text-[13px] font-black text-text-primary truncate uppercase mb-0.5" title={melhorVendedor.nome}>
+            {melhorVendedor.nome}
+          </div>
+          <div className="font-black text-emerald-600 dark:text-emerald-400 font-mono bi-kpi-value">
+            {formatBRL(melhorVendedor.total)}
+          </div>
+          <span className="text-[10px] text-text-secondary font-medium block mt-1 truncate">
+            {melhorVendedor.pct_share ? `${melhorVendedor.pct_share.toFixed(1)}% do faturamento total` : 'Líder em vendas'}
+          </span>
         </div>
 
         {/* Card 2: Melhor Cliente */}
-        <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-4.5 flex items-center gap-3.5">
-          <div className="p-3 bg-rose-500/10 text-rose-500 rounded-xl shrink-0">
-            <Award size={20} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <span className="text-[10px] font-black text-text-secondary uppercase tracking-wider block">Melhor Cliente</span>
-            <div className="text-sm font-black text-text-primary truncate mt-0.5 uppercase" title={melhorCliente.nome}>
-              {melhorCliente.nome}
+        <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between min-w-0">
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <span className="text-[10px] font-black text-text-secondary uppercase tracking-wider truncate">Melhor Cliente</span>
+            <div className="w-7 h-7 bg-rose-500/10 text-rose-500 rounded-lg flex items-center justify-center shrink-0">
+              <Award size={15} />
             </div>
-            <div className="text-xs font-black text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">
-              {formatBRL(melhorCliente.total)}
-            </div>
-            <span className="text-[10px] text-text-secondary font-medium block">
-              {melhorCliente.pct_share ? `${melhorCliente.pct_share.toFixed(1)}% do faturamento total` : 'Maior comprador'}
-            </span>
           </div>
+          <div className="text-xs sm:text-[13px] font-black text-text-primary truncate uppercase mb-0.5" title={melhorCliente.nome}>
+            {melhorCliente.nome}
+          </div>
+          <div className="font-black text-emerald-600 dark:text-emerald-400 font-mono bi-kpi-value">
+            {formatBRL(melhorCliente.total)}
+          </div>
+          <span className="text-[10px] text-text-secondary font-medium block mt-1 truncate">
+            {melhorCliente.pct_share ? `${melhorCliente.pct_share.toFixed(1)}% do faturamento total` : 'Maior comprador'}
+          </span>
         </div>
 
         {/* Card 3: Marca Mais Vendida */}
-        <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-4.5 flex items-center gap-3.5">
-          <div className="p-3 bg-sky-500/10 text-sky-500 rounded-xl shrink-0">
-            <Tag size={20} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <span className="text-[10px] font-black text-text-secondary uppercase tracking-wider block">Marca Mais Vendida</span>
-            <div className="text-sm font-black text-text-primary truncate mt-0.5 uppercase" title={marcaMaisVendida.nome}>
-              {marcaMaisVendida.nome}
+        <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between min-w-0">
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <span className="text-[10px] font-black text-text-secondary uppercase tracking-wider truncate">Marca Mais Vendida</span>
+            <div className="w-7 h-7 bg-sky-500/10 text-sky-500 rounded-lg flex items-center justify-center shrink-0">
+              <Tag size={15} />
             </div>
-            <div className="text-xs font-black text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">
-              {formatBRL(marcaMaisVendida.total)}
-            </div>
-            <span className="text-[10px] text-text-secondary font-medium block">
-              {marcaMaisVendida.pct_share ? `${marcaMaisVendida.pct_share.toFixed(1)}% do faturamento total` : 'Destaque em vendas'}
-            </span>
           </div>
+          <div className="text-xs sm:text-[13px] font-black text-text-primary truncate uppercase mb-0.5" title={marcaMaisVendida.nome}>
+            {marcaMaisVendida.nome}
+          </div>
+          <div className="font-black text-emerald-600 dark:text-emerald-400 font-mono bi-kpi-value">
+            {formatBRL(marcaMaisVendida.total)}
+          </div>
+          <span className="text-[10px] text-text-secondary font-medium block mt-1 truncate">
+            {marcaMaisVendida.pct_share ? `${marcaMaisVendida.pct_share.toFixed(1)}% do faturamento total` : 'Destaque em vendas'}
+          </span>
         </div>
 
         {/* Card 4: Cidade Destaque */}
-        <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-4.5 flex items-center gap-3.5">
-          <div className="p-3 bg-teal-500/10 text-teal-600 dark:text-teal-400 rounded-xl shrink-0">
-            <MapPin size={20} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <span className="text-[10px] font-black text-text-secondary uppercase tracking-wider block">Cidade Destaque</span>
-            <div className="text-sm font-black text-text-primary truncate mt-0.5 uppercase" title={cidadeDestaque.nome}>
-              {cidadeDestaque.nome}
+        <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between min-w-0">
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <span className="text-[10px] font-black text-text-secondary uppercase tracking-wider truncate">Cidade Destaque</span>
+            <div className="w-7 h-7 bg-teal-500/10 text-teal-600 dark:text-teal-400 rounded-lg flex items-center justify-center shrink-0">
+              <MapPin size={15} />
             </div>
-            <div className="text-xs font-black text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">
-              {formatBRL(cidadeDestaque.total)}
-            </div>
-            <span className="text-[10px] text-text-secondary font-medium block">
-              {cidadeDestaque.pct_share ? `${cidadeDestaque.pct_share.toFixed(1)}% do faturamento total` : 'Principal praça'}
-            </span>
           </div>
+          <div className="text-xs sm:text-[13px] font-black text-text-primary truncate uppercase mb-0.5" title={cidadeDestaque.nome}>
+            {cidadeDestaque.nome}
+          </div>
+          <div className="font-black text-emerald-600 dark:text-emerald-400 font-mono bi-kpi-value">
+            {formatBRL(cidadeDestaque.total)}
+          </div>
+          <span className="text-[10px] text-text-secondary font-medium block mt-1 truncate">
+            {cidadeDestaque.pct_share ? `${cidadeDestaque.pct_share.toFixed(1)}% do faturamento total` : 'Principal praça'}
+          </span>
         </div>
 
         {/* Card 5: Quantidade de Pedidos */}
-        <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-4.5 flex items-center gap-3.5">
-          <div className="p-3 bg-blue-500/10 text-blue-500 rounded-xl shrink-0">
-            <ShoppingBag size={20} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <span className="text-[10px] font-black text-text-secondary uppercase tracking-wider block">Quantidade de Pedidos</span>
-            <div className="text-xl font-black text-text-primary mt-0.5">
-              {formatNum(qtdPedidos)}
+        <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between min-w-0">
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <span className="text-[10px] font-black text-text-secondary uppercase tracking-wider truncate">Quantidade de Pedidos</span>
+            <div className="w-7 h-7 bg-blue-500/10 text-blue-500 rounded-lg flex items-center justify-center shrink-0">
+              <ShoppingBag size={15} />
             </div>
-            <span className="text-[10px] text-text-secondary font-medium block mt-0.5">Total de pedidos no período</span>
           </div>
+          <div className="font-black text-text-primary font-mono bi-kpi-value">
+            {formatNum(qtdPedidos)}
+          </div>
+          <span className="text-[10px] text-text-secondary font-medium block mt-1 truncate">Total de pedidos no período</span>
         </div>
 
         {/* Card 6: Ticket Médio */}
-        <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-4.5 flex items-center gap-3.5">
-          <div className="p-3 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl shrink-0">
-            <DollarSign size={20} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <span className="text-[10px] font-black text-text-secondary uppercase tracking-wider block">Ticket Médio</span>
-            <div className="text-xl font-black text-text-primary font-mono mt-0.5">
-              {formatBRL(ticketMedio)}
+        <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between min-w-0">
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <span className="text-[10px] font-black text-text-secondary uppercase tracking-wider truncate">Ticket Médio</span>
+            <div className="w-7 h-7 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg flex items-center justify-center shrink-0">
+              <DollarSign size={15} />
             </div>
-            <span className="text-[10px] text-text-secondary font-medium block mt-0.5">Média por pedido/nota</span>
           </div>
+          <div className="font-black text-text-primary font-mono bi-kpi-value">
+            {formatBRL(ticketMedio)}
+          </div>
+          <span className="text-[10px] text-text-secondary font-medium block mt-1 truncate">Média por pedido/nota</span>
         </div>
 
         {/* Card 7: Taxa de Retenção */}
-        <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-4.5 flex items-center gap-3.5">
-          <div className="p-3 bg-indigo-500/10 text-indigo-500 rounded-xl shrink-0">
-            <RotateCcw size={20} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <span className="text-[10px] font-black text-text-secondary uppercase tracking-wider block">Taxa de Retenção</span>
-            <div className="text-xl font-black text-text-primary mt-0.5">
-              {taxaRecompra.toFixed(1)}%
+        <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between min-w-0">
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <span className="text-[10px] font-black text-text-secondary uppercase tracking-wider truncate">Taxa de Retenção</span>
+            <div className="w-7 h-7 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 rounded-lg flex items-center justify-center shrink-0">
+              <RotateCcw size={15} />
             </div>
-            <span className="text-[10px] text-text-secondary font-medium block mt-0.5">Clientes ativos vs carteira total</span>
           </div>
+          <div className="font-black text-text-primary font-mono bi-kpi-value">
+            {taxaRecompra.toFixed(1)}%
+          </div>
+          <span className="text-[10px] text-text-secondary font-medium block mt-1 truncate">Clientes ativos vs carteira total</span>
         </div>
 
         {/* Card 8: Clientes com Compra */}
-        <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-4.5 flex items-center gap-3.5">
-          <div className="p-3 bg-teal-500/10 text-teal-600 dark:text-teal-400 rounded-xl shrink-0">
-            <Users size={20} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <span className="text-[10px] font-black text-text-secondary uppercase tracking-wider block">Clientes com Compra</span>
-            <div className="text-xl font-black text-text-primary mt-0.5">
-              {clientesComCompra} <span className="text-xs font-normal text-text-secondary">de {formatNum(totalClientesBase)}</span>
+        <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between min-w-0">
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <span className="text-[10px] font-black text-text-secondary uppercase tracking-wider truncate">Clientes com Compra</span>
+            <div className="w-7 h-7 bg-teal-500/10 text-teal-600 dark:text-teal-400 rounded-lg flex items-center justify-center shrink-0">
+              <Users size={15} />
             </div>
-            <span className="text-[10px] text-text-secondary font-medium block mt-0.5">Carteira ativa no período</span>
           </div>
+          <div className="font-black text-text-primary font-mono bi-kpi-value">
+            {clientesComCompra} <span className="text-xs font-normal text-text-secondary">de {formatNum(totalClientesBase)}</span>
+          </div>
+          <span className="text-[10px] text-text-secondary font-medium block mt-1 truncate">Carteira ativa no período</span>
         </div>
       </div>
 
