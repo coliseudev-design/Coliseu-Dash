@@ -196,7 +196,8 @@ async function bindDbContext(req, res, next) {
         const isBiLayout = activeLayout === 'B.I IA.' || activeLayout === 'v3.0' || activeLayout === 'BI IA' || activeLayout === 'B.I 1.0';
         if (isBiLayout) {
             const settings = await getTenantSettings(req.tenant.id);
-            onlyNfSales = Boolean(settings.somente_vendas_com_nf);
+            // Proteção inteligente: só aplica filtro restritivo se o tenant já possuir NFs sincronizadas no banco
+            onlyNfSales = Boolean(settings.somente_vendas_com_nf && settings.has_synced_nf);
         }
     }
 

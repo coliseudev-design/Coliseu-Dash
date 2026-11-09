@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import {
-  SlidersHorizontal, FileCheck2, CheckCircle2, Info, ArrowRight, RefreshCw, ShieldCheck
+  SlidersHorizontal, FileCheck2, CheckCircle2, Info, ArrowRight, RefreshCw, ShieldCheck, AlertTriangle
 } from 'lucide-react'
 import clsx from 'clsx'
 import api from '../../services/api'
@@ -10,6 +10,8 @@ import { formatDateTime } from '../../utils/format'
 
 interface TenantParametros {
   somente_vendas_com_nf: boolean
+  has_synced_nf?: boolean
+  efetivo_somente_nf?: boolean
   updated_at: string | null
   updated_by: string | null
 }
@@ -40,16 +42,23 @@ export default function ParametrosBi() {
       queryClient.invalidateQueries({
         predicate: (q) => q.queryKey[0] !== 'tenant-parametros',
       })
-      setFeedback(
-        updated.somente_vendas_com_nf
-          ? 'Filtro ativado: todos os painéis de vendas do B.I IA. exibem agora somente vendas com Nota Fiscal vinculada.'
-          : 'Filtro desativado: todos os painéis de vendas voltaram a exibir todas as vendas faturadas.'
-      )
-      setTimeout(() => setFeedback(null), 5000)
+      if (updated.somente_vendas_com_nf && updated.has_synced_nf === false) {
+        setFeedback(
+          'Parâmetro salvo! Como o SyncAgent desta empresa ainda não sincroniza NF-e (0 notas detectadas), a proteção inteligente mantém todas as vendas faturadas visíveis até a atualização do agente.'
+        )
+      } else {
+        setFeedback(
+          updated.somente_vendas_com_nf
+            ? 'Filtro ativado: todos os painéis de vendas do B.I IA. exibem agora somente vendas com Nota Fiscal vinculada.'
+            : 'Filtro desativado: todos os painéis de vendas voltaram a exibir todas as vendas faturadas.'
+        )
+      }
+      setTimeout(() => setFeedback(null), 6500)
     },
   })
 
   const isOnlyNf = Boolean(data?.somente_vendas_com_nf)
+  const hasSyncedNf = data?.has_synced_nf !== false
 
   return (
     <div className="max-w-4xl mx-auto w-full py-2 sm:py-4 space-y-5">
@@ -96,13 +105,13 @@ export default function ParametrosBi() {
             <div
               className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
               style={{
-                backgroundColor: isOnlyNf ? '#10B98116' : '#2563EB14',
-                border: `1px solid ${isOnlyNf ? '#10B98136' : '#2563EB30'}`,
+                backgroundColor: isOnlyNf ? (hasSyncedNf ? '#10B98116' : '#F59E0B16') : '#2563EB14',
+                border: `1px solid ${isOnlyNf ? (hasSyncedNf ? '#10B98136' : '#F59E0B36') : '#2563EB30'}`,
               }}
             >
               <FileCheck2
                 size={19}
-                style={{ color: isOnlyNf ? '#10B981' : '#2563EB' }}
+                style={{ color: isOnlyNf ? (hasSyncedNf ? '#10B981' : '#D97706') : '#2563EB' }}
                 strokeWidth={1.9}
               />
             </div>
@@ -115,12 +124,18 @@ export default function ParametrosBi() {
                 <span
                   className={clsx(
                     'text-[11px] font-semibold px-2.5 py-0.5 rounded-full border',
-                    isOnlyNf
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800'
-                      : 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+                    isOnlyNf && !hasSyncedNf
+                      ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800'
+                      : isOnlyNf
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800'
+                        : 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
                   )}
                 >
-                  {isOnlyNf ? 'Ativo — Somente c/ NF' : 'Desativado — Todas as Vendas'}
+                  {isOnlyNf
+                    ? hasSyncedNf
+                      ? 'Ativo — Somente c/ NF'
+                      : 'Ativo — Proteção Inteligente (Agente s/ NF)'
+                    : 'Desativado — Todas as Vendas'}
                 </span>
               </div>
 
@@ -150,7 +165,7 @@ export default function ParametrosBi() {
               onClick={() => updateMutation.mutate(!isOnlyNf)}
               className={clsx(
                 'relative inline-flex h-8 w-14 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-500/40 disabled:opacity-50',
-                isOnlyNf ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-700'
+                isOnlyNf ? (hasSyncedNf ? 'bg-emerald-500' : 'bg-amber-500') : 'bg-slate-300 dark:bg-slate-700'
               )}
               title={isOnlyNf ? 'Desativar filtro de Nota Fiscal' : 'Ativar filtro de Nota Fiscal'}
             >
@@ -163,6 +178,23 @@ export default function ParametrosBi() {
             </button>
           </div>
         </div>
+
+        {/* Alerta de Proteção Inteligente quando a empresa ainda possui 0 NFs sincronizadas pelo SyncAgent */}
+        {!isLoading && !hasSyncedNf && (
+          <div className="bg-amber-50/90 dark:bg-amber-950/35 border border-amber-200 dark:border-amber-800/70 rounded-xl p-4 flex items-start gap-3">
+            <AlertTriangle size={18} className="text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+            <div className="text-xs text-amber-900 dark:text-amber-200 space-y-1 leading-relaxed">
+              <p className="font-bold">
+                SyncAgent local ainda não sincroniza número/chave de NF-e nesta empresa (0 notas fiscais detectadas)
+              </p>
+              <p className="text-amber-800/90 dark:text-amber-200/85">
+                <strong>Proteção inteligente ativa:</strong> enquanto o agente instalado no servidor desta empresa não enviar os campos{' '}
+                <code>numero_nota</code> / <code>chave_nfe</code> ou XMLs fiscais, os painéis comerciais continuam exibindo normalmente{' '}
+                <strong>todas as vendas faturadas</strong> (evitando zerar os indicadores). Assim que o SyncAgent for atualizado e sincronizar as NF-es, a filtragem passará a atuar automaticamente.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Detalhamento técnico claro */}
         <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/60 rounded-xl p-4 flex items-start gap-3">

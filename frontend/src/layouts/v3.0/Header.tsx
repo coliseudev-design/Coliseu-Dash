@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Menu, LogOut, FileCheck2 } from 'lucide-react'
+import { Menu, LogOut, FileCheck2, AlertTriangle } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
 import { useSyncStatus } from '../../hooks/useSync'
 import { formatDateTime } from '../../utils/format'
@@ -22,7 +22,11 @@ export default function Header({ onMenuClick, activeRoute }: Props) {
   const [empresaNome, setEmpresaNome] = useState<string>('')
   const navigate = useNavigate()
 
-  const { data: tenantParams } = useQuery<{ somente_vendas_com_nf: boolean }>({
+  const { data: tenantParams } = useQuery<{
+    somente_vendas_com_nf: boolean
+    has_synced_nf?: boolean
+    efetivo_somente_nf?: boolean
+  }>({
     queryKey: ['tenant-parametros'],
     queryFn: async () => {
       const { data } = await api.get('/configuracoes/parametros')
@@ -74,15 +78,27 @@ export default function Header({ onMenuClick, activeRoute }: Props) {
 
         {/* Indicador discreto quando o parâmetro "Somente vendas com Nota Fiscal" estiver ativo */}
         {tenantParams?.somente_vendas_com_nf && (
-          <button
-            type="button"
-            onClick={() => navigate('/bi/parametros')}
-            className="hidden sm:inline-flex items-center gap-1 ml-1 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/70 text-emerald-700 dark:text-emerald-300 text-[10px] font-semibold hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors cursor-pointer shrink-0"
-            title="Parâmetro ativo: exibindo somente vendas com Nota Fiscal vinculada. Clique para configurar."
-          >
-            <FileCheck2 size={12} />
-            <span>Somente c/ NF</span>
-          </button>
+          tenantParams.has_synced_nf === false ? (
+            <button
+              type="button"
+              onClick={() => navigate('/bi/parametros')}
+              className="hidden sm:inline-flex items-center gap-1 ml-1 px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800/70 text-amber-700 dark:text-amber-300 text-[10px] font-semibold hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors cursor-pointer shrink-0"
+              title="Parâmetro 'Somente c/ NF' ativo, porém o SyncAgent desta empresa ainda não sincroniza número/chave de NF-e (0 notas detectadas). Proteção inteligente ativa: exibindo todas as vendas faturadas. Clique para ver detalhes."
+            >
+              <AlertTriangle size={12} />
+              <span>Somente c/ NF (Agente s/ NF)</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => navigate('/bi/parametros')}
+              className="hidden sm:inline-flex items-center gap-1 ml-1 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/70 text-emerald-700 dark:text-emerald-300 text-[10px] font-semibold hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors cursor-pointer shrink-0"
+              title="Parâmetro ativo: exibindo somente vendas com Nota Fiscal vinculada. Clique para configurar."
+            >
+              <FileCheck2 size={12} />
+              <span>Somente c/ NF</span>
+            </button>
+          )
         )}
       </div>
 

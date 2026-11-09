@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   FileText, ArrowUpRight, ArrowDownLeft, Search, Download, Copy, Check,
-  Eye, X, RefreshCw, ChevronLeft, ChevronRight, Scale, Filter, Truck, Building2, Package, ChevronDown, FileCheck2
+  Eye, X, RefreshCw, ChevronLeft, ChevronRight, Scale, Filter, Truck, Building2, Package, ChevronDown, FileCheck2, AlertTriangle
 } from 'lucide-react'
 import clsx from 'clsx'
 import api from '../../services/api'
@@ -24,7 +24,16 @@ interface FiscalKpis {
   total_documentos: number
 }
 
+interface NaturezaResumo {
+  key?: string
+  natureza_operacao: string
+  tipo_operacao: 'SAIDA' | 'ENTRADA'
+  qtd: number
+  valor: number
+}
+
 interface CfopResumo {
+  key?: string
   cfop: string
   tipo_operacao: 'SAIDA' | 'ENTRADA'
   qtd: number
@@ -33,7 +42,11 @@ interface CfopResumo {
 
 interface FiscalResumoResponse {
   period: { start: string; end: string; label: string }
+  apenas_nfe?: boolean
+  apenas_nfe_efetivo?: boolean
+  has_synced_nf?: boolean
   kpis: FiscalKpis
+  naturezas?: NaturezaResumo[]
   cfops: CfopResumo[]
 }
 
@@ -133,7 +146,7 @@ export default function FiscalDashboard() {
   const [apenasNfe, setApenasNfe] = useState(false)
   const [searchInput, setSearchInput] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
-  const [selectedCfop, setSelectedCfop] = useState('todos')
+  const [selectedOperacao, setSelectedOperacao] = useState('todos')
   const [page, setPage] = useState(1)
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
   const [selectedNota, setSelectedNota] = useState<{ origem: 'cargas' | 'vendas'; id: number } | null>(null)
@@ -148,7 +161,7 @@ export default function FiscalDashboard() {
 
   useEffect(() => {
     setPage(1)
-  }, [activeTab, apenasNfe, selectedCfop, periodState.period, periodState.startDate, periodState.endDate, branchParam.depto_id])
+  }, [activeTab, apenasNfe, selectedOperacao, periodState.period, periodState.startDate, periodState.endDate, branchParam.depto_id])
 
   const baseParams = useMemo(() => {
     const p: Record<string, string | number> = {
@@ -156,10 +169,10 @@ export default function FiscalDashboard() {
       apenas_nfe: apenasNfe ? 'true' : 'false',
     }
     if (branchParam.depto_id) p.depto_id = branchParam.depto_id
-    if (selectedCfop !== 'todos') p.cfop = selectedCfop
+    if (selectedOperacao !== 'todos') p.operacao = selectedOperacao
     if (debouncedSearch) p.search = debouncedSearch
     return p
-  }, [periodState, apenasNfe, branchParam.depto_id, selectedCfop, debouncedSearch])
+  }, [periodState, apenasNfe, branchParam.depto_id, selectedOperacao, debouncedSearch])
 
   const {
     data: resumo,
@@ -215,24 +228,73 @@ export default function FiscalDashboard() {
     total_documentos: 0,
   }
 
-  const cfopsDisponiveis = useMemo(() => {
-    const all = resumo?.cfops || []
-    const unique = new Map<string, { cfop: string; qtd: number; valor: number }>()
+  const naturezasDisponiveis = useMemo(() => {
+    const all = resumo?.naturezas || []
+    const unique = new Map<string, { key: string; label: string; qtd: number; valor: number }>()
     for (const item of all) {
-      const prev = unique.get(item.cfop)
+      const label = (item.natureza_operacao || '').trim()
+      if (!label) continue
+      const key = item.key || `nat:${label}`
+      const prev = unique.get(key)
       if (prev) {
         prev.qtd += item.qtd
         prev.valor += item.valor
       } else {
-        unique.set(item.cfop, { cfop: item.cfop, qtd: item.qtd, valor: item.valor })
+        unique.set(key, { key, label, qtd: item.qtd, valor: item.valor })
+      }
+    }
+    return Array.from(unique.values()).sort((a, b) => b.valor - a.valor)
+  }, [resumo?.naturezas])
+
+  const cfopsDisponiveis = useMemo(() => {
+    const all = resumo?.cfops || []
+    const unique = new Map<string, { key: string; cfop: string; qtd: number; valor: number }>()
+    for (const item of all) {
+      const code = (item.cfop || '').trim()
+      if (!code) continue
+      const key = item.key || `cfop:${code}`
+      const prev = unique.get(key)
+      if (prev) {
+        prev.qtd += item.qtd
+        prev.valor += item.valor
+      } else {
+        unique.set(key, { key, cfop: code, qtd: item.qtd, valor: item.valor })
       }
     }
     return Array.from(unique.values()).sort((a, b) => b.valor - a.valor)
   }, [resumo?.cfops])
 
-  const topCfopsTab = useMemo(() => {
-    return (resumo?.cfops || []).filter((c) => c.tipo_operacao === activeTab).slice(0, 4)
-  }, [resumo?.cfops, activeTab])
+  const topOperacoesTab = useMemo(() => {
+    const natTab = (resumo?.naturezas || [])
+      .filter((n) => n.tipo_operacao === activeTab && (n.natureza_operacao || '').trim() !== '')
+      .map((n) => ({
+        key: n.key || `nat:${n.natureza_operacao.trim()}`,
+        shortLabel: n.natureza_operacao.trim(),
+        qtd: n.qtd,
+        valor: n.valor,
+      }))
+
+    const cfopTab = (resumo?.cfops || [])
+      .filter((c) => c.tipo_operacao === activeTab && (c.cfop || '').trim() !== '')
+      .map((c) => ({
+        key: c.key || `cfop:${c.cfop.trim()}`,
+        shortLabel: `CFOP ${c.cfop.trim()}`,
+        qtd: c.qtd,
+        valor: c.valor,
+      }))
+
+    if (cfopTab.length > 0 && natTab.length > 0) {
+      return [...natTab.slice(0, 2), ...cfopTab.slice(0, 3)]
+    }
+    return (natTab.length > 0 ? natTab : cfopTab).slice(0, 4)
+  }, [resumo?.naturezas, resumo?.cfops, activeTab])
+
+  const selectedOperacaoLabel = useMemo(() => {
+    if (selectedOperacao === 'todos') return ''
+    if (selectedOperacao.startsWith('cfop:')) return `CFOP ${selectedOperacao.slice(5)}`
+    if (selectedOperacao.startsWith('nat:')) return selectedOperacao.slice(4)
+    return selectedOperacao
+  }, [selectedOperacao])
 
   const handleCopyChave = (chave: string) => {
     navigator.clipboard?.writeText(chave.replace(/\s+/g, '')).catch(() => {})
@@ -339,21 +401,34 @@ export default function FiscalDashboard() {
             </button>
           </div>
 
-          {/* Filtro de CFOP */}
+          {/* Filtro Unificado de Natureza de Operação + CFOP */}
           <div className="relative flex items-center">
             <Filter size={13} className="absolute left-2.5 text-slate-400 pointer-events-none" />
             <select
-              value={selectedCfop}
-              onChange={(e) => setSelectedCfop(e.target.value)}
-              className="bi-select appearance-none pl-7 pr-7"
-              aria-label="Filtrar por CFOP"
+              value={selectedOperacao}
+              onChange={(e) => setSelectedOperacao(e.target.value)}
+              className="bi-select appearance-none pl-7 pr-7 max-w-[235px] sm:max-w-[265px] truncate"
+              aria-label="Filtrar por Natureza de Operação ou CFOP"
             >
-              <option value="todos">Todos os CFOPs</option>
-              {cfopsDisponiveis.map((c) => (
-                <option key={c.cfop} value={c.cfop}>
-                  CFOP {c.cfop} ({formatNum(c.qtd)})
-                </option>
-              ))}
+              <option value="todos">Todas as Naturezas / CFOPs</option>
+              {naturezasDisponiveis.length > 0 && (
+                <optgroup label="Natureza de Operação">
+                  {naturezasDisponiveis.map((n) => (
+                    <option key={n.key} value={n.key}>
+                      {n.label} ({formatNum(n.qtd)})
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              {cfopsDisponiveis.length > 0 && (
+                <optgroup label="Código CFOP">
+                  {cfopsDisponiveis.map((c) => (
+                    <option key={c.key} value={c.key}>
+                      CFOP {c.cfop} ({formatNum(c.qtd)})
+                    </option>
+                  ))}
+                </optgroup>
+              )}
             </select>
             <ChevronDown size={13} className="absolute right-2 text-slate-400 pointer-events-none" />
           </div>
@@ -403,6 +478,25 @@ export default function FiscalDashboard() {
           </button>
         </div>
       </div>
+
+      {/* Aviso de Proteção Inteligente quando 'Somente c/ NF-e' é clicado em empresa sem NFs sincronizadas */}
+      {apenasNfe && resumo && resumo.has_synced_nf === false && (
+        <div className="bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/70 rounded-xl px-3.5 py-2.5 flex items-center justify-between gap-3 text-xs text-amber-900 dark:text-amber-200">
+          <div className="flex items-center gap-2 min-w-0">
+            <AlertTriangle size={15} className="text-amber-600 dark:text-amber-400 shrink-0" />
+            <span className="leading-snug">
+              <strong>Proteção inteligente ativa:</strong> o SyncAgent desta empresa ainda não sincroniza número/chave de NF-e ou XML (0 notas detectadas). Exibindo todos os documentos faturados e de entrada do ERP para evitar listagem vazia.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setApenasNfe(false)}
+            className="text-[11px] font-bold text-amber-800 dark:text-amber-300 hover:underline shrink-0 cursor-pointer"
+          >
+            Voltar p/ Todos
+          </button>
+        </div>
+      )}
 
       {/* Cards Executivos de KPIs Fiscais */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5">
@@ -501,11 +595,11 @@ export default function FiscalDashboard() {
           </div>
         </div>
 
-        {/* Card 4: CFOPs Predominantes da Aba */}
+        {/* Card 4: Top Naturezas / CFOPs da Aba */}
         <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-[0_4px_16px_rgba(15,23,42,0.04)] flex flex-col justify-between min-w-0">
           <div className="flex items-center justify-between gap-2 mb-2">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">
-              Top CFOPs ({activeTab === 'SAIDA' ? 'Saída' : 'Entrada'})
+              Top Naturezas / CFOPs ({activeTab === 'SAIDA' ? 'Saída' : 'Entrada'})
             </span>
             <div
               className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
@@ -515,26 +609,26 @@ export default function FiscalDashboard() {
             </div>
           </div>
 
-          {topCfopsTab.length === 0 ? (
-            <div className="text-xs text-slate-400 py-2">Sem CFOP registrado no filtro atual.</div>
+          {topOperacoesTab.length === 0 ? (
+            <div className="text-xs text-slate-400 py-2">Nenhuma operação registrada no período selecionado.</div>
           ) : (
             <div className="flex flex-wrap gap-1.5 mt-1">
-              {topCfopsTab.map((c) => {
-                const isSelected = selectedCfop === c.cfop
+              {topOperacoesTab.map((item) => {
+                const isSelected = selectedOperacao === item.key
                 return (
                   <button
-                    key={c.cfop}
+                    key={item.key}
                     type="button"
-                    onClick={() => setSelectedCfop(isSelected ? 'todos' : c.cfop)}
+                    onClick={() => setSelectedOperacao(isSelected ? 'todos' : item.key)}
                     className={clsx(
-                      'px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-colors cursor-pointer',
+                      'px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-colors cursor-pointer max-w-full truncate',
                       isSelected
                         ? 'bg-blue-600 text-white border-blue-600'
                         : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
                     )}
-                    title={`Filtrar por CFOP ${c.cfop} (${formatBRL(c.valor)})`}
+                    title={`Filtrar por ${item.shortLabel} (${formatBRL(item.valor)})`}
                   >
-                    {c.cfop} <span className="opacity-70">({c.qtd})</span>
+                    {item.shortLabel} <span className="opacity-70">({formatNum(item.qtd)})</span>
                   </button>
                 )
               })}
@@ -583,14 +677,14 @@ export default function FiscalDashboard() {
             </button>
           </div>
 
-          <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-3">
-            {selectedCfop !== 'todos' && (
+          <div className="text-xs text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-3">
+            {selectedOperacao !== 'todos' && (
               <button
                 type="button"
-                onClick={() => setSelectedCfop('todos')}
+                onClick={() => setSelectedOperacao('todos')}
                 className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-semibold cursor-pointer"
               >
-                CFOP {selectedCfop}
+                <span>{selectedOperacaoLabel}</span>
                 <X size={12} />
               </button>
             )}
@@ -675,16 +769,26 @@ export default function FiscalDashboard() {
                       {row.cidade ? `${row.cidade}${row.uf ? ` / ${row.uf}` : ''}` : row.uf || '—'}
                     </td>
 
-                    <td className="py-3 px-3 max-w-[200px]">
-                      <div className="flex items-center gap-1.5">
+                    <td className="py-3 px-3 max-w-[220px]">
+                      <div className="flex items-center gap-1.5 min-w-0">
                         {row.cfop ? (
-                          <span className="px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 font-mono font-bold text-[11px]">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedOperacao(selectedOperacao === `cfop:${row.cfop}` ? 'todos' : `cfop:${row.cfop}`)}
+                            className="px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/60 font-mono font-bold text-[11px] shrink-0 cursor-pointer transition-colors"
+                            title={`Filtrar por CFOP ${row.cfop}`}
+                          >
                             {row.cfop}
-                          </span>
+                          </button>
                         ) : null}
-                        <span className="text-slate-600 dark:text-slate-300 truncate text-xs" title={row.natureza_operacao}>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedOperacao(selectedOperacao === `nat:${row.natureza_operacao}` ? 'todos' : `nat:${row.natureza_operacao}`)}
+                          className="text-left text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 truncate text-xs cursor-pointer transition-colors"
+                          title={`Filtrar por Natureza: ${row.natureza_operacao}`}
+                        >
                           {row.natureza_operacao}
-                        </span>
+                        </button>
                       </div>
                     </td>
 

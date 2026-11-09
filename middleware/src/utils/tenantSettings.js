@@ -5,7 +5,9 @@ const logger = require('../config/logger');
 const { invalidateTenant } = require('../config/cache');
 
 const settingsCache = new Map();
+const nfCoverageCache = new Map();
 const SETTINGS_TTL_MS = 60 * 1000;
+const NF_COVERAGE_TTL_MS = 60 * 1000;
 let tableEnsured = false;
 
 async function ensureSettingsTable() {
@@ -22,12 +24,104 @@ async function ensureSettingsTable() {
 }
 
 /**
+ * Verifica de forma ultrarrápida (EXISTS LIMIT 1 + cache 60s) se o tenant possui
+ * ao menos uma venda ou carga XML com Nota Fiscal sincronizada no PostgreSQL.
+ * Evita zerar todos os painéis em empresas cujo SyncAgent ainda não envia numero_nota/chave_nfe.
+ * @param {string} tenantId
+ * @returns {Promise<boolean>}
+ */
+async function checkTenantHasSyncedNf(tenantId) {
+    if (!tenantId || tenantId === '00000000-0000-0000-0000-000000000000') {
+        return false;
+    }
+
+    const cached = nfCoverageCache.get(tenantId);
+    if (cached && cached.expiresAt > Date.now()) {
+        return cached.hasSyncedNf;
+    }
+
+    try {
+        const { rows } = await db.query(
+            `SELECT (
+                EXISTS (
+                    SELECT 1 FROM dash_vendas
+                    WHERE tenant_id = $1
+                      AND (
+                          (numero_nota IS NOT NULL AND numero_nota > 0)
+                          OR (chave_nfe IS NOT NULL AND TRIM(chave_nfe) <> '')
+                      )
+                    LIMIT 1
+                )
+                OR EXISTS (
+                    SELECT 1 FROM dash_cargas
+                    WHERE tenant_id = $1
+                    LIMIT 1
+                )
+                OR EXISTS (
+                    SELECT 1 FROM dash_vendas_itens
+                    WHERE tenant_id = $1
+                      AND (
+                          (numero_nota IS NOT NULL AND TRIM(numero_nota::text) NOT IN ('', '0'))
+                          OR (chave_nfe IS NOT NULL AND TRIM(chave_nfe) <> '')
+                      )
+                    LIMIT 1
+                )
+            ) AS has_synced_nf`,
+            [tenantId]
+        );
+
+        const hasSyncedNf = Boolean(rows[0]?.has_synced_nf);
+        nfCoverageCache.set(tenantId, {
+            hasSyncedNf,
+            expiresAt: Date.now() + NF_COVERAGE_TTL_MS,
+        });
+        return hasSyncedNf;
+    } catch (err) {
+        // Caso dash_cargas ainda não exista na base, testa apenas dash_vendas
+        try {
+            const { rows } = await db.query(
+                `SELECT EXISTS (
+                    SELECT 1 FROM dash_vendas
+                    WHERE tenant_id = $1
+                      AND (
+                          (numero_nota IS NOT NULL AND numero_nota > 0)
+                          OR (chave_nfe IS NOT NULL AND TRIM(chave_nfe) <> '')
+                      )
+                    LIMIT 1
+                ) AS has_synced_nf`,
+                [tenantId]
+            );
+            const hasSyncedNf = Boolean(rows[0]?.has_synced_nf);
+            nfCoverageCache.set(tenantId, {
+                hasSyncedNf,
+                expiresAt: Date.now() + NF_COVERAGE_TTL_MS,
+            });
+            return hasSyncedNf;
+        } catch (innerErr) {
+            logger.warn('[TenantSettings] Falha ao checar cobertura de NF do tenant', {
+                tenantId,
+                error: innerErr.message,
+            });
+            return false;
+        }
+    }
+}
+
+function invalidateTenantSettingsCache(tenantId) {
+    if (!tenantId) return;
+    settingsCache.delete(tenantId);
+    nfCoverageCache.delete(tenantId);
+}
+
+/**
  * Obtém os parâmetros configurados para o tenant (com cache leve em memória de 60s).
  * @param {string} tenantId
  */
 async function getTenantSettings(tenantId) {
     const defaultSettings = {
         somente_vendas_com_nf: false,
+        has_synced_nf: false,
+        efetivo_somente_nf: false,
         updated_at: null,
         updated_by: null,
     };
@@ -36,9 +130,16 @@ async function getTenantSettings(tenantId) {
         return defaultSettings;
     }
 
+    const hasSyncedNf = await checkTenantHasSyncedNf(tenantId);
+
     const cached = settingsCache.get(tenantId);
     if (cached && cached.expiresAt > Date.now()) {
-        return cached.data;
+        const somenteNf = Boolean(cached.data.somente_vendas_com_nf);
+        return {
+            ...cached.data,
+            has_synced_nf: hasSyncedNf,
+            efetivo_somente_nf: Boolean(somenteNf && hasSyncedNf),
+        };
     }
 
     try {
@@ -50,26 +151,38 @@ async function getTenantSettings(tenantId) {
             [tenantId]
         );
 
-        const data = rows.length > 0
+        const somenteNf = rows.length > 0 ? Boolean(rows[0].somente_vendas_com_nf) : false;
+        const baseData = rows.length > 0
             ? {
-                somente_vendas_com_nf: Boolean(rows[0].somente_vendas_com_nf),
+                somente_vendas_com_nf: somenteNf,
                 updated_at: rows[0].updated_at || null,
                 updated_by: rows[0].updated_by || null,
             }
-            : defaultSettings;
+            : {
+                somente_vendas_com_nf: false,
+                updated_at: null,
+                updated_by: null,
+            };
 
         settingsCache.set(tenantId, {
-            data,
+            data: baseData,
             expiresAt: Date.now() + SETTINGS_TTL_MS,
         });
 
-        return data;
+        return {
+            ...baseData,
+            has_synced_nf: hasSyncedNf,
+            efetivo_somente_nf: Boolean(somenteNf && hasSyncedNf),
+        };
     } catch (err) {
         logger.warn('[TenantSettings] Falha ao consultar parâmetros do tenant; usando padrão', {
             tenantId,
             error: err.message,
         });
-        return defaultSettings;
+        return {
+            ...defaultSettings,
+            has_synced_nf: hasSyncedNf,
+        };
     }
 }
 
@@ -96,22 +209,32 @@ async function updateTenantSettings(tenantId, patch, updatedBy = null) {
         [tenantId, somenteVendasComNf, updatedBy]
     );
 
-    const updated = {
-        somente_vendas_com_nf: Boolean(rows[0]?.somente_vendas_com_nf),
+    nfCoverageCache.delete(tenantId);
+    const hasSyncedNf = await checkTenantHasSyncedNf(tenantId);
+    const somenteNf = Boolean(rows[0]?.somente_vendas_com_nf);
+
+    const baseData = {
+        somente_vendas_com_nf: somenteNf,
         updated_at: rows[0]?.updated_at || new Date().toISOString(),
         updated_by: rows[0]?.updated_by || updatedBy,
     };
 
     settingsCache.set(tenantId, {
-        data: updated,
+        data: baseData,
         expiresAt: Date.now() + SETTINGS_TTL_MS,
     });
 
     invalidateTenant(tenantId);
-    return updated;
+    return {
+        ...baseData,
+        has_synced_nf: hasSyncedNf,
+        efetivo_somente_nf: Boolean(somenteNf && hasSyncedNf),
+    };
 }
 
 module.exports = {
     getTenantSettings,
     updateTenantSettings,
+    checkTenantHasSyncedNf,
+    invalidateTenantSettingsCache,
 };

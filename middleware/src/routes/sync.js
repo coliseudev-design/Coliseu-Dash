@@ -5,6 +5,7 @@ const router = express.Router();
 const db = require('../db/postgres');
 const logger = require('../config/logger');
 const { invalidateTenant } = require('../config/cache');
+const { invalidateTenantSettingsCache } = require('../utils/tenantSettings');
 
 const TABELAS_MAP = {
     'dash_clientes': ['id_firebird', 'nome', 'documento', 'email', 'telefone', 'cidade', 'estado', 'classificacao', 'tipo', 'data_cadastro', 'ativo'],
@@ -12,7 +13,7 @@ const TABELAS_MAP = {
     'dash_produtos': ['id_firebird', 'codigo', 'nome', 'descricao', 'categoria', 'marca', 'preco', 'custo', 'estoque', 'estoque_minimo', 'ativo', 'referencia', 'codigo_fabrica', 'marca_id', 'grupo_id'],
     'dash_vendedores': ['id_firebird', 'nome', 'email', 'ativo'],
     'dash_fornecedores': ['id_firebird', 'nome', 'documento', 'cidade', 'estado'],
-    'dash_vendas': ['id_firebird', 'numero_pedido', 'data_venda', 'data_vencimento', 'cliente_id_firebird', 'vendedor_id_firebird', 'valor_total', 'valor_custo', 'valor_desconto', 'status', 'marca', 'categoria', 'especie', 'depto_id', 'cfop', 'numero_nota', 'chave_nfe', 'data_hora_proc', 'data_fat', 'es', 'processo'],
+    'dash_vendas': ['id_firebird', 'numero_pedido', 'data_venda', 'data_vencimento', 'cliente_id_firebird', 'vendedor_id_firebird', 'valor_total', 'valor_custo', 'valor_desconto', 'status', 'marca', 'categoria', 'especie', 'depto_id', 'cfop', 'numero_nota', 'chave_nfe', 'data_hora_proc', 'data_fat', 'es', 'processo', 'natureza_id', 'natureza_operacao'],
     'dash_vendas_itens': ['id_firebird', 'venda_id_firebird', 'produto_id_firebird', 'quantidade', 'preco_unitario', 'custo_unitario', 'valor_total', 'desconto_item', 'vendedor', 'produto', 'marca', 'categoria', 'depto_id', 'cfop', 'numero_nota', 'chave_nfe'],
     'dash_comissoes': ['id_firebird', 'vendedor_id_firebird', 'venda_id_firebird', 'periodo', 'valor_vendas', 'percentual', 'valor_comissao', 'data_referencia'],
     'dash_financeiro': ['id_firebird', 'tipo', 'tipo_documento', 'descricao', 'cliente_id_firebird', 'fornecedor_id_firebird', 'caixa_id_firebird', 'data_emissao', 'data_vencimento', 'data_pagamento', 'valor', 'valor_pago', 'status_pagamento', 'depto_id', 'centro_custo'],
@@ -39,7 +40,7 @@ const COL_MAX_LENGTH = {
     categoria: 255, marca: 255, especie: 255, vendedor: 255,
     produto: 500, descricao: 500, motivo: 500,
     // dash_vendas
-    status: 100, numero_pedido: 100, numero_nota: 50, chave_nfe: 44, cfop: 10,
+    status: 100, numero_pedido: 100, numero_nota: 50, chave_nfe: 44, cfop: 10, natureza_operacao: 255,
     // dash_financeiro
     tipo: 100, tipo_documento: 100, centro_custo: 255,
     // dash_produtos
@@ -134,7 +135,12 @@ router.post('/:tabela', async (req, res) => {
 
     try {
         if (tabela === 'dash_vendas') {
-            await client.query(`ALTER TABLE dash_vendas ADD COLUMN IF NOT EXISTS chave_nfe VARCHAR(44)`).catch(() => {});
+            await client.query(`
+                ALTER TABLE dash_vendas ADD COLUMN IF NOT EXISTS chave_nfe VARCHAR(44);
+                ALTER TABLE dash_vendas ADD COLUMN IF NOT EXISTS processo INTEGER DEFAULT NULL;
+                ALTER TABLE dash_vendas ADD COLUMN IF NOT EXISTS natureza_id INTEGER DEFAULT NULL;
+                ALTER TABLE dash_vendas ADD COLUMN IF NOT EXISTS natureza_operacao VARCHAR(255) DEFAULT NULL;
+            `).catch(() => {});
         } else if (tabela === 'dash_vendas_itens') {
             await client.query(`
                 ALTER TABLE dash_vendas_itens ADD COLUMN IF NOT EXISTS cfop VARCHAR(10);
@@ -188,12 +194,18 @@ router.post('/:tabela', async (req, res) => {
                     row[key.toLowerCase()] = rawRow[key];
                 }
 
-                // Mapeia os campos de natureza vindos do worker (.NET/C#) para as colunas do banco (es, processo)
+                // Mapeia os campos de natureza vindos do worker (.NET/C#) para as colunas do banco (es, processo, natureza_operacao)
                 if (row['natureza_tipo'] !== undefined && row['es'] === undefined) {
                     row['es'] = row['natureza_tipo'];
                 }
                 if (row['natureza_processo'] !== undefined && row['processo'] === undefined) {
                     row['processo'] = row['natureza_processo'];
+                }
+                if (row['natureza_operacao'] === undefined) {
+                    const natText = row['natureza_descricao'] ?? row['natureza_nome'] ?? row['natureza'];
+                    if (natText !== undefined && typeof natText === 'string' && natText.trim() !== '') {
+                        row['natureza_operacao'] = natText.trim();
+                    }
                 }
 
 
@@ -415,7 +427,10 @@ router.post('/:tabela', async (req, res) => {
         await client.query('COMMIT');
 
         // Pós-Processamento: Atualizar Cache e Materialized Views
-        if (['dash_vendas', 'dash_vendas_itens', 'dash_financeiro', 'dash_devolucoes'].includes(tabela)) {
+        if (['dash_vendas', 'dash_vendas_itens', 'dash_cargas'].includes(tabela)) {
+            invalidateTenantSettingsCache(tenantId);
+        }
+        if (['dash_vendas', 'dash_vendas_itens', 'dash_financeiro', 'dash_devolucoes', 'dash_cargas'].includes(tabela)) {
             invalidateTenant(tenantId);
             
             // Atualiza as estatísticas do otimizador do Postgres para evitar tabelas lentas por falta de estatísticas atualizadas
