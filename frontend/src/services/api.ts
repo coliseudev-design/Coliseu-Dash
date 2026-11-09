@@ -14,6 +14,19 @@ api.interceptors.request.use((config) => {
 
   config.headers['X-Target-App'] = 'coliseu-dash'
 
+  try {
+    const rawUser = localStorage.getItem('coliseu_user')
+    if (rawUser) {
+      const parsedUser = JSON.parse(rawUser)
+      const activeVersion = parsedUser?.versao || parsedUser?.layout_version
+      if (activeVersion) {
+        config.headers['X-Layout-Version'] = activeVersion
+      }
+    }
+  } catch {
+    // ignore
+  }
+
   // Inject client's timezone offset (in minutes, sign reversed to represent offset from UTC)
   const offsetMinutes = -new Date().getTimezoneOffset()
   config.headers['X-Timezone-Offset'] = offsetMinutes.toString()

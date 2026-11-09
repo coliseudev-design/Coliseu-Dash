@@ -3,29 +3,34 @@ import { Outlet, useLocation } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import Header from './Header'
 import {
-  LayoutDashboard, GitCompare, BarChart3, ShoppingCart, Truck,
-  Package, Wallet, Users, DollarSign, Trophy, Map, BrainCircuit, Shield, Target
+  LayoutDashboard, GitCompare, TrendingUp, ShoppingCart, Factory,
+  Boxes, Banknote, Radar, UsersRound, CircleDollarSign, BadgeCheck,
+  Map, BrainCircuit, Shield, Target, FileText, SlidersHorizontal
 } from 'lucide-react'
 
 const ROUTE_CONFIGS: Record<string, { label: string; icon: React.ElementType; color: string }> = {
-  '/': { label: 'VISÃO ESTRATÉGICA', icon: LayoutDashboard, color: '#3B82F6' },
-  '/comparativo-vendas': { label: 'ANÁLISE COMPARATIVA', icon: GitCompare, color: '#10B981' },
-  '/hub-vendedor': { label: 'DESEMPENHO DA EQUIPE', icon: Trophy, color: '#F97316' },
-  '/bi': { label: 'MONITOR DE VENDAS', icon: BarChart3, color: '#10B981' },
-  '/bi/sales': { label: 'MONITOR DE VENDAS', icon: BarChart3, color: '#10B981' },
+  '/': { label: 'VISÃO ESTRATÉGICA', icon: LayoutDashboard, color: '#10B981' },
+  '/comparativo-vendas': { label: 'ANÁLISE COMPARATIVA', icon: GitCompare, color: '#F59E0B' },
+  '/hub-vendedor': { label: 'DESEMPENHO DA EQUIPE', icon: BadgeCheck, color: '#F97316' },
+  '/bi': { label: 'MONITOR DE VENDAS', icon: TrendingUp, color: '#3B82F6' },
+  '/bi/sales': { label: 'MONITOR DE VENDAS', icon: TrendingUp, color: '#3B82F6' },
   '/bi/hub': { label: 'HUB DE VENDAS', icon: ShoppingCart, color: '#F97316' },
-  '/bi/supplier': { label: 'PERFORMANCE DE PARCEIROS', icon: Truck, color: '#F59E0B' },
-  '/bi/abc': { label: 'DINÂMICA DE INVENTÁRIO', icon: Package, color: '#06B6D4' },
-  '/bi/finance': { label: 'GESTÃO E PROJEÇÃO DE CAIXA', icon: Wallet, color: '#22C55E' },
-  '/bi/customer': { label: 'CLIENTE 360', icon: Users, color: '#EC4899' },
-  '/bi/comparative': { label: 'ANÁLISE DE RENTABILIDADE', icon: DollarSign, color: '#84CC16' },
-  '/bi/customer-analytics': { label: 'VISÃO GERAL DA CARTEIRA', icon: Users, color: '#14B8A6' },
-  '/bi/goals': { label: 'ANÁLISE DE METAS', icon: Trophy, color: '#EAB308' },
-  '/bi/goals/manage': { label: 'GESTÃO DE METAS', icon: Target, color: '#10B981' },
+  '/bi/supplier': { label: 'HUB DO FORNECEDOR', icon: Factory, color: '#0284C7' },
+  '/bi/abc': { label: 'DINÂMICA DE INVENTÁRIO', icon: Boxes, color: '#06B6D4' },
+  '/bi/finance': { label: 'GESTÃO DE CAIXA', icon: Banknote, color: '#22C55E' },
+  '/bi/customer': { label: 'CLIENTE 360', icon: Radar, color: '#14B8A6' },
+  '/bi/comparative': { label: 'ANÁLISE DE RENTABILIDADE', icon: CircleDollarSign, color: '#65A30D' },
+  '/bi/customer-analytics': { label: 'VISÃO GERAL DA CARTEIRA', icon: UsersRound, color: '#0EA5E9' },
+  '/bi/compras': { label: 'GESTÃO DE COMPRAS', icon: ShoppingCart, color: '#F43F5E' },
+  '/bi/compras-ia': { label: 'GESTÃO DE COMPRAS', icon: ShoppingCart, color: '#F43F5E' },
+  '/bi/fiscal': { label: 'FISCAL', icon: FileText, color: '#2563EB' },
+  '/bi/parametros': { label: 'PARÂMETROS', icon: SlidersHorizontal, color: '#D97706' },
+  '/bi/goals': { label: 'ANÁLISE DE METAS', icon: Target, color: '#EF4444' },
+  '/bi/goals/manage': { label: 'CADASTRO DE METAS', icon: Target, color: '#EF4444' },
   '/bi/heatmap': { label: 'MAPA DE CALOR', icon: Map, color: '#0EA5E9' },
   '/bi/ai-insights': { label: 'COLISEU AI', icon: BrainCircuit, color: '#00A896' },
-  '/usuarios': { label: 'USUÁRIOS', icon: Shield, color: '#EF4444' },
-  '/grupos': { label: 'GRUPOS DE ACESSO', icon: Shield, color: '#EC4899' },
+  '/usuarios': { label: 'USUÁRIOS', icon: Shield, color: '#475569' },
+  '/grupos': { label: 'GRUPOS DE ACESSO', icon: Shield, color: '#0D9488' },
 }
 
 export default function DashboardLayout() {
@@ -43,16 +48,15 @@ export default function DashboardLayout() {
     })
   }
 
-  // Get active route configuration or fallback
-  const activeRoute = ROUTE_CONFIGS[loc.pathname] || { label: 'Coliseu Dash', icon: LayoutDashboard, color: '#3B82F6' }
+  const activeRoute = ROUTE_CONFIGS[loc.pathname] || { label: 'Coliseu Dash', icon: LayoutDashboard, color: '#10B981' }
 
   return (
     <div className="min-h-screen bg-bg-secondary flex">
-      <Sidebar 
-        open={menuOpen} 
-        onClose={() => setMenuOpen(false)} 
-        collapsed={collapsed} 
-        onToggleCollapse={toggleCollapse} 
+      <Sidebar
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        collapsed={collapsed}
+        onToggleCollapse={toggleCollapse}
       />
       <div className="flex-1 flex flex-col min-w-0">
         <Header onMenuClick={() => setMenuOpen(true)} activeRoute={activeRoute} />

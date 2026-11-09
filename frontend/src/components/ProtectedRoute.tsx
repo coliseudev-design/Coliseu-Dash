@@ -24,6 +24,14 @@ export default function ProtectedRoute({ permission, children }: ProtectedRouteP
     return children;
   }
 
+  if (permission === 'config_parametros' && (user.role === 'admin' || userPermissions.includes('usuarios'))) {
+    return children;
+  }
+
+  if (permission === 'bi_fiscal' && user.role === 'admin') {
+    return children;
+  }
+
   // Se não tiver permissão, redireciona para acesso negado
   return <Navigate to="/acesso-negado" replace />
 }

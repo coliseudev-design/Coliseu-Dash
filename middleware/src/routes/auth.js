@@ -18,6 +18,7 @@ const ALL_SUPERADMIN_PERMISSIONS = [
     'bi_seller_hub', 'bi_sales', 'bi_supplier', 'bi_abc', 'bi_finance',
     'bi_customer', 'bi_comparative', 'bi_customer_analytics', 'bi_goals',
     'bi_heatmap', 'bi_ai_insights', 'bi_hub', 'bi_compras', 'bi_compras_ia',
+    'bi_fiscal', 'config_parametros',
     'cadastro_metas', 'reset_senha', 'usuarios_criar', 'usuarios_status',
     'usuarios_versao', 'usuarios_filiais', 'usuarios_grupos'
 ];

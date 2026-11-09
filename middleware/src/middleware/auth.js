@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const config = require('../config/env');
 const logger = require('../config/logger');
 const db = require('../db/postgres');
+const { getTenantSettings } = require('../utils/tenantSettings');
 
 /**
  * Middleware para validar JWT do Web (Gerente App Dashboard).
@@ -188,7 +189,18 @@ async function bindDbContext(req, res, next) {
     const tzOffsetHeader = req.headers['x-timezone-offset'];
     const tzOffset = tzOffsetHeader !== undefined ? parseInt(tzOffsetHeader, 10) : -180;
 
-    db.dbContext.run({ dbType, tzOffset }, () => {
+    let onlyNfSales = false;
+    if (req.tenant?.id) {
+        const headerLayout = req.headers['x-layout-version'];
+        const activeLayout = headerLayout ? String(headerLayout).trim() : (req.user?.layoutVersion || '');
+        const isBiLayout = activeLayout === 'B.I IA.' || activeLayout === 'v3.0' || activeLayout === 'BI IA' || activeLayout === 'B.I 1.0';
+        if (isBiLayout) {
+            const settings = await getTenantSettings(req.tenant.id);
+            onlyNfSales = Boolean(settings.somente_vendas_com_nf);
+        }
+    }
+
+    db.dbContext.run({ dbType, tzOffset, onlyNfSales }, () => {
         next();
     });
 }

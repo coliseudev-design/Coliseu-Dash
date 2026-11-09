@@ -23,6 +23,7 @@ const usuariosRouter = require('./routes/usuarios');
 const gruposRouter = require('./routes/grupos');
 const configuracoesRouter = require('./routes/configuracoes');
 const biRouter = require('./routes/bi');
+const fiscalRouter = require('./routes/fiscal');
 const { router: filiaisRouter } = require('./routes/filiais');
 const debugRouter = require('./routes/debug');
 const adminRouter = require('./routes/admin');
@@ -59,7 +60,8 @@ app.use(cors({
         'X-Tenant-Id',
         'X-Timezone-Offset',
         'X-User-Timezone',
-        'X-Target-App'
+        'X-Target-App',
+        'X-Layout-Version'
     ],
 }));
 
@@ -99,6 +101,7 @@ app.use('/api/comissoes', rankingRouter); // comissoes/ranking mapeia para ranki
 app.use('/api/usuarios', usuariosRouter);
 app.use('/api/grupos', gruposRouter);
 app.use('/api/configuracoes', configuracoesRouter);
+app.use('/api/fiscal', fiscalRouter);
 app.use('/api/filiais', filiaisRouter);  // Lista de filiais/departamentos por tenant
 app.use('/api/sync', syncRouter); // Habilita /api/sync/status para o frontend web
 app.use('/api/bi', biRouter); // Novas rotas de BI

@@ -78,7 +78,8 @@ async function initMainDatabase() {
                     { name: '007', file: '007_rename_layouts_to_versao.sql' },
                     { name: '008', file: '008_usuario_multiplos_grupos.sql' },
                     { name: '009', file: '009_grupo_vendedores.sql' },
-                    { name: '010', file: '010_desconto_item.sql' }
+                    { name: '010', file: '010_desconto_item.sql' },
+                    { name: '011', file: '011_fiscal_and_tenant_settings.sql' }
                 ];
 
                 for (const mig of migrations) {
@@ -152,7 +153,8 @@ async function initializeRbac(dbInstance) {
             'clientes', 'vendas', 'usuarios', 'layout_1', 'layout_2', 'layout_3',
             'bi_seller_hub', 'bi_sales', 'bi_supplier', 'bi_abc', 'bi_finance',
             'bi_customer', 'bi_comparative', 'bi_customer_analytics', 'bi_goals',
-            'bi_heatmap', 'bi_ai_insights', 'bi_hub', 'bi_compras', 'bi_compras_ia'
+            'bi_heatmap', 'bi_ai_insights', 'bi_hub', 'bi_compras', 'bi_compras_ia',
+            'bi_fiscal', 'config_parametros'
         ];
 
         for (const combo of userCombos) {

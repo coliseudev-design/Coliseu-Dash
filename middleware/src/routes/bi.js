@@ -83,14 +83,15 @@ router.get('/sales/executive-summary', async (req, res, next) => {
             const needsVendedorJoin = (vendedorId && vendedorId !== 'todas' && vendedorId !== 'all' && vendedorId !== 'TODOS');
             const needsCidadeJoin = (cidade && cidade !== 'todas' && cidade !== 'all' && cidade !== 'TODOS');
 
-            if (needsVendedorJoin || needsCidadeJoin || (deptoId && deptoId !== 'todas' && deptoId !== 'all')) {
+            const onlyNfDev = cfopUtil.isOnlyNfSalesActive();
+            if (needsVendedorJoin || needsCidadeJoin || (deptoId && deptoId !== 'todas' && deptoId !== 'all') || onlyNfDev) {
                 sql += ` LEFT JOIN dash_vendas v2 ON v2.id_firebird = d.venda_id_firebird AND v2.tenant_id = d.tenant_id`;
             }
             if (needsCidadeJoin) {
                 sql += ` LEFT JOIN dash_clientes c2 ON c2.id_firebird = v2.cliente_id_firebird AND c2.tenant_id = v2.tenant_id`;
             }
 
-            sql += ` WHERE d.tenant_id = $1 AND d.data_devolucao >= $2 AND d.data_devolucao <= $3`;
+            sql += ` WHERE d.tenant_id = $1 AND d.data_devolucao >= $2 AND d.data_devolucao <= $3${cfopUtil.getDevolucaoNfFilterClause('v2', 'd')}`;
 
             if (deptoId && deptoId !== 'todas' && deptoId !== 'all') {
                 const dfDev = buildDeptoFilter(deptoId, nextIdx, 'v2');
@@ -614,7 +615,8 @@ router.get('/sales/commercial-kpis', async (req, res, next) => {
             const needsProdJoin = (grupo && grupo !== 'todas' && grupo !== 'all' && grupo !== 'TODOS') || 
                                   (marca && marca !== 'todas' && marca !== 'all' && marca !== 'TODOS');
 
-            if (needsVendedorJoin || needsCidadeJoin || (deptoId && deptoId !== 'todas' && deptoId !== 'all')) {
+            const onlyNfDev = cfopUtil.isOnlyNfSalesActive();
+            if (needsVendedorJoin || needsCidadeJoin || (deptoId && deptoId !== 'todas' && deptoId !== 'all') || onlyNfDev) {
                 sql += ` LEFT JOIN dash_vendas v2 ON v2.id_firebird = d.venda_id_firebird AND v2.tenant_id = d.tenant_id`;
             }
             if (needsCidadeJoin) {
@@ -624,7 +626,7 @@ router.get('/sales/commercial-kpis', async (req, res, next) => {
                 sql += ` LEFT JOIN dash_produtos p2 ON p2.id_firebird = d.produto_id_firebird AND p2.tenant_id = d.tenant_id`;
             }
 
-            sql += ` WHERE d.tenant_id = $1 AND d.data_devolucao >= $2 AND d.data_devolucao <= $3`;
+            sql += ` WHERE d.tenant_id = $1 AND d.data_devolucao >= $2 AND d.data_devolucao <= $3${cfopUtil.getDevolucaoNfFilterClause('v2', 'd')}`;
 
             if (deptoId && deptoId !== 'todas' && deptoId !== 'all') {
                 const dfDev = buildDeptoFilter(deptoId, nextIdx, 'v2');
@@ -2991,7 +2993,7 @@ router.get('/seller/summary', async (req, res, next) => {
             FROM dash_devolucoes d
             ${devJoins}
             WHERE d.tenant_id = $1 AND d.data_devolucao >= $2 AND d.data_devolucao <= $3 AND v.vendedor_id_firebird = $4
-              ${df.clause} ${cf.clause} ${mf.clause}
+              ${df.clause} ${cf.clause} ${mf.clause} ${cfopUtil.getDevolucaoNfFilterClause('v', 'd')}
         `, getQueryParams(start, end));
 
         const faturamento = parseFloat(salesRes.rows[0].total_bruto || 0) - parseFloat(devRes.rows[0].total || 0);
@@ -3013,7 +3015,7 @@ router.get('/seller/summary', async (req, res, next) => {
             FROM dash_devolucoes d
             ${devJoins}
             WHERE d.tenant_id = $1 AND d.data_devolucao >= $2 AND d.data_devolucao <= $3 AND v.vendedor_id_firebird = $4
-              ${df.clause} ${cf.clause} ${mf.clause}
+              ${df.clause} ${cf.clause} ${mf.clause} ${cfopUtil.getDevolucaoNfFilterClause('v', 'd')}
         `, getQueryParams(prevStart, prevEnd));
 
         const faturamento_anterior = parseFloat(salesPrevRes.rows[0].total_bruto || 0) - parseFloat(devPrevRes.rows[0].total || 0);
@@ -3328,6 +3330,7 @@ router.get('/seller/summary', async (req, res, next) => {
             WHERE d.tenant_id = $1 
               AND d.data_devolucao >= $2 AND d.data_devolucao <= $3
               AND v2.vendedor_id_firebird = $4
+              ${cfopUtil.getDevolucaoNfFilterClause('v2', 'd')}
             GROUP BY 1
         `, [tenantId, toSafeSqlString(start12m), toSafeSqlString(end), vendedorId]);
 

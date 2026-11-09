@@ -47,6 +47,8 @@ const HeatmapDashboard = lazy(() => import('./pages/bi/HeatmapDashboard'))
 const AIInsightsDashboard = lazy(() => import('./pages/bi/AIInsightsDashboard'))
 const SellerHubDashboard = lazy(() => import('./pages/bi/SellerHubDashboard'))
 const PurchasesDashboard = lazy(() => import('./pages/bi/PurchasesDashboard'))
+const FiscalDashboard = lazy(() => import('./pages/bi/FiscalDashboard'))
+const ParametrosBi = lazy(() => import('./pages/bi/ParametrosBi'))
 
 function Protected({ children }: { children: JSX.Element }) {
   const user = useAuthStore((s) => s.user)
@@ -146,6 +148,8 @@ export default function App() {
             <Route path="ai-insights" element={<ProtectedRoute permission="bi_ai_insights"><AIInsightsDashboard /></ProtectedRoute>} />
             <Route path="compras" element={<ProtectedRoute permission="bi_compras"><PurchasesDashboard /></ProtectedRoute>} />
             <Route path="compras-ia" element={<ProtectedRoute permission="bi_compras"><PurchasesDashboard /></ProtectedRoute>} />
+            <Route path="fiscal" element={<ProtectedRoute permission="bi_fiscal"><FiscalDashboard /></ProtectedRoute>} />
+            <Route path="parametros" element={<ProtectedRoute permission="config_parametros"><ParametrosBi /></ProtectedRoute>} />
           </Route>
         </Route>
         <Route path="/acesso-negado" element={<AcessoNegado />} />

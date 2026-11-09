@@ -17,7 +17,8 @@ router.get('/overview', async (req, res, next) => {
         const deptoId = req.query.depto_id;
         const vendedorId = req.query.vendedor_id;
 
-        const cacheKey = `overview:${tenantId}:${period}:${start_date || 'null'}:${end_date || 'null'}:${deptoId || 'todas'}:${vendedorId || 'todas'}`;
+        const nfFlag = cfopUtil.isOnlyNfSalesActive() ? 'nf1' : 'nf0';
+        const cacheKey = `overview:${tenantId}:${period}:${start_date || 'null'}:${end_date || 'null'}:${deptoId || 'todas'}:${vendedorId || 'todas'}:${nfFlag}`;
         const cached = getCache(cacheKey);
         if (cached) return res.json(cached);
 
@@ -54,7 +55,7 @@ router.get('/overview', async (req, res, next) => {
         const getDevQuery = (startStr, endStr) => {
             const needsJoin = (vendedorId && vendedorId !== 'todas' && vendedorId !== 'all' && vendedorId !== 'TODOS') || (req.user?.allowedSellers !== null && req.user?.allowedSellers !== undefined);
             // Sistema Coliseu unificado: sem branches VET
-            let sql = `SELECT COALESCE(SUM(d.valor),0) AS total FROM dash_devolucoes d LEFT JOIN dash_vendas v2 ON v2.id_firebird = d.venda_id_firebird AND v2.tenant_id = d.tenant_id WHERE d.tenant_id = $1 AND d.data_devolucao >= $2 AND d.data_devolucao <= $3 ${df.clause.replace(/v\./g, 'v2.')}`;
+            let sql = `SELECT COALESCE(SUM(d.valor),0) AS total FROM dash_devolucoes d LEFT JOIN dash_vendas v2 ON v2.id_firebird = d.venda_id_firebird AND v2.tenant_id = d.tenant_id WHERE d.tenant_id = $1 AND d.data_devolucao >= $2 AND d.data_devolucao <= $3 ${df.clause.replace(/v\./g, 'v2.')}${cfopUtil.getDevolucaoNfFilterClause('v2', 'd')}`;
             let params = [tenantId, startStr, endStr, ...df.params];
             let nextIdx = 4 + df.params.length;
             if (needsJoin) {
@@ -493,7 +494,7 @@ router.get('/kpis', async (req, res, next) => {
         const getDevQuery = (startStr, endStr) => {
             const needsJoin = (vendedorId && vendedorId !== 'todas' && vendedorId !== 'all' && vendedorId !== 'TODOS') || (req.user?.allowedSellers !== null && req.user?.allowedSellers !== undefined);
             // Sistema Coliseu unificado: sem branches VET
-            let sql = `SELECT COALESCE(SUM(d.valor),0) AS total FROM dash_devolucoes d LEFT JOIN dash_vendas v2 ON v2.id_firebird = d.venda_id_firebird AND v2.tenant_id = d.tenant_id WHERE d.tenant_id = $1 AND d.data_devolucao >= $2 AND d.data_devolucao <= $3 ${df.clause.replace(/v\./g, 'v2.')}`;
+            let sql = `SELECT COALESCE(SUM(d.valor),0) AS total FROM dash_devolucoes d LEFT JOIN dash_vendas v2 ON v2.id_firebird = d.venda_id_firebird AND v2.tenant_id = d.tenant_id WHERE d.tenant_id = $1 AND d.data_devolucao >= $2 AND d.data_devolucao <= $3 ${df.clause.replace(/v\./g, 'v2.')}${cfopUtil.getDevolucaoNfFilterClause('v2', 'd')}`;
             let params = [tenantId, startStr, endStr, ...df.params];
             let nextIdx = 4 + df.params.length;
             if (needsJoin) {

@@ -41,7 +41,27 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const userStr = localStorage.getItem('coliseu_user')
     if (token && userStr) {
       try {
-        set({ token, user: JSON.parse(userStr) })
+        const parsed = JSON.parse(userStr)
+        set({ token, user: parsed })
+        api.get('/auth/me')
+          .then(({ data }) => {
+            if (data?.user) {
+              set((state) => {
+                if (!state.user) return {}
+                const merged: User = {
+                  ...state.user,
+                  role: data.user.role || state.user.role,
+                  permissions: data.user.permissions || state.user.permissions,
+                  available_versions: data.user.available_versions || state.user.available_versions,
+                }
+                localStorage.setItem('coliseu_user', JSON.stringify(merged))
+                return { user: merged }
+              })
+            }
+          })
+          .catch(() => {
+            /* ignore background sync failure */
+          })
       } catch { /* ignore */ }
     }
   },

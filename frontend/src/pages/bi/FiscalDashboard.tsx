@@ -1,0 +1,976 @@
+import { useState, useEffect, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import {
+  FileText, ArrowUpRight, ArrowDownLeft, Search, Download, Copy, Check,
+  Eye, X, RefreshCw, ChevronLeft, ChevronRight, Scale, Filter, Truck, Building2, Package
+} from 'lucide-react'
+import clsx from 'clsx'
+import api from '../../services/api'
+import PeriodFilter from '../../components/PeriodFilter'
+import { usePeriodStore, periodToParams } from '../../store/periodStore'
+import { useBranchParam } from '../../contexts/BranchContext'
+import { formatBRL, formatDate, formatNum } from '../../utils/format'
+
+interface FiscalKpis {
+  emitidas_qtd: number
+  emitidas_valor: number
+  emitidas_ticket_medio: number
+  emitidas_chave_qtd: number
+  entradas_qtd: number
+  entradas_valor: number
+  entradas_ticket_medio: number
+  entradas_chave_qtd: number
+  saldo_fiscal: number
+  total_documentos: number
+}
+
+interface CfopResumo {
+  cfop: string
+  tipo_operacao: 'SAIDA' | 'ENTRADA'
+  qtd: number
+  valor: number
+}
+
+interface FiscalResumoResponse {
+  period: { start: string; end: string; label: string }
+  kpis: FiscalKpis
+  cfops: CfopResumo[]
+}
+
+interface FiscalNotaRow {
+  origem: 'cargas' | 'vendas'
+  registro_id: number
+  tipo_operacao: 'SAIDA' | 'ENTRADA'
+  modelo_doc: string
+  numero_nota: string
+  serie: string
+  numero_pedido: string
+  chave_nfe: string | null
+  data_emissao: string
+  parceiro_nome: string
+  parceiro_documento: string
+  cidade: string
+  uf: string
+  cfop: string
+  natureza_operacao: string
+  valor_total: number
+  status: string
+  qtd_itens: number
+}
+
+interface FiscalNotasResponse {
+  tipo: 'SAIDA' | 'ENTRADA'
+  total: number
+  soma_valor: number
+  page: number
+  limit: number
+  total_pages: number
+  data: FiscalNotaRow[]
+}
+
+interface FiscalItemDetalhe {
+  ordem: number
+  codigo: string
+  descricao: string
+  ncm: string
+  cst: string
+  cfop: string
+  unidade: string
+  quantidade: number
+  valor_unitario: number
+  desconto: number
+  valor_total: number
+}
+
+interface FiscalNotaDetalhe {
+  origem: 'cargas' | 'vendas'
+  registro_id: number
+  tipo_operacao: 'SAIDA' | 'ENTRADA'
+  modelo_doc: string
+  numero_nota: string
+  serie: string
+  numero_pedido: string
+  chave_nfe: string | null
+  protocolo: string | null
+  natureza_operacao: string
+  data_emissao: string
+  status: string
+  vendedor_nome?: string | null
+  valor_produtos: number
+  valor_frete: number
+  valor_desconto: number
+  valor_total: number
+  remetente: { nome: string; documento: string; municipio: string; uf: string }
+  destinatario: { nome: string; documento: string; municipio: string; uf: string }
+  transporte: {
+    transportadora_nome: string | null
+    transportadora_documento: string | null
+    placa: string | null
+    uf: string | null
+    volumes: string | number | null
+    especie: string | null
+    peso_bruto: number
+    peso_liquido: number
+  }
+  itens: FiscalItemDetalhe[]
+}
+
+function formatChaveGroups(chave: string) {
+  return chave.replace(/\s+/g, '').replace(/(.{4})/g, '$1 ').trim()
+}
+
+function shortenChave(chave: string) {
+  const clean = chave.replace(/\s+/g, '')
+  if (clean.length <= 16) return clean
+  return `${clean.slice(0, 8)}...${clean.slice(-8)}`
+}
+
+export default function FiscalDashboard() {
+  const periodState = usePeriodStore()
+  const branchParam = useBranchParam()
+
+  const [activeTab, setActiveTab] = useState<'SAIDA' | 'ENTRADA'>('SAIDA')
+  const [searchInput, setSearchInput] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [selectedCfop, setSelectedCfop] = useState('todos')
+  const [page, setPage] = useState(1)
+  const [copiedKey, setCopiedKey] = useState<string | null>(null)
+  const [selectedNota, setSelectedNota] = useState<{ origem: 'cargas' | 'vendas'; id: number } | null>(null)
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchInput.trim())
+      setPage(1)
+    }, 350)
+    return () => clearTimeout(timer)
+  }, [searchInput])
+
+  useEffect(() => {
+    setPage(1)
+  }, [activeTab, selectedCfop, periodState.period, periodState.startDate, periodState.endDate, branchParam.depto_id])
+
+  const baseParams = useMemo(() => {
+    const p: Record<string, string | number> = {
+      ...periodToParams(periodState),
+    }
+    if (branchParam.depto_id) p.depto_id = branchParam.depto_id
+    if (selectedCfop !== 'todos') p.cfop = selectedCfop
+    if (debouncedSearch) p.search = debouncedSearch
+    return p
+  }, [periodState, branchParam.depto_id, selectedCfop, debouncedSearch])
+
+  const {
+    data: resumo,
+    isLoading: loadingResumo,
+    refetch: refetchResumo,
+  } = useQuery<FiscalResumoResponse>({
+    queryKey: ['fiscal-resumo', baseParams],
+    queryFn: async () => {
+      const res = await api.get('/fiscal/resumo', { params: baseParams })
+      return res.data
+    },
+  })
+
+  const {
+    data: notasPage,
+    isLoading: loadingNotas,
+    isFetching: fetchingNotas,
+    refetch: refetchNotas,
+  } = useQuery<FiscalNotasResponse>({
+    queryKey: ['fiscal-notas', activeTab, page, baseParams],
+    queryFn: async () => {
+      const res = await api.get('/fiscal/notas', {
+        params: {
+          ...baseParams,
+          tipo: activeTab,
+          page,
+          limit: 50,
+        },
+      })
+      return res.data
+    },
+  })
+
+  const { data: detalheNota, isLoading: loadingDetalhe } = useQuery<FiscalNotaDetalhe>({
+    queryKey: ['fiscal-nota-detalhe', selectedNota?.origem, selectedNota?.id],
+    enabled: Boolean(selectedNota),
+    queryFn: async () => {
+      const res = await api.get(`/fiscal/notas/${selectedNota!.origem}/${selectedNota!.id}`)
+      return res.data
+    },
+  })
+
+  const kpis = resumo?.kpis || {
+    emitidas_qtd: 0,
+    emitidas_valor: 0,
+    emitidas_ticket_medio: 0,
+    emitidas_chave_qtd: 0,
+    entradas_qtd: 0,
+    entradas_valor: 0,
+    entradas_ticket_medio: 0,
+    entradas_chave_qtd: 0,
+    saldo_fiscal: 0,
+    total_documentos: 0,
+  }
+
+  const cfopsDisponiveis = useMemo(() => {
+    const all = resumo?.cfops || []
+    const unique = new Map<string, { cfop: string; qtd: number; valor: number }>()
+    for (const item of all) {
+      const prev = unique.get(item.cfop)
+      if (prev) {
+        prev.qtd += item.qtd
+        prev.valor += item.valor
+      } else {
+        unique.set(item.cfop, { cfop: item.cfop, qtd: item.qtd, valor: item.valor })
+      }
+    }
+    return Array.from(unique.values()).sort((a, b) => b.valor - a.valor)
+  }, [resumo?.cfops])
+
+  const topCfopsTab = useMemo(() => {
+    return (resumo?.cfops || []).filter((c) => c.tipo_operacao === activeTab).slice(0, 4)
+  }, [resumo?.cfops, activeTab])
+
+  const handleCopyChave = (chave: string) => {
+    navigator.clipboard?.writeText(chave.replace(/\s+/g, '')).catch(() => {})
+    setCopiedKey(chave)
+    setTimeout(() => setCopiedKey(null), 2000)
+  }
+
+  const handleExportCsv = () => {
+    const rows = notasPage?.data || []
+    if (rows.length === 0) return
+
+    const headers = [
+      'Tipo',
+      'Numero Nota',
+      'Serie',
+      'Modelo',
+      'Data Emissao',
+      activeTab === 'SAIDA' ? 'Cliente' : 'Fornecedor',
+      'Documento',
+      'Cidade',
+      'UF',
+      'CFOP',
+      'Natureza Operacao',
+      'Pedido',
+      'Chave NFe',
+      'Valor Total',
+      'Status',
+    ]
+
+    const escapeCsv = (val: unknown) => {
+      const s = String(val ?? '').replace(/"/g, '""')
+      return `"${s}"`
+    }
+
+    const lines = rows.map((r) =>
+      [
+        r.tipo_operacao === 'SAIDA' ? 'EMITIDA (SAIDA)' : 'ENTRADA',
+        r.numero_nota,
+        r.serie,
+        r.modelo_doc,
+        formatDate(r.data_emissao),
+        r.parceiro_nome,
+        r.parceiro_documento,
+        r.cidade,
+        r.uf,
+        r.cfop,
+        r.natureza_operacao,
+        r.numero_pedido,
+        r.chave_nfe || '',
+        r.valor_total.toFixed(2).replace('.', ','),
+        r.status,
+      ]
+        .map(escapeCsv)
+        .join(';')
+    )
+
+    const csvContent = '\uFEFF' + [headers.join(';'), ...lines].join('\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `notas_fiscais_${activeTab.toLowerCase()}_p${page}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
+  return (
+    <div className="space-y-4 pb-6">
+      {/* Barra Superior de Filtros */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3.5 sm:p-4 shadow-[0_4px_16px_rgba(15,23,42,0.04)] space-y-3">
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
+          <div className="flex items-center gap-2 overflow-x-auto">
+            <PeriodFilter />
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Filtro de CFOP */}
+            <div className="relative flex items-center">
+              <Filter size={14} className="absolute left-3 text-slate-400 pointer-events-none" />
+              <select
+                value={selectedCfop}
+                onChange={(e) => setSelectedCfop(e.target.value)}
+                className="pl-8 pr-7 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500/30 cursor-pointer"
+                aria-label="Filtrar por CFOP"
+              >
+                <option value="todos">Todos os CFOPs</option>
+                {cfopsDisponiveis.map((c) => (
+                  <option key={c.cfop} value={c.cfop}>
+                    CFOP {c.cfop} ({formatNum(c.qtd)} notas)
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Busca Rápida */}
+            <div className="relative flex-1 sm:w-72 min-w-[220px]">
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="Nº Nota, Chave NF-e, Cliente, CNPJ..."
+                className="w-full pl-9 pr-8 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-100 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-blue-500/30"
+              />
+              {searchInput && (
+                <button
+                  type="button"
+                  onClick={() => setSearchInput('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  aria-label="Limpar busca"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                refetchResumo()
+                refetchNotas()
+              }}
+              className="p-2 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
+              title="Atualizar dados fiscais"
+            >
+              <RefreshCw size={15} className={clsx((loadingResumo || fetchingNotas) && 'animate-spin text-blue-600')} />
+            </button>
+
+            <button
+              type="button"
+              onClick={handleExportCsv}
+              disabled={!notasPage?.data?.length}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-900 dark:bg-blue-600 hover:bg-slate-800 dark:hover:bg-blue-500 disabled:opacity-40 text-white rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+            >
+              <Download size={14} />
+              <span>Exportar CSV</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Cards Executivos de KPIs Fiscais */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5">
+        {/* Card 1: Notas Emitidas (Saída) */}
+        <button
+          type="button"
+          onClick={() => setActiveTab('SAIDA')}
+          className={clsx(
+            'text-left bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border transition-all cursor-pointer shadow-[0_4px_16px_rgba(15,23,42,0.04)]',
+            activeTab === 'SAIDA'
+              ? 'border-emerald-400/80 dark:border-emerald-500/60 ring-2 ring-emerald-500/10'
+              : 'border-slate-200/80 dark:border-slate-800 hover:border-slate-300'
+          )}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+              Notas Fiscais Emitidas
+            </span>
+            <div
+              className="w-9 h-9 rounded-full flex items-center justify-center"
+              style={{ backgroundColor: '#10B98114', border: '1px solid #10B98133' }}
+            >
+              <ArrowUpRight size={18} style={{ color: '#10B981' }} strokeWidth={2} />
+            </div>
+          </div>
+          <div className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+            {loadingResumo ? '...' : formatBRL(kpis.emitidas_valor)}
+          </div>
+          <div className="mt-2 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+            <span>
+              <strong className="text-slate-700 dark:text-slate-200">{formatNum(kpis.emitidas_qtd)}</strong> notas de saída
+            </span>
+            <span>Ticket: {formatBRL(kpis.emitidas_ticket_medio)}</span>
+          </div>
+        </button>
+
+        {/* Card 2: Notas de Entrada */}
+        <button
+          type="button"
+          onClick={() => setActiveTab('ENTRADA')}
+          className={clsx(
+            'text-left bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border transition-all cursor-pointer shadow-[0_4px_16px_rgba(15,23,42,0.04)]',
+            activeTab === 'ENTRADA'
+              ? 'border-blue-400/80 dark:border-blue-500/60 ring-2 ring-blue-500/10'
+              : 'border-slate-200/80 dark:border-slate-800 hover:border-slate-300'
+          )}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+              Notas de Entrada
+            </span>
+            <div
+              className="w-9 h-9 rounded-full flex items-center justify-center"
+              style={{ backgroundColor: '#2563EB14', border: '1px solid #2563EB33' }}
+            >
+              <ArrowDownLeft size={18} style={{ color: '#2563EB' }} strokeWidth={2} />
+            </div>
+          </div>
+          <div className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+            {loadingResumo ? '...' : formatBRL(kpis.entradas_valor)}
+          </div>
+          <div className="mt-2 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+            <span>
+              <strong className="text-slate-700 dark:text-slate-200">{formatNum(kpis.entradas_qtd)}</strong> notas recebidas
+            </span>
+            <span>Média: {formatBRL(kpis.entradas_ticket_medio)}</span>
+          </div>
+        </button>
+
+        {/* Card 3: Saldo Fiscal */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-[0_4px_16px_rgba(15,23,42,0.04)]">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+              Saldo Fiscal (Saídas − Entradas)
+            </span>
+            <div
+              className="w-9 h-9 rounded-full flex items-center justify-center"
+              style={{ backgroundColor: '#0D948814', border: '1px solid #0D948833' }}
+            >
+              <Scale size={18} style={{ color: '#0D9488' }} strokeWidth={1.9} />
+            </div>
+          </div>
+          <div
+            className={clsx(
+              'text-xl sm:text-2xl font-bold tracking-tight',
+              kpis.saldo_fiscal >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'
+            )}
+          >
+            {loadingResumo ? '...' : formatBRL(kpis.saldo_fiscal)}
+          </div>
+          <div className="mt-2 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+            <span>Total: {formatNum(kpis.total_documentos)} docs</span>
+            <span>
+              Chaves XML: {formatNum(kpis.emitidas_chave_qtd + kpis.entradas_chave_qtd)}
+            </span>
+          </div>
+        </div>
+
+        {/* Card 4: CFOPs Predominantes da Aba */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-[0_4px_16px_rgba(15,23,42,0.04)]">
+          <div className="flex items-center justify-between mb-2.5">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+              Top CFOPs ({activeTab === 'SAIDA' ? 'Saída' : 'Entrada'})
+            </span>
+            <div
+              className="w-9 h-9 rounded-full flex items-center justify-center"
+              style={{ backgroundColor: '#F59E0B14', border: '1px solid #F59E0B33' }}
+            >
+              <FileText size={17} style={{ color: '#F59E0B' }} strokeWidth={1.9} />
+            </div>
+          </div>
+
+          {topCfopsTab.length === 0 ? (
+            <div className="text-xs text-slate-400 py-2">Sem CFOP registrado no filtro atual.</div>
+          ) : (
+            <div className="flex flex-wrap gap-1.5 mt-1">
+              {topCfopsTab.map((c) => {
+                const isSelected = selectedCfop === c.cfop
+                return (
+                  <button
+                    key={c.cfop}
+                    type="button"
+                    onClick={() => setSelectedCfop(isSelected ? 'todos' : c.cfop)}
+                    className={clsx(
+                      'px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-colors cursor-pointer',
+                      isSelected
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                    )}
+                    title={`Filtrar por CFOP ${c.cfop} (${formatBRL(c.valor)})`}
+                  >
+                    {c.cfop} <span className="opacity-70">({c.qtd})</span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Container de Abas + Tabela */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-[0_4px_16px_rgba(15,23,42,0.04)] overflow-hidden">
+        {/* Seletor de Abas */}
+        <div className="px-4 sm:px-5 pt-4 pb-3 border-b border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="inline-flex p-1 bg-slate-100 dark:bg-slate-800 rounded-xl gap-1 self-start">
+            <button
+              type="button"
+              onClick={() => setActiveTab('SAIDA')}
+              className={clsx(
+                'flex items-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer',
+                activeTab === 'SAIDA'
+                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              )}
+            >
+              <ArrowUpRight size={15} className="text-emerald-600" />
+              <span>Notas Fiscais Emitidas</span>
+              <span className="px-2 py-0.5 rounded-full text-[11px] bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold">
+                {formatNum(kpis.emitidas_qtd)}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('ENTRADA')}
+              className={clsx(
+                'flex items-center gap-2 px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer',
+                activeTab === 'ENTRADA'
+                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              )}
+            >
+              <ArrowDownLeft size={15} className="text-blue-600" />
+              <span>Notas de Entrada</span>
+              <span className="px-2 py-0.5 rounded-full text-[11px] bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-bold">
+                {formatNum(kpis.entradas_qtd)}
+              </span>
+            </button>
+          </div>
+
+          <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-3">
+            {selectedCfop !== 'todos' && (
+              <button
+                type="button"
+                onClick={() => setSelectedCfop('todos')}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-semibold cursor-pointer"
+              >
+                CFOP {selectedCfop}
+                <X size={12} />
+              </button>
+            )}
+            <span>
+              Soma da listagem:{' '}
+              <strong className="text-slate-800 dark:text-slate-100">
+                {formatBRL(notasPage?.soma_valor || 0)}
+              </strong>
+            </span>
+          </div>
+        </div>
+
+        {/* Tabela Desktop */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50/80 dark:bg-slate-800/50 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200/70 dark:border-slate-800">
+                <th className="py-3 px-4">Nº Nota / Série</th>
+                <th className="py-3 px-3">Emissão</th>
+                <th className="py-3 px-3">{activeTab === 'SAIDA' ? 'Cliente / Destinatário' : 'Fornecedor / Emitente'}</th>
+                <th className="py-3 px-3 hidden md:table-cell">Cidade / UF</th>
+                <th className="py-3 px-3">CFOP / Natureza</th>
+                <th className="py-3 px-3 hidden xl:table-cell">Chave de Acesso NF-e</th>
+                <th className="py-3 px-3 text-right">Valor Total</th>
+                <th className="py-3 px-4 text-center">Itens</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-xs sm:text-[13px]">
+              {loadingNotas ? (
+                Array.from({ length: 6 }).map((_, idx) => (
+                  <tr key={idx} className="animate-pulse">
+                    <td colSpan={8} className="py-4 px-4">
+                      <div className="h-4 bg-slate-100 dark:bg-slate-800 rounded w-full" />
+                    </td>
+                  </tr>
+                ))
+              ) : !notasPage?.data?.length ? (
+                <tr>
+                  <td colSpan={8} className="py-12 text-center text-slate-400 dark:text-slate-500">
+                    Nenhuma {activeTab === 'SAIDA' ? 'nota fiscal emitida' : 'nota de entrada'} encontrada para os filtros selecionados.
+                  </td>
+                </tr>
+              ) : (
+                notasPage.data.map((row) => (
+                  <tr
+                    key={`${row.origem}-${row.registro_id}`}
+                    className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
+                  >
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-900 dark:text-white">
+                          Nº {row.numero_nota}
+                        </span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 font-medium">
+                          Série {row.serie}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1.5">
+                        <span>{row.modelo_doc}</span>
+                        {row.numero_pedido && row.numero_pedido !== '-' && (
+                          <span>• Ped. {row.numero_pedido}</span>
+                        )}
+                      </div>
+                    </td>
+
+                    <td className="py-3 px-3 whitespace-nowrap text-slate-700 dark:text-slate-300 font-medium">
+                      {formatDate(row.data_emissao)}
+                    </td>
+
+                    <td className="py-3 px-3 max-w-[260px]">
+                      <div className="font-semibold text-slate-800 dark:text-slate-100 truncate" title={row.parceiro_nome}>
+                        {row.parceiro_nome}
+                      </div>
+                      {row.parceiro_documento && (
+                        <div className="text-[11px] text-slate-400 font-mono">
+                          {row.parceiro_documento}
+                        </div>
+                      )}
+                    </td>
+
+                    <td className="py-3 px-3 hidden md:table-cell text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                      {row.cidade ? `${row.cidade}${row.uf ? ` / ${row.uf}` : ''}` : row.uf || '—'}
+                    </td>
+
+                    <td className="py-3 px-3 max-w-[200px]">
+                      <div className="flex items-center gap-1.5">
+                        {row.cfop ? (
+                          <span className="px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 font-mono font-bold text-[11px]">
+                            {row.cfop}
+                          </span>
+                        ) : null}
+                        <span className="text-slate-600 dark:text-slate-300 truncate text-xs" title={row.natureza_operacao}>
+                          {row.natureza_operacao}
+                        </span>
+                      </div>
+                    </td>
+
+                    <td className="py-3 px-3 hidden xl:table-cell">
+                      {row.chave_nfe ? (
+                        <div className="inline-flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 px-2 py-1 rounded-lg">
+                          <span className="font-mono text-[11px] text-slate-600 dark:text-slate-300">
+                            {shortenChave(row.chave_nfe)}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyChave(row.chave_nfe!)}
+                            className="text-slate-400 hover:text-blue-600 transition-colors cursor-pointer"
+                            title="Copiar Chave de Acesso NF-e"
+                          >
+                            {copiedKey === row.chave_nfe ? (
+                              <Check size={13} className="text-emerald-600" />
+                            ) : (
+                              <Copy size={13} />
+                            )}
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-[11px] text-slate-400">Nota interna ERP</span>
+                      )}
+                    </td>
+
+                    <td className="py-3 px-3 text-right whitespace-nowrap font-bold text-slate-900 dark:text-white">
+                      {formatBRL(row.valor_total)}
+                    </td>
+
+                    <td className="py-3 px-4 text-center">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedNota({ origem: row.origem, id: row.registro_id })}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-blue-600 hover:text-white text-slate-700 dark:text-slate-200 text-xs font-semibold transition-colors cursor-pointer"
+                        title="Visualizar espelho e itens da nota"
+                      >
+                        <Eye size={14} />
+                        <span>{row.qtd_itens > 0 ? `${row.qtd_itens}` : 'Ver'}</span>
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Paginação */}
+        {notasPage && notasPage.total > 0 && (
+          <div className="px-4 sm:px-5 py-3.5 border-t border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
+            <div>
+              Exibindo página <strong className="text-slate-800 dark:text-slate-200">{notasPage.page}</strong> de{' '}
+              <strong className="text-slate-800 dark:text-slate-200">{notasPage.total_pages}</strong> •{' '}
+              <strong className="text-slate-800 dark:text-slate-200">{formatNum(notasPage.total)}</strong> documentos encontrados
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold disabled:opacity-40 cursor-pointer"
+              >
+                <ChevronLeft size={14} />
+                Anterior
+              </button>
+              <button
+                type="button"
+                disabled={page >= notasPage.total_pages}
+                onClick={() => setPage((p) => p + 1)}
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold disabled:opacity-40 cursor-pointer"
+              >
+                Próxima
+                <ChevronRight size={14} />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Modal de Detalhes e Itens da Nota Fiscal */}
+      {selectedNota && (
+        <div
+          className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-5 animate-in fade-in duration-150"
+          onClick={() => setSelectedNota(null)}
+        >
+          <div
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header do Modal */}
+            <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{
+                    backgroundColor: detalheNota?.tipo_operacao === 'ENTRADA' ? '#2563EB14' : '#10B98114',
+                    border: `1px solid ${detalheNota?.tipo_operacao === 'ENTRADA' ? '#2563EB33' : '#10B98133'}`,
+                  }}
+                >
+                  <FileText
+                    size={19}
+                    style={{ color: detalheNota?.tipo_operacao === 'ENTRADA' ? '#2563EB' : '#10B981' }}
+                  />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                      Nota Fiscal Nº {detalheNota?.numero_nota || '...'}
+                    </h3>
+                    {detalheNota && (
+                      <span
+                        className={clsx(
+                          'text-[11px] font-bold px-2.5 py-0.5 rounded-full',
+                          detalheNota.tipo_operacao === 'ENTRADA'
+                            ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300'
+                            : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
+                        )}
+                      >
+                        {detalheNota.tipo_operacao === 'ENTRADA' ? 'NOTA DE ENTRADA' : 'NOTA EMITIDA (SAÍDA)'}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                    {detalheNota
+                      ? `Série ${detalheNota.serie} • Emissão ${formatDate(detalheNota.data_emissao)} • ${detalheNota.natureza_operacao}`
+                      : 'Carregando detalhes do documento fiscal...'}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedNota(null)}
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                aria-label="Fechar modal"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Corpo do Modal */}
+            <div className="p-5 overflow-y-auto space-y-5 flex-1">
+              {loadingDetalhe || !detalheNota ? (
+                <div className="py-16 flex flex-col items-center justify-center gap-2 text-slate-400 text-sm">
+                  <RefreshCw size={22} className="animate-spin text-blue-600" />
+                  <span>Carregando itens e dados fiscais...</span>
+                </div>
+              ) : (
+                <>
+                  {/* Chave de Acesso */}
+                  {detalheNota.chave_nfe && (
+                    <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          Chave de Acesso NF-e
+                        </div>
+                        <div className="font-mono text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-100 mt-0.5 break-all">
+                          {formatChaveGroups(detalheNota.chave_nfe)}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyChave(detalheNota.chave_nfe!)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:border-blue-500 cursor-pointer self-start sm:self-center flex-shrink-0"
+                      >
+                        {copiedKey === detalheNota.chave_nfe ? (
+                          <>
+                            <Check size={14} className="text-emerald-600" />
+                            <span>Chave Copiada</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy size={14} />
+                            <span>Copiar Chave</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Emitente & Destinatário */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                    <div className="border border-slate-200/80 dark:border-slate-800 rounded-xl p-4 space-y-1">
+                      <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                        <Building2 size={13} />
+                        Emitente / Remetente
+                      </div>
+                      <div className="text-sm font-bold text-slate-900 dark:text-white">
+                        {detalheNota.remetente.nome}
+                      </div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">
+                        {detalheNota.remetente.documento && `Doc: ${detalheNota.remetente.documento}`}
+                        {detalheNota.remetente.municipio && ` • ${detalheNota.remetente.municipio}/${detalheNota.remetente.uf}`}
+                      </div>
+                    </div>
+
+                    <div className="border border-slate-200/80 dark:border-slate-800 rounded-xl p-4 space-y-1">
+                      <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                        <Building2 size={13} />
+                        Destinatário
+                      </div>
+                      <div className="text-sm font-bold text-slate-900 dark:text-white">
+                        {detalheNota.destinatario.nome}
+                      </div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">
+                        {detalheNota.destinatario.documento && `Doc: ${detalheNota.destinatario.documento}`}
+                        {detalheNota.destinatario.municipio && ` • ${detalheNota.destinatario.municipio}/${detalheNota.destinatario.uf}`}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Resumo Financeiro da Nota */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-200/60 dark:border-slate-800">
+                      <div className="text-[11px] text-slate-500">Valor Produtos</div>
+                      <div className="text-sm font-bold text-slate-900 dark:text-white mt-0.5">
+                        {formatBRL(detalheNota.valor_produtos)}
+                      </div>
+                    </div>
+                    <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-200/60 dark:border-slate-800">
+                      <div className="text-[11px] text-slate-500">Frete</div>
+                      <div className="text-sm font-bold text-slate-900 dark:text-white mt-0.5">
+                        {formatBRL(detalheNota.valor_frete)}
+                      </div>
+                    </div>
+                    <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-200/60 dark:border-slate-800">
+                      <div className="text-[11px] text-slate-500">Descontos</div>
+                      <div className="text-sm font-bold text-slate-900 dark:text-white mt-0.5">
+                        {formatBRL(detalheNota.valor_desconto)}
+                      </div>
+                    </div>
+                    <div className="bg-emerald-50/70 dark:bg-emerald-950/30 rounded-xl p-3 border border-emerald-200/70 dark:border-emerald-800/50">
+                      <div className="text-[11px] text-emerald-700 dark:text-emerald-300 font-semibold">Valor Total da Nota</div>
+                      <div className="text-sm font-extrabold text-emerald-700 dark:text-emerald-300 mt-0.5">
+                        {formatBRL(detalheNota.valor_total)}
+                      </div>
+                    </div>
+                  </div>
+
+                  {detalheNota.transporte.transportadora_nome && (
+                    <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 dark:text-slate-400 px-1">
+                      <span className="inline-flex items-center gap-1.5 font-medium text-slate-700 dark:text-slate-300">
+                        <Truck size={14} className="text-blue-600" />
+                        Transportadora: {detalheNota.transporte.transportadora_nome}
+                      </span>
+                      {detalheNota.transporte.placa && <span>Placa: {detalheNota.transporte.placa}</span>}
+                      {detalheNota.transporte.volumes && <span>Volumes: {detalheNota.transporte.volumes}</span>}
+                      {detalheNota.transporte.peso_bruto > 0 && (
+                        <span>Peso Bruto: {formatNum(detalheNota.transporte.peso_bruto)} kg</span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Tabela de Itens da Nota */}
+                  <div className="border border-slate-200/80 dark:border-slate-800 rounded-xl overflow-hidden">
+                    <div className="px-4 py-2.5 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
+                        <Package size={14} className="text-blue-600" />
+                        Itens da Nota Fiscal ({detalheNota.itens.length})
+                      </span>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead>
+                          <tr className="border-b border-slate-200/70 dark:border-slate-800 text-[11px] uppercase text-slate-400">
+                            <th className="py-2.5 px-3">Código</th>
+                            <th className="py-2.5 px-3">Produto / Descrição</th>
+                            <th className="py-2.5 px-2">NCM</th>
+                            <th className="py-2.5 px-2">CFOP</th>
+                            <th className="py-2.5 px-2 text-right">Qtd</th>
+                            <th className="py-2.5 px-2 text-right">Vl. Unit.</th>
+                            <th className="py-2.5 px-3 text-right">Vl. Total</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                          {detalheNota.itens.length === 0 ? (
+                            <tr>
+                              <td colSpan={7} className="py-6 text-center text-slate-400">
+                                Nenhum item detalhado sincronizado para este documento.
+                              </td>
+                            </tr>
+                          ) : (
+                            detalheNota.itens.map((it) => (
+                              <tr key={`${it.ordem}-${it.codigo}`}>
+                                <td className="py-2 px-3 font-mono text-slate-500">{it.codigo}</td>
+                                <td className="py-2 px-3 font-medium text-slate-800 dark:text-slate-100">
+                                  {it.descricao}
+                                </td>
+                                <td className="py-2 px-2 font-mono text-slate-500">{it.ncm || '—'}</td>
+                                <td className="py-2 px-2 font-mono font-semibold text-blue-600 dark:text-blue-400">
+                                  {it.cfop || '—'}
+                                </td>
+                                <td className="py-2 px-2 text-right text-slate-700 dark:text-slate-300">
+                                  {formatNum(it.quantidade)} {it.unidade}
+                                </td>
+                                <td className="py-2 px-2 text-right text-slate-700 dark:text-slate-300">
+                                  {formatBRL(it.valor_unitario)}
+                                </td>
+                                <td className="py-2 px-3 text-right font-bold text-slate-900 dark:text-white">
+                                  {formatBRL(it.valor_total)}
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

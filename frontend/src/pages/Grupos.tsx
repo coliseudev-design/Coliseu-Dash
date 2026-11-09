@@ -47,6 +47,7 @@ const BI_IA_MODULES: PermissionModule[] = [
   { id: 'bi_supplier', label: 'Hub do Fornecedor', category: 'Módulos do Sistema' },
   { id: 'bi_abc', label: 'Gestão de Inventário', category: 'Módulos do Sistema' },
   { id: 'bi_compras', label: 'Gestão de Compras (Fornecedores & Pedidos)', category: 'Módulos do Sistema', description: 'Permite acessar a gestão de compras por fornecedor, notas de entrada e sugestões de reposição' },
+  { id: 'bi_fiscal', label: 'Fiscal (Notas Emitidas e de Entrada)', category: 'Módulos do Sistema', description: 'Permite consultar todas as notas fiscais emitidas e notas de entrada com detalhamento de itens' },
   { id: 'bi_finance', label: 'Financeiro', category: 'Módulos do Sistema' },
   { id: 'bi_customer', label: 'Radar 360', category: 'Módulos do Sistema' },
   { id: 'bi_comparative', label: 'Lucratividade', category: 'Módulos do Sistema' },
@@ -56,7 +57,8 @@ const BI_IA_MODULES: PermissionModule[] = [
   { id: 'bi_heatmap', label: 'Mapa de Calor', category: 'Módulos do Sistema' },
   { id: 'bi_ai_insights', label: 'Coliseu AI', category: 'Módulos do Sistema' },
 
-  // Ações de Usuários
+  // Ações de Usuários & Parâmetros
+  { id: 'config_parametros', label: 'Parâmetros do Sistema (Vendas c/ Nota Fiscal)', category: 'Gestão de Usuários & Ações', description: 'Permite ativar ou desativar parâmetros globais como visualização exclusiva de vendas com Nota Fiscal vinculada' },
   { id: 'usuarios', label: 'Acessar Tela de Usuários', category: 'Gestão de Usuários & Ações', description: 'Permite visualizar o menu e a lista de usuários' },
   { id: 'usuarios_criar', label: 'Ação: Novo Usuário', category: 'Gestão de Usuários & Ações', description: 'Permite cadastrar novos acessos no sistema' },
   { id: 'usuarios_grupos', label: 'Ação: Grupos de Acesso', category: 'Gestão de Usuários & Ações', description: 'Permite alterar os grupos de acesso dos usuários' },

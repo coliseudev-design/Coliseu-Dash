@@ -4,6 +4,8 @@ const express = require('express');
 const router = express.Router();
 const config = require('../config/env');
 const logger = require('../config/logger');
+const { getTenantSettings, updateTenantSettings } = require('../utils/tenantSettings');
+const { getUserPermissions } = require('../utils/rbac');
 
 /**
  * @route GET /api/configuracoes/empresa
@@ -53,6 +55,64 @@ router.get('/empresa', async (req, res) => {
         logger.error('[Configuracoes] Erro na rota de busca da empresa', { err: err.message });
         // Fallback genérico para não quebrar a UI
         return res.json({ name: 'Coliseu Dash' });
+    }
+});
+
+/**
+ * @route GET /api/configuracoes/parametros
+ * @desc Retorna os parâmetros configuráveis da empresa no B.I IA.
+ */
+router.get('/parametros', async (req, res, next) => {
+    try {
+        const tenantId = req.tenant?.id;
+        if (!tenantId) {
+            return res.status(401).json({ error: 'Tenant não identificado.' });
+        }
+        const settings = await getTenantSettings(tenantId);
+        return res.json(settings);
+    } catch (err) {
+        next(err);
+    }
+});
+
+/**
+ * @route PUT /api/configuracoes/parametros
+ * @desc Atualiza os parâmetros globais da empresa (ex: somente_vendas_com_nf).
+ */
+router.put('/parametros', async (req, res, next) => {
+    try {
+        const tenantId = req.tenant?.id;
+        if (!tenantId) {
+            return res.status(401).json({ error: 'Tenant não identificado.' });
+        }
+
+        const userRole = req.user?.role;
+        let allowed = userRole === 'master' || userRole === 'admin';
+        if (!allowed && req.user?.id) {
+            const perms = await getUserPermissions(req.user.id, tenantId);
+            allowed = perms.includes('config_parametros') || perms.includes('usuarios');
+        }
+
+        if (!allowed) {
+            return res.status(403).json({ error: 'Sem permissão para alterar os parâmetros da empresa.' });
+        }
+
+        const updatedBy = req.user?.email || String(req.user?.id || 'admin');
+        const updated = await updateTenantSettings(
+            tenantId,
+            { somente_vendas_com_nf: Boolean(req.body?.somente_vendas_com_nf) },
+            updatedBy
+        );
+
+        logger.info('[Configuracoes] Parâmetros atualizados com sucesso', {
+            tenantId,
+            somente_vendas_com_nf: updated.somente_vendas_com_nf,
+            updatedBy,
+        });
+
+        return res.json(updated);
+    } catch (err) {
+        next(err);
     }
 });
 

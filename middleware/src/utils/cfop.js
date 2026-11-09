@@ -28,6 +28,37 @@ function getCfopFilterClause(tableAlias = 'v') {
 }
 
 /**
+ * Indica se o parâmetro global "Visualizar somente vendas com Nota Fiscal vinculada"
+ * está ativo para a requisição atual no B.I IA.
+ */
+function isOnlyNfSalesActive() {
+    const store = db.dbContext.getStore();
+    return Boolean(store && store.onlyNfSales === true);
+}
+
+/**
+ * Cláusula adicional quando o tenant ativou "Somente vendas com Nota Fiscal vinculada".
+ * Exige que a venda tenha `numero_nota > 0` ou `chave_nfe` preenchida.
+ */
+function getNfFilterClause(tableAlias = 'v') {
+    if (!isOnlyNfSalesActive()) {
+        return '';
+    }
+    const prefix = (tableAlias !== undefined && tableAlias !== null && tableAlias !== '') ? `${tableAlias}.` : '';
+    return `AND ((${prefix}numero_nota IS NOT NULL AND ${prefix}numero_nota > 0) OR (${prefix}chave_nfe IS NOT NULL AND TRIM(${prefix}chave_nfe) <> ''))`;
+}
+
+/**
+ * Cláusula de filtro de NF para queries sobre `dash_devolucoes` vinculadas a `dash_vendas`.
+ */
+function getDevolucaoNfFilterClause(vendaAlias = 'v2', devAlias = 'd') {
+    if (!isOnlyNfSalesActive()) {
+        return '';
+    }
+    return ` AND (${devAlias}.venda_id_firebird IS NULL OR ((${vendaAlias}.numero_nota IS NOT NULL AND ${vendaAlias}.numero_nota > 0) OR (${vendaAlias}.chave_nfe IS NOT NULL AND TRIM(${vendaAlias}.chave_nfe) <> '')))`;
+}
+
+/**
  * STATUS_FILTER para Sistema Coliseu — alinhado ao ERP Gerência Geral.
  *
  * REGRAS VALIDADAS DE NEGÓCIO DO ERP COLISEU:
@@ -41,6 +72,7 @@ function getCfopFilterClause(tableAlias = 'v') {
 function getStatusFilterClause(tableAlias = 'v') {
     const prefix = (tableAlias !== undefined && tableAlias !== null && tableAlias !== '') ? `${tableAlias}.` : '';
     const tableRef = prefix || 'dash_vendas.';
+    const nfClause = getNfFilterClause(tableAlias);
     return `AND TRIM(${prefix}status) IN ('FATURADO', 'FINALIZADO', 'PROCESSADO')
       AND ${prefix}status NOT ILIKE '%TRANSF%'
       AND (${prefix}especie IS NULL OR ${prefix}especie NOT ILIKE '%TRANSF%')
@@ -52,7 +84,7 @@ function getStatusFilterClause(tableAlias = 'v') {
           SELECT 1 FROM dash_vendas_itens vi WHERE vi.venda_id_firebird = ${tableRef}id_firebird AND vi.tenant_id = ${tableRef}tenant_id
         )
         OR ${prefix}data_venda >= (CURRENT_DATE - INTERVAL '30 days')
-      )`;
+      ) ${nfClause}`;
 }
 
 /**
@@ -87,6 +119,9 @@ module.exports = {
     SALES_CFOPS,
     RETURN_CFOPS,
     SALES_STATUS_EXCLUDE,
+    isOnlyNfSalesActive,
+    getNfFilterClause,
+    getDevolucaoNfFilterClause,
     getCfopFilterClause,
     getStatusFilterClause,
     getSalesFilterClause,
