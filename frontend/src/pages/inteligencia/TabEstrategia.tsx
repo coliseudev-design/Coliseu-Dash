@@ -4,7 +4,7 @@ import { Lightbulb, TrendingUp, AlertTriangle, Crosshair, Star, ShieldAlert } fr
 import { formatBRL } from '../../utils/format'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine,
-  ScatterChart, Scatter, ZAxis
+  ScatterChart, Scatter, ZAxis, Cell
 } from 'recharts'
 import { CHART_COLORS } from '../../utils/chartColors'
 

@@ -226,6 +226,8 @@ export default function VisaoEstrategicaV3() {
     return cli.data?.data?.map((c: any) => ({ name: c.nome || c.cliente, value: c.total })) || []
   }, [cli.data])
 
+  const barColors = ['#3B82F6', '#10B981', '#F59E0B', '#0EA5E9', '#06B6D4', '#EC4899', '#F97316', '#14B8A6']
+
   return (
     <div className="space-y-4 pb-8 animate-in fade-in duration-300" aria-label="Visão Estratégica">
       
