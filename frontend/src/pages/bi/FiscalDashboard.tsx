@@ -142,6 +142,14 @@ export default function FiscalDashboard() {
   const periodState = usePeriodStore()
   const branchParam = useBranchParam()
 
+  const { data: tenantParams } = useQuery<{ somente_vendas_com_nf?: boolean }>({
+    queryKey: ['tenant-parametros'],
+    queryFn: async () => {
+      const res = await api.get('/configuracoes/parametros')
+      return res.data
+    },
+  })
+
   const [activeTab, setActiveTab] = useState<'SAIDA' | 'ENTRADA'>('SAIDA')
   const [apenasNfe, setApenasNfe] = useState(false)
   const [searchInput, setSearchInput] = useState('')
@@ -150,6 +158,12 @@ export default function FiscalDashboard() {
   const [page, setPage] = useState(1)
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
   const [selectedNota, setSelectedNota] = useState<{ origem: 'cargas' | 'vendas'; id: number } | null>(null)
+
+  useEffect(() => {
+    if (tenantParams && typeof tenantParams.somente_vendas_com_nf === 'boolean') {
+      setApenasNfe(tenantParams.somente_vendas_com_nf)
+    }
+  }, [tenantParams?.somente_vendas_com_nf])
 
   useEffect(() => {
     const timer = setTimeout(() => {

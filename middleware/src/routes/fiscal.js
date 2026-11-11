@@ -144,6 +144,7 @@ function buildFiscalUnifiedCte({
     search,
     tipo,
     apenasNfeEfetivo = false,
+    hasChaveNfe = true,
 }) {
     const params = [];
     const pushParam = (val) => {
@@ -228,6 +229,7 @@ function buildFiscalUnifiedCte({
             OR UPPER(COALESCE(cg.dados_nfe->>'natureza_operacao', '')) LIKE 'ENTRADA BONIFICA%'
         )
         AND UPPER(COALESCE(cg.dados_nfe->>'natureza_operacao', '')) NOT LIKE '%DEVOLU%'
+        AND UPPER(COALESCE(cg.dados_nfe->>'natureza_operacao', '')) NOT LIKE '%TRANSFER%'
         AND (
             (cg.dados_nfe->>'id_pedido') IS NULL
             OR (cg.dados_nfe->>'id_pedido') = ''
@@ -262,6 +264,7 @@ function buildFiscalUnifiedCte({
     const isCargasSaidaFallbackExpr = `(
         NOT EXISTS (SELECT 1 FROM dash_vendas v_any WHERE v_any.tenant_id = ${pTenant} LIMIT 1)
         AND UPPER(COALESCE(cg.dados_nfe->>'tipo_operacao', 'SAIDA')) = 'SAIDA'
+        AND UPPER(COALESCE(cg.dados_nfe->>'natureza_operacao', '')) NOT LIKE '%TRANSFER%'
         AND NOT ${isCargasCompraComercialExpr}
     )`;
 
@@ -331,26 +334,14 @@ function buildFiscalUnifiedCte({
     }
 
     const vendasOnlyNfeClause = apenasNfeEfetivo
-        ? ` AND (
-            (v.numero_nota IS NOT NULL AND v.numero_nota > 0)
-            OR (v.chave_nfe IS NOT NULL AND TRIM(v.chave_nfe) <> '')
-            OR EXISTS (
-                SELECT 1 FROM dash_vendas_itens vi_nf
-                WHERE vi_nf.tenant_id = v.tenant_id
-                  AND vi_nf.venda_id_firebird = v.id_firebird
-                  AND (
-                      (vi_nf.numero_nota IS NOT NULL AND TRIM(vi_nf.numero_nota::text) NOT IN ('', '0'))
-                      OR (vi_nf.chave_nfe IS NOT NULL AND TRIM(vi_nf.chave_nfe) <> '')
-                  )
-            )
-            OR EXISTS (
-                SELECT 1 FROM dash_cargas cg_nf
-                WHERE cg_nf.tenant_id = v.tenant_id
-                  AND (cg_nf.dados_nfe->>'id_pedido') IS NOT NULL
-                  AND (cg_nf.dados_nfe->>'id_pedido') = v.id_firebird::text
-                  AND UPPER(COALESCE(cg_nf.dados_nfe->>'natureza_operacao', '')) NOT LIKE '%COMPRA%'
-            )
-        )`
+        ? (
+            hasChaveNfe
+                ? ` AND (v.chave_nfe IS NOT NULL AND LENGTH(TRIM(v.chave_nfe)) >= 40)`
+                : ` AND (
+                    (v.numero_nota IS NOT NULL AND v.numero_nota > 0)
+                    OR (v.chave_nfe IS NOT NULL AND TRIM(v.chave_nfe) <> '')
+                )`
+        )
         : '';
 
     let searchFilter = `WHERE nb.data_emissao >= ${pStartTs} AND nb.data_emissao <= ${pEndTs}`;
@@ -502,6 +493,8 @@ function buildFiscalUnifiedCte({
               AND UPPER(TRIM(COALESCE(v.status, ''))) NOT IN ('CANCELADO', 'CANCELADA', 'ABERTO', 'PENDENTE', 'ORÇAMENTO', 'ORCAMENTO', 'NULO', 'TESTE')
               AND COALESCE(v.status, '') NOT ILIKE '%TRANSF%'
               AND (v.especie IS NULL OR v.especie NOT ILIKE '%TRANSF%')
+              AND (v.natureza_operacao IS NULL OR (v.natureza_operacao NOT ILIKE '%TRANSF%' AND v.natureza_operacao NOT ILIKE '%SIMPLES REMESSA%'))
+              AND (v.cfop IS NULL OR v.cfop NOT IN (5151, 5152, 5155, 5156, 6151, 6152, 6155, 6156, 1151, 1152, 1155, 1156, 2151, 2152, 2155, 2156))
               AND (
                   ${isEntradaExpr}
                   OR (
@@ -542,8 +535,8 @@ function buildFiscalUnifiedCte({
     return { cteSql, params };
 }
 
-function parseApenasNfe(val) {
-    if (val === undefined || val === null) return false;
+function parseApenasNfe(val, defaultVal = false) {
+    if (val === undefined || val === null || String(val).trim() === '') return Boolean(defaultVal);
     const s = String(val).trim().toLowerCase();
     return s === 'true' || s === '1' || s === 'sim';
 }
@@ -562,7 +555,8 @@ router.get('/resumo', async (req, res, next) => {
 
         const settings = await getTenantSettings(tenantId);
         const hasSyncedNf = Boolean(settings.has_synced_nf);
-        const apenasNfeSolicitado = parseApenasNfe(apenas_nfe);
+        const hasChaveNfe = Boolean(settings.has_chave_nfe);
+        const apenasNfeSolicitado = parseApenasNfe(apenas_nfe, settings.somente_vendas_com_nf);
         // Proteção inteligente: se o tenant possui 0 NFs sincronizadas no banco, não zera a tela
         const apenasNfeEfetivo = Boolean(apenasNfeSolicitado && hasSyncedNf);
         const operacaoFilter = parseOperacaoFilter(operacao, cfop);
@@ -587,6 +581,7 @@ router.get('/resumo', async (req, res, next) => {
             search,
             tipo: null,
             apenasNfeEfetivo,
+            hasChaveNfe,
         });
         params[0] = tenantId;
 
@@ -743,7 +738,8 @@ router.get('/notas', async (req, res, next) => {
 
         const settings = await getTenantSettings(tenantId);
         const hasSyncedNf = Boolean(settings.has_synced_nf);
-        const apenasNfeSolicitado = parseApenasNfe(apenas_nfe);
+        const hasChaveNfe = Boolean(settings.has_chave_nfe);
+        const apenasNfeSolicitado = parseApenasNfe(apenas_nfe, settings.somente_vendas_com_nf);
         const apenasNfeEfetivo = Boolean(apenasNfeSolicitado && hasSyncedNf);
         const operacaoFilter = parseOperacaoFilter(operacao, cfop);
 
@@ -772,6 +768,7 @@ router.get('/notas', async (req, res, next) => {
             search,
             tipo,
             apenasNfeEfetivo,
+            hasChaveNfe,
         });
         params[0] = tenantId;
 

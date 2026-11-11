@@ -201,10 +201,10 @@ export default function ParametrosBi() {
           <Info size={16} className="text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
           <div className="text-xs text-slate-600 dark:text-slate-300 space-y-1 leading-relaxed">
             <p>
-              <strong>Módulos impactados no B.I IA.:</strong> Visão Estratégica, Análise Comparativa, Monitor de Vendas, Desempenho da Equipe, Visão Geral da Carteira, Cliente 360 e Análise de Rentabilidade.
+              <strong>Módulos impactados:</strong> Visão Estratégica, Análise Comparativa, Monitor de Vendas, Desempenho da Equipe, Visão Geral da Carteira, Cliente 360, Estatísticas, Ranking, Vendas e filtro padrão do Módulo Fiscal.
             </p>
             <p>
-              <strong>Isolamento garantido:</strong> A versão <em>Dash 1.0</em> e o módulo <em>Fiscal</em> (que consulta diretamente todas as notas emitidas e de entrada) permanecem inalterados.
+              <strong>Regras de apuração ERP Coliseu:</strong> Contabiliza exclusivamente vendas comerciais efetivas com NF-e / NFC-e autorizada vinculada ao pedido, descontando devoluções de vendas com NF e ignorando automaticamente transferências entre matriz e filiais.
             </p>
           </div>
         </div>

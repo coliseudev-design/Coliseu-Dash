@@ -15,6 +15,14 @@ const SALES_CFOPS = [
 // CFOPs de devolução para desconto no faturamento líquido
 const RETURN_CFOPS = [1201, 1202, 2201, 2202, 1411];
 
+// CFOPs de transferência entre matriz e filiais (nunca compõem faturamento comercial)
+const TRANSFER_CFOPS = [
+    5151, 5152, 5155, 5156,
+    6151, 6152, 6155, 6156,
+    1151, 1152, 1155, 1156,
+    2151, 2152, 2155, 2156
+];
+
 // Status excluídos do faturamento
 const SALES_STATUS_EXCLUDE = [
     'CANCELADO', 'ABERTO', 'PENDENTE', 'ORÇAMENTO', 'ORCAMENTO', 'NULO', 'TESTE'
@@ -29,7 +37,7 @@ function getCfopFilterClause(tableAlias = 'v') {
 
 /**
  * Indica se o parâmetro global "Visualizar somente vendas com Nota Fiscal vinculada"
- * está ativo para a requisição atual no B.I IA.
+ * está ativo para a requisição atual.
  */
 function isOnlyNfSalesActive() {
     const store = db.dbContext.getStore();
@@ -38,33 +46,22 @@ function isOnlyNfSalesActive() {
 
 /**
  * Cláusula adicional quando o tenant ativou "Somente vendas com Nota Fiscal vinculada".
- * Exige que a venda tenha `numero_nota > 0` ou `chave_nfe` preenchida.
+ * Exige que a venda possua NF-e / NFC-e autorizada vinculada na própria venda (sem subqueries lentas em dash_cargas).
  */
 function getNfFilterClause(tableAlias = 'v') {
     if (!isOnlyNfSalesActive()) {
         return '';
     }
     const prefix = (tableAlias !== undefined && tableAlias !== null && tableAlias !== '') ? `${tableAlias}.` : '';
-    const tableRef = prefix || 'dash_vendas.';
+    const store = db.dbContext.getStore();
+    const hasChaveNfe = store ? store.hasChaveNfe !== false : true;
+
+    if (hasChaveNfe) {
+        return `AND (${prefix}chave_nfe IS NOT NULL AND LENGTH(TRIM(${prefix}chave_nfe)) >= 40)`;
+    }
     return `AND (
         (${prefix}numero_nota IS NOT NULL AND ${prefix}numero_nota > 0)
         OR (${prefix}chave_nfe IS NOT NULL AND TRIM(${prefix}chave_nfe) <> '')
-        OR EXISTS (
-            SELECT 1 FROM dash_vendas_itens vi_nf
-            WHERE vi_nf.venda_id_firebird = ${tableRef}id_firebird
-              AND vi_nf.tenant_id = ${tableRef}tenant_id
-              AND (
-                  (vi_nf.numero_nota IS NOT NULL AND TRIM(vi_nf.numero_nota::text) NOT IN ('', '0'))
-                  OR (vi_nf.chave_nfe IS NOT NULL AND TRIM(vi_nf.chave_nfe) <> '')
-              )
-        )
-        OR EXISTS (
-            SELECT 1 FROM dash_cargas cg_nf
-            WHERE cg_nf.tenant_id = ${tableRef}tenant_id
-              AND (cg_nf.dados_nfe->>'id_pedido') IS NOT NULL
-              AND (cg_nf.dados_nfe->>'id_pedido') = ${tableRef}id_firebird::text
-              AND UPPER(COALESCE(cg_nf.dados_nfe->>'natureza_operacao', '')) NOT LIKE '%COMPRA%'
-        )
     )`;
 }
 
@@ -75,18 +72,15 @@ function getDevolucaoNfFilterClause(vendaAlias = 'v2', devAlias = 'd') {
     if (!isOnlyNfSalesActive()) {
         return '';
     }
+    const store = db.dbContext.getStore();
+    const hasChaveNfe = store ? store.hasChaveNfe !== false : true;
+
+    if (hasChaveNfe) {
+        return ` AND (${devAlias}.venda_id_firebird IS NULL OR (${vendaAlias}.chave_nfe IS NOT NULL AND LENGTH(TRIM(${vendaAlias}.chave_nfe)) >= 40))`;
+    }
     return ` AND (${devAlias}.venda_id_firebird IS NULL OR (
         (${vendaAlias}.numero_nota IS NOT NULL AND ${vendaAlias}.numero_nota > 0)
         OR (${vendaAlias}.chave_nfe IS NOT NULL AND TRIM(${vendaAlias}.chave_nfe) <> '')
-        OR EXISTS (
-            SELECT 1 FROM dash_vendas_itens vi_nf
-            WHERE vi_nf.venda_id_firebird = ${vendaAlias}.id_firebird
-              AND vi_nf.tenant_id = ${vendaAlias}.tenant_id
-              AND (
-                  (vi_nf.numero_nota IS NOT NULL AND TRIM(vi_nf.numero_nota::text) NOT IN ('', '0'))
-                  OR (vi_nf.chave_nfe IS NOT NULL AND TRIM(vi_nf.chave_nfe) <> '')
-              )
-        )
     ))`;
 }
 
@@ -95,7 +89,7 @@ function getDevolucaoNfFilterClause(vendaAlias = 'v2', devAlias = 'd') {
  *
  * REGRAS VALIDADAS DE NEGÓCIO DO ERP COLISEU:
  * 1. Apenas vendas em status comercial efetivo ('FATURADO', 'FINALIZADO', 'PROCESSADO').
- * 2. Exclui transferências entre filiais (status ou espécie contendo 'TRANSF').
+ * 2. Exclui transferências entre filiais (status, espécie, natureza_operacao ou CFOP de transferência).
  * 3. Exclui espécies 'SEM PAGAMENTO' (remessas/complementos fiscais sem valor comercial),
  *    exceto quando vinculadas a itens reais faturados a clientes finais.
  * 4. Exclui registros/pedidos sem itens de estoque (lançamentos financeiros/fantasmas ou cancelados na origem sem itens),
@@ -108,6 +102,8 @@ function getStatusFilterClause(tableAlias = 'v') {
     return `AND TRIM(${prefix}status) IN ('FATURADO', 'FINALIZADO', 'PROCESSADO')
       AND ${prefix}status NOT ILIKE '%TRANSF%'
       AND (${prefix}especie IS NULL OR ${prefix}especie NOT ILIKE '%TRANSF%')
+      AND (${prefix}natureza_operacao IS NULL OR (${prefix}natureza_operacao NOT ILIKE '%TRANSF%' AND ${prefix}natureza_operacao NOT ILIKE '%SIMPLES REMESSA%'))
+      AND (${prefix}cfop IS NULL OR ${prefix}cfop NOT IN (${TRANSFER_CFOPS.join(', ')}))
       AND (${prefix}especie IS NULL OR ${prefix}especie NOT ILIKE '%SEM PAGAMENTO%' OR EXISTS (
         SELECT 1 FROM dash_vendas_itens vi WHERE vi.venda_id_firebird = ${tableRef}id_firebird AND vi.tenant_id = ${tableRef}tenant_id
       ))
@@ -152,6 +148,7 @@ function getDateField(tableAlias = 'v') {
 module.exports = {
     SALES_CFOPS,
     RETURN_CFOPS,
+    TRANSFER_CFOPS,
     SALES_STATUS_EXCLUDE,
     isOnlyNfSalesActive,
     getNfFilterClause,

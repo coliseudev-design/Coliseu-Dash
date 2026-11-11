@@ -65,14 +65,14 @@ router.get('/por-horario', async (req, res, next) => {
         if (date) {
             sql = `
                 SELECT 
-                    EXTRACT(HOUR FROM COALESCE(data_vencimento, data_venda)) AS hora,
+                    EXTRACT(HOUR FROM COALESCE(data_hora_proc, data_vencimento, data_venda)) AS hora,
                     COUNT(*) AS quantidade,
                     SUM(valor_total - COALESCE(valor_desconto, 0)) AS total
                 FROM dash_vendas
                 WHERE tenant_id = $1
-                  AND TO_CHAR(COALESCE(data_vencimento, data_venda), 'YYYY-MM-DD') = $2
+                  AND TO_CHAR(COALESCE(data_hora_proc, data_vencimento, data_venda), 'YYYY-MM-DD') = $2
                   ${cfopUtil.getSalesFilterClause('')}
-                GROUP BY EXTRACT(HOUR FROM COALESCE(data_vencimento, data_venda))
+                GROUP BY EXTRACT(HOUR FROM COALESCE(data_hora_proc, data_vencimento, data_venda))
                 ORDER BY hora
             `;
             params = [tenantId, date];
@@ -80,14 +80,14 @@ router.get('/por-horario', async (req, res, next) => {
             // Últimos 30 dias
             sql = `
                 SELECT 
-                    EXTRACT(HOUR FROM COALESCE(data_vencimento, data_venda)) AS hora,
+                    EXTRACT(HOUR FROM COALESCE(data_hora_proc, data_vencimento, data_venda)) AS hora,
                     COUNT(*) AS quantidade,
                     SUM(valor_total - COALESCE(valor_desconto, 0)) AS total
                 FROM dash_vendas
                 WHERE tenant_id = $1
-                  AND COALESCE(data_vencimento, data_venda) >= NOW() - INTERVAL '30 days'
+                  AND COALESCE(data_hora_proc, data_vencimento, data_venda) >= NOW() - INTERVAL '30 days'
                   ${cfopUtil.getSalesFilterClause('')}
-                GROUP BY EXTRACT(HOUR FROM COALESCE(data_vencimento, data_venda))
+                GROUP BY EXTRACT(HOUR FROM COALESCE(data_hora_proc, data_vencimento, data_venda))
                 ORDER BY hora
             `;
             params = [tenantId];
@@ -160,8 +160,8 @@ router.get('/kpis', async (req, res, next) => {
                 COALESCE(MIN(v.valor_total - COALESCE(v.valor_desconto, 0)), 0) AS menor_venda
             FROM dash_vendas v
             WHERE v.tenant_id = $1
-              AND COALESCE(v.data_vencimento, v.data_venda) >= $2
-              AND COALESCE(v.data_vencimento, v.data_venda) <= $3
+              AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2
+              AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
               ${salesFilter}
         `, [tenantId, start, end]);
 
@@ -194,7 +194,7 @@ router.get('/recentes', async (req, res, next) => {
             SELECT 
                 v.id_firebird AS id, 
                 v.numero_pedido, 
-                COALESCE(v.data_vencimento, v.data_venda) AS data_venda, 
+                COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) AS data_venda, 
                 (v.valor_total - COALESCE(v.valor_desconto, 0)) AS valor_total, 
                 v.status,
                 c.nome AS cliente, 
@@ -203,7 +203,7 @@ router.get('/recentes', async (req, res, next) => {
             LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
             LEFT JOIN dash_vendedores vd ON vd.id_firebird = v.vendedor_id_firebird AND vd.tenant_id = v.tenant_id
             WHERE v.tenant_id = $1 ${salesFilter} ${vf.clause}
-            ORDER BY COALESCE(v.data_vencimento, v.data_venda) DESC
+            ORDER BY COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) DESC
             LIMIT $2
         `, [tenantId, limit, ...vf.params]);
 

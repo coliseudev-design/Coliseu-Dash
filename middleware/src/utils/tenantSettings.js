@@ -25,86 +25,114 @@ async function ensureSettingsTable() {
 
 /**
  * Verifica de forma ultrarrápida (EXISTS LIMIT 1 + cache 60s) se o tenant possui
- * ao menos uma venda ou carga XML com Nota Fiscal sincronizada no PostgreSQL.
+ * ao menos uma venda ou carga XML com Nota Fiscal sincronizada no PostgreSQL,
+ * além de identificar se a coluna chave_nfe está preenchida nas vendas faturadas.
  * Evita zerar todos os painéis em empresas cujo SyncAgent ainda não envia numero_nota/chave_nfe.
  * @param {string} tenantId
- * @returns {Promise<boolean>}
+ * @returns {Promise<{ hasSyncedNf: boolean, hasChaveNfe: boolean }>}
  */
-async function checkTenantHasSyncedNf(tenantId) {
+async function checkTenantNfCoverage(tenantId) {
     if (!tenantId || tenantId === '00000000-0000-0000-0000-000000000000') {
-        return false;
+        return { hasSyncedNf: false, hasChaveNfe: false };
     }
 
     const cached = nfCoverageCache.get(tenantId);
     if (cached && cached.expiresAt > Date.now()) {
-        return cached.hasSyncedNf;
+        return {
+            hasSyncedNf: Boolean(cached.hasSyncedNf),
+            hasChaveNfe: Boolean(cached.hasChaveNfe),
+        };
     }
 
     try {
         const { rows } = await db.query(
-            `SELECT (
+            `SELECT
                 EXISTS (
                     SELECT 1 FROM dash_vendas
                     WHERE tenant_id = $1
-                      AND (
-                          (numero_nota IS NOT NULL AND numero_nota > 0)
-                          OR (chave_nfe IS NOT NULL AND TRIM(chave_nfe) <> '')
-                      )
+                      AND chave_nfe IS NOT NULL
+                      AND LENGTH(TRIM(chave_nfe)) >= 40
                     LIMIT 1
-                )
-                OR EXISTS (
-                    SELECT 1 FROM dash_cargas
-                    WHERE tenant_id = $1
-                    LIMIT 1
-                )
-                OR EXISTS (
-                    SELECT 1 FROM dash_vendas_itens
-                    WHERE tenant_id = $1
-                      AND (
-                          (numero_nota IS NOT NULL AND TRIM(numero_nota::text) NOT IN ('', '0'))
-                          OR (chave_nfe IS NOT NULL AND TRIM(chave_nfe) <> '')
-                      )
-                    LIMIT 1
-                )
-            ) AS has_synced_nf`,
+                ) AS has_chave_nfe,
+                (
+                    EXISTS (
+                        SELECT 1 FROM dash_vendas
+                        WHERE tenant_id = $1
+                          AND (
+                              (numero_nota IS NOT NULL AND numero_nota > 0)
+                              OR (chave_nfe IS NOT NULL AND TRIM(chave_nfe) <> '')
+                          )
+                        LIMIT 1
+                    )
+                    OR EXISTS (
+                        SELECT 1 FROM dash_cargas
+                        WHERE tenant_id = $1
+                        LIMIT 1
+                    )
+                    OR EXISTS (
+                        SELECT 1 FROM dash_vendas_itens
+                        WHERE tenant_id = $1
+                          AND (
+                              (numero_nota IS NOT NULL AND TRIM(numero_nota::text) NOT IN ('', '0'))
+                              OR (chave_nfe IS NOT NULL AND TRIM(chave_nfe) <> '')
+                          )
+                        LIMIT 1
+                    )
+                ) AS has_synced_nf`,
             [tenantId]
         );
 
         const hasSyncedNf = Boolean(rows[0]?.has_synced_nf);
+        const hasChaveNfe = Boolean(rows[0]?.has_chave_nfe);
         nfCoverageCache.set(tenantId, {
             hasSyncedNf,
+            hasChaveNfe,
             expiresAt: Date.now() + NF_COVERAGE_TTL_MS,
         });
-        return hasSyncedNf;
+        return { hasSyncedNf, hasChaveNfe };
     } catch (err) {
-        // Caso dash_cargas ainda não exista na base, testa apenas dash_vendas
         try {
             const { rows } = await db.query(
-                `SELECT EXISTS (
-                    SELECT 1 FROM dash_vendas
-                    WHERE tenant_id = $1
-                      AND (
-                          (numero_nota IS NOT NULL AND numero_nota > 0)
-                          OR (chave_nfe IS NOT NULL AND TRIM(chave_nfe) <> '')
-                      )
-                    LIMIT 1
-                ) AS has_synced_nf`,
+                `SELECT
+                    EXISTS (
+                        SELECT 1 FROM dash_vendas
+                        WHERE tenant_id = $1
+                          AND chave_nfe IS NOT NULL
+                          AND LENGTH(TRIM(chave_nfe)) >= 40
+                        LIMIT 1
+                    ) AS has_chave_nfe,
+                    EXISTS (
+                        SELECT 1 FROM dash_vendas
+                        WHERE tenant_id = $1
+                          AND (
+                              (numero_nota IS NOT NULL AND numero_nota > 0)
+                              OR (chave_nfe IS NOT NULL AND TRIM(chave_nfe) <> '')
+                          )
+                        LIMIT 1
+                    ) AS has_synced_nf`,
                 [tenantId]
             );
             const hasSyncedNf = Boolean(rows[0]?.has_synced_nf);
+            const hasChaveNfe = Boolean(rows[0]?.has_chave_nfe);
             nfCoverageCache.set(tenantId, {
                 hasSyncedNf,
+                hasChaveNfe,
                 expiresAt: Date.now() + NF_COVERAGE_TTL_MS,
             });
-            return hasSyncedNf;
+            return { hasSyncedNf, hasChaveNfe };
         } catch (innerErr) {
             logger.warn('[TenantSettings] Falha ao checar cobertura de NF do tenant', {
                 tenantId,
                 error: innerErr.message,
             });
-            return false;
+            return { hasSyncedNf: false, hasChaveNfe: false };
         }
     }
+}
+
+async function checkTenantHasSyncedNf(tenantId) {
+    const cov = await checkTenantNfCoverage(tenantId);
+    return cov.hasSyncedNf;
 }
 
 function invalidateTenantSettingsCache(tenantId) {
@@ -121,6 +149,7 @@ async function getTenantSettings(tenantId) {
     const defaultSettings = {
         somente_vendas_com_nf: false,
         has_synced_nf: false,
+        has_chave_nfe: false,
         efetivo_somente_nf: false,
         updated_at: null,
         updated_by: null,
@@ -130,7 +159,7 @@ async function getTenantSettings(tenantId) {
         return defaultSettings;
     }
 
-    const hasSyncedNf = await checkTenantHasSyncedNf(tenantId);
+    const { hasSyncedNf, hasChaveNfe } = await checkTenantNfCoverage(tenantId);
 
     const cached = settingsCache.get(tenantId);
     if (cached && cached.expiresAt > Date.now()) {
@@ -138,6 +167,7 @@ async function getTenantSettings(tenantId) {
         return {
             ...cached.data,
             has_synced_nf: hasSyncedNf,
+            has_chave_nfe: hasChaveNfe,
             efetivo_somente_nf: Boolean(somenteNf && hasSyncedNf),
         };
     }
@@ -172,6 +202,7 @@ async function getTenantSettings(tenantId) {
         return {
             ...baseData,
             has_synced_nf: hasSyncedNf,
+            has_chave_nfe: hasChaveNfe,
             efetivo_somente_nf: Boolean(somenteNf && hasSyncedNf),
         };
     } catch (err) {
@@ -182,12 +213,14 @@ async function getTenantSettings(tenantId) {
         return {
             ...defaultSettings,
             has_synced_nf: hasSyncedNf,
+            has_chave_nfe: hasChaveNfe,
         };
     }
 }
 
 /**
  * Atualiza os parâmetros do tenant e invalida imediatamente os caches de consulta.
+ * Também sincroniza o parâmetro para tenants irmãos que compartilhem o mesmo CNPJ matriz em dash_filiais.
  * @param {string} tenantId
  * @param {{ somente_vendas_com_nf?: boolean }} patch
  * @param {string} updatedBy
@@ -209,8 +242,42 @@ async function updateTenantSettings(tenantId, patch, updatedBy = null) {
         [tenantId, somenteVendasComNf, updatedBy]
     );
 
+    // Propaga o parâmetro para tenants irmãos que possuam o mesmo CNPJ matriz em dash_filiais
+    try {
+        const siblingRes = await db.query(
+            `SELECT DISTINCT f2.tenant_id
+             FROM dash_filiais f1
+             JOIN dash_filiais f2
+               ON regexp_replace(COALESCE(f2.documento, ''), '\\D', '', 'g') = regexp_replace(COALESCE(f1.documento, ''), '\\D', '', 'g')
+             WHERE f1.tenant_id = $1
+               AND f2.tenant_id <> $1
+               AND LENGTH(regexp_replace(COALESCE(f1.documento, ''), '\\D', '', 'g')) = 14`,
+            [tenantId]
+        );
+        for (const sib of siblingRes.rows) {
+            if (!sib.tenant_id) continue;
+            await db.query(
+                `INSERT INTO dash_configuracoes_tenant (tenant_id, somente_vendas_com_nf, updated_at, updated_by)
+                 VALUES ($1, $2, NOW(), $3)
+                 ON CONFLICT (tenant_id)
+                 DO UPDATE SET
+                    somente_vendas_com_nf = EXCLUDED.somente_vendas_com_nf,
+                    updated_at = NOW(),
+                    updated_by = EXCLUDED.updated_by`,
+                [sib.tenant_id, somenteVendasComNf, updatedBy]
+            );
+            invalidateTenantSettingsCache(sib.tenant_id);
+            invalidateTenant(sib.tenant_id);
+        }
+    } catch (sibErr) {
+        logger.warn('[TenantSettings] Aviso ao propagar configuração para tenant irmão', {
+            tenantId,
+            error: sibErr.message,
+        });
+    }
+
     nfCoverageCache.delete(tenantId);
-    const hasSyncedNf = await checkTenantHasSyncedNf(tenantId);
+    const { hasSyncedNf, hasChaveNfe } = await checkTenantNfCoverage(tenantId);
     const somenteNf = Boolean(rows[0]?.somente_vendas_com_nf);
 
     const baseData = {
@@ -228,6 +295,7 @@ async function updateTenantSettings(tenantId, patch, updatedBy = null) {
     return {
         ...baseData,
         has_synced_nf: hasSyncedNf,
+        has_chave_nfe: hasChaveNfe,
         efetivo_somente_nf: Boolean(somenteNf && hasSyncedNf),
     };
 }
@@ -236,5 +304,6 @@ module.exports = {
     getTenantSettings,
     updateTenantSettings,
     checkTenantHasSyncedNf,
+    checkTenantNfCoverage,
     invalidateTenantSettingsCache,
 };

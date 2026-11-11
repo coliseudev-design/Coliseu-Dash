@@ -7,6 +7,9 @@ const logger = require('../config/logger');
 const { invalidateTenant } = require('../config/cache');
 const { invalidateTenantSettingsCache } = require('../utils/tenantSettings');
 
+const lastAnalyzeByTable = new Map();
+const ANALYZE_THROTTLE_MS = 10 * 60 * 1000;
+
 const TABELAS_MAP = {
     'dash_clientes': ['id_firebird', 'nome', 'documento', 'email', 'telefone', 'cidade', 'estado', 'classificacao', 'tipo', 'data_cadastro', 'ativo'],
 
@@ -432,22 +435,15 @@ router.post('/:tabela', async (req, res) => {
         }
         if (['dash_vendas', 'dash_vendas_itens', 'dash_financeiro', 'dash_devolucoes', 'dash_cargas'].includes(tabela)) {
             invalidateTenant(tenantId);
-            
-            // Atualiza as estatísticas do otimizador do Postgres para evitar tabelas lentas por falta de estatísticas atualizadas
-            db.query(`ANALYZE ${tabela}`)
-                .then(() => logger.info(`[Sync] Estatísticas da tabela ${tabela} analisadas com sucesso.`))
-                .catch(err => logger.error(`[Sync] Erro ao executar ANALYZE na tabela ${tabela}:`, err.message));
 
-            // Tenta dar refresh na visão de forma assíncrona para não prender o Worker
-            const viewName = tabela === 'dash_financeiro' ? 'mv_dash_financeiro_diario' : 'mv_dash_vendas_diario';
-            db.query(`REFRESH MATERIALIZED VIEW CONCURRENTLY ${viewName}`)
-                .then(() => logger.info(`[Sync] Visão materializada ${viewName} atualizada com sucesso.`))
-                .catch(err => {
-                    // Se falhar por não ter índice único ainda ou tabela vazia, ignora graciosamente
-                    if (err.code !== '42P01') {
-                        logger.error(`[Sync] Erro ao atualizar visão ${viewName}:`, err.message);
-                    }
-                });
+            // Atualiza estatísticas do otimizador no máximo a cada 10 minutos por tabela para não causar contenção de lock durante sync massivo
+            const lastAnalyze = lastAnalyzeByTable.get(tabela) || 0;
+            if (Date.now() - lastAnalyze > ANALYZE_THROTTLE_MS) {
+                lastAnalyzeByTable.set(tabela, Date.now());
+                db.query(`ANALYZE ${tabela}`)
+                    .then(() => logger.info(`[Sync] Estatísticas da tabela ${tabela} analisadas com sucesso.`))
+                    .catch(err => logger.error(`[Sync] Erro ao executar ANALYZE na tabela ${tabela}:`, err.message));
+            }
         }
 
     } catch (globalErr) {

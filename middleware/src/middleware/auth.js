@@ -190,18 +190,15 @@ async function bindDbContext(req, res, next) {
     const tzOffset = tzOffsetHeader !== undefined ? parseInt(tzOffsetHeader, 10) : -180;
 
     let onlyNfSales = false;
+    let hasChaveNfe = false;
     if (req.tenant?.id) {
-        const headerLayout = req.headers['x-layout-version'];
-        const activeLayout = headerLayout ? String(headerLayout).trim() : (req.user?.layoutVersion || '');
-        const isBiLayout = activeLayout === 'B.I IA.' || activeLayout === 'v3.0' || activeLayout === 'BI IA' || activeLayout === 'B.I 1.0';
-        if (isBiLayout) {
-            const settings = await getTenantSettings(req.tenant.id);
-            // Proteção inteligente: só aplica filtro restritivo se o tenant já possuir NFs sincronizadas no banco
-            onlyNfSales = Boolean(settings.somente_vendas_com_nf && settings.has_synced_nf);
-        }
+        const settings = await getTenantSettings(req.tenant.id);
+        // Proteção inteligente: só aplica filtro restritivo se o tenant já possuir NFs sincronizadas no banco
+        onlyNfSales = Boolean(settings.somente_vendas_com_nf && settings.has_synced_nf);
+        hasChaveNfe = Boolean(settings.has_chave_nfe);
     }
 
-    db.dbContext.run({ dbType, tzOffset, onlyNfSales }, () => {
+    db.dbContext.run({ dbType, tzOffset, onlyNfSales, hasChaveNfe }, () => {
         next();
     });
 }

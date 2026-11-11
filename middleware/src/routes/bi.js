@@ -2984,7 +2984,7 @@ router.get('/seller/summary', async (req, res, next) => {
                 COUNT(DISTINCT v.id_firebird) AS total_pedidos
             FROM dash_vendas v
             ${salesJoins}
-            WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3 AND v.vendedor_id_firebird = $4
+            WHERE v.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3 AND v.vendedor_id_firebird = $4
               ${salesClauses}
         `, getQueryParams(start, end));
 
@@ -3006,7 +3006,7 @@ router.get('/seller/summary', async (req, res, next) => {
                 COALESCE(SUM(v.valor_total - COALESCE(v.valor_desconto, 0)), 0) AS total_bruto
             FROM dash_vendas v
             ${salesJoins}
-            WHERE v.tenant_id = $1 AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3 AND v.vendedor_id_firebird = $4
+            WHERE v.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3 AND v.vendedor_id_firebird = $4
               ${salesClauses}
         `, getQueryParams(prevStart, prevEnd));
 
@@ -3038,7 +3038,7 @@ router.get('/seller/summary', async (req, res, next) => {
             FROM dash_vendas v
             ${salesJoins}
             WHERE v.tenant_id = $1 
-              AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
+              AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
               AND v.vendedor_id_firebird = $4
               ${salesClauses}
         `, getQueryParams(start, end));
@@ -3066,7 +3066,7 @@ router.get('/seller/summary', async (req, res, next) => {
             LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
             ${needsItemJoin ? 'INNER JOIN dash_vendas_itens vi ON vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id' : ''}
             WHERE v.tenant_id = $1 
-              AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
+              AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
               AND v.vendedor_id_firebird = $4
               ${salesClauses}
             GROUP BY 1 ORDER BY total DESC LIMIT 1
@@ -3081,7 +3081,7 @@ router.get('/seller/summary', async (req, res, next) => {
                 FROM dash_vendas v
                 ${needsCidadeJoin ? 'LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id' : ''}
                 WHERE v.tenant_id = $1 
-                  AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
+                  AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
                   AND v.vendedor_id_firebird = $4
                   ${salesFilter} ${df.clause} ${cf.clause}
             )
@@ -3111,7 +3111,7 @@ router.get('/seller/summary', async (req, res, next) => {
             LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
             ${needsItemJoin ? 'INNER JOIN dash_vendas_itens vi ON vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id' : ''}
             WHERE v.tenant_id = $1 
-              AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
+              AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
               AND v.vendedor_id_firebird = $4
               ${salesClauses}
             GROUP BY 1 ORDER BY total DESC LIMIT 10
@@ -3133,7 +3133,7 @@ router.get('/seller/summary', async (req, res, next) => {
                 FROM dash_vendas v
                 ${needsCidadeJoin ? 'LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id' : ''}
                 WHERE v.tenant_id = $1 
-                  AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
+                  AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
                   AND v.vendedor_id_firebird = $4
                   ${salesFilter} ${df.clause} ${cf.clause}
             )
@@ -3163,7 +3163,7 @@ router.get('/seller/summary', async (req, res, next) => {
                 FROM dash_vendas v
                 ${needsCidadeJoin ? 'LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id' : ''}
                 WHERE v.tenant_id = $1 
-                  AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
+                  AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
                   AND v.vendedor_id_firebird = $4
                   ${salesFilter} ${df.clause} ${cf.clause}
             )
@@ -3190,28 +3190,28 @@ router.get('/seller/summary', async (req, res, next) => {
         // 6. Histórico de Vendas (Evolução Diária)
         const trajectoryRes = await db.query(`
             SELECT 
-                TO_CHAR(v.data_hora_proc, 'DD/MM') AS dia,
+                TO_CHAR(COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda), 'DD/MM') AS dia,
                 SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) AS total
             FROM dash_vendas v
             ${salesJoins}
             WHERE v.tenant_id = $1 
-              AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
+              AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
               AND v.vendedor_id_firebird = $4
               ${salesClauses}
-            GROUP BY DATE_TRUNC('day', v.data_hora_proc), TO_CHAR(v.data_hora_proc, 'DD/MM')
-            ORDER BY DATE_TRUNC('day', v.data_hora_proc) ASC
+            GROUP BY DATE_TRUNC('day', COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda)), TO_CHAR(COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda), 'DD/MM')
+            ORDER BY DATE_TRUNC('day', COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda)) ASC
         `, getQueryParams(start, end));
         const historico_vendas = trajectoryRes.rows.map(t => ({ dia: t.dia, valor: parseFloat(t.total || 0) }));
 
         // 7. Vendas por Dia da Semana
         const dowRes = await db.query(`
             SELECT 
-                EXTRACT(ISODOW FROM v.data_hora_proc) AS dow_num,
+                EXTRACT(ISODOW FROM COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda)) AS dow_num,
                 SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) AS total
             FROM dash_vendas v
             ${salesJoins}
             WHERE v.tenant_id = $1 
-              AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
+              AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
               AND v.vendedor_id_firebird = $4
               ${salesClauses}
             GROUP BY 1 ORDER BY 1 ASC
@@ -3229,13 +3229,13 @@ router.get('/seller/summary', async (req, res, next) => {
         // 8. Mapa de Calor (Dia vs Semana do Mês)
         const heatmapRes = await db.query(`
             SELECT 
-                EXTRACT(ISODOW FROM v.data_hora_proc) AS dow,
-                CEIL(EXTRACT(DAY FROM v.data_hora_proc) / 7.0) AS week,
+                EXTRACT(ISODOW FROM COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda)) AS dow,
+                CEIL(EXTRACT(DAY FROM COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda)) / 7.0) AS week,
                 SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) AS total
             FROM dash_vendas v
             ${salesJoins}
             WHERE v.tenant_id = $1 
-              AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
+              AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
               AND v.vendedor_id_firebird = $4
               ${salesClauses}
             GROUP BY 1, 2
@@ -3260,17 +3260,17 @@ router.get('/seller/summary', async (req, res, next) => {
                 v.id_firebird as id,
                 v.numero_pedido as numero_nota,
                 c.nome as cliente,
-                TO_CHAR(v.data_hora_proc, 'DD/MM/YYYY') as data,
+                TO_CHAR(COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda), 'DD/MM/YYYY') as data,
                 (v.valor_total - COALESCE(v.valor_desconto, 0)) as valor,
                 v.status
             FROM dash_vendas v
             LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
             ${needsItemJoin ? 'INNER JOIN dash_vendas_itens vi ON vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id' : ''}
             WHERE v.tenant_id = $1 
-              AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
+              AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
               AND v.vendedor_id_firebird = $4
               ${salesClauses}
-            ORDER BY v.data_hora_proc DESC, v.id_firebird DESC
+            ORDER BY COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) DESC, v.id_firebird DESC
             LIMIT 30
         `, getQueryParams(start, end));
         
@@ -3289,11 +3289,11 @@ router.get('/seller/summary', async (req, res, next) => {
         
         const bestMonthRes = await db.query(`
             SELECT 
-                TO_CHAR(v.data_hora_proc, 'MM/YYYY') AS mes_ano,
+                TO_CHAR(COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda), 'MM/YYYY') AS mes_ano,
                 SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) AS total
             FROM dash_vendas v
             WHERE v.tenant_id = $1 
-              AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
+              AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
               AND v.vendedor_id_firebird = $4
               ${salesFilter}
             GROUP BY 1
@@ -3309,12 +3309,12 @@ router.get('/seller/summary', async (req, res, next) => {
         // 11. Evolução nos últimos 12 meses (Faturamento Líquido: Vendas - Devoluções)
         const evol12mSales = await db.query(`
             SELECT 
-                TO_CHAR(v.data_hora_proc, 'MM/YYYY') AS mes_ano,
-                DATE_TRUNC('month', v.data_hora_proc) AS mes_trunc,
+                TO_CHAR(COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda), 'MM/YYYY') AS mes_ano,
+                DATE_TRUNC('month', COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda)) AS mes_trunc,
                 COALESCE(SUM(v.valor_total - COALESCE(v.valor_desconto, 0)), 0) AS total
             FROM dash_vendas v
             WHERE v.tenant_id = $1 
-              AND v.data_hora_proc >= $2 AND v.data_hora_proc <= $3
+              AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
               AND v.vendedor_id_firebird = $4
               ${salesFilter}
             GROUP BY 1, 2
