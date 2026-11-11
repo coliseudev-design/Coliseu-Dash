@@ -61,7 +61,9 @@ function getNfFilterClause(tableAlias = 'v') {
         OR EXISTS (
             SELECT 1 FROM dash_cargas cg_nf
             WHERE cg_nf.tenant_id = ${tableRef}tenant_id
+              AND (cg_nf.dados_nfe->>'id_pedido') IS NOT NULL
               AND (cg_nf.dados_nfe->>'id_pedido') = ${tableRef}id_firebird::text
+              AND UPPER(COALESCE(cg_nf.dados_nfe->>'natureza_operacao', '')) NOT LIKE '%COMPRA%'
         )
     )`;
 }
@@ -110,7 +112,9 @@ function getStatusFilterClause(tableAlias = 'v') {
         SELECT 1 FROM dash_vendas_itens vi WHERE vi.venda_id_firebird = ${tableRef}id_firebird AND vi.tenant_id = ${tableRef}tenant_id
       ))
       AND (
-        EXISTS (
+        (${prefix}numero_nota IS NOT NULL AND ${prefix}numero_nota > 0)
+        OR (${prefix}chave_nfe IS NOT NULL AND TRIM(${prefix}chave_nfe) <> '')
+        OR EXISTS (
           SELECT 1 FROM dash_vendas_itens vi WHERE vi.venda_id_firebird = ${tableRef}id_firebird AND vi.tenant_id = ${tableRef}tenant_id
         )
         OR ${prefix}data_venda >= (CURRENT_DATE - INTERVAL '30 days')
