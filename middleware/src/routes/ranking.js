@@ -340,7 +340,7 @@ router.get('/marcas', async (req, res, next) => {
                 GROUP BY vi.venda_id_firebird, vi.tenant_id
             )
             SELECT 
-                COALESCE(NULLIF(TRIM(vi.marca), ''), NULLIF(TRIM(vf.venda_marca), ''), NULLIF(TRIM(p.marca), ''), 'S/ MARCA') AS marca,
+                COALESCE(NULLIF(TRIM(vi.marca), ''), NULLIF(TRIM(p.marca), ''), 'S/ MARCA') AS marca,
                 SUM(
                     (CASE WHEN vf.valor_total < 0 THEN -1 ELSE 1 END) * 
                     (vi.valor_total * (1 - COALESCE(vi.desconto_item, 0) / 100.0))
@@ -350,7 +350,7 @@ router.get('/marcas', async (req, res, next) => {
             JOIN vf ON vf.id_firebird = vi.venda_id_firebird AND vf.tenant_id = vi.tenant_id
             LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
             WHERE vi.tenant_id = $1
-              AND COALESCE(NULLIF(TRIM(vi.marca), ''), NULLIF(TRIM(vf.venda_marca), ''), NULLIF(TRIM(p.marca), '')) IS NOT NULL
+              AND COALESCE(NULLIF(TRIM(vi.marca), ''), NULLIF(TRIM(p.marca), '')) IS NOT NULL
               ${gf.clause} ${mf.clause}
             GROUP BY 1
             ORDER BY total DESC LIMIT $${nextParamIndex}
@@ -577,7 +577,7 @@ router.get('/categorias', async (req, res, next) => {
                 GROUP BY vi.venda_id_firebird, vi.tenant_id
             )
             SELECT 
-                COALESCE(NULLIF(TRIM(vi.categoria), ''), NULLIF(TRIM(vf.venda_categoria), ''), NULLIF(TRIM(p.categoria), ''), 'S/ GRUPO') AS categoria,
+                COALESCE(NULLIF(TRIM(vi.categoria), ''), NULLIF(TRIM(p.categoria), ''), 'S/ GRUPO') AS categoria,
                 SUM(
                     (CASE WHEN vf.valor_total < 0 THEN -1 ELSE 1 END) * 
                     (vi.valor_total * (1 - COALESCE(vi.desconto_item, 0) / 100.0))
@@ -587,7 +587,7 @@ router.get('/categorias', async (req, res, next) => {
             JOIN vf ON vf.id_firebird = vi.venda_id_firebird AND vf.tenant_id = vi.tenant_id
             LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
                 WHERE vi.tenant_id = $1
-                  AND COALESCE(NULLIF(TRIM(vi.categoria), ''), NULLIF(TRIM(vf.venda_categoria), ''), NULLIF(TRIM(p.categoria), '')) IS NOT NULL
+                  AND COALESCE(NULLIF(TRIM(vi.categoria), ''), NULLIF(TRIM(p.categoria), '')) IS NOT NULL
                   ${gf.clause} ${mf.clause}
                 GROUP BY 1
                 ORDER BY total DESC LIMIT $${nextParamIndex}
@@ -632,7 +632,7 @@ router.get('/cidades', async (req, res, next) => {
         const sql = needsItemFilter ? `
             SELECT 
                 COALESCE(NULLIF(TRIM(c.cidade), ''), 'NÃO INFORMADA') AS nome,
-                SUM(vi.valor_total * (1 - COALESCE(vi.desconto_item, 0) / 100.0)) AS total,
+                SUM((CASE WHEN v.valor_total < 0 THEN -1 ELSE 1 END) * (vi.valor_total * (1 - COALESCE(vi.desconto_item, 0) / 100.0))) AS total,
                 COUNT(DISTINCT v.id_firebird) AS qtd_pedidos
             FROM dash_vendas v
             JOIN dash_vendas_itens vi ON vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id

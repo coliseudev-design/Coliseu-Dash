@@ -84,12 +84,12 @@ function buildGrupoFilter(grupo, nextParamIndex, itemAlias = 'vi', prodAlias = '
     }
     if (grupo === 'Sem Grupo' || grupo === 'S/ GRUPO') {
         return {
-            clause: ` AND (COALESCE(${itemAlias}.categoria, ${prodAlias}.categoria, 'S/ GRUPO') = 'S/ GRUPO' OR COALESCE(${itemAlias}.categoria, ${prodAlias}.categoria) IS NULL OR COALESCE(${itemAlias}.categoria, ${prodAlias}.categoria) = '')`,
+            clause: ` AND (UPPER(TRIM(COALESCE(NULLIF(TRIM(${itemAlias}.categoria), ''), NULLIF(TRIM(${prodAlias}.categoria), ''), 'S/ GRUPO'))) = 'S/ GRUPO')`,
             params: []
         };
     }
     return {
-        clause: ` AND COALESCE(${itemAlias}.categoria, ${prodAlias}.categoria, 'S/ GRUPO') = $${nextParamIndex}`,
+        clause: ` AND UPPER(TRIM(COALESCE(NULLIF(TRIM(${itemAlias}.categoria), ''), NULLIF(TRIM(${prodAlias}.categoria), ''), 'S/ GRUPO'))) = UPPER(TRIM($${nextParamIndex}))`,
         params: [grupo]
     };
 }
@@ -100,12 +100,12 @@ function buildMarcaFilter(marca, nextParamIndex, itemAlias = 'vi', prodAlias = '
     }
     if (marca === 'Sem Marca' || marca === 'S/ MARCA') {
         return {
-            clause: ` AND (COALESCE(${itemAlias}.marca, ${prodAlias}.marca, 'S/ MARCA') = 'S/ MARCA' OR COALESCE(${itemAlias}.marca, ${prodAlias}.marca) IS NULL OR COALESCE(${itemAlias}.marca, ${prodAlias}.marca) = '')`,
+            clause: ` AND (UPPER(TRIM(COALESCE(NULLIF(TRIM(${itemAlias}.marca), ''), NULLIF(TRIM(${prodAlias}.marca), ''), 'S/ MARCA'))) = 'S/ MARCA')`,
             params: []
         };
     }
     return {
-        clause: ` AND COALESCE(${itemAlias}.marca, ${prodAlias}.marca, 'S/ MARCA') = $${nextParamIndex}`,
+        clause: ` AND UPPER(TRIM(COALESCE(NULLIF(TRIM(${itemAlias}.marca), ''), NULLIF(TRIM(${prodAlias}.marca), ''), 'S/ MARCA'))) = UPPER(TRIM($${nextParamIndex}))`,
         params: [marca]
     };
 }
