@@ -120,6 +120,14 @@ export default function SellerHubDashboard() {
   const metaVendedor = data?.meta_vendedor || 50000;
   const metaAtingimentoPct = metaVendedor > 0 ? (faturamento / metaVendedor) * 100 : 0;
 
+  // Orçamentos & Taxa de Conversão (DEM-0029)
+  const pedidosEfetivados = data?.pedidos_efetivados ?? notasEmitidas;
+  const orcamentosQtd = data?.orcamentos_qtd || 0;
+  const orcamentosValor = data?.orcamentos_valor || 0;
+  const taxaConversao = data?.taxa_conversao ?? (pedidosEfetivados + orcamentosQtd > 0 ? Number(((pedidosEfetivados / (pedidosEfetivados + orcamentosQtd)) * 100).toFixed(2)) : 0);
+  const orcamentosLista = data?.orcamentos_lista || [];
+  const rankingConversaoVendedores = data?.ranking_conversao_vendedores || [];
+
   const topMarcas = data?.top_marcas || [];
   const topClientes = data?.top_clientes || [];
   const topGrupos = data?.top_grupos || [];
@@ -449,6 +457,142 @@ export default function SellerHubDashboard() {
           </div>
           <span className="text-[10px] text-text-secondary font-medium block mt-1 truncate">Vendidos vs. Carteira</span>
         </div>
+      </div>
+
+      {/* 5. SEÇÃO: ORÇAMENTOS E TAXA DE CONVERSÃO (DEM-0029) */}
+      <div className="bg-bg-primary border border-border shadow-card rounded-2xl p-5 sm:p-6 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-divider/40 pb-3.5">
+          <div>
+            <h3 className="text-sm font-black text-text-primary uppercase tracking-wider flex items-center gap-2">
+              <Clock size={16} className="text-amber-500" />
+              Orçamentos & Taxa de Conversão
+            </h3>
+            <p className="text-xs text-text-secondary font-medium mt-0.5">
+              Acompanhamento de pedidos em orçamento e efetividade comercial por vendedor
+            </p>
+          </div>
+          <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+            Vendedor Selecionado: {selectedSellerName || 'Todos'}
+          </span>
+        </div>
+
+        {/* 3 KPIs de Orçamento e Conversão do Vendedor Selecionado */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+          <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-4 flex items-center justify-between">
+            <div>
+              <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider block">
+                Pedidos em Orçamento
+              </span>
+              <div className="text-xl font-black text-text-primary font-mono mt-1">
+                {formatNum(orcamentosQtd)} <span className="text-xs font-bold text-text-secondary">orçamentos</span>
+              </div>
+              <span className="text-xs font-bold text-amber-600 dark:text-amber-400 font-mono block mt-0.5">
+                {formatBRL(orcamentosValor)} em aberto
+              </span>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+              <Clock size={20} />
+            </div>
+          </div>
+
+          <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4 flex items-center justify-between">
+            <div>
+              <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">
+                Pedidos Efetivados
+              </span>
+              <div className="text-xl font-black text-text-primary font-mono mt-1">
+                {formatNum(pedidosEfetivados)} <span className="text-xs font-bold text-text-secondary">faturados</span>
+              </div>
+              <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 font-mono block mt-0.5">
+                {formatBRL(faturamento)} efetivados
+              </span>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+              <ShoppingBag size={20} />
+            </div>
+          </div>
+
+          <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4 flex items-center justify-between">
+            <div className="flex-1 min-w-0 pr-3">
+              <span className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-wider block">
+                Taxa de Conversão
+              </span>
+              <div className="text-xl font-black text-blue-600 dark:text-blue-400 font-mono mt-1">
+                {Number(taxaConversao).toFixed(1)}%
+              </div>
+              <div className="w-full h-1.5 bg-blue-500/20 rounded-full mt-2 overflow-hidden">
+                <div
+                  className="h-full bg-blue-600 dark:bg-blue-400 rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min(100, Math.max(0, Number(taxaConversao)))}%` }}
+                />
+              </div>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+              <Target size={20} />
+            </div>
+          </div>
+        </div>
+
+        {/* Tabela Comparativa de Orçamentos e Conversão por Vendedor */}
+        {rankingConversaoVendedores.length > 0 && (
+          <div className="overflow-x-auto border border-border rounded-xl">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-bg-secondary/60 border-b border-border text-[10px] font-black text-text-secondary uppercase tracking-wider">
+                  <th className="py-2.5 px-3">Vendedor</th>
+                  <th className="py-2.5 px-3 text-right">Em Orçamento (Qtd)</th>
+                  <th className="py-2.5 px-3 text-right">Valor Orçado</th>
+                  <th className="py-2.5 px-3 text-right">Pedidos Efetivados</th>
+                  <th className="py-2.5 px-3 text-right">Valor Efetivado</th>
+                  <th className="py-2.5 px-3 text-right">Taxa de Conversão</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/60 text-xs">
+                {rankingConversaoVendedores.slice(0, 15).map((rv: any) => {
+                  const isCurrent = String(rv.vendedor_id) === String(selectedVendedor);
+                  return (
+                    <tr
+                      key={rv.vendedor_id}
+                      onClick={() => setSelectedVendedor(String(rv.vendedor_id))}
+                      className={clsx(
+                        "cursor-pointer transition-colors hover:bg-bg-secondary/50",
+                        isCurrent && "bg-brand-500/5 font-bold"
+                      )}
+                    >
+                      <td className="py-2 px-3 font-bold text-text-primary uppercase truncate max-w-[220px]">
+                        {rv.vendedor_nome}
+                      </td>
+                      <td className="py-2 px-3 text-right font-mono font-bold text-amber-600 dark:text-amber-400">
+                        {formatNum(rv.orcamentos_qtd)}
+                      </td>
+                      <td className="py-2 px-3 text-right font-mono text-text-secondary">
+                        {formatBRL(rv.orcamentos_valor)}
+                      </td>
+                      <td className="py-2 px-3 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                        {formatNum(rv.pedidos_efetivados)}
+                      </td>
+                      <td className="py-2 px-3 text-right font-mono text-text-primary font-semibold">
+                        {formatBRL(rv.valor_efetivado)}
+                      </td>
+                      <td className="py-2 px-3 text-right">
+                        <span className={clsx(
+                          "inline-flex items-center px-2 py-0.5 rounded-md font-mono font-black text-[11px]",
+                          rv.taxa_conversao >= 70
+                            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                            : rv.taxa_conversao >= 40
+                            ? "bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                            : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                        )}>
+                          {Number(rv.taxa_conversao || 0).toFixed(1)}%
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* 6. SEÇÃO: DESEMPENHO POR MARCA */}

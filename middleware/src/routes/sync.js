@@ -231,12 +231,14 @@ router.post('/:tabela', async (req, res) => {
                     const dataFat = row['data_fat'];
                     
                     const isFaturado = ['FATURADO', 'FINALIZADO', 'PROCESSADO'].includes(status);
+                    const isOrcamento = ['ABERTO', 'ORÇAMENTO', 'ORCAMENTO', 'PENDENTE'].includes(status);
                     const faturamentoDate = (dataFat && dataFat !== '') ? dataFat :
                                            (dataHoraProc && dataHoraProc !== '') ? dataHoraProc :
                                            (dataVencimento && dataVencimento !== '' ? dataVencimento : row['data_venda']);
-                    const hasFaturamentoDate = faturamentoDate !== undefined && faturamentoDate !== null && faturamentoDate !== '';
+                    const effectiveDate = isFaturado ? faturamentoDate : (row['data_venda'] || faturamentoDate);
+                    const hasEffectiveDate = effectiveDate !== undefined && effectiveDate !== null && effectiveDate !== '';
                     
-                    if (status === 'CANCELADO' || !isFaturado || !hasFaturamentoDate) {
+                    if (status === 'CANCELADO' || status === 'CANCELADA' || (!isFaturado && !isOrcamento) || !hasEffectiveDate) {
                         // Deleta a venda e seus itens associados se não for válida ou for cancelada
                         await client.query(`SAVEPOINT delete_save`);
                         try {
@@ -257,8 +259,8 @@ router.post('/:tabela', async (req, res) => {
                         continue;
                     }
                     
-                    row['data_venda'] = faturamentoDate;
-                    row['data_vencimento'] = faturamentoDate;
+                    row['data_venda'] = effectiveDate;
+                    row['data_vencimento'] = effectiveDate;
 
                     // Alinhamento Cirurgico com ERP Coliseu (Gerencia Geral):
                     // Em Firebird/Coliseu ERP, PEDIDOS_DOCS (especie) contem os titulos/documentos financeiros reais

@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 const config = require('../config/env');
 const logger = require('../config/logger');
 const db = require('../db/postgres');
-const { getTenantSettings } = require('../utils/tenantSettings');
+const { getTenantSettings, getUserSettings } = require('../utils/tenantSettings');
 
 /**
  * Middleware para validar JWT do Web (Gerente App Dashboard).
@@ -192,7 +192,16 @@ async function bindDbContext(req, res, next) {
     let onlyNfSales = false;
     let hasChaveNfe = false;
     if (req.tenant?.id) {
-        const settings = await getTenantSettings(req.tenant.id);
+        const userKey = req.user?.email || req.user?.id || req.headers['x-user-key'] || null;
+        const headerOnlyNf = req.headers['x-only-nf-sales'];
+        let sessionOverride = null;
+        if (headerOnlyNf === 'true' || headerOnlyNf === '1') {
+            sessionOverride = true;
+        } else if (headerOnlyNf === 'false' || headerOnlyNf === '0') {
+            sessionOverride = false;
+        }
+
+        const settings = await getUserSettings(req.tenant.id, userKey, sessionOverride);
         // Proteção inteligente: só aplica filtro restritivo se o tenant já possuir NFs sincronizadas no banco
         onlyNfSales = Boolean(settings.somente_vendas_com_nf && settings.has_synced_nf);
         hasChaveNfe = Boolean(settings.has_chave_nfe);

@@ -441,68 +441,123 @@ router.get('/especies-vendidas', async (req, res, next) => {
 router.get('/contas', async (req, res, next) => {
     try {
         const tipo = req.query.tipo;
-        const statusPg = req.query.status;
+        const statusPg = req.query.status ? String(req.query.status).trim().toUpperCase() : '';
+        const vendedorId = req.query.vendedor_id ? String(req.query.vendedor_id).trim() : '';
         const apenasVendas = req.query.apenas_vendas === 'true' || req.query.apenas_vendas === true;
-        const limit = parseInt(req.query.limit, 10) || 150;
+        const limit = Math.min(parseInt(req.query.limit, 10) || 500, 2000);
         const tenantId = req.tenant.id;
 
-        // Resolve período (period=hoje/semana/mes/custom + start_date/end_date)
+        const hasExplicitDates = Boolean(req.query.start_date && req.query.end_date);
+        const hasExplicitPeriod = Boolean(req.query.period && !['all', 'ALL', 'todos', 'TODOS'].includes(String(req.query.period)));
+        const isOpenOrOverdueFilter = ['ABERTO', 'VENCIDA', 'A_VENCER'].includes(statusPg);
+
+        // Resolve período (quando aplicável)
         const { start, end } = await getFinanceiroAnchor(
             tenantId,
-            req.query.period,
+            req.query.period || 'all',
             req.query.start_date,
             req.query.end_date
         );
 
-        const where = ['f.tenant_id = $1'];
-        const binds = [tenantId];
+        const baseWhere = ['f.tenant_id = $1', "TRIM(COALESCE(f.status_pagamento, '')) != 'CANCELADO'"];
+        const baseBinds = [tenantId];
         let pIndex = 2;
 
-        if (tipo) {
-            where.push(`TRIM(f.tipo) = $${pIndex++}`);
-            binds.push(tipo.trim());
+        if (tipo && tipo !== 'todos' && tipo !== 'ALL') {
+            baseWhere.push(`TRIM(f.tipo) = $${pIndex++}`);
+            baseBinds.push(tipo.trim().toUpperCase());
         }
 
         if (req.query.caixa_id && req.query.caixa_id !== 'todos') {
-            where.push(`f.caixa_id_firebird = $${pIndex++}`);
-            binds.push(parseInt(req.query.caixa_id));
-        }
-
-        if (statusPg === 'VENCIDA') {
-            where.push(`TRIM(f.status_pagamento) = 'ABERTO' AND f.data_vencimento < NOW()`);
-        } else if (statusPg) {
-            where.push(`TRIM(f.status_pagamento) = $${pIndex++}`);
-            binds.push(statusPg.trim());
+            baseWhere.push(`f.caixa_id_firebird = $${pIndex++}`);
+            baseBinds.push(parseInt(req.query.caixa_id, 10));
         }
 
         const deptoId = req.query.depto_id || req.query.centro_custo;
         const df = buildDeptoFilter(deptoId, pIndex, 'f');
         if (df.clause) {
-            where.push(df.clause.replace(/^\s*AND\s+/i, ''));
-            binds.push(...df.params);
+            baseWhere.push(df.clause.replace(/^\s*AND\s+/i, ''));
+            baseBinds.push(...df.params);
             pIndex += df.params.length;
         }
 
-        // Filtro de período resolvido (sempre aplicado)
-        where.push(`COALESCE(f.data_pagamento, f.data_vencimento) >= $${pIndex++}`);
-        binds.push(start);
-        where.push(`COALESCE(f.data_pagamento, f.data_vencimento) <= $${pIndex++}`);
-        binds.push(end);
-
         if (apenasVendas) {
-            where.push(`(v.id_firebird IS NOT NULL OR f.venda_id_firebird IS NOT NULL OR UPPER(f.descricao) LIKE '%CONSUMIDOR%' OR UPPER(f.descricao) LIKE '%PEDIDO%')`);
+            baseWhere.push(`(v.id_firebird IS NOT NULL OR f.venda_id_firebird IS NOT NULL OR UPPER(f.descricao) LIKE '%CONSUMIDOR%' OR UPPER(f.descricao) LIKE '%PEDIDO%')`);
+        }
+
+        // Cláusulas específicas para a listagem principal
+        const where = [...baseWhere];
+        const binds = [...baseBinds];
+        let mainIdx = pIndex;
+
+        if (statusPg === 'VENCIDA') {
+            where.push(`TRIM(f.status_pagamento) = 'ABERTO' AND f.data_vencimento < CURRENT_DATE AND (f.valor - COALESCE(f.valor_pago, 0)) > 0.01`);
+        } else if (statusPg === 'A_VENCER') {
+            where.push(`TRIM(f.status_pagamento) = 'ABERTO' AND f.data_vencimento >= CURRENT_DATE AND (f.valor - COALESCE(f.valor_pago, 0)) > 0.01`);
+        } else if (statusPg === 'ABERTO') {
+            where.push(`TRIM(f.status_pagamento) = 'ABERTO' AND (f.valor - COALESCE(f.valor_pago, 0)) > 0.01`);
+        } else if (statusPg) {
+            where.push(`TRIM(f.status_pagamento) = $${mainIdx++}`);
+            binds.push(statusPg);
+        }
+
+        // Para títulos em aberto/vencidos, só aplica filtro de data se o usuário solicitou explicitamente filter_open_by_date=true.
+        // Para títulos pagos ou gerais, aplica o período quando informado.
+        if (isOpenOrOverdueFilter) {
+            if (req.query.filter_open_by_date === 'true' && (hasExplicitDates || hasExplicitPeriod)) {
+                where.push(`f.data_vencimento >= $${mainIdx++}`);
+                binds.push(start);
+                where.push(`f.data_vencimento <= $${mainIdx++}`);
+                binds.push(end);
+            }
+        } else if (hasExplicitDates || hasExplicitPeriod) {
+            where.push(`COALESCE(f.data_pagamento, f.data_vencimento) >= $${mainIdx++}`);
+            binds.push(start);
+            where.push(`COALESCE(f.data_pagamento, f.data_vencimento) <= $${mainIdx++}`);
+            binds.push(end);
+        }
+
+        if (vendedorId && !['todos', 'todas', 'all', 'TODOS'].includes(vendedorId)) {
+            if (vendedorId === 'SEM_VENDEDOR') {
+                where.push(`COALESCE(v.vendedor_id_firebird, cv.vendedor_id_firebird) IS NULL`);
+            } else if (!isNaN(parseInt(vendedorId, 10))) {
+                where.push(`COALESCE(v.vendedor_id_firebird, cv.vendedor_id_firebird) = $${mainIdx++}`);
+                binds.push(parseInt(vendedorId, 10));
+            }
         }
 
         binds.push(limit);
-        const limitIdx = pIndex;
+        const limitIdx = mainIdx;
+
+        const cteClienteVendedor = `
+            WITH cliente_vendedor AS (
+                SELECT DISTINCT ON (v_ult.cliente_id_firebird)
+                    v_ult.cliente_id_firebird,
+                    v_ult.vendedor_id_firebird
+                FROM dash_vendas v_ult
+                WHERE v_ult.tenant_id = $1
+                  AND v_ult.cliente_id_firebird IS NOT NULL
+                  AND v_ult.vendedor_id_firebird IS NOT NULL
+                ORDER BY v_ult.cliente_id_firebird, COALESCE(v_ult.data_hora_proc, v_ult.data_vencimento, v_ult.data_venda) DESC
+            )
+        `;
 
         const sql = `
+            ${cteClienteVendedor}
             SELECT 
                 f.id_firebird AS id, f.tipo, f.descricao, f.data_emissao, f.data_vencimento, f.data_pagamento,
-                f.valor, f.valor_pago, f.status_pagamento,
-                COALESCE(c.nome, f.descricao) AS cliente,
+                f.valor, f.valor_pago,
+                GREATEST(0, f.valor - COALESCE(f.valor_pago, 0)) AS saldo_aberto,
+                TRIM(f.status_pagamento) AS status_pagamento,
+                CASE
+                    WHEN TRIM(f.status_pagamento) = 'ABERTO' AND f.data_vencimento < CURRENT_DATE THEN 'VENCIDA'
+                    ELSE TRIM(f.status_pagamento)
+                END AS situacao_titulo,
+                COALESCE(NULLIF(TRIM(c.nome), ''), f.descricao) AS cliente,
                 COALESCE(v.numero_pedido, f.tipo_documento, '') AS numero_pedido,
                 COALESCE(cx.descricao, 'CAIXA GERAL') AS nome_caixa,
+                COALESCE(v.vendedor_id_firebird, cv.vendedor_id_firebird) AS vendedor_id,
+                COALESCE(NULLIF(TRIM(vend.nome), ''), 'Sem Vendedor') AS vendedor_nome,
                 CASE 
                     WHEN v.id_firebird IS NOT NULL OR f.venda_id_firebird IS NOT NULL OR UPPER(f.descricao) LIKE '%CONSUMIDOR%' OR UPPER(f.descricao) LIKE '%PEDIDO%' THEN true 
                     ELSE false 
@@ -521,22 +576,67 @@ router.get('/contas', async (req, res, next) => {
             FROM dash_financeiro f
             LEFT JOIN dash_clientes c ON c.id_firebird = f.cliente_id_firebird AND c.tenant_id = f.tenant_id
             LEFT JOIN dash_caixas cx ON cx.id_firebird = f.caixa_id_firebird AND cx.tenant_id = f.tenant_id
-            LEFT JOIN dash_vendas v ON v.tenant_id = f.tenant_id
-              AND (v.id_firebird = f.venda_id_firebird OR (v.cliente_id_firebird = f.cliente_id_firebird AND ABS(v.valor_total - COALESCE(v.valor_desconto, 0) - f.valor) < 0.01))
+            LEFT JOIN dash_vendas v ON v.tenant_id = f.tenant_id AND v.id_firebird = f.venda_id_firebird
+            LEFT JOIN cliente_vendedor cv ON cv.cliente_id_firebird = f.cliente_id_firebird
+            LEFT JOIN dash_vendedores vend ON vend.id_firebird = COALESCE(v.vendedor_id_firebird, cv.vendedor_id_firebird) AND vend.tenant_id = f.tenant_id
             WHERE ${where.join(' AND ')}
-            ORDER BY COALESCE(f.data_pagamento, f.data_vencimento) DESC, f.id_firebird DESC
+            ORDER BY 
+                CASE WHEN TRIM(f.status_pagamento) = 'ABERTO' THEN f.data_vencimento ELSE COALESCE(f.data_pagamento, f.data_vencimento) END DESC,
+                f.id_firebird DESC
             LIMIT $${limitIdx}
         `;
 
-        const { rows } = await db.query(sql, binds);
+        // Resumo de Títulos em Aberto por Vendedor (independente do filtro de vendedor selecionado, para permitir clicar/filtrar)
+        const resumoVendedoresSql = `
+            ${cteClienteVendedor}
+            SELECT 
+                COALESCE(v.vendedor_id_firebird, cv.vendedor_id_firebird) AS vendedor_id,
+                COALESCE(NULLIF(TRIM(vend.nome), ''), 'Sem Vendedor') AS vendedor_nome,
+                COUNT(*) AS qtd_aberto,
+                COALESCE(SUM(GREATEST(0, f.valor - COALESCE(f.valor_pago, 0))), 0) AS valor_aberto,
+                COUNT(*) FILTER (WHERE f.data_vencimento < CURRENT_DATE) AS qtd_vencido,
+                COALESCE(SUM(GREATEST(0, f.valor - COALESCE(f.valor_pago, 0))) FILTER (WHERE f.data_vencimento < CURRENT_DATE), 0) AS valor_vencido,
+                COUNT(*) FILTER (WHERE f.data_vencimento >= CURRENT_DATE) AS qtd_a_vencer,
+                COALESCE(SUM(GREATEST(0, f.valor - COALESCE(f.valor_pago, 0))) FILTER (WHERE f.data_vencimento >= CURRENT_DATE), 0) AS valor_a_vencer
+            FROM dash_financeiro f
+            LEFT JOIN dash_vendas v ON v.tenant_id = f.tenant_id AND v.id_firebird = f.venda_id_firebird
+            LEFT JOIN cliente_vendedor cv ON cv.cliente_id_firebird = f.cliente_id_firebird
+            LEFT JOIN dash_vendedores vend ON vend.id_firebird = COALESCE(v.vendedor_id_firebird, cv.vendedor_id_firebird) AND vend.tenant_id = f.tenant_id
+            WHERE ${baseWhere.join(' AND ')}
+              AND TRIM(f.status_pagamento) = 'ABERTO'
+              AND (f.valor - COALESCE(f.valor_pago, 0)) > 0.01
+              ${!tipo || tipo === 'todos' || tipo === 'ALL' ? "AND TRIM(f.tipo) = 'RECEBER'" : ''}
+            GROUP BY 1, 2
+            ORDER BY valor_aberto DESC, qtd_aberto DESC
+        `;
+
+        const [{ rows }, { rows: resumoRows }] = await Promise.all([
+            db.query(sql, binds),
+            db.query(resumoVendedoresSql, baseBinds)
+        ]);
 
         const formatted = rows.map(r => ({
             ...r,
-            valor: parseFloat(r.valor),
-            valor_pago: parseFloat(r.valor_pago)
+            valor: parseFloat(r.valor || 0),
+            valor_pago: parseFloat(r.valor_pago || 0),
+            saldo_aberto: parseFloat(r.saldo_aberto || 0)
         }));
 
-        res.json({ data: formatted });
+        const resumo_vendedores = resumoRows.map(rv => ({
+            vendedor_id: rv.vendedor_id !== null && rv.vendedor_id !== undefined ? String(rv.vendedor_id) : 'SEM_VENDEDOR',
+            vendedor_nome: rv.vendedor_nome || 'Sem Vendedor',
+            qtd_aberto: parseInt(rv.qtd_aberto || 0, 10),
+            valor_aberto: parseFloat(rv.valor_aberto || 0),
+            qtd_vencido: parseInt(rv.qtd_vencido || 0, 10),
+            valor_vencido: parseFloat(rv.valor_vencido || 0),
+            qtd_a_vencer: parseInt(rv.qtd_a_vencer || 0, 10),
+            valor_a_vencer: parseFloat(rv.valor_a_vencer || 0)
+        }));
+
+        res.json({
+            data: formatted,
+            resumo_vendedores
+        });
     } catch (err) {
         next(err);
     }

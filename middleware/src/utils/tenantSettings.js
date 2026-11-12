@@ -5,6 +5,7 @@ const logger = require('../config/logger');
 const { invalidateTenant } = require('../config/cache');
 
 const settingsCache = new Map();
+const userSettingsCache = new Map();
 const nfCoverageCache = new Map();
 const SETTINGS_TTL_MS = 60 * 1000;
 const NF_COVERAGE_TTL_MS = 60 * 1000;
@@ -18,6 +19,13 @@ async function ensureSettingsTable() {
             somente_vendas_com_nf BOOLEAN NOT NULL DEFAULT FALSE,
             updated_at TIMESTAMPTZ DEFAULT NOW(),
             updated_by VARCHAR(200)
+        );
+        CREATE TABLE IF NOT EXISTS dash_configuracoes_usuario (
+            tenant_id UUID NOT NULL,
+            user_key VARCHAR(255) NOT NULL,
+            somente_vendas_com_nf BOOLEAN NOT NULL DEFAULT FALSE,
+            updated_at TIMESTAMPTZ DEFAULT NOW(),
+            PRIMARY KEY (tenant_id, user_key)
         );
     `);
     tableEnsured = true;
@@ -300,9 +308,141 @@ async function updateTenantSettings(tenantId, patch, updatedBy = null) {
     };
 }
 
+function normalizeUserKey(userKey) {
+    if (!userKey) return null;
+    const clean = String(userKey).trim().toLowerCase();
+    return clean.length > 0 ? clean : null;
+}
+
+/**
+ * Obtém os parâmetros efetivos para o usuário logado (isolado por usuário/sessão, com fallback para o padrão do tenant).
+ * @param {string} tenantId
+ * @param {string|null} userKey
+ * @param {boolean|null} sessionOverride
+ */
+async function getUserSettings(tenantId, userKey = null, sessionOverride = null) {
+    const baseTenant = await getTenantSettings(tenantId);
+    const normUser = normalizeUserKey(userKey);
+
+    if (typeof sessionOverride === 'boolean') {
+        return {
+            ...baseTenant,
+            somente_vendas_com_nf: sessionOverride,
+            efetivo_somente_nf: Boolean(sessionOverride && baseTenant.has_synced_nf),
+            escopo: 'sessao_usuario'
+        };
+    }
+
+    if (!normUser || !tenantId || tenantId === '00000000-0000-0000-0000-000000000000') {
+        return { ...baseTenant, escopo: 'tenant' };
+    }
+
+    const cacheKey = `${tenantId}:${normUser}`;
+    const cached = userSettingsCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+        const somenteNf = Boolean(cached.data.somente_vendas_com_nf);
+        return {
+            ...baseTenant,
+            somente_vendas_com_nf: somenteNf,
+            updated_at: cached.data.updated_at || baseTenant.updated_at,
+            updated_by: normUser,
+            efetivo_somente_nf: Boolean(somenteNf && baseTenant.has_synced_nf),
+            escopo: 'usuario'
+        };
+    }
+
+    try {
+        await ensureSettingsTable();
+        const { rows } = await db.query(
+            `SELECT somente_vendas_com_nf, updated_at
+             FROM dash_configuracoes_usuario
+             WHERE tenant_id = $1 AND user_key = $2`,
+            [tenantId, normUser]
+        );
+
+        if (rows.length > 0) {
+            const somenteNf = Boolean(rows[0].somente_vendas_com_nf);
+            const uData = {
+                somente_vendas_com_nf: somenteNf,
+                updated_at: rows[0].updated_at || null,
+            };
+            userSettingsCache.set(cacheKey, {
+                data: uData,
+                expiresAt: Date.now() + SETTINGS_TTL_MS,
+            });
+            return {
+                ...baseTenant,
+                somente_vendas_com_nf: somenteNf,
+                updated_at: uData.updated_at,
+                updated_by: normUser,
+                efetivo_somente_nf: Boolean(somenteNf && baseTenant.has_synced_nf),
+                escopo: 'usuario'
+            };
+        }
+    } catch (err) {
+        logger.warn('[TenantSettings] Falha ao consultar parâmetros do usuário; usando padrão do tenant', {
+            tenantId,
+            userKey: normUser,
+            error: err.message,
+        });
+    }
+
+    return { ...baseTenant, escopo: 'tenant' };
+}
+
+/**
+ * Atualiza a preferência de visão Fiscal/Gerencial individualmente para o usuário logado,
+ * sem afetar os demais usuários da empresa (DEM-0028).
+ * @param {string} tenantId
+ * @param {string} userKey
+ * @param {{ somente_vendas_com_nf?: boolean }} patch
+ */
+async function updateUserSettings(tenantId, userKey, patch) {
+    await ensureSettingsTable();
+    const normUser = normalizeUserKey(userKey);
+    if (!normUser) {
+        return updateTenantSettings(tenantId, patch, 'admin');
+    }
+
+    const somenteVendasComNf = Boolean(patch.somente_vendas_com_nf);
+    const { rows } = await db.query(
+        `INSERT INTO dash_configuracoes_usuario (tenant_id, user_key, somente_vendas_com_nf, updated_at)
+         VALUES ($1, $2, $3, NOW())
+         ON CONFLICT (tenant_id, user_key)
+         DO UPDATE SET
+            somente_vendas_com_nf = EXCLUDED.somente_vendas_com_nf,
+            updated_at = NOW()
+         RETURNING somente_vendas_com_nf, updated_at`,
+        [tenantId, normUser, somenteVendasComNf]
+    );
+
+    const cacheKey = `${tenantId}:${normUser}`;
+    const uData = {
+        somente_vendas_com_nf: Boolean(rows[0]?.somente_vendas_com_nf),
+        updated_at: rows[0]?.updated_at || new Date().toISOString(),
+    };
+    userSettingsCache.set(cacheKey, {
+        data: uData,
+        expiresAt: Date.now() + SETTINGS_TTL_MS,
+    });
+
+    const { hasSyncedNf, hasChaveNfe } = await checkTenantNfCoverage(tenantId);
+    return {
+        somente_vendas_com_nf: uData.somente_vendas_com_nf,
+        updated_at: uData.updated_at,
+        updated_by: normUser,
+        has_synced_nf: hasSyncedNf,
+        has_chave_nfe: hasChaveNfe,
+        efetivo_somente_nf: Boolean(uData.somente_vendas_com_nf && hasSyncedNf),
+        escopo: 'usuario'
+    };
+}
+
 module.exports = {
     getTenantSettings,
     updateTenantSettings,
+    getUserSettings,
+    updateUserSettings,
     checkTenantHasSyncedNf,
     checkTenantNfCoverage,
     invalidateTenantSettingsCache,

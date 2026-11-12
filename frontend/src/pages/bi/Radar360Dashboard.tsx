@@ -3,7 +3,7 @@ import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { useBiPeriodQuery } from '../../hooks/useBiPeriodQuery';
 import { BIService } from '../../services/biApi';
 import { BiPeriodFilter } from '../../types/bi.types';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { 
   User, 
   Calendar, 
@@ -127,15 +127,17 @@ export default function Radar360Dashboard() {
   }, [clientSearch]);
 
   const { data: clientListData, isLoading: isClientListLoading } = useQuery({
-    queryKey: ['bi', 'customer', 'list', debouncedSearch, selectedCity, saldoFilter, sortOrder, clientPage],
+    queryKey: ['bi', 'customer', 'list', debouncedSearch, selectedCity, saldoFilter, sortOrder, clientPage, filter?.depto_id, filter?.vendedor_id],
     queryFn: () => BIService.getCustomerList({
       search: debouncedSearch,
       cidade: selectedCity,
       com_saldo: saldoFilter,
       ordenacao: sortOrder,
+      depto_id: filter?.depto_id,
+      vendedor_id: filter?.vendedor_id,
       limit: CLIENTS_PER_PAGE,
       offset: (clientPage - 1) * CLIENTS_PER_PAGE
-    }),
+    } as any),
     placeholderData: keepPreviousData,
     enabled: !customerId
   });
@@ -159,10 +161,28 @@ export default function Radar360Dashboard() {
     }
   }, [urlId]);
 
+  const radarFilter = useMemo<BiPeriodFilter>(() => {
+    if (selectedPeriod === 'TODOS') {
+      return { ...filter, period: 'ALL' as any, start_date: undefined, end_date: undefined };
+    }
+    if (selectedPeriod === 'MES_ATUAL') {
+      return { ...filter, period: 'thisMonth', start_date: undefined, end_date: undefined };
+    }
+    if (selectedPeriod === '6_MESES') {
+      return { ...filter, period: '6m' as any, start_date: undefined, end_date: undefined };
+    }
+    return {
+      ...filter,
+      period: 'custom',
+      start_date: dateFrom || filter.start_date,
+      end_date: dateTo || filter.end_date,
+    };
+  }, [filter, selectedPeriod, dateFrom, dateTo]);
+
   const { data, isLoading, isError } = useBiPeriodQuery(
-    ['bi', 'radar360', customerId],
-    () => customerId ? BIService.getRadar360(customerId, filter) : Promise.resolve(null),
-    filter,
+    ['bi', 'radar360', customerId, selectedPeriod, dateFrom, dateTo],
+    () => customerId ? BIService.getRadar360(customerId, radarFilter) : Promise.resolve(null),
+    radarFilter,
     { enabled: !!customerId }
   );
 
@@ -912,29 +932,28 @@ export default function Radar360Dashboard() {
               />
               <Tooltip
                 formatter={(value: number) => [formatCurrency(value), 'Faturamento']}
-                cursor={{ fill: 'rgba(6,182,212,0.06)', radius: 6 } as any}
+                cursor={{ fill: 'rgba(148, 163, 184, 0.12)' }}
                 contentStyle={{
-                  background: 'rgba(15,23,42,0.92)',
-                  border: '1px solid rgba(6,182,212,0.3)',
+                  backgroundColor: 'var(--color-surface, #ffffff)',
+                  border: '1px solid var(--color-border, #e2e8f0)',
                   borderRadius: 10,
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+                  boxShadow: '0 8px 24px rgba(15, 23, 42, 0.12)',
                   fontSize: 11,
                   fontWeight: 700,
-                  color: '#e2e8f0',
-                  backdropFilter: 'blur(12px)',
+                  color: 'var(--color-text-main, #0f172a)',
                 }}
-                labelStyle={{ color: '#94a3b8', fontSize: 10, fontWeight: 700, marginBottom: 2 }}
+                itemStyle={{ color: '#0284C7', fontWeight: 800 }}
+                labelStyle={{ color: 'var(--color-text-muted, #64748b)', fontSize: 10, fontWeight: 700, marginBottom: 2 }}
               />
               <Bar dataKey="total" name="Faturamento" radius={[6, 6, 0, 0]} maxBarSize={36}>
                 {(behavior.sazonalidade || []).map((entry: any, idx: number) => {
                   const maxVal = Math.max(...(behavior.sazonalidade || []).map((x: any) => x.total), 1);
                   const ratio = maxVal > 0 ? entry.total / maxVal : 0;
-                  const alpha = Math.round(80 + ratio * 175);
-                  const hexAlpha = alpha.toString(16).padStart(2, '0');
-                  const isMaior = entry.mes === behavior.mes_maior_volume;
-                  const isMenor = entry.mes === behavior.mes_menor_volume;
-                  const fill = isMaior ? '#10B981' : isMenor ? '#EF4444' : `#0284C7${hexAlpha}`;
-                  return <Cell key={idx} fill={fill} />;
+                  const isMaior = entry.mes === behavior.mes_maior_volume && entry.total > 0;
+                  const isMenor = entry.mes === behavior.mes_menor_volume && entry.total > 0;
+                  const fill = isMaior ? '#10B981' : isMenor ? '#EF4444' : '#0284C7';
+                  const opacity = isMaior || isMenor ? 1 : Number((0.45 + ratio * 0.55).toFixed(2));
+                  return <Cell key={idx} fill={fill} fillOpacity={opacity} />;
                 })}
               </Bar>
             </BarChart>

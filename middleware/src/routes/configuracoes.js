@@ -4,7 +4,7 @@ const express = require('express');
 const router = express.Router();
 const config = require('../config/env');
 const logger = require('../config/logger');
-const { getTenantSettings, updateTenantSettings } = require('../utils/tenantSettings');
+const { getTenantSettings, updateTenantSettings, getUserSettings, updateUserSettings } = require('../utils/tenantSettings');
 const { getUserPermissions } = require('../utils/rbac');
 
 /**
@@ -68,7 +68,15 @@ router.get('/parametros', async (req, res, next) => {
         if (!tenantId) {
             return res.status(401).json({ error: 'Tenant não identificado.' });
         }
-        const settings = await getTenantSettings(tenantId);
+        const userKey = req.user?.email || req.user?.id || req.headers['x-user-key'] || null;
+        const headerOnlyNf = req.headers['x-only-nf-sales'];
+        let sessionOverride = null;
+        if (headerOnlyNf === 'true' || headerOnlyNf === '1') {
+            sessionOverride = true;
+        } else if (headerOnlyNf === 'false' || headerOnlyNf === '0') {
+            sessionOverride = false;
+        }
+        const settings = await getUserSettings(tenantId, userKey, sessionOverride);
         return res.json(settings);
     } catch (err) {
         next(err);
@@ -77,7 +85,7 @@ router.get('/parametros', async (req, res, next) => {
 
 /**
  * @route PUT /api/configuracoes/parametros
- * @desc Atualiza os parâmetros globais da empresa (ex: somente_vendas_com_nf).
+ * @desc Atualiza os parâmetros individuais do usuário logado (ex: somente_vendas_com_nf - DEM-0028).
  */
 router.put('/parametros', async (req, res, next) => {
     try {
@@ -86,28 +94,17 @@ router.put('/parametros', async (req, res, next) => {
             return res.status(401).json({ error: 'Tenant não identificado.' });
         }
 
-        const userRole = req.user?.role;
-        let allowed = userRole === 'master' || userRole === 'admin';
-        if (!allowed && req.user?.id) {
-            const perms = await getUserPermissions(req.user.id, tenantId);
-            allowed = perms.includes('config_parametros') || perms.includes('usuarios');
-        }
-
-        if (!allowed) {
-            return res.status(403).json({ error: 'Sem permissão para alterar os parâmetros da empresa.' });
-        }
-
-        const updatedBy = req.user?.email || String(req.user?.id || 'admin');
-        const updated = await updateTenantSettings(
+        const userKey = req.user?.email || String(req.user?.id || req.headers['x-user-key'] || 'default');
+        const updated = await updateUserSettings(
             tenantId,
-            { somente_vendas_com_nf: Boolean(req.body?.somente_vendas_com_nf) },
-            updatedBy
+            userKey,
+            { somente_vendas_com_nf: Boolean(req.body?.somente_vendas_com_nf) }
         );
 
-        logger.info('[Configuracoes] Parâmetros atualizados com sucesso', {
+        logger.info('[Configuracoes] Parâmetros individuais do usuário atualizados com sucesso', {
             tenantId,
+            userKey,
             somente_vendas_com_nf: updated.somente_vendas_com_nf,
-            updatedBy,
         });
 
         return res.json(updated);

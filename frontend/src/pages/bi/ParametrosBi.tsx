@@ -21,16 +21,40 @@ export default function ParametrosBi() {
   const navigate = useNavigate()
   const [feedback, setFeedback] = useState<string | null>(null)
 
+  const getUserKey = () => {
+    try {
+      const rawUser = localStorage.getItem('coliseu_user')
+      if (rawUser) {
+        const parsed = JSON.parse(rawUser)
+        return String(parsed?.email || parsed?.id || 'default').toLowerCase()
+      }
+    } catch {
+      // ignore
+    }
+    return 'default'
+  }
+
   const { data, isLoading } = useQuery<TenantParametros>({
     queryKey: ['tenant-parametros'],
     queryFn: async () => {
       const res = await api.get('/configuracoes/parametros')
-      return res.data
+      const payload = res.data as TenantParametros
+      try {
+        localStorage.setItem(`coliseu_only_nf_sales:${getUserKey()}`, String(Boolean(payload?.somente_vendas_com_nf)))
+      } catch {
+        // ignore
+      }
+      return payload
     },
   })
 
   const updateMutation = useMutation({
     mutationFn: async (nextValue: boolean) => {
+      try {
+        localStorage.setItem(`coliseu_only_nf_sales:${getUserKey()}`, String(Boolean(nextValue)))
+      } catch {
+        // ignore
+      }
       const res = await api.put('/configuracoes/parametros', {
         somente_vendas_com_nf: nextValue,
       })
@@ -79,14 +103,14 @@ export default function ParametrosBi() {
               Parâmetros do B.I IA.
             </h2>
             <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-              Defina critérios corporativos de apuração comercial e fiscal aplicados globalmente para sua empresa.
+              Defina sua preferência individual entre apuração Gerencial ou Fiscal sem afetar os demais usuários logados.
             </p>
           </div>
         </div>
 
         <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-semibold self-start sm:self-auto">
           <ShieldCheck size={14} className="text-emerald-600 dark:text-emerald-400" />
-          Escopo Global da Empresa
+          Preferência Individual por Usuário
         </div>
       </div>
 

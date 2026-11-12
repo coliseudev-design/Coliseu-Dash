@@ -87,6 +87,7 @@ function getPeriodRange(period, startDate, endDate, anchorDate) {
             end.setUTCHours(23, 59, 59, 999);
             break;
         case 'thisMonth':
+        case 'MES_ATUAL':
         case '1m':
             start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0));
             end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999));
@@ -139,6 +140,8 @@ function getPeriodRange(period, startDate, endDate, anchorDate) {
             end.setUTCHours(23, 59, 59, 999);
             break;
         case '6m':
+        case 'last6Months':
+        case '6_MESES':
             start.setUTCMonth(start.getUTCMonth() - 6);
             start.setUTCHours(0, 0, 0, 0);
             end.setUTCHours(23, 59, 59, 999);
@@ -148,6 +151,9 @@ function getPeriodRange(period, startDate, endDate, anchorDate) {
             end.setUTCHours(23, 59, 59, 999);
             break;
         case 'all':
+        case 'ALL':
+        case 'todos':
+        case 'TODOS':
             start = new Date(Date.UTC(1970, 0, 1, 0, 0, 0, 0));
             end.setUTCHours(23, 59, 59, 999);
             break;

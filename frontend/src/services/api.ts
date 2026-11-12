@@ -16,12 +16,19 @@ api.interceptors.request.use((config) => {
 
   try {
     const rawUser = localStorage.getItem('coliseu_user')
+    let userKey = 'default'
     if (rawUser) {
       const parsedUser = JSON.parse(rawUser)
       const activeVersion = parsedUser?.versao || parsedUser?.layout_version
       if (activeVersion) {
         config.headers['X-Layout-Version'] = activeVersion
       }
+      userKey = String(parsedUser?.email || parsedUser?.id || 'default').toLowerCase()
+      config.headers['X-User-Key'] = userKey
+    }
+    const perUserOnlyNf = localStorage.getItem(`coliseu_only_nf_sales:${userKey}`)
+    if (perUserOnlyNf === 'true' || perUserOnlyNf === 'false') {
+      config.headers['X-Only-Nf-Sales'] = perUserOnlyNf
     }
   } catch {
     // ignore

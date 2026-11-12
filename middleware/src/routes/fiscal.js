@@ -218,55 +218,65 @@ function buildFiscalUnifiedCte({
         END
     `;
 
+    const cargasCfopExpr = `regexp_replace(COALESCE(NULLIF(TRIM(cg.dados_nfe->'itens'->0->>'cfop'), ''), ''), '\\D', '', 'g')`;
+    const cargasNatUpperExpr = `UPPER(TRIM(COALESCE(cg.dados_nfe->>'natureza_operacao', '')))`;
+
     // No ERP Coliseu, as Compras comerciais em dash_cargas são exportadas com tipo_operacao = 'SAIDA'
     // e natureza_operacao iniciando por 'COMPRA' / 'ENTRADA DE MERCADORIA' (onde remetente = Filial e destinatario = Fornecedor).
     const isCargasCompraComercialExpr = `(
         UPPER(COALESCE(cg.dados_nfe->>'tipo_operacao', 'SAIDA')) = 'SAIDA'
         AND (
-            UPPER(COALESCE(cg.dados_nfe->>'natureza_operacao', '')) LIKE '%COMPRA%'
-            OR UPPER(COALESCE(cg.dados_nfe->>'natureza_operacao', '')) LIKE 'ENTRADA DE MERCADORIA%'
-            OR UPPER(COALESCE(cg.dados_nfe->>'natureza_operacao', '')) LIKE 'ENTRADA DE BONIFICA%'
-            OR UPPER(COALESCE(cg.dados_nfe->>'natureza_operacao', '')) LIKE 'ENTRADA BONIFICA%'
+            ${cargasNatUpperExpr} LIKE '%COMPRA%'
+            OR ${cargasNatUpperExpr} LIKE 'ENTRADA DE MERCADORIA%'
+            OR ${cargasNatUpperExpr} LIKE 'ENTRADA DE BONIFICA%'
+            OR ${cargasNatUpperExpr} LIKE 'ENTRADA BONIFICA%'
+            OR ${cargasNatUpperExpr} LIKE 'OUTRA ENTRADA%'
+            OR ${cargasNatUpperExpr} LIKE 'OUTRAS ENTRADA%'
         )
-        AND UPPER(COALESCE(cg.dados_nfe->>'natureza_operacao', '')) NOT LIKE '%DEVOLU%'
-        AND UPPER(COALESCE(cg.dados_nfe->>'natureza_operacao', '')) NOT LIKE '%TRANSFER%'
+        AND ${cargasNatUpperExpr} NOT LIKE '%DEVOLU%'
+        AND ${cargasNatUpperExpr} NOT LIKE '%TRANSFER%'
+    )`;
+
+    // Notas Fiscais de Saída em dash_cargas (incluindo pedidos com Natureza de Operação do tipo Ajuste / Somente NF,
+    // como 'NOTA FISCAL - VENDA DENTRO DO ESTADO', 'NOTA FISCAL - VENDA FORA DO ESTADO', 'LICITAÇÃO - VENDA', 'VENDA - FUTURA',
+    // cujo CFOP inicia em 5, 6 ou 7 mesmo quando tipo_operacao no JSON foi gravado como ENTRADA pelo sincronizador).
+    const isCargasSaidaExpr = `(
+        NOT ${isCargasCompraComercialExpr}
+        AND ${cargasNatUpperExpr} NOT LIKE '%TRANSFER%'
+        AND ${cargasCfopExpr} NOT IN ('5151', '5152', '5155', '5156', '6151', '6152', '6155', '6156')
         AND (
-            (cg.dados_nfe->>'id_pedido') IS NULL
-            OR (cg.dados_nfe->>'id_pedido') = ''
-            OR NOT EXISTS (
-                SELECT 1 FROM dash_vendas vx_chk
-                WHERE vx_chk.tenant_id = cg.tenant_id
-                  AND (cg.dados_nfe->>'id_pedido') ~ '^[0-9]+$'
-                  AND vx_chk.id_firebird = (cg.dados_nfe->>'id_pedido')::int
+            ${cargasCfopExpr} ~ '^[567]'
+            OR (
+                ${cargasCfopExpr} = ''
+                AND (
+                    ${cargasNatUpperExpr} LIKE '%VENDA%'
+                    OR ${cargasNatUpperExpr} LIKE '%SAIDA%'
+                    OR ${cargasNatUpperExpr} LIKE '%SAÍDA%'
+                )
+                AND ${cargasNatUpperExpr} NOT LIKE '%DEVOLU%'
             )
         )
     )`;
 
+    // Notas Fiscais de Entrada em dash_cargas (Compras comerciais + Entradas de NF / Uso e Consumo / Ajuste de Entrada / Devoluções de Notas Baixas)
     const isCargasCompraAvulsaExpr = `(
-        NOT EXISTS (
-            SELECT 1 FROM dash_cargas cg_sc
-            WHERE cg_sc.tenant_id = ${pTenant}
-              AND UPPER(COALESCE(cg_sc.dados_nfe->>'tipo_operacao', 'SAIDA')) = 'SAIDA'
-              AND UPPER(COALESCE(cg_sc.dados_nfe->>'natureza_operacao', '')) LIKE '%COMPRA%'
-            LIMIT 1
+        NOT ${isCargasCompraComercialExpr}
+        AND NOT ${isCargasSaidaExpr}
+        AND ${cargasNatUpperExpr} NOT LIKE '%TRANSFER%'
+        AND ${cargasCfopExpr} NOT IN ('1151', '1152', '1155', '1156', '2151', '2152', '2155', '2156', '5949', '6949')
+        AND (
+            ${cargasCfopExpr} ~ '^[123]'
+            OR ${cargasNatUpperExpr} LIKE 'ENTRADA%'
+            OR ${cargasNatUpperExpr} LIKE 'OUTRA ENTRADA%'
+            OR ${cargasNatUpperExpr} LIKE 'OUTRAS ENTRADA%'
+            OR ${cargasNatUpperExpr} LIKE '%COMPRA%'
+            OR ${cargasNatUpperExpr} LIKE '%AJUSTE%'
+            OR ${cargasNatUpperExpr} LIKE 'DEVOLUÇÃO DE NOTAS%'
         )
-        AND UPPER(COALESCE(cg.dados_nfe->>'tipo_operacao', '')) = 'ENTRADA'
-        AND regexp_replace(COALESCE(cg.dados_nfe->'itens'->0->>'cfop', ''), '\\D', '', 'g') ~ '^[123]'
-        AND UPPER(COALESCE(cg.dados_nfe->>'natureza_operacao', '')) NOT LIKE '%DEVOLU%'
-        AND UPPER(COALESCE(cg.dados_nfe->>'natureza_operacao', '')) NOT LIKE '%VENDA%'
-        AND UPPER(COALESCE(cg.dados_nfe->>'natureza_operacao', '')) NOT LIKE '%TRANSFER%'
     )`;
 
     const isCargasEntradaExpr = `(${isCargasCompraComercialExpr} OR ${isCargasCompraAvulsaExpr})`;
-
-    // Para tenants que possuem dash_vendas sincronizado, 100% das saídas comerciais vêm de dash_vendas.
-    // dash_cargas fornece as ENTRADAS (Compras Fiscais) e, apenas caso o tenant não sincronize dash_vendas, as SAIDAS.
-    const isCargasSaidaFallbackExpr = `(
-        NOT EXISTS (SELECT 1 FROM dash_vendas v_any WHERE v_any.tenant_id = ${pTenant} LIMIT 1)
-        AND UPPER(COALESCE(cg.dados_nfe->>'tipo_operacao', 'SAIDA')) = 'SAIDA'
-        AND UPPER(COALESCE(cg.dados_nfe->>'natureza_operacao', '')) NOT LIKE '%TRANSFER%'
-        AND NOT ${isCargasCompraComercialExpr}
-    )`;
+    const isCargasSaidaFallbackExpr = isCargasSaidaExpr;
 
     const cargasEffectiveDateExpr = `CASE
         WHEN ${isCargasCompraComercialExpr} AND (cg.dados_nfe->>'id_pedido') ~ '^[0-9]+$'
@@ -382,7 +392,21 @@ function buildFiscalUnifiedCte({
     }
 
     const cteSql = `
-        WITH notas_base AS (
+        WITH vendas_nfe_keys AS (
+            SELECT DISTINCT TRIM(v_k.chave_nfe) AS chave
+            FROM dash_vendas v_k
+            WHERE v_k.tenant_id = ${pTenant}
+              AND v_k.chave_nfe IS NOT NULL
+              AND TRIM(v_k.chave_nfe) <> ''
+        ),
+        vendas_ped_ids AS (
+            SELECT DISTINCT v_p.id_firebird::text AS pid
+            FROM dash_vendas v_p
+            WHERE v_p.tenant_id = ${pTenant}
+              AND v_p.data_venda >= (${pStartDate}::date - INTERVAL '90 days')
+              AND v_p.data_venda <= (${pEndDate}::date + INTERVAL '30 days')
+        ),
+        notas_base AS (
             SELECT
                 'cargas'::text AS origem,
                 cg.id::bigint AS registro_id,
@@ -400,7 +424,7 @@ function buildFiscalUnifiedCte({
                     WHEN ${isCargasCompraComercialExpr}
                     THEN COALESCE(NULLIF(TRIM(cg.destinatario_nome), ''), 'Fornecedor não informado')
                     WHEN UPPER(COALESCE(cg.dados_nfe->>'tipo_operacao', 'SAIDA')) = 'ENTRADA'
-                    THEN COALESCE(NULLIF(TRIM(cg.remetente_nome), ''), 'Fornecedor não informado')
+                    THEN COALESCE(NULLIF(TRIM(cg.remetente_nome), ''), CASE WHEN ${isCargasEntradaExpr} THEN 'Fornecedor não informado' ELSE 'Consumidor Final' END)
                     ELSE COALESCE(NULLIF(TRIM(cg.destinatario_nome), ''), 'Consumidor Final')
                 END::text AS parceiro_nome,
                 CASE
@@ -440,7 +464,11 @@ function buildFiscalUnifiedCte({
                     CASE WHEN jsonb_typeof(cg.dados_nfe->'itens') = 'array' THEN jsonb_array_length(cg.dados_nfe->'itens') ELSE 0 END
                 )::int AS qtd_itens
             FROM dash_cargas cg
+            LEFT JOIN vendas_nfe_keys vnk ON vnk.chave = TRIM(cg.chave_acesso)
+            LEFT JOIN vendas_ped_ids vpi ON vpi.pid = TRIM(COALESCE(cg.dados_nfe->>'id_pedido', ''))
             WHERE cg.tenant_id = ${pTenant}
+              AND vnk.chave IS NULL
+              AND vpi.pid IS NULL
               AND COALESCE(cg.tipo_documento, 'NFE') = 'NFE'
               AND cg.data_emissao >= (${pStartDate}::date - INTERVAL '60 days')
               AND cg.data_emissao <= (${pEndDate}::date + INTERVAL '15 days')
@@ -933,17 +961,26 @@ router.get('/notas/:origem/:id', async (req, res, next) => {
 
             const cg = rows[0];
             const nfe = cg.dados_nfe && typeof cg.dados_nfe === 'object' ? cg.dados_nfe : {};
-            const natUpper = String(nfe.natureza_operacao || '').toUpperCase();
-            const isCompraComercial = String(nfe.tipo_operacao || 'SAIDA').toUpperCase() === 'SAIDA'
+            const natUpper = String(nfe.natureza_operacao || '').trim().toUpperCase();
+            const rawItens = Array.isArray(nfe.itens) ? nfe.itens : [];
+            const cfop0 = String(rawItens[0]?.cfop || '').replace(/\D/g, '');
+            const rawTipoOp = String(nfe.tipo_operacao || 'SAIDA').trim().toUpperCase();
+
+            const isCompraComercial = rawTipoOp === 'SAIDA'
                 && (
                     natUpper.includes('COMPRA')
                     || natUpper.startsWith('ENTRADA DE MERCADORIA')
                     || natUpper.startsWith('ENTRADA DE BONIFICA')
                     || natUpper.startsWith('ENTRADA BONIFICA')
+                    || natUpper.startsWith('OUTRA ENTRADA')
+                    || natUpper.startsWith('OUTRAS ENTRADA')
                 )
                 && !natUpper.includes('DEVOLU');
-            const isEntrada = isCompraComercial || String(nfe.tipo_operacao || 'SAIDA').toUpperCase() === 'ENTRADA';
-            const rawItens = Array.isArray(nfe.itens) ? nfe.itens : [];
+            const isSaidaCfop = !isCompraComercial && (
+                /^[567]/.test(cfop0)
+                || (!cfop0 && (natUpper.includes('VENDA') || natUpper.includes('SAIDA') || natUpper.includes('SAÍDA')) && !natUpper.includes('DEVOLU'))
+            );
+            const isEntrada = !isSaidaCfop && (isCompraComercial || rawTipoOp === 'ENTRADA' || /^[123]/.test(cfop0));
 
             const itens = rawItens.map((it, idx) => ({
                 ordem: idx + 1,
@@ -959,13 +996,16 @@ router.get('/notas/:origem/:id', async (req, res, next) => {
                 valor_total: parseFloat(it.valor_total || 0),
             }));
 
-            const cfop0 = String(rawItens[0]?.cfop || '').replace(/\D/g, '');
             const totalDescontoItens = itens.reduce((acc, i) => acc + i.desconto, 0);
             const valProd = parseFloat(cg.valor_produtos || cg.valor_total || 0);
             const valTotRaw = parseFloat(cg.valor_total || 0);
             const valorTotalEfetivo = (isCompraComercial && valProd > 0 && (valTotRaw - valProd) > 10 && ['1403', '2403'].includes(cfop0) && totalDescontoItens === 0)
                 ? valProd
                 : valTotRaw;
+
+            // Em dash_cargas, quando rawTipoOp === 'ENTRADA' e é uma nota de saída por Ajuste (CFOP 5xxx/6xxx),
+            // o sincronizador colocou a Filial em destinatario_* e o Cliente em remetente_*.
+            const swapParties = isCompraComercial || (isSaidaCfop && rawTipoOp === 'ENTRADA');
 
             return res.json({
                 origem: 'cargas',
@@ -984,7 +1024,7 @@ router.get('/notas/:origem/:id', async (req, res, next) => {
                 valor_frete: parseFloat(nfe.valor_frete || 0),
                 valor_desconto: totalDescontoItens,
                 valor_total: valorTotalEfetivo,
-                remetente: isCompraComercial
+                remetente: swapParties
                     ? {
                         nome: cg.destinatario_nome || '-',
                         documento: cg.destinatario_documento || '',
@@ -997,7 +1037,7 @@ router.get('/notas/:origem/:id', async (req, res, next) => {
                         municipio: cg.remetente_municipio || '',
                         uf: cg.remetente_uf || '',
                     },
-                destinatario: isCompraComercial
+                destinatario: swapParties
                     ? {
                         nome: cg.remetente_nome || '-',
                         documento: cg.remetente_documento || '',

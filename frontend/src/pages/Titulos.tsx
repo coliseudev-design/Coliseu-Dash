@@ -6,15 +6,18 @@ import { formatBRL, formatDate } from '../utils/format'
 
 export default function Titulos() {
   const [tipo, setTipo] = useState<'' | 'RECEBER' | 'PAGAR'>('')
-  const [status, setStatus] = useState<'' | 'ABERTO' | 'PAGO' | 'VENCIDA'>('')
+  const [status, setStatus] = useState<'' | 'ABERTO' | 'PAGO' | 'VENCIDA' | 'A_VENCER'>('ABERTO')
+  const [vendedorId, setVendedorId] = useState<string>('todos')
 
   const { data: res, isLoading } = useApiQuery<any>('/financeiro/contas', {
     tipo: tipo || undefined,
     status: status || undefined,
-    limit: 200
+    vendedor_id: vendedorId !== 'todos' ? vendedorId : undefined,
+    limit: 500
   })
 
   const titulos = res?.data || []
+  const resumoVendedores = res?.resumo_vendedores || []
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -40,9 +43,23 @@ export default function Titulos() {
           aria-label="Status de Pagamento"
         >
           <option value="">Todos os Status</option>
-          <option value="ABERTO">Em Aberto</option>
+          <option value="ABERTO">Em Aberto (Todos)</option>
+          <option value="VENCIDA">Vencidos</option>
+          <option value="A_VENCER">A Vencer</option>
           <option value="PAGO">Pago</option>
-          <option value="VENCIDA">Vencida</option>
+        </select>
+        <select
+          className="input w-full sm:w-auto sm:min-w-[180px]"
+          value={vendedorId}
+          onChange={(e) => setVendedorId(e.target.value)}
+          aria-label="Filtrar por Vendedor"
+        >
+          <option value="todos">Todos os Vendedores</option>
+          {resumoVendedores.map((rv: any) => (
+            <option key={rv.vendedor_id} value={rv.vendedor_id}>
+              {rv.vendedor_nome} ({rv.qtd_aberto} em aberto)
+            </option>
+          ))}
         </select>
         <div className="flex-1"></div>
         <span className="text-xs text-text-secondary">
@@ -81,6 +98,7 @@ export default function Titulos() {
             )
           },
           { key: 'cliente', label: 'CLIENTE/FORNECEDOR', className: 'hidden sm:table-cell', render: (r: any) => <span className="text-sm text-text-secondary">{r.cliente || '—'}</span> },
+          { key: 'vendedor_nome', label: 'VENDEDOR', className: 'hidden md:table-cell', render: (r: any) => <span className="text-xs font-semibold text-text-primary uppercase">{r.vendedor_nome || 'Sem Vendedor'}</span> },
           { key: 'data_vencimento', label: 'VENCIMENTO', render: (r: any) => <span className="mono text-xs">{formatDate(r.data_vencimento)}</span> },
           {
             key: 'valor',

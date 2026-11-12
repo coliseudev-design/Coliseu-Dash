@@ -52,7 +52,8 @@ export default function FinancialIntelligenceDashboard() {
 
   // Filtros internos da aba Títulos
   const [tipoTitulo, setTipoTitulo] = useState<'' | 'RECEBER' | 'PAGAR'>('');
-  const [statusTitulo, setStatusTitulo] = useState<'' | 'ABERTO' | 'PAGO' | 'VENCIDA'>('');
+  const [statusTitulo, setStatusTitulo] = useState<'' | 'ABERTO' | 'PAGO' | 'VENCIDA' | 'A_VENCER'>('ABERTO');
+  const [vendedorTitulo, setVendedorTitulo] = useState<string>('todos');
   const [buscaTitulo, setBuscaTitulo] = useState('');
 
   // Filtros internos da aba Caixas
@@ -101,11 +102,13 @@ export default function FinancialIntelligenceDashboard() {
     {
       tipo: tipoTitulo || undefined,
       status: statusTitulo || undefined,
+      vendedor_id: vendedorTitulo !== 'todos' ? vendedorTitulo : undefined,
       ...(selectedCaixa !== 'todos' ? { caixa_id: selectedCaixa } : {}),
       ...branchParam,
-      limit: 300
+      limit: 500
     }
   );
+  const resumoVendedores = titulosRes?.resumo_vendedores || [];
   const titulos = useMemo(() => {
     const raw = titulosRes?.data || [];
     if (!buscaTitulo.trim()) return raw;
@@ -113,6 +116,7 @@ export default function FinancialIntelligenceDashboard() {
     return raw.filter((t: any) => 
       String(t.descricao || '').toLowerCase().includes(q) ||
       String(t.cliente || '').toLowerCase().includes(q) ||
+      String(t.vendedor_nome || '').toLowerCase().includes(q) ||
       String(t.numero_pedido || '').toLowerCase().includes(q)
     );
   }, [titulosRes?.data, buscaTitulo]);
@@ -625,6 +629,83 @@ export default function FinancialIntelligenceDashboard() {
       {/* ── ABA 3: TÍTULOS & CONTAS (PAGAR / RECEBER) ────────────────────────── */}
       {activeTab === 'titulos' && (
         <div className="space-y-4 animate-in fade-in duration-200">
+          {/* Painel de Análise de Títulos em Aberto por Vendedor (DEM-0035) */}
+          {resumoVendedores.length > 0 && (
+            <div className="bg-bg-primary border border-border shadow-card rounded-xl p-4 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h3 className="font-bold text-text-primary text-xs sm:text-sm flex items-center gap-2">
+                    <Receipt size={15} className="text-brand-500" />
+                    Análise de Títulos em Aberto por Vendedor
+                  </h3>
+                  <p className="text-[11px] text-text-secondary">
+                    Clique em um vendedor para filtrar os títulos vinculados à sua carteira
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 text-xs">
+                  <span className="font-semibold text-text-secondary">
+                    Total em Aberto:{' '}
+                    <strong className="text-blue-600 dark:text-blue-400 font-mono">
+                      {resumoVendedores.reduce((acc: number, r: any) => acc + (r.qtd_aberto || 0), 0)} títulos ({formatBRL(resumoVendedores.reduce((acc: number, r: any) => acc + (r.valor_aberto || 0), 0))})
+                    </strong>
+                  </span>
+                  {vendedorTitulo !== 'todos' && (
+                    <button
+                      type="button"
+                      onClick={() => setVendedorTitulo('todos')}
+                      className="text-[11px] font-bold text-brand-500 hover:underline cursor-pointer"
+                    >
+                      Limpar filtro de vendedor
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5">
+                {resumoVendedores.map((rv: any) => {
+                  const isSelected = String(vendedorTitulo) === String(rv.vendedor_id);
+                  return (
+                    <button
+                      key={rv.vendedor_id}
+                      type="button"
+                      onClick={() => {
+                        setVendedorTitulo(isSelected ? 'todos' : String(rv.vendedor_id));
+                        if (!statusTitulo || statusTitulo === 'PAGO') {
+                          setStatusTitulo('ABERTO');
+                        }
+                      }}
+                      className={clsx(
+                        'text-left p-3 rounded-xl border transition-all cursor-pointer flex flex-col justify-between gap-1.5',
+                        isSelected
+                          ? 'bg-brand-500/10 border-brand-500 ring-1 ring-brand-500/30'
+                          : 'bg-bg-secondary/40 hover:bg-bg-secondary border-divider/60'
+                      )}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-bold text-xs text-text-primary truncate uppercase" title={rv.vendedor_nome}>
+                          {rv.vendedor_nome}
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-500/10 text-blue-600 dark:text-blue-400 font-mono shrink-0">
+                          {rv.qtd_aberto} {rv.qtd_aberto === 1 ? 'título' : 'títulos'}
+                        </span>
+                      </div>
+                      <div className="flex items-baseline justify-between gap-2 pt-1 border-t border-divider/40">
+                        <span className="text-[10px] text-text-secondary font-semibold">Saldo Aberto:</span>
+                        <span className="font-mono font-bold text-xs text-text-primary">{formatBRL(rv.valor_aberto)}</span>
+                      </div>
+                      {rv.qtd_vencido > 0 && (
+                        <div className="flex items-center justify-between text-[10px] text-red-500 font-semibold">
+                          <span>Vencidos ({rv.qtd_vencido}):</span>
+                          <span className="font-mono font-bold">{formatBRL(rv.valor_vencido)}</span>
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Barra de Filtros Internos de Títulos */}
           <div className="bg-bg-primary border border-border shadow-card rounded-xl p-3 flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2">
@@ -646,9 +727,24 @@ export default function FinancialIntelligenceDashboard() {
                 aria-label="Status de Pagamento"
               >
                 <option value="">Todos os Status</option>
-                <option value="ABERTO">Em Aberto</option>
+                <option value="ABERTO">Em Aberto (Todos)</option>
+                <option value="VENCIDA">Vencidos</option>
+                <option value="A_VENCER">A Vencer</option>
                 <option value="PAGO">Pago</option>
-                <option value="VENCIDA">Vencida</option>
+              </select>
+
+              <select
+                className="bg-bg-secondary border border-divider text-xs font-bold text-text-primary rounded-lg px-3 py-2 cursor-pointer"
+                value={vendedorTitulo}
+                onChange={(e) => setVendedorTitulo(e.target.value)}
+                aria-label="Filtrar por Vendedor"
+              >
+                <option value="todos">Todos os Vendedores</option>
+                {resumoVendedores.map((rv: any) => (
+                  <option key={rv.vendedor_id} value={rv.vendedor_id}>
+                    {rv.vendedor_nome} ({rv.qtd_aberto} em aberto)
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -701,6 +797,7 @@ export default function FinancialIntelligenceDashboard() {
                 )
               },
               { key: 'cliente', label: 'CLIENTE/FORNECEDOR', className: 'hidden md:table-cell', render: (r: any) => <span className="text-xs text-text-secondary max-w-[200px] truncate block">{r.cliente || '—'}</span> },
+              { key: 'vendedor_nome', label: 'VENDEDOR', className: 'hidden lg:table-cell', render: (r: any) => <span className="text-xs font-semibold text-text-primary max-w-[160px] truncate block uppercase">{r.vendedor_nome || 'Sem Vendedor'}</span> },
               { key: 'data_vencimento', label: 'VENCIMENTO', render: (r: any) => <span className="mono text-xs">{formatDate(r.data_vencimento)}</span> },
               {
                 key: 'valor',

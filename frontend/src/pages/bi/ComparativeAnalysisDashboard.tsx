@@ -245,9 +245,17 @@ export default function ProfitabilityDashboard() {
         <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-4 flex flex-col justify-between min-w-0">
           <div className="flex items-center justify-between gap-2 text-[10px] font-black text-text-secondary/70 uppercase tracking-widest mb-2">
             <span className="truncate">Margem de Lucro (%)</span>
-            <div className="p-1.5 bg-cyan-500/10 text-cyan-500 rounded-lg shrink-0"><Percent size={14} /></div>
+            <div className={clsx(
+              "p-1.5 rounded-lg shrink-0",
+              overview.margem_pct < 0 ? "bg-red-500/10 text-red-500" : "bg-blue-500/10 text-blue-600 dark:text-blue-400"
+            )}>
+              <Percent size={14} />
+            </div>
           </div>
-          <div className="bi-kpi-value font-black text-text-primary mb-0.5 font-mono">
+          <div className={clsx(
+            "bi-kpi-value font-black mb-0.5 font-mono",
+            overview.margem_pct < 0 ? "text-red-500" : "text-blue-600 dark:text-blue-400"
+          )}>
             {overview.margem_pct.toFixed(2)}%
           </div>
           <div className="text-[10px] text-text-secondary font-semibold">Eficiência operacional</div>
@@ -282,10 +290,10 @@ export default function ProfitabilityDashboard() {
                     <td className="py-2 px-1.5 font-bold text-text-primary max-w-[120px] truncate uppercase">{row.name}</td>
                     <td className="py-2 px-1.5 text-right text-text-secondary font-mono">{formatCurrency(row.vendas)}</td>
                     <td className="py-2 px-1.5 text-right text-text-secondary font-mono">{formatCurrency(row.custo)}</td>
-                    <td className="py-2 px-1.5 text-right font-bold text-emerald-500 font-mono">{formatCurrency(row.lucro)}</td>
+                    <td className={clsx("py-2 px-1.5 text-right font-bold font-mono", row.lucro < 0 ? "text-red-500" : "text-emerald-500")}>{formatCurrency(row.lucro)}</td>
                     <td className={clsx(
                       "py-2 px-1.5 text-right font-black font-mono",
-                      row.luc_pct < 15 ? "text-red-500" : row.luc_pct < 30 ? "text-orange-500" : "text-emerald-500"
+                      row.luc_pct < 0 ? "text-red-500" : "text-blue-600 dark:text-blue-400"
                     )}>
                       {row.luc_pct.toFixed(2)}%
                     </td>
@@ -324,7 +332,7 @@ export default function ProfitabilityDashboard() {
                       </div>
                     </div>
                   </div>
-                  <span className="w-12 text-left text-[10px] font-black font-mono text-text-primary">{row.luc_pct.toFixed(1)}%</span>
+                  <span className={clsx("w-12 text-left text-[10px] font-black font-mono", row.luc_pct < 0 ? "text-red-500" : "text-blue-600 dark:text-blue-400")}>{row.luc_pct.toFixed(1)}%</span>
                 </div>
               );
             })}
@@ -361,10 +369,10 @@ export default function ProfitabilityDashboard() {
                     <td className="py-2 px-1.5 font-bold text-text-primary max-w-[120px] truncate uppercase">{row.name}</td>
                     <td className="py-2 px-1.5 text-right text-text-secondary font-mono">{formatCurrency(row.vendas)}</td>
                     <td className="py-2 px-1.5 text-right text-text-secondary font-mono">{formatCurrency(row.custo)}</td>
-                    <td className="py-2 px-1.5 text-right font-bold text-emerald-500 font-mono">{formatCurrency(row.lucro)}</td>
+                    <td className={clsx("py-2 px-1.5 text-right font-bold font-mono", row.lucro < 0 ? "text-red-500" : "text-emerald-500")}>{formatCurrency(row.lucro)}</td>
                     <td className={clsx(
                       "py-2 px-1.5 text-right font-black font-mono",
-                      row.luc_pct < 15 ? "text-red-500" : row.luc_pct < 30 ? "text-orange-500" : "text-emerald-500"
+                      row.luc_pct < 0 ? "text-red-500" : "text-blue-600 dark:text-blue-400"
                     )}>
                       {row.luc_pct.toFixed(2)}%
                     </td>
@@ -403,7 +411,7 @@ export default function ProfitabilityDashboard() {
                       </div>
                     </div>
                   </div>
-                  <span className="w-12 text-left text-[10px] font-black font-mono text-text-primary">{row.luc_pct.toFixed(1)}%</span>
+                  <span className={clsx("w-12 text-left text-[10px] font-black font-mono", row.luc_pct < 0 ? "text-red-500" : "text-blue-600 dark:text-blue-400")}>{row.luc_pct.toFixed(1)}%</span>
                 </div>
               );
             })}
@@ -440,10 +448,10 @@ export default function ProfitabilityDashboard() {
                     <td className="py-2 px-1.5 font-bold text-text-primary max-w-[120px] truncate uppercase">{row.name}</td>
                     <td className="py-2 px-1.5 text-right text-text-secondary font-mono">{formatCurrency(row.vendas)}</td>
                     <td className="py-2 px-1.5 text-right text-text-secondary font-mono">{formatCurrency(row.custo)}</td>
-                    <td className="py-2 px-1.5 text-right font-bold text-emerald-500 font-mono">{formatCurrency(row.lucro)}</td>
+                    <td className={clsx("py-2 px-1.5 text-right font-bold font-mono", row.lucro < 0 ? "text-red-500" : "text-emerald-500")}>{formatCurrency(row.lucro)}</td>
                     <td className={clsx(
                       "py-2 px-1.5 text-right font-black font-mono",
-                      row.luc_pct < 15 ? "text-red-500" : row.luc_pct < 30 ? "text-orange-500" : "text-emerald-500"
+                      row.luc_pct < 0 ? "text-red-500" : "text-blue-600 dark:text-blue-400"
                     )}>
                       {row.luc_pct.toFixed(2)}%
                     </td>
@@ -482,7 +490,7 @@ export default function ProfitabilityDashboard() {
                       </div>
                     </div>
                   </div>
-                  <span className="w-12 text-left text-[10px] font-black font-mono text-text-primary">{row.luc_pct.toFixed(1)}%</span>
+                  <span className={clsx("w-12 text-left text-[10px] font-black font-mono", row.luc_pct < 0 ? "text-red-500" : "text-blue-600 dark:text-blue-400")}>{row.luc_pct.toFixed(1)}%</span>
                 </div>
               );
             })}
@@ -519,10 +527,10 @@ export default function ProfitabilityDashboard() {
                     <td className="py-2 px-1.5 font-bold text-text-primary max-w-[120px] truncate uppercase">{row.name}</td>
                     <td className="py-2 px-1.5 text-right text-text-secondary font-mono">{formatCurrency(row.vendas)}</td>
                     <td className="py-2 px-1.5 text-right text-text-secondary font-mono">{formatCurrency(row.custo)}</td>
-                    <td className="py-2 px-1.5 text-right font-bold text-emerald-500 font-mono">{formatCurrency(row.lucro)}</td>
+                    <td className={clsx("py-2 px-1.5 text-right font-bold font-mono", row.lucro < 0 ? "text-red-500" : "text-emerald-500")}>{formatCurrency(row.lucro)}</td>
                     <td className={clsx(
                       "py-2 px-1.5 text-right font-black font-mono",
-                      row.luc_pct < 15 ? "text-red-500" : row.luc_pct < 30 ? "text-orange-500" : "text-emerald-500"
+                      row.luc_pct < 0 ? "text-red-500" : "text-blue-600 dark:text-blue-400"
                     )}>
                       {row.luc_pct.toFixed(2)}%
                     </td>
@@ -561,7 +569,7 @@ export default function ProfitabilityDashboard() {
                       </div>
                     </div>
                   </div>
-                  <span className="w-12 text-left text-[10px] font-black font-mono text-text-primary">{row.luc_pct.toFixed(1)}%</span>
+                  <span className={clsx("w-12 text-left text-[10px] font-black font-mono", row.luc_pct < 0 ? "text-red-500" : "text-blue-600 dark:text-blue-400")}>{row.luc_pct.toFixed(1)}%</span>
                 </div>
               );
             })}
@@ -574,7 +582,7 @@ export default function ProfitabilityDashboard() {
       <div className="bg-bg-primary border border-divider shadow-card rounded-2xl p-5 animate-in fade-in duration-300">
         <h3 className="font-black text-text-primary text-xs tracking-wider mb-2">Análise de Rentabilidade</h3>
         <p className="text-xs text-text-secondary leading-relaxed font-semibold">
-          A lucratividade de <span className="font-black text-text-primary font-mono">{overview.margem_pct.toFixed(2)}%</span> indica que para cada R$ 100,00 vendidos, a empresa retém <span className="font-black text-emerald-500 font-mono">R$ {overview.margem_pct.toFixed(2)}</span> após cobrir todos os custos diretos dos produtos.
+          A lucratividade de <span className={clsx("font-black font-mono", overview.margem_pct < 0 ? "text-red-500" : "text-blue-600 dark:text-blue-400")}>{overview.margem_pct.toFixed(2)}%</span> indica que para cada R$ 100,00 vendidos, a empresa retém <span className={clsx("font-black font-mono", overview.margem_pct < 0 ? "text-red-500" : "text-blue-600 dark:text-blue-400")}>R$ {overview.margem_pct.toFixed(2)}</span> após cobrir todos os custos diretos dos produtos.
         </p>
       </div>
 
