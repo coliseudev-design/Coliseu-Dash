@@ -530,7 +530,7 @@ router.get('/contas', async (req, res, next) => {
         const limitIdx = mainIdx;
 
         const cteClienteVendedor = `
-            WITH cliente_vendedor AS (
+            WITH cliente_vendedor AS MATERIALIZED (
                 SELECT DISTINCT ON (v_ult.cliente_id_firebird)
                     v_ult.cliente_id_firebird,
                     v_ult.vendedor_id_firebird
@@ -538,7 +538,7 @@ router.get('/contas', async (req, res, next) => {
                 WHERE v_ult.tenant_id = $1
                   AND v_ult.cliente_id_firebird IS NOT NULL
                   AND v_ult.vendedor_id_firebird IS NOT NULL
-                ORDER BY v_ult.cliente_id_firebird, COALESCE(v_ult.data_hora_proc, v_ult.data_vencimento, v_ult.data_venda) DESC
+                ORDER BY v_ult.cliente_id_firebird, v_ult.id_firebird DESC
             )
         `;
 
