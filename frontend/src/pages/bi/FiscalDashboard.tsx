@@ -10,6 +10,7 @@ import PeriodFilter from '../../components/PeriodFilter'
 import { usePeriodStore, periodToParams } from '../../store/periodStore'
 import { useBranchParam } from '../../contexts/BranchContext'
 import { formatBRL, formatDate, formatNum } from '../../utils/format'
+import { useAuthStore } from '../../store/authStore'
 
 interface FiscalKpis {
   emitidas_qtd: number
@@ -141,9 +142,11 @@ function shortenChave(chave: string) {
 export default function FiscalDashboard() {
   const periodState = usePeriodStore()
   const branchParam = useBranchParam()
+  const activeUser = useAuthStore((s) => s.user)
+  const userKey = String(activeUser?.email || activeUser?.id || 'default').toLowerCase()
 
   const { data: tenantParams } = useQuery<{ somente_vendas_com_nf?: boolean }>({
-    queryKey: ['tenant-parametros'],
+    queryKey: ['tenant-parametros', userKey],
     queryFn: async () => {
       const res = await api.get('/configuracoes/parametros')
       return res.data

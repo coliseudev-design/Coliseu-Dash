@@ -18,6 +18,7 @@ interface UserRow {
   tenant_id: string
   versao?: string
   layout_version?: string
+  somente_vendas_com_nf?: boolean
   filial_acesso?: string
   grupo_id?: number | null
   grupos?: { id: number, nome: string, versao: string }[]
@@ -188,6 +189,30 @@ export default function Usuarios() {
     }
   })
 
+  const updateVisaoFiscal = useMutation({
+    mutationFn: async ({ id, somente_vendas_com_nf }: { id: number, somente_vendas_com_nf: boolean }) => {
+      const res = await api.put(`/usuarios/${id}/visao-fiscal`, { somente_vendas_com_nf })
+      return res.data
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['usuarios'] })
+      const currentUser = useAuthStore.getState().user
+      if (currentUser && data?.user && String(data.user.email || '').toLowerCase() === String(currentUser.email || '').toLowerCase()) {
+        try {
+          localStorage.setItem(`coliseu_only_nf_sales:${String(currentUser.email).toLowerCase()}`, String(Boolean(data.user.somente_vendas_com_nf)))
+        } catch {
+          // ignore
+        }
+        queryClient.invalidateQueries({
+          predicate: (q) => q.queryKey[0] !== 'usuarios',
+        })
+      }
+    },
+    onError: (err: any) => {
+      alert(err.response?.data?.error || 'Erro ao alterar modo Fiscal/Gerencial do usuário')
+    }
+  })
+
   const updateFilialAcesso = useMutation({
     mutationFn: async ({ id, filial_acesso }: { id: number, filial_acesso: string }) => {
       const res = await api.put(`/usuarios/${id}/filial-acesso`, { filial_acesso })
@@ -303,6 +328,39 @@ export default function Usuarios() {
                   </select>
                 </div>
               )
+            },
+            {
+              key: 'visao_bi',
+              label: 'MODO BI (GERENCIAL / FISCAL)',
+              render: (r: UserRow) => {
+                const isFiscal = Boolean(r.somente_vendas_com_nf)
+                return (
+                  <div className="flex items-center">
+                    <select
+                      className={`border rounded-lg px-2.5 py-1 text-xs font-semibold outline-none transition-colors ${
+                        !canChangeVersion
+                          ? 'bg-bg-secondary/40 text-text-muted border-border opacity-60 cursor-not-allowed'
+                          : isFiscal
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 cursor-pointer'
+                            : 'bg-blue-50/70 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-300 dark:border-blue-800 cursor-pointer'
+                      }`}
+                      value={isFiscal ? 'fiscal' : 'gerencial'}
+                      onChange={(e) =>
+                        canChangeVersion &&
+                        updateVisaoFiscal.mutate({
+                          id: r.id,
+                          somente_vendas_com_nf: e.target.value === 'fiscal',
+                        })
+                      }
+                      disabled={!canChangeVersion || updateVisaoFiscal.isPending}
+                      title="Define individualmente para este usuário se o BI exibe Todas as Vendas (Gerencial) ou Somente c/ NF (Fiscal)"
+                    >
+                      <option value="gerencial">Gerencial (Todas)</option>
+                      <option value="fiscal">Fiscal (Somente c/ NF)</option>
+                    </select>
+                  </div>
+                )
+              }
             },
             {
               key: 'grupos_acesso',

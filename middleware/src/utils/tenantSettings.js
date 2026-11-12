@@ -315,79 +315,104 @@ function normalizeUserKey(userKey) {
 }
 
 /**
- * Obtém os parâmetros efetivos para o usuário logado (isolado por usuário/sessão, com fallback para o padrão do tenant).
+ * Obtém os parâmetros efetivos para o usuário logado (estritamente isolado por usuário em dash_configuracoes_usuario).
+ * Nunca herda o estado nem o updated_by de outro usuário ou da tabela global antiga.
  * @param {string} tenantId
  * @param {string|null} userKey
  * @param {boolean|null} sessionOverride
  */
 async function getUserSettings(tenantId, userKey = null, sessionOverride = null) {
-    const baseTenant = await getTenantSettings(tenantId);
+    const { hasSyncedNf, hasChaveNfe } = await checkTenantNfCoverage(tenantId);
     const normUser = normalizeUserKey(userKey);
 
-    if (typeof sessionOverride === 'boolean') {
+    if (!tenantId || tenantId === '00000000-0000-0000-0000-000000000000') {
         return {
-            ...baseTenant,
-            somente_vendas_com_nf: sessionOverride,
-            efetivo_somente_nf: Boolean(sessionOverride && baseTenant.has_synced_nf),
-            escopo: 'sessao_usuario'
-        };
-    }
-
-    if (!normUser || !tenantId || tenantId === '00000000-0000-0000-0000-000000000000') {
-        return { ...baseTenant, escopo: 'tenant' };
-    }
-
-    const cacheKey = `${tenantId}:${normUser}`;
-    const cached = userSettingsCache.get(cacheKey);
-    if (cached && cached.expiresAt > Date.now()) {
-        const somenteNf = Boolean(cached.data.somente_vendas_com_nf);
-        return {
-            ...baseTenant,
-            somente_vendas_com_nf: somenteNf,
-            updated_at: cached.data.updated_at || baseTenant.updated_at,
+            somente_vendas_com_nf: false,
+            has_synced_nf: hasSyncedNf,
+            has_chave_nfe: hasChaveNfe,
+            efetivo_somente_nf: false,
+            updated_at: null,
             updated_by: normUser,
-            efetivo_somente_nf: Boolean(somenteNf && baseTenant.has_synced_nf),
             escopo: 'usuario'
         };
     }
 
-    try {
-        await ensureSettingsTable();
-        const { rows } = await db.query(
-            `SELECT somente_vendas_com_nf, updated_at
-             FROM dash_configuracoes_usuario
-             WHERE tenant_id = $1 AND user_key = $2`,
-            [tenantId, normUser]
-        );
-
-        if (rows.length > 0) {
-            const somenteNf = Boolean(rows[0].somente_vendas_com_nf);
-            const uData = {
-                somente_vendas_com_nf: somenteNf,
-                updated_at: rows[0].updated_at || null,
-            };
-            userSettingsCache.set(cacheKey, {
-                data: uData,
-                expiresAt: Date.now() + SETTINGS_TTL_MS,
-            });
+    if (normUser) {
+        const cacheKey = `${tenantId}:${normUser}`;
+        const cached = userSettingsCache.get(cacheKey);
+        if (cached && cached.expiresAt > Date.now()) {
+            const somenteNf = typeof sessionOverride === 'boolean'
+                ? sessionOverride
+                : Boolean(cached.data.somente_vendas_com_nf);
             return {
-                ...baseTenant,
                 somente_vendas_com_nf: somenteNf,
-                updated_at: uData.updated_at,
-                updated_by: normUser,
-                efetivo_somente_nf: Boolean(somenteNf && baseTenant.has_synced_nf),
+                has_synced_nf: hasSyncedNf,
+                has_chave_nfe: hasChaveNfe,
+                efetivo_somente_nf: Boolean(somenteNf && hasSyncedNf),
+                updated_at: cached.data.updated_at || null,
+                updated_by: cached.data.updated_at ? normUser : null,
                 escopo: 'usuario'
             };
         }
-    } catch (err) {
-        logger.warn('[TenantSettings] Falha ao consultar parâmetros do usuário; usando padrão do tenant', {
-            tenantId,
-            userKey: normUser,
-            error: err.message,
-        });
+
+        try {
+            await ensureSettingsTable();
+            const { rows } = await db.query(
+                `SELECT somente_vendas_com_nf, updated_at
+                 FROM dash_configuracoes_usuario
+                 WHERE tenant_id = $1 AND user_key = $2`,
+                [tenantId, normUser]
+            );
+
+            if (rows.length > 0) {
+                const dbSomenteNf = Boolean(rows[0].somente_vendas_com_nf);
+                const uData = {
+                    somente_vendas_com_nf: dbSomenteNf,
+                    updated_at: rows[0].updated_at || null,
+                };
+                userSettingsCache.set(cacheKey, {
+                    data: uData,
+                    expiresAt: Date.now() + SETTINGS_TTL_MS,
+                });
+                const effectiveToggle = typeof sessionOverride === 'boolean' ? sessionOverride : dbSomenteNf;
+                return {
+                    somente_vendas_com_nf: effectiveToggle,
+                    has_synced_nf: hasSyncedNf,
+                    has_chave_nfe: hasChaveNfe,
+                    efetivo_somente_nf: Boolean(effectiveToggle && hasSyncedNf),
+                    updated_at: uData.updated_at,
+                    updated_by: normUser,
+                    escopo: 'usuario'
+                };
+            } else {
+                const defaultUserData = {
+                    somente_vendas_com_nf: false,
+                    updated_at: null,
+                };
+                userSettingsCache.set(cacheKey, {
+                    data: defaultUserData,
+                    expiresAt: Date.now() + SETTINGS_TTL_MS,
+                });
+            }
+        } catch (err) {
+            logger.warn('[TenantSettings] Falha ao consultar parâmetros do usuário; usando padrão Gerencial (false)', {
+                tenantId,
+                userKey: normUser,
+                error: err.message,
+            });
+        }
     }
 
-    return { ...baseTenant, escopo: 'tenant' };
+    const fallbackToggle = typeof sessionOverride === 'boolean' ? sessionOverride : false;
+    return {
+        somente_vendas_com_nf: fallbackToggle,
+        has_synced_nf: hasSyncedNf,
+        has_chave_nfe: hasChaveNfe,
+        efetivo_somente_nf: Boolean(fallbackToggle && hasSyncedNf),
+        updated_at: null,
+        updated_by: null,
+        escopo: 'usuario'
+    };
 }
 
 /**

@@ -69,14 +69,7 @@ router.get('/parametros', async (req, res, next) => {
             return res.status(401).json({ error: 'Tenant não identificado.' });
         }
         const userKey = req.user?.email || req.user?.id || req.headers['x-user-key'] || null;
-        const headerOnlyNf = req.headers['x-only-nf-sales'];
-        let sessionOverride = null;
-        if (headerOnlyNf === 'true' || headerOnlyNf === '1') {
-            sessionOverride = true;
-        } else if (headerOnlyNf === 'false' || headerOnlyNf === '0') {
-            sessionOverride = false;
-        }
-        const settings = await getUserSettings(tenantId, userKey, sessionOverride);
+        const settings = await getUserSettings(tenantId, userKey, null);
         return res.json(settings);
     } catch (err) {
         next(err);

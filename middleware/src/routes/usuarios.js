@@ -7,6 +7,7 @@ const db = require('../db/postgres');
 const config = require('../config/env');
 const logger = require('../config/logger');
 const { getUserPermissions } = require('../utils/rbac');
+const { updateUserSettings } = require('../utils/tenantSettings');
 
 /**
  * GET /api/usuarios
@@ -49,12 +50,37 @@ router.get('/', async (req, res) => {
                 });
             }
 
-            res.json(users.map(r => ({
-                ...r,
-                versao: r.versao,
-                layout_version: r.versao,
-                grupos: groupsByUserId[r.id] || []
-            })));
+            // Buscar preferência individual Fiscal/Gerencial (DEM-0028) por usuário
+            const visaoFiscalMap = {};
+            try {
+                const emailKeys = users
+                    .map(u => String(u.email || '').trim().toLowerCase())
+                    .filter(Boolean);
+                if (emailKeys.length > 0) {
+                    const ufRes = await db.query(
+                        `SELECT tenant_id, user_key, somente_vendas_com_nf
+                         FROM dash_configuracoes_usuario
+                         WHERE user_key = ANY($1)`,
+                        [emailKeys]
+                    );
+                    for (const uf of ufRes.rows) {
+                        visaoFiscalMap[`${uf.tenant_id}:${String(uf.user_key).toLowerCase()}`] = Boolean(uf.somente_vendas_com_nf);
+                    }
+                }
+            } catch (ufErr) {
+                // Tabela pode ainda não existir no primeiro boot; ignora silenciosamente
+            }
+
+            res.json(users.map(r => {
+                const key = `${r.tenant_id}:${String(r.email || '').trim().toLowerCase()}`;
+                return {
+                    ...r,
+                    versao: r.versao,
+                    layout_version: r.versao,
+                    somente_vendas_com_nf: Boolean(visaoFiscalMap[key]),
+                    grupos: groupsByUserId[r.id] || []
+                };
+            }));
         } else {
             res.json([]);
         }
@@ -673,6 +699,59 @@ router.post('/:id/reset-password', async (req, res) => {
     } catch (err) {
         logger.error('[Usuarios] Erro ao resetar senha', err);
         res.status(500).json({ error: 'Erro ao resetar senha do usuário.' });
+    }
+});
+
+/**
+ * PUT /api/usuarios/:id/visao-fiscal
+ * Define individualmente a visão padrão do usuário no BI: Gerencial (false) ou Fiscal Somente c/ NF (true) - DEM-0028
+ */
+router.put('/:id/visao-fiscal', async (req, res) => {
+    try {
+        const targetId = req.params.id;
+        const somenteVendasComNf = Boolean(req.body?.somente_vendas_com_nf);
+
+        const permissions = await getUserPermissions(req.user.sub || req.user.id, req.tenant.id);
+        const canChange = req.user.role === 'master' || req.user.role === 'admin' || permissions.includes('usuarios_versao') || permissions.includes('usuarios');
+        if (!canChange) {
+            return res.status(403).json({ error: 'Você não tem permissão para alterar a visão Fiscal/Gerencial dos usuários.' });
+        }
+
+        const userRes = await db.query(
+            'SELECT id, email, nome, tenant_id FROM dash_usuarios WHERE id = $1',
+            [targetId]
+        );
+        if (userRes.rowCount === 0) {
+            return res.status(404).json({ error: 'Usuário não encontrado.' });
+        }
+
+        const targetUser = userRes.rows[0];
+        if (req.tenant.id !== '00000000-0000-0000-0000-000000000000' && targetUser.tenant_id !== req.tenant.id) {
+            return res.status(403).json({ error: 'Você não tem permissão para alterar este usuário.' });
+        }
+
+        const updated = await updateUserSettings(targetUser.tenant_id, targetUser.email, {
+            somente_vendas_com_nf: somenteVendasComNf
+        });
+
+        logger.info('[Usuarios] Visão Fiscal/Gerencial individual alterada', {
+            targetId,
+            targetEmail: targetUser.email,
+            somente_vendas_com_nf: updated.somente_vendas_com_nf,
+            by: req.user.email
+        });
+
+        res.json({
+            message: 'Modo de visualização atualizado com sucesso',
+            user: {
+                id: targetUser.id,
+                email: targetUser.email,
+                somente_vendas_com_nf: updated.somente_vendas_com_nf
+            }
+        });
+    } catch (err) {
+        logger.error('[Usuarios] Erro ao alterar visão Fiscal/Gerencial', err);
+        res.status(500).json({ error: 'Erro interno ao alterar visão Fiscal/Gerencial do usuário.' });
     }
 });
 

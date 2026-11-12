@@ -7,6 +7,7 @@ import {
 import clsx from 'clsx'
 import api from '../../services/api'
 import { formatDateTime } from '../../utils/format'
+import { useAuthStore } from '../../store/authStore'
 
 interface TenantParametros {
   somente_vendas_com_nf: boolean
@@ -19,9 +20,13 @@ interface TenantParametros {
 export default function ParametrosBi() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
+  const activeUser = useAuthStore((s) => s.user)
   const [feedback, setFeedback] = useState<string | null>(null)
 
   const getUserKey = () => {
+    if (activeUser?.email || activeUser?.id) {
+      return String(activeUser.email || activeUser.id).toLowerCase()
+    }
     try {
       const rawUser = localStorage.getItem('coliseu_user')
       if (rawUser) {
@@ -34,13 +39,15 @@ export default function ParametrosBi() {
     return 'default'
   }
 
+  const userKey = getUserKey()
+
   const { data, isLoading } = useQuery<TenantParametros>({
-    queryKey: ['tenant-parametros'],
+    queryKey: ['tenant-parametros', userKey],
     queryFn: async () => {
       const res = await api.get('/configuracoes/parametros')
       const payload = res.data as TenantParametros
       try {
-        localStorage.setItem(`coliseu_only_nf_sales:${getUserKey()}`, String(Boolean(payload?.somente_vendas_com_nf)))
+        localStorage.setItem(`coliseu_only_nf_sales:${userKey}`, String(Boolean(payload?.somente_vendas_com_nf)))
       } catch {
         // ignore
       }
@@ -51,7 +58,7 @@ export default function ParametrosBi() {
   const updateMutation = useMutation({
     mutationFn: async (nextValue: boolean) => {
       try {
-        localStorage.setItem(`coliseu_only_nf_sales:${getUserKey()}`, String(Boolean(nextValue)))
+        localStorage.setItem(`coliseu_only_nf_sales:${userKey}`, String(Boolean(nextValue)))
       } catch {
         // ignore
       }
@@ -61,7 +68,7 @@ export default function ParametrosBi() {
       return res.data as TenantParametros
     },
     onSuccess: (updated) => {
-      queryClient.setQueryData(['tenant-parametros'], updated)
+      queryClient.setQueryData(['tenant-parametros', userKey], updated)
       // Invalida todos os caches de consultas do React Query para atualizar imediatamente todos os painéis do BI
       queryClient.invalidateQueries({
         predicate: (q) => q.queryKey[0] !== 'tenant-parametros',
@@ -110,7 +117,9 @@ export default function ParametrosBi() {
 
         <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-semibold self-start sm:self-auto">
           <ShieldCheck size={14} className="text-emerald-600 dark:text-emerald-400" />
-          Preferência Individual por Usuário
+          <span>
+            Usuário: {activeUser?.nome || 'Atual'} ({activeUser?.email || userKey})
+          </span>
         </div>
       </div>
 
@@ -233,27 +242,40 @@ export default function ParametrosBi() {
           </div>
         </div>
 
-        {/* Rodapé com auditoria e atalho para o Módulo Fiscal */}
+        {/* Rodapé com auditoria e atalho para Usuários e Módulo Fiscal */}
         <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
           <div>
             {data?.updated_at ? (
               <span>
-                Última atualização em <strong>{formatDateTime(data.updated_at)}</strong>
-                {data.updated_by ? ` por ${data.updated_by}` : ''}
+                Preferência do usuário <strong>{activeUser?.email || data.updated_by || userKey}</strong> atualizada em{' '}
+                <strong>{formatDateTime(data.updated_at)}</strong>
               </span>
             ) : (
-              <span>Configuração padrão ativa para a empresa.</span>
+              <span>
+                Padrão individual ativo para <strong>{activeUser?.email || userKey}</strong>: Visão Gerencial (Todas as Vendas).
+              </span>
             )}
           </div>
 
-          <button
-            type="button"
-            onClick={() => navigate('/bi/fiscal')}
-            className="inline-flex items-center gap-1.5 text-blue-600 dark:text-blue-400 hover:text-blue-700 font-semibold transition-colors cursor-pointer self-start sm:self-auto"
-          >
-            <span>Consultar Notas Emitidas e de Entrada no Módulo Fiscal</span>
-            <ArrowRight size={14} />
-          </button>
+          <div className="flex flex-wrap items-center gap-4 self-start sm:self-auto">
+            <button
+              type="button"
+              onClick={() => navigate('/bi/usuarios')}
+              className="inline-flex items-center gap-1.5 text-slate-600 dark:text-slate-300 hover:text-blue-600 font-semibold transition-colors cursor-pointer"
+            >
+              <span>Ver / Definir por Usuário</span>
+              <ArrowRight size={14} />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigate('/bi/fiscal')}
+              className="inline-flex items-center gap-1.5 text-blue-600 dark:text-blue-400 hover:text-blue-700 font-semibold transition-colors cursor-pointer"
+            >
+              <span>Consultar Módulo Fiscal</span>
+              <ArrowRight size={14} />
+            </button>
+          </div>
         </div>
       </div>
     </div>

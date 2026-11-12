@@ -22,14 +22,21 @@ export default function Header({ onMenuClick, activeRoute }: Props) {
   const [empresaNome, setEmpresaNome] = useState<string>('')
   const navigate = useNavigate()
 
+  const userKey = String(user?.email || user?.id || 'default').toLowerCase()
+
   const { data: tenantParams } = useQuery<{
     somente_vendas_com_nf: boolean
     has_synced_nf?: boolean
     efetivo_somente_nf?: boolean
   }>({
-    queryKey: ['tenant-parametros'],
+    queryKey: ['tenant-parametros', userKey],
     queryFn: async () => {
       const { data } = await api.get('/configuracoes/parametros')
+      try {
+        localStorage.setItem(`coliseu_only_nf_sales:${userKey}`, String(Boolean(data?.somente_vendas_com_nf)))
+      } catch {
+        // ignore
+      }
       return data
     },
     staleTime: 60_000,
