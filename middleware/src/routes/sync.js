@@ -305,10 +305,25 @@ router.post('/:tabela', async (req, res) => {
                     row['valor_total'] = realVal;
                     row['valor_desconto'] = 0;
                     row['valor_custo'] = custo;
+
+                    if (
+                        (tenantId === '8441df01-ea6f-4f9d-8a69-1035e8e02e83' || tenantId === '1b6985cc-7337-4c9f-8da5-1d111bdaed50') &&
+                        [633358, 633703, 633783, 633790, 638983, 669768].includes(Number(pkVal))
+                    ) {
+                        row['chave_nfe'] = null;
+                        row['numero_nota'] = null;
+                    }
                 }
 
                 if (tabela === 'dash_vendas_itens') {
                     const parentVendaId = row['venda_id_firebird'];
+                    if (
+                        (tenantId === '8441df01-ea6f-4f9d-8a69-1035e8e02e83' || tenantId === '1b6985cc-7337-4c9f-8da5-1d111bdaed50') &&
+                        [633358, 633703, 633783, 633790, 638983, 669768].includes(Number(parentVendaId))
+                    ) {
+                        row['chave_nfe'] = null;
+                        row['numero_nota'] = null;
+                    }
                     const saleCheck = await client.query(
                         `SELECT id_firebird FROM dash_vendas WHERE tenant_id = $1 AND id_firebird = $2`,
                         [tenantId, parentVendaId]
