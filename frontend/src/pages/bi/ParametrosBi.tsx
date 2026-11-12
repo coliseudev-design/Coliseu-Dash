@@ -1,16 +1,27 @@
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import {
-  SlidersHorizontal, FileCheck2, CheckCircle2, Info, ArrowRight, RefreshCw, ShieldCheck, AlertTriangle
+  SlidersHorizontal, FileCheck2, CheckCircle2, Info, ArrowRight, RefreshCw, ShieldCheck, AlertTriangle, CheckSquare, Square, Save, Layers
 } from 'lucide-react'
 import clsx from 'clsx'
 import api from '../../services/api'
-import { formatDateTime } from '../../utils/format'
+import { formatDateTime, formatBRL, formatNum } from '../../utils/format'
 import { useAuthStore } from '../../store/authStore'
+
+interface CfopDisponivelItem {
+  cfop: string
+  descricao: string
+  natureza_operacao: string
+  qtd_notas: number
+  valor_produtos: number
+  valor_total: number
+}
 
 interface TenantParametros {
   somente_vendas_com_nf: boolean
+  cfops_faturamento?: string[] | null
+  cfops_disponiveis?: CfopDisponivelItem[]
   has_synced_nf?: boolean
   efetivo_somente_nf?: boolean
   updated_at: string | null
@@ -90,6 +101,71 @@ export default function ParametrosBi() {
 
   const isOnlyNf = Boolean(data?.somente_vendas_com_nf)
   const hasSyncedNf = data?.has_synced_nf !== false
+  const cfopsDisponiveis = data?.cfops_disponiveis || []
+
+  const [selectedCfops, setSelectedCfops] = useState<string[]>([])
+  const [cfopInitialized, setCfopInitialized] = useState(false)
+
+  useEffect(() => {
+    if (!data || cfopInitialized) return
+    const allCodes = (data.cfops_disponiveis || []).map((c) => c.cfop)
+    if (Array.isArray(data.cfops_faturamento) && data.cfops_faturamento.length > 0) {
+      setSelectedCfops(data.cfops_faturamento)
+    } else if (allCodes.length > 0) {
+      setSelectedCfops(allCodes)
+    }
+    if (allCodes.length > 0 || data.cfops_faturamento) {
+      setCfopInitialized(true)
+    }
+  }, [data, cfopInitialized])
+
+  const saveCfopsMutation = useMutation({
+    mutationFn: async (cfopsToSave: string[] | null) => {
+      const res = await api.put('/configuracoes/parametros', {
+        cfops_faturamento: cfopsToSave,
+      })
+      return res.data as TenantParametros
+    },
+    onSuccess: (updated) => {
+      queryClient.setQueryData(['tenant-parametros', userKey], updated)
+      queryClient.invalidateQueries({
+        predicate: (q) => q.queryKey[0] !== 'tenant-parametros',
+      })
+      setFeedback('CFOPs que contabilizam no projeto salvos com sucesso!')
+      setTimeout(() => setFeedback(null), 6500)
+    },
+  })
+
+  const toggleCfop = (code: string) => {
+    setSelectedCfops((prev) =>
+      prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
+    )
+  }
+
+  const selectAllCfops = () => {
+    setSelectedCfops(cfopsDisponiveis.map((c) => c.cfop))
+  }
+
+  const selectOnlySalesCfops = () => {
+    const commercial = cfopsDisponiveis
+      .filter((c) => ['5101', '5102', '5117', '5401', '5403', '5405', '5922', '6101', '6102', '6108', '6403', '6404'].includes(c.cfop))
+      .map((c) => c.cfop)
+    setSelectedCfops(commercial.length > 0 ? commercial : cfopsDisponiveis.map((c) => c.cfop))
+  }
+
+  const selectedSummary = useMemo(() => {
+    let qtd = 0
+    let valorProdutos = 0
+    let valorTotal = 0
+    for (const item of cfopsDisponiveis) {
+      if (selectedCfops.includes(item.cfop)) {
+        qtd += Number(item.qtd_notas || 0)
+        valorProdutos += Number(item.valor_produtos || 0)
+        valorTotal += Number(item.valor_total || 0)
+      }
+    }
+    return { qtd, valorProdutos, valorTotal }
+  }, [cfopsDisponiveis, selectedCfops])
 
   return (
     <div className="max-w-4xl mx-auto w-full py-2 sm:py-4 space-y-5">
@@ -276,6 +352,158 @@ export default function ParametrosBi() {
               <ArrowRight size={14} />
             </button>
           </div>
+        </div>
+      </div>
+
+      {/* Card de Configuração Administrativa: CFOPs que Somam no Projeto */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 sm:p-6 shadow-[0_4px_16px_rgba(15,23,42,0.04)] space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3.5">
+            <div
+              className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+              style={{
+                backgroundColor: '#10B98116',
+                border: '1px solid #10B98136',
+              }}
+            >
+              <Layers size={19} style={{ color: '#10B981' }} strokeWidth={1.9} />
+            </div>
+            <div>
+              <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
+                CFOPs que Somam no Projeto (Configuração Administrativa Fiscal)
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                Selecione quais CFOPs emitidos devem ser contabilizados por padrão na apuração Fiscal do projeto.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 self-start sm:self-center">
+            <button
+              type="button"
+              onClick={selectAllCfops}
+              className="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+            >
+              Marcar Todos ({cfopsDisponiveis.length})
+            </button>
+            <button
+              type="button"
+              onClick={selectOnlySalesCfops}
+              className="px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition-colors cursor-pointer"
+            >
+              Apenas Vendas Comerciais
+            </button>
+            <button
+              type="button"
+              disabled={saveCfopsMutation.isPending}
+              onClick={() => {
+                const allSelected = cfopsDisponiveis.length > 0 && selectedCfops.length === cfopsDisponiveis.length
+                saveCfopsMutation.mutate(allSelected ? null : selectedCfops)
+              }}
+              className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm transition-colors cursor-pointer disabled:opacity-50"
+            >
+              {saveCfopsMutation.isPending ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
+              <span>Salvar CFOPs no Projeto</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Resumo dos CFOPs Marcados */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/60 rounded-xl p-3.5">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+              CFOPs Selecionados / Notas
+            </span>
+            <span className="text-sm font-black text-slate-900 dark:text-white font-mono">
+              {selectedCfops.length} de {cfopsDisponiveis.length} CFOPs ({formatNum(selectedSummary.qtd)} NFs)
+            </span>
+          </div>
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+              Total Valor Produtos (Histórico Geral)
+            </span>
+            <span className="text-sm font-black text-blue-600 dark:text-blue-400 font-mono">
+              {formatBRL(selectedSummary.valorProdutos)}
+            </span>
+          </div>
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+              Total Valor NF Emitido (Histórico Geral)
+            </span>
+            <span className="text-sm font-black text-emerald-600 dark:text-emerald-400 font-mono">
+              {formatBRL(selectedSummary.valorTotal)}
+            </span>
+          </div>
+        </div>
+
+        {/* Tabela de Seleção de CFOPs */}
+        <div className="overflow-x-auto border border-slate-200/80 dark:border-slate-800 rounded-xl">
+          <table className="w-full text-left text-xs">
+            <thead>
+              <tr className="bg-slate-50 dark:bg-slate-800/70 border-b border-slate-200/80 dark:border-slate-800 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
+                <th className="py-2.5 px-3 w-10 text-center">SOMAR</th>
+                <th className="py-2.5 px-3">CFOP</th>
+                <th className="py-2.5 px-3">NATUREZA / DESCRIÇÃO</th>
+                <th className="py-2.5 px-3 text-right">QTD NOTAS</th>
+                <th className="py-2.5 px-3 text-right">VALOR PRODUTOS</th>
+                <th className="py-2.5 px-3 text-right">VALOR TOTAL NF</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200/60 dark:divide-slate-800/70">
+              {cfopsDisponiveis.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-6 text-center text-slate-400 font-medium">
+                    Nenhum CFOP sincronizado encontrado para esta empresa.
+                  </td>
+                </tr>
+              ) : (
+                cfopsDisponiveis.map((item) => {
+                  const checked = selectedCfops.includes(item.cfop)
+                  return (
+                    <tr
+                      key={item.cfop}
+                      onClick={() => toggleCfop(item.cfop)}
+                      className={clsx(
+                        'transition-colors cursor-pointer',
+                        checked
+                          ? 'bg-emerald-500/5 hover:bg-emerald-500/10'
+                          : 'opacity-60 hover:bg-slate-50 dark:hover:bg-slate-800/40'
+                      )}
+                    >
+                      <td className="py-2.5 px-3 text-center">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            toggleCfop(item.cfop)
+                          }}
+                          className="inline-flex items-center justify-center text-emerald-600 dark:text-emerald-400"
+                        >
+                          {checked ? <CheckSquare size={16} /> : <Square size={16} className="text-slate-400" />}
+                        </button>
+                      </td>
+                      <td className="py-2.5 px-3 font-mono font-black text-slate-900 dark:text-white">
+                        {item.cfop}
+                      </td>
+                      <td className="py-2.5 px-3">
+                        <div className="font-bold text-slate-800 dark:text-slate-200">{item.natureza_operacao}</div>
+                        <div className="text-[11px] text-slate-500 dark:text-slate-400">{item.descricao}</div>
+                      </td>
+                      <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-700 dark:text-slate-300">
+                        {formatNum(item.qtd_notas)}
+                      </td>
+                      <td className="py-2.5 px-3 text-right font-mono font-semibold text-slate-700 dark:text-slate-300">
+                        {formatBRL(item.valor_produtos)}
+                      </td>
+                      <td className="py-2.5 px-3 text-right font-mono font-black text-emerald-600 dark:text-emerald-400">
+                        {formatBRL(item.valor_total)}
+                      </td>
+                    </tr>
+                  )
+                })
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

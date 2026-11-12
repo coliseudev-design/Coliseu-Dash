@@ -4,7 +4,13 @@ const express = require('express');
 const router = express.Router();
 const config = require('../config/env');
 const logger = require('../config/logger');
-const { getTenantSettings, updateTenantSettings, getUserSettings, updateUserSettings } = require('../utils/tenantSettings');
+const {
+    getTenantSettings,
+    updateTenantSettings,
+    getUserSettings,
+    updateUserSettings,
+    getAvailableTenantCfops,
+} = require('../utils/tenantSettings');
 const { getUserPermissions } = require('../utils/rbac');
 
 /**
@@ -69,8 +75,14 @@ router.get('/parametros', async (req, res, next) => {
             return res.status(401).json({ error: 'Tenant não identificado.' });
         }
         const userKey = req.user?.email || req.user?.id || req.headers['x-user-key'] || null;
-        const settings = await getUserSettings(tenantId, userKey, null);
-        return res.json(settings);
+        const [settings, cfopsDisponiveis] = await Promise.all([
+            getUserSettings(tenantId, userKey, null),
+            getAvailableTenantCfops(tenantId),
+        ]);
+        return res.json({
+            ...settings,
+            cfops_disponiveis: cfopsDisponiveis,
+        });
     } catch (err) {
         next(err);
     }
@@ -78,7 +90,7 @@ router.get('/parametros', async (req, res, next) => {
 
 /**
  * @route PUT /api/configuracoes/parametros
- * @desc Atualiza os parâmetros individuais do usuário logado (ex: somente_vendas_com_nf - DEM-0028).
+ * @desc Atualiza os parâmetros individuais do usuário logado (ex: somente_vendas_com_nf - DEM-0028) e CFOPs que somam no projeto.
  */
 router.put('/parametros', async (req, res, next) => {
     try {
@@ -88,19 +100,32 @@ router.put('/parametros', async (req, res, next) => {
         }
 
         const userKey = req.user?.email || String(req.user?.id || req.headers['x-user-key'] || 'default');
-        const updated = await updateUserSettings(
-            tenantId,
-            userKey,
-            { somente_vendas_com_nf: Boolean(req.body?.somente_vendas_com_nf) }
-        );
+        const patch = {};
+        if (req.body?.somente_vendas_com_nf !== undefined) {
+            patch.somente_vendas_com_nf = Boolean(req.body.somente_vendas_com_nf);
+        }
+        if (req.body?.cfops_faturamento !== undefined) {
+            patch.cfops_faturamento = Array.isArray(req.body.cfops_faturamento)
+                ? req.body.cfops_faturamento
+                : null;
+        }
 
-        logger.info('[Configuracoes] Parâmetros individuais do usuário atualizados com sucesso', {
+        const [updated, cfopsDisponiveis] = await Promise.all([
+            updateUserSettings(tenantId, userKey, patch),
+            getAvailableTenantCfops(tenantId),
+        ]);
+
+        logger.info('[Configuracoes] Parâmetros atualizados com sucesso', {
             tenantId,
             userKey,
             somente_vendas_com_nf: updated.somente_vendas_com_nf,
+            cfops_faturamento: updated.cfops_faturamento,
         });
 
-        return res.json(updated);
+        return res.json({
+            ...updated,
+            cfops_disponiveis: cfopsDisponiveis,
+        });
     } catch (err) {
         next(err);
     }

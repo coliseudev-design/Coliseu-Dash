@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   FileText, ArrowUpRight, ArrowDownLeft, Search, Download, Copy, Check,
-  Eye, X, RefreshCw, ChevronLeft, ChevronRight, Scale, Filter, Truck, Building2, Package, ChevronDown, FileCheck2, AlertTriangle
+  Eye, X, RefreshCw, ChevronLeft, ChevronRight, Scale, Filter, Truck, Building2, Package, ChevronDown, FileCheck2, AlertTriangle, CheckSquare, Square, Save, Layers
 } from 'lucide-react'
 import clsx from 'clsx'
 import api from '../../services/api'
@@ -14,10 +14,12 @@ import { useAuthStore } from '../../store/authStore'
 
 interface FiscalKpis {
   emitidas_qtd: number
+  emitidas_valor_produtos?: number
   emitidas_valor: number
   emitidas_ticket_medio: number
   emitidas_chave_qtd: number
   entradas_qtd: number
+  entradas_valor_produtos?: number
   entradas_valor: number
   entradas_ticket_medio: number
   entradas_chave_qtd: number
@@ -30,6 +32,7 @@ interface NaturezaResumo {
   natureza_operacao: string
   tipo_operacao: 'SAIDA' | 'ENTRADA'
   qtd: number
+  valor_produtos?: number
   valor: number
 }
 
@@ -37,7 +40,9 @@ interface CfopResumo {
   key?: string
   cfop: string
   tipo_operacao: 'SAIDA' | 'ENTRADA'
+  natureza_operacao?: string
   qtd: number
+  valor_produtos?: number
   valor: number
 }
 
@@ -46,6 +51,7 @@ interface FiscalResumoResponse {
   apenas_nfe?: boolean
   apenas_nfe_efetivo?: boolean
   has_synced_nf?: boolean
+  cfops_faturamento?: string[] | null
   kpis: FiscalKpis
   naturezas?: NaturezaResumo[]
   cfops: CfopResumo[]
@@ -67,6 +73,7 @@ interface FiscalNotaRow {
   uf: string
   cfop: string
   natureza_operacao: string
+  valor_produtos?: number
   valor_total: number
   status: string
   qtd_itens: number
@@ -75,6 +82,7 @@ interface FiscalNotaRow {
 interface FiscalNotasResponse {
   tipo: 'SAIDA' | 'ENTRADA'
   total: number
+  soma_valor_produtos?: number
   soma_valor: number
   page: number
   limit: number
@@ -140,12 +148,13 @@ function shortenChave(chave: string) {
 }
 
 export default function FiscalDashboard() {
+  const queryClient = useQueryClient()
   const periodState = usePeriodStore()
   const branchParam = useBranchParam()
   const activeUser = useAuthStore((s) => s.user)
   const userKey = String(activeUser?.email || activeUser?.id || 'default').toLowerCase()
 
-  const { data: tenantParams } = useQuery<{ somente_vendas_com_nf?: boolean }>({
+  const { data: tenantParams } = useQuery<{ somente_vendas_com_nf?: boolean; cfops_faturamento?: string[] | null }>({
     queryKey: ['tenant-parametros', userKey],
     queryFn: async () => {
       const res = await api.get('/configuracoes/parametros')
@@ -158,6 +167,8 @@ export default function FiscalDashboard() {
   const [searchInput, setSearchInput] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [selectedOperacao, setSelectedOperacao] = useState('todos')
+  const [checkedCfops, setCheckedCfops] = useState<string[] | null>(null)
+  const [cfopSaveMsg, setCfopSaveMsg] = useState<string | null>(null)
   const [page, setPage] = useState(1)
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
   const [selectedNota, setSelectedNota] = useState<{ origem: 'cargas' | 'vendas'; id: number } | null>(null)
@@ -166,7 +177,10 @@ export default function FiscalDashboard() {
     if (tenantParams && typeof tenantParams.somente_vendas_com_nf === 'boolean') {
       setApenasNfe(tenantParams.somente_vendas_com_nf)
     }
-  }, [tenantParams?.somente_vendas_com_nf])
+    if (tenantParams && Array.isArray(tenantParams.cfops_faturamento) && tenantParams.cfops_faturamento.length > 0 && checkedCfops === null) {
+      setCheckedCfops(tenantParams.cfops_faturamento)
+    }
+  }, [tenantParams?.somente_vendas_com_nf, tenantParams?.cfops_faturamento])
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -178,7 +192,7 @@ export default function FiscalDashboard() {
 
   useEffect(() => {
     setPage(1)
-  }, [activeTab, apenasNfe, selectedOperacao, periodState.period, periodState.startDate, periodState.endDate, branchParam.depto_id])
+  }, [activeTab, apenasNfe, selectedOperacao, checkedCfops, periodState.period, periodState.startDate, periodState.endDate, branchParam.depto_id])
 
   const baseParams = useMemo(() => {
     const p: Record<string, string | number> = {
@@ -187,9 +201,14 @@ export default function FiscalDashboard() {
     }
     if (branchParam.depto_id) p.depto_id = branchParam.depto_id
     if (selectedOperacao !== 'todos') p.operacao = selectedOperacao
+    if (checkedCfops !== null) {
+      p.cfops = checkedCfops.length > 0 ? checkedCfops.join(',') : 'nenhum'
+    } else {
+      p.cfops = 'todos'
+    }
     if (debouncedSearch) p.search = debouncedSearch
     return p
-  }, [periodState, apenasNfe, branchParam.depto_id, selectedOperacao, debouncedSearch])
+  }, [periodState, apenasNfe, branchParam.depto_id, selectedOperacao, checkedCfops, debouncedSearch])
 
   const {
     data: resumo,
@@ -262,6 +281,83 @@ export default function FiscalDashboard() {
     }
     return Array.from(unique.values()).sort((a, b) => b.valor - a.valor)
   }, [resumo?.naturezas])
+
+  const cfopsEmitidosResumo = useMemo(() => {
+    const all = (resumo?.cfops || []).filter((c) => c.tipo_operacao === 'SAIDA' && (c.cfop || '').trim() !== '')
+    const unique = new Map<string, { key: string; cfop: string; natureza: string; qtd: number; valor_produtos: number; valor: number }>()
+    for (const item of all) {
+      const code = (item.cfop || '').trim()
+      if (!code) continue
+      const key = item.key || `cfop:${code}`
+      const prev = unique.get(code)
+      if (prev) {
+        prev.qtd += item.qtd
+        prev.valor_produtos += Number(item.valor_produtos ?? item.valor ?? 0)
+        prev.valor += item.valor
+      } else {
+        unique.set(code, {
+          key,
+          cfop: code,
+          natureza: item.natureza_operacao || `CFOP ${code}`,
+          qtd: item.qtd,
+          valor_produtos: Number(item.valor_produtos ?? item.valor ?? 0),
+          valor: item.valor,
+        })
+      }
+    }
+    return Array.from(unique.values()).sort((a, b) => b.valor - a.valor)
+  }, [resumo?.cfops])
+
+  const allEmitidosCodes = useMemo(() => cfopsEmitidosResumo.map((c) => c.cfop), [cfopsEmitidosResumo])
+  const effectiveCheckedCfops = useMemo(
+    () => (checkedCfops !== null ? checkedCfops : allEmitidosCodes),
+    [checkedCfops, allEmitidosCodes]
+  )
+
+  const toggleCfopCheck = (code: string) => {
+    const current = checkedCfops !== null ? checkedCfops : allEmitidosCodes
+    const next = current.includes(code)
+      ? current.filter((c) => c !== code)
+      : [...current, code]
+    setCheckedCfops(next.length === allEmitidosCodes.length ? null : next)
+  }
+
+  const cfopTotals = useMemo(() => {
+    let totalQtd = 0
+    let totalProd = 0
+    let totalNf = 0
+    let checkedQtd = 0
+    let checkedProd = 0
+    let checkedNf = 0
+    for (const item of cfopsEmitidosResumo) {
+      totalQtd += item.qtd
+      totalProd += item.valor_produtos
+      totalNf += item.valor
+      if (effectiveCheckedCfops.includes(item.cfop)) {
+        checkedQtd += item.qtd
+        checkedProd += item.valor_produtos
+        checkedNf += item.valor
+      }
+    }
+    return { totalQtd, totalProd, totalNf, checkedQtd, checkedProd, checkedNf }
+  }, [cfopsEmitidosResumo, effectiveCheckedCfops])
+
+  const saveCfopsProjectMutation = useMutation({
+    mutationFn: async (cfopsToSave: string[] | null) => {
+      const res = await api.put('/configuracoes/parametros', {
+        cfops_faturamento: cfopsToSave,
+      })
+      return res.data
+    },
+    onSuccess: (updated) => {
+      queryClient.setQueryData(['tenant-parametros', userKey], updated)
+      queryClient.invalidateQueries({
+        predicate: (q) => q.queryKey[0] !== 'tenant-parametros',
+      })
+      setCfopSaveMsg('CFOPs padrão salvos nas Configurações Administrativas do Projeto!')
+      setTimeout(() => setCfopSaveMsg(null), 5000)
+    },
+  })
 
   const cfopsDisponiveis = useMemo(() => {
     const all = resumo?.cfops || []
@@ -515,6 +611,174 @@ export default function FiscalDashboard() {
         </div>
       )}
 
+      {/* Resumo Acima: Total Emitido por CFOP com Seleção Dinâmica */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-[0_4px_16px_rgba(15,23,42,0.04)] space-y-3.5">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div
+              className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
+              style={{ backgroundColor: '#10B98114', border: '1px solid #10B98133' }}
+            >
+              <Layers size={17} style={{ color: '#10B981' }} />
+            </div>
+            <div>
+              <h3 className="text-sm font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">
+                Resumo Emitido por CFOP — Seleção Dinâmica de Contabilização
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Marque ou desmarque abaixo quais CFOPs devem somar nos indicadores desta tela e salve a configuração padrão no projeto.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setCheckedCfops(null)}
+              className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+            >
+              Marcar Todos ({cfopsEmitidosResumo.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const salesOnly = cfopsEmitidosResumo
+                  .filter((c) => ['5101', '5102', '5117', '5401', '5403', '5405', '5922', '6101', '6102', '6108', '6403', '6404'].includes(c.cfop))
+                  .map((c) => c.cfop)
+                setCheckedCfops(salesOnly)
+              }}
+              className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition-colors cursor-pointer"
+            >
+              Apenas Vendas (Sem 5949 / Devolução)
+            </button>
+            <button
+              type="button"
+              disabled={saveCfopsProjectMutation.isPending}
+              onClick={() => {
+                const isAll = checkedCfops === null || checkedCfops.length === allEmitidosCodes.length
+                saveCfopsProjectMutation.mutate(isAll ? null : effectiveCheckedCfops)
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+            >
+              <Save size={13} />
+              <span>Salvar CFOPs no Projeto</span>
+            </button>
+          </div>
+        </div>
+
+        {cfopSaveMsg && (
+          <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-xl px-3.5 py-2 text-xs font-semibold text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
+            <Check size={14} className="text-emerald-600" />
+            <span>{cfopSaveMsg}</span>
+          </div>
+        )}
+
+        {/* Faixa de Totais dos CFOPs Selecionados vs Total Emitido */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/60 rounded-xl p-3">
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+              Registros / Notas Selecionadas
+            </span>
+            <span className="text-sm font-black font-mono text-slate-900 dark:text-white">
+              {formatNum(cfopTotals.checkedQtd)} NFs{' '}
+              <span className="text-xs font-semibold text-slate-400">
+                (de {formatNum(cfopTotals.totalQtd)} emitidas)
+              </span>
+            </span>
+          </div>
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+              Valor Produtos (CFOPs Marcados)
+            </span>
+            <span className="text-sm font-black font-mono text-blue-600 dark:text-blue-400">
+              {formatBRL(cfopTotals.checkedProd)}
+            </span>
+          </div>
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+              Valor Total NF (CFOPs Marcados)
+            </span>
+            <span className="text-sm font-black font-mono text-emerald-600 dark:text-emerald-400">
+              {formatBRL(cfopTotals.checkedNf)}
+            </span>
+          </div>
+        </div>
+
+        {/* Tabela Compacta de Todos os CFOPs Emitidos */}
+        <div className="overflow-x-auto border border-slate-200/80 dark:border-slate-800 rounded-xl">
+          <table className="w-full text-left text-xs">
+            <thead>
+              <tr className="bg-slate-50 dark:bg-slate-800/70 border-b border-slate-200/80 dark:border-slate-800 text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
+                <th className="py-2 px-3 w-10 text-center">SOMAR</th>
+                <th className="py-2 px-3">CFOP</th>
+                <th className="py-2 px-3">NATUREZA DE OPERAÇÃO</th>
+                <th className="py-2 px-3 text-right">QTD NOTAS</th>
+                <th className="py-2 px-3 text-right">VALOR PRODUTOS</th>
+                <th className="py-2 px-3 text-right">VALOR TOTAL NF</th>
+                <th className="py-2 px-3 text-right">% TOTAL</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200/60 dark:divide-slate-800/70">
+              {cfopsEmitidosResumo.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-5 text-center text-slate-400">
+                    {loadingResumo ? 'Carregando resumo por CFOP...' : 'Nenhum CFOP emitido no período selecionado.'}
+                  </td>
+                </tr>
+              ) : (
+                cfopsEmitidosResumo.map((item) => {
+                  const isChecked = effectiveCheckedCfops.includes(item.cfop)
+                  const pct = cfopTotals.totalNf > 0 ? (item.valor / cfopTotals.totalNf) * 100 : 0
+                  return (
+                    <tr
+                      key={item.cfop}
+                      onClick={() => toggleCfopCheck(item.cfop)}
+                      className={clsx(
+                        'transition-colors cursor-pointer',
+                        isChecked
+                          ? 'bg-emerald-500/5 hover:bg-emerald-500/10'
+                          : 'opacity-55 hover:bg-slate-50 dark:hover:bg-slate-800/40'
+                      )}
+                    >
+                      <td className="py-2 px-3 text-center">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            toggleCfopCheck(item.cfop)
+                          }}
+                          className="inline-flex items-center justify-center text-emerald-600 dark:text-emerald-400"
+                        >
+                          {isChecked ? <CheckSquare size={15} /> : <Square size={15} className="text-slate-400" />}
+                        </button>
+                      </td>
+                      <td className="py-2 px-3 font-mono font-black text-slate-900 dark:text-white">
+                        {item.cfop}
+                      </td>
+                      <td className="py-2 px-3 font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[320px]" title={item.natureza}>
+                        {item.natureza}
+                      </td>
+                      <td className="py-2 px-3 text-right font-mono font-bold text-slate-700 dark:text-slate-300">
+                        {formatNum(item.qtd)}
+                      </td>
+                      <td className="py-2 px-3 text-right font-mono font-semibold text-slate-700 dark:text-slate-300">
+                        {formatBRL(item.valor_produtos)}
+                      </td>
+                      <td className="py-2 px-3 text-right font-mono font-black text-emerald-600 dark:text-emerald-400">
+                        {formatBRL(item.valor)}
+                      </td>
+                      <td className="py-2 px-3 text-right font-mono text-[11px] font-bold text-slate-500">
+                        {pct.toFixed(1)}%
+                      </td>
+                    </tr>
+                  )
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       {/* Cards Executivos de KPIs Fiscais */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5">
         {/* Card 1: Notas Emitidas (Saída) */}
@@ -542,7 +806,10 @@ export default function FiscalDashboard() {
           <div className="bi-kpi-value font-extrabold font-mono text-slate-900 dark:text-white tracking-tight">
             {loadingResumo ? '...' : formatBRL(kpis.emitidas_valor)}
           </div>
-          <div className="mt-2 flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-[11px] text-slate-500 dark:text-slate-400">
+          <div className="mt-1 text-[11px] font-mono text-blue-600 dark:text-blue-400 font-bold">
+            Valor Produtos: {loadingResumo ? '...' : formatBRL(kpis.emitidas_valor_produtos ?? kpis.emitidas_valor)}
+          </div>
+          <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-[11px] text-slate-500 dark:text-slate-400">
             <span>
               <strong className="text-slate-700 dark:text-slate-200">{formatNum(kpis.emitidas_qtd)}</strong> saídas
             </span>
@@ -706,8 +973,14 @@ export default function FiscalDashboard() {
               </button>
             )}
             <span>
-              Soma da listagem:{' '}
-              <strong className="text-slate-800 dark:text-slate-100">
+              Valor Produtos:{' '}
+              <strong className="text-blue-600 dark:text-blue-400 font-mono">
+                {formatBRL(notasPage?.soma_valor_produtos ?? notasPage?.soma_valor ?? 0)}
+              </strong>
+            </span>
+            <span>
+              Valor Total NF:{' '}
+              <strong className="text-slate-800 dark:text-slate-100 font-mono">
                 {formatBRL(notasPage?.soma_valor || 0)}
               </strong>
             </span>

@@ -61,7 +61,9 @@ app.use(cors({
         'X-Timezone-Offset',
         'X-User-Timezone',
         'X-Target-App',
-        'X-Layout-Version'
+        'X-Layout-Version',
+        'X-Only-Nf-Sales',
+        'X-User-Key'
     ],
 }));
 

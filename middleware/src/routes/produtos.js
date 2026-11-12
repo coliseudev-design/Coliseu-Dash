@@ -3,6 +3,8 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db/postgres');
+const cfopUtil = require('../utils/cfop');
+const { getFiscalStockMap } = require('../utils/fiscalStock');
 
 // GET /api/produtos/lista?search=&limit=&offset=&categoria=&vendedor_id=
 router.get('/lista', async (req, res, next) => {
@@ -17,6 +19,12 @@ router.get('/lista', async (req, res, next) => {
         const deptoId = req.query.depto_id || req.query.centro_custo;
         const deptoNum = parseInt(deptoId, 10);
         const hasDepto = !isNaN(deptoNum) && deptoNum > 0;
+
+        const onlyNfActive = cfopUtil.isOnlyNfSalesActive();
+        const fiscalStockInfo = onlyNfActive
+            ? await getFiscalStockMap(tenantId, deptoId)
+            : { hasFiscalStock: false, stockMap: new Map() };
+        const useFiscalStock = Boolean(onlyNfActive && fiscalStockInfo.hasFiscalStock);
 
         const where = ['p.tenant_id = $1', 'p.ativo = true'];
         const binds = [tenantId];
@@ -77,14 +85,22 @@ router.get('/lista', async (req, res, next) => {
             LIMIT $${limitIdx} OFFSET $${offsetIdx}
         `, [...binds, limit, offset]);
 
-        const formatted = rows.map(r => ({
-            ...r,
-            preco: parseFloat(r.preco),
-            custo: parseFloat(r.custo),
-            estoque: parseFloat(r.estoque),
-            estoque_minimo: parseFloat(r.estoque_minimo),
-            valor_total_estoque: parseFloat(r.valor_total_estoque)
-        }));
+        const formatted = rows.map(r => {
+            const preco = parseFloat(r.preco) || 0;
+            const custo = parseFloat(r.custo) || 0;
+            const estoque = useFiscalStock
+                ? Number(fiscalStockInfo.stockMap.get(String(r.id)) ?? 0)
+                : parseFloat(r.estoque || 0);
+            return {
+                ...r,
+                preco,
+                custo,
+                estoque,
+                estoque_minimo: parseFloat(r.estoque_minimo),
+                valor_total_estoque: preco * (estoque > 0 ? estoque : 0),
+                valor_custo_estoque: custo * (estoque > 0 ? estoque : 0),
+            };
+        });
 
         res.json({ 
             data: formatted, 
@@ -101,6 +117,32 @@ router.get('/lista', async (req, res, next) => {
 router.get('/categorias', async (req, res, next) => {
     try {
         const tenantId = req.tenant.id;
+        const deptoId = req.query.depto_id || req.query.centro_custo;
+        const onlyNfActive = cfopUtil.isOnlyNfSalesActive();
+        const fiscalStockInfo = onlyNfActive
+            ? await getFiscalStockMap(tenantId, deptoId)
+            : { hasFiscalStock: false, stockMap: new Map() };
+        const useFiscalStock = Boolean(onlyNfActive && fiscalStockInfo.hasFiscalStock);
+
+        if (useFiscalStock) {
+            const { rows } = await db.query(`
+                SELECT id_firebird, COALESCE(NULLIF(categoria, ''), 'Sem categoria') AS categoria, preco
+                FROM dash_produtos
+                WHERE tenant_id = $1 AND ativo = true
+            `, [tenantId]);
+            const catMap = new Map();
+            for (const r of rows) {
+                const cat = r.categoria;
+                const est = Number(fiscalStockInfo.stockMap.get(String(r.id_firebird)) ?? 0);
+                const cur = catMap.get(cat) || { categoria: cat, qtd: 0, valor_estoque: 0 };
+                cur.qtd++;
+                if (est > 0) cur.valor_estoque += (parseFloat(r.preco) || 0) * est;
+                catMap.set(cat, cur);
+            }
+            const formatted = Array.from(catMap.values()).sort((a, b) => a.categoria.localeCompare(b.categoria));
+            return res.json({ data: formatted });
+        }
+
         const { rows } = await db.query(`
             SELECT 
                 COALESCE(NULLIF(categoria, ''), 'Sem categoria') AS categoria, 
@@ -135,6 +177,59 @@ router.get('/kpis', async (req, res, next) => {
             ? `LEFT JOIN dash_produtos_depto pd ON pd.produto_id_firebird = p.id_firebird AND pd.tenant_id = p.tenant_id AND pd.depto_id = ${deptoNum}`
             : ``;
         const estoqueExpr = hasDepto ? `COALESCE(pd.estoque, 0)` : `p.estoque`;
+
+        const onlyNfActive = cfopUtil.isOnlyNfSalesActive();
+        const fiscalStockInfo = onlyNfActive
+            ? await getFiscalStockMap(tenantId, deptoId)
+            : { hasFiscalStock: false, stockMap: new Map() };
+        const useFiscalStock = Boolean(onlyNfActive && fiscalStockInfo.hasFiscalStock);
+
+        if (useFiscalStock) {
+            const { rows } = await db.query(`
+                SELECT id_firebird, nome, preco, custo, estoque_minimo
+                FROM dash_produtos
+                WHERE tenant_id = $1 AND ativo = true
+            `, [tenantId]);
+
+            let total_produtos = 0;
+            let valor_total_estoque = 0;
+            let baixo_estoque = 0;
+            let maisCaroVal = -1;
+            let maisCaroNome = '—';
+            let maisBaratoVal = Number.POSITIVE_INFINITY;
+            let maisBaratoNome = '—';
+
+            for (const r of rows) {
+                total_produtos++;
+                const preco = parseFloat(r.preco) || 0;
+                const estMin = parseFloat(r.estoque_minimo) || 0;
+                const est = Number(fiscalStockInfo.stockMap.get(String(r.id_firebird)) ?? 0);
+                if (est > 0) {
+                    valor_total_estoque += preco * est;
+                }
+                if (est <= estMin) {
+                    baixo_estoque++;
+                }
+                if (preco > maisCaroVal) {
+                    maisCaroVal = preco;
+                    maisCaroNome = r.nome || '—';
+                }
+                if (preco > 0 && preco < maisBaratoVal) {
+                    maisBaratoVal = preco;
+                    maisBaratoNome = r.nome || '—';
+                }
+            }
+
+            return res.json({
+                kpis: {
+                    total_produtos,
+                    valor_total_estoque: Math.round(valor_total_estoque * 100) / 100,
+                    baixo_estoque,
+                    produto_mais_caro: maisCaroNome,
+                    produto_mais_barato: maisBaratoNome,
+                }
+            });
+        }
         
         const rP = await db.query(`
             SELECT 

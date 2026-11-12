@@ -154,6 +154,62 @@ export default function InventoryManagementDashboard() {
     });
   }, [tableData, searchTerm, marcaFilter, grupoFilter, statusGiroFilter, statusCoberturaFilter, activeTab]);
 
+  const hasActiveFilter = Boolean(
+    searchTerm.trim() || marcaFilter || grupoFilter || statusGiroFilter || statusCoberturaFilter || activeTab !== 'todos'
+  );
+
+  const displayKpis = useMemo(() => {
+    if (!hasActiveFilter) return kpis;
+    let valor_estoque_custo = 0;
+    let valor_estoque_venda = 0;
+    let total_volume = 0;
+    let skus_com_saldo = 0;
+    let skus_zerados = 0;
+    let margem_critica = 0;
+    let estoque_morto = 0;
+    let somaCobertura = 0;
+    let countCobertura = 0;
+
+    for (const item of filteredData) {
+      const est = Number(item.estoque || 0);
+      const custo = Number(item.custo || 0);
+      const preco = Number(item.preco || 0);
+      if (est > 0) {
+        skus_com_saldo++;
+        total_volume += est;
+        const itemCusto = item.total_custo !== undefined ? Number(item.total_custo) : est * custo;
+        const itemVenda = item.total_venda !== undefined ? Number(item.total_venda) : est * preco;
+        valor_estoque_custo += itemCusto;
+        valor_estoque_venda += itemVenda;
+        if (item.status === 'Sem Giro') {
+          estoque_morto += itemCusto;
+        }
+      } else {
+        skus_zerados++;
+      }
+      if (item.status === 'Crítico') {
+        margem_critica++;
+      }
+      if (item.cobertura_dias > 0 && item.cobertura_dias < 999) {
+        somaCobertura += Number(item.cobertura_dias);
+        countCobertura++;
+      }
+    }
+
+    return {
+      ...kpis,
+      valor_estoque_custo: Math.round(valor_estoque_custo * 100) / 100,
+      valor_estoque_venda: Math.round(valor_estoque_venda * 100) / 100,
+      total_volume: Math.round(total_volume * 100) / 100,
+      skus_com_saldo,
+      skus_zerados,
+      margem_critica,
+      estoque_morto: Math.round(estoque_morto * 100) / 100,
+      cobertura_media_dias: countCobertura > 0 ? Math.round(somaCobertura / countCobertura) : kpis.cobertura_media_dias,
+      total_skus: filteredData.length,
+    };
+  }, [hasActiveFilter, filteredData, kpis]);
+
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, marcaFilter, grupoFilter, statusGiroFilter, statusCoberturaFilter, activeTab]);
@@ -304,10 +360,10 @@ export default function InventoryManagementDashboard() {
           </div>
           <div className="mt-2">
             <div className="bi-kpi-value font-black font-mono text-text-primary tracking-tight">
-              {formatBRL(kpis.valor_estoque_custo)}
+              {formatBRL(displayKpis.valor_estoque_custo)}
             </div>
             <div className="text-[10px] text-text-secondary font-medium mt-0.5">
-              Custo total em estoque
+              Custo total em estoque ({displayKpis.skus_com_saldo || displayKpis.total_skus || 0} SKUs)
             </div>
           </div>
         </div>
@@ -322,7 +378,7 @@ export default function InventoryManagementDashboard() {
           </div>
           <div className="mt-2">
             <div className="bi-kpi-value font-black font-mono text-text-primary tracking-tight">
-              {formatBRL(kpis.valor_estoque_venda)}
+              {formatBRL(displayKpis.valor_estoque_venda)}
             </div>
             <div className="text-[10px] text-text-secondary font-medium mt-0.5">
               Potencial de venda
@@ -340,7 +396,7 @@ export default function InventoryManagementDashboard() {
           </div>
           <div className="mt-2">
             <div className="bi-kpi-value font-black font-mono text-text-primary tracking-tight">
-              {formatNum(kpis.total_volume)}
+              {formatNum(displayKpis.total_volume)}
             </div>
             <div className="text-[10px] text-text-secondary font-medium mt-0.5">
               Unidades físicas totais
@@ -358,7 +414,7 @@ export default function InventoryManagementDashboard() {
           </div>
           <div className="mt-2">
             <div className="bi-kpi-value font-black font-mono text-text-primary tracking-tight">
-              {kpis.cobertura_media_dias} dias
+              {displayKpis.cobertura_media_dias} dias
             </div>
             <div className="text-[10px] text-text-secondary font-medium mt-0.5">
               Dias de estoque estimado
@@ -377,7 +433,7 @@ export default function InventoryManagementDashboard() {
           </div>
           <div className="mt-2">
             <div className="bi-kpi-value font-black font-mono text-text-primary tracking-tight">
-              {kpis.giro_turnover}x
+              {displayKpis.giro_turnover}x
             </div>
             <div className="text-[10px] text-text-secondary font-medium mt-0.5">
               Giro nos últimos meses
@@ -395,7 +451,7 @@ export default function InventoryManagementDashboard() {
           </div>
           <div className="mt-2">
             <div className="bi-kpi-value font-black font-mono text-red-500 tracking-tight">
-              {formatNum(kpis.skus_zerados)}
+              {formatNum(displayKpis.skus_zerados)}
             </div>
             <div className="text-[10px] text-red-400/90 font-semibold mt-0.5">
               Itens com estoque zero
@@ -413,7 +469,7 @@ export default function InventoryManagementDashboard() {
           </div>
           <div className="mt-2">
             <div className="bi-kpi-value font-black font-mono text-text-primary tracking-tight">
-              {formatNum(kpis.margem_critica)}
+              {formatNum(displayKpis.margem_critica)}
             </div>
             <div className="text-[10px] text-text-secondary font-medium mt-0.5">
               Abaixo do mínimo
@@ -431,7 +487,7 @@ export default function InventoryManagementDashboard() {
           </div>
           <div className="mt-2">
             <div className="bi-kpi-value font-black font-mono text-text-primary tracking-tight">
-              {formatBRL(kpis.estoque_morto)}
+              {formatBRL(displayKpis.estoque_morto)}
             </div>
             <div className="text-[10px] text-text-secondary font-medium mt-0.5">
               Sem saída &gt; 90 dias
@@ -633,6 +689,14 @@ export default function InventoryManagementDashboard() {
                 {filteredData.length} produtos correspondentes aos filtros aplicados
               </p>
             </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="px-3 py-1.5 rounded-xl bg-bg-secondary/70 border border-divider/60 text-xs font-bold text-text-secondary">
+                Qtd Total: <span className="text-text-primary font-black font-mono">{formatNum(displayKpis.total_volume)} un</span>
+              </div>
+              <div className="px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-xs font-bold text-emerald-500">
+                Valor Total (Custo): <span className="font-black font-mono">{formatBRL(displayKpis.valor_estoque_custo)}</span>
+              </div>
+            </div>
           </div>
 
           {/* Filtros em Linha: Busca + Dropdowns */}
@@ -725,25 +789,27 @@ export default function InventoryManagementDashboard() {
 
         {/* Table Content */}
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs min-w-[1000px]">
+          <table className="w-full text-left text-xs min-w-[1100px]">
             <thead>
               <tr className="border-b border-divider/70 bg-bg-secondary/30 text-[10px] font-extrabold uppercase tracking-wider text-text-secondary">
                 <th className="py-3 px-4">CÓDIGO</th>
-                <th className="py-3 px-4 min-w-[280px]">DESCRIÇÃO</th>
+                <th className="py-3 px-4 min-w-[260px]">DESCRIÇÃO</th>
                 <th className="py-3 px-3 text-center">UN</th>
                 <th className="py-3 px-4">MARCA</th>
                 <th className="py-3 px-4">GRUPO</th>
                 <th className="py-3 px-3 text-center">STATUS</th>
                 <th className="py-3 px-3 text-center">COBERTURA</th>
+                <th className="py-3 px-3 text-right">ESTOQUE</th>
                 <th className="py-3 px-3 text-right">VENDA / MÊS</th>
-                <th className="py-3 px-3 text-right">CUSTO</th>
+                <th className="py-3 px-3 text-right">CUSTO UN.</th>
+                <th className="py-3 px-3 text-right">TOTAL CUSTO</th>
                 <th className="py-3 px-4 text-right">PREÇO</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-divider/40">
               {paginatedData.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="py-12 text-center text-text-muted font-semibold">
+                  <td colSpan={12} className="py-12 text-center text-text-muted font-semibold">
                     Nenhum produto encontrado com os filtros selecionados.
                   </td>
                 </tr>
@@ -786,21 +852,26 @@ export default function InventoryManagementDashboard() {
                     );
                   }
 
+                  const itemEst = Number(item.estoque || 0);
+                  const itemTotalCusto = item.total_custo !== undefined
+                    ? Number(item.total_custo)
+                    : (itemEst > 0 ? itemEst * Number(item.custo || 0) : 0);
+
                   return (
                     <tr key={idx} className="hover:bg-bg-secondary/30 transition-colors group">
                       <td className="py-3 px-4 font-mono font-bold text-text-primary text-[11px]">
                         {item.cod}
                       </td>
-                      <td className="py-3 px-4 font-bold text-text-primary truncate max-w-[340px]" title={item.desc}>
+                      <td className="py-3 px-4 font-bold text-text-primary truncate max-w-[320px]" title={item.desc}>
                         {item.desc}
                       </td>
                       <td className="py-3 px-3 text-center text-text-secondary font-bold text-[10px]">
                         {item.un || 'UN'}
                       </td>
-                      <td className="py-3 px-4 text-text-secondary font-semibold uppercase text-[11px] truncate max-w-[140px]" title={item.marca}>
+                      <td className="py-3 px-4 text-text-secondary font-semibold uppercase text-[11px] truncate max-w-[130px]" title={item.marca}>
                         {item.marca}
                       </td>
-                      <td className="py-3 px-4 text-text-muted font-medium text-[11px] truncate max-w-[140px]" title={item.grupo}>
+                      <td className="py-3 px-4 text-text-muted font-medium text-[11px] truncate max-w-[130px]" title={item.grupo}>
                         {item.grupo}
                       </td>
                       <td className="py-3 px-3 text-center">
@@ -814,11 +885,17 @@ export default function InventoryManagementDashboard() {
                           {item.cobertura_label}
                         </span>
                       </td>
+                      <td className="py-3 px-3 text-right font-black text-text-primary font-mono">
+                        {formatNum(itemEst)}
+                      </td>
                       <td className="py-3 px-3 text-right font-semibold text-text-secondary font-mono">
                         {item.venda_mes} un
                       </td>
                       <td className="py-3 px-3 text-right font-semibold text-text-secondary font-mono">
                         {formatBRL(item.custo)}
+                      </td>
+                      <td className="py-3 px-3 text-right font-black text-emerald-500 font-mono">
+                        {formatBRL(itemTotalCusto)}
                       </td>
                       <td className="py-3 px-4 text-right font-black text-text-primary font-mono">
                         {formatBRL(item.preco)}
