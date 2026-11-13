@@ -322,7 +322,7 @@ function buildFiscalUnifiedCte({
             cargasDeptoClause = ` AND (
                 CASE
                     WHEN ${isCargasSaidaFallbackExpr}
-                    THEN (${emitKeyDocExpr} = ${pDoc} OR regexp_replace(COALESCE(cg.remetente_documento, ''), '\\D', '', 'g') = ${pDoc})
+                    THEN ${emitKeyDocExpr} = ${pDoc}
                     WHEN UPPER(COALESCE(cg.dados_nfe->>'tipo_operacao', 'SAIDA')) = 'ENTRADA'
                     THEN regexp_replace(COALESCE(cg.destinatario_documento, ''), '\\D', '', 'g') = ${pDoc}
                     ELSE regexp_replace(COALESCE(cg.remetente_documento, ''), '\\D', '', 'g') = ${pDoc}

@@ -71,12 +71,12 @@ async function getFiscalStockMap(tenantId, deptoId = null) {
         const queryParams = targetDoc ? [tenantId, targetDoc] : [tenantId];
         const signExpr = targetDoc
             ? `CASE
-                WHEN LEFT(item_cfop, 1) IN ('1', '2', '3') THEN qtd
-                WHEN LEFT(item_cfop, 1) IN ('5', '6', '7') THEN
-                    CASE
-                        WHEN dest_doc = $2 AND emit_key_doc <> $2 THEN qtd
-                        ELSE -qtd
-                    END
+                WHEN LEFT(item_cfop, 1) IN ('1', '2', '3')
+                     AND (emit_key_doc = $2 OR (emit_key_doc <> $2 AND rem_doc = $2))
+                THEN qtd
+                WHEN LEFT(item_cfop, 1) IN ('5', '6', '7')
+                     AND emit_key_doc = $2
+                THEN -qtd
                 ELSE 0
             END`
             : `CASE
