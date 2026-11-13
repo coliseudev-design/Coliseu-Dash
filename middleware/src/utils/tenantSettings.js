@@ -230,11 +230,10 @@ async function getAvailableTenantCfops(tenantId) {
                   AND COALESCE(status, '') NOT IN ('CANCELADA', 'CANCELADO', 'DENEGADA', 'INUTILIZADA')
             ),
             cargas_ped_ids AS (
-                SELECT DISTINCT TRIM(id_pedido) AS pid
+                SELECT DISTINCT TRIM(COALESCE(dados_nfe->>'id_pedido', '')) AS pid
                 FROM dash_cargas
                 WHERE tenant_id = $1
-                  AND id_pedido IS NOT NULL
-                  AND TRIM(id_pedido) <> ''
+                  AND COALESCE(dados_nfe->>'id_pedido', '') <> ''
                   AND COALESCE(status, '') NOT IN ('CANCELADA', 'CANCELADO', 'DENEGADA', 'INUTILIZADA')
             ),
             notas_emitidas AS (

@@ -418,10 +418,10 @@ function buildFiscalUnifiedCte({
               AND UPPER(TRIM(COALESCE(cg_k.status, ''))) NOT IN ('CANCELADA', 'CANCELADO', 'DENEGADA', 'INUTILIZADA')
         ),
         cargas_ped_ids AS (
-            SELECT DISTINCT TRIM(COALESCE(cg_p.id_pedido, cg_p.dados_nfe->>'id_pedido', '')) AS pid
+            SELECT DISTINCT TRIM(COALESCE(cg_p.dados_nfe->>'id_pedido', '')) AS pid
             FROM dash_cargas cg_p
             WHERE cg_p.tenant_id = ${pTenant}
-              AND COALESCE(cg_p.id_pedido, cg_p.dados_nfe->>'id_pedido', '') <> ''
+              AND COALESCE(cg_p.dados_nfe->>'id_pedido', '') <> ''
               AND UPPER(TRIM(COALESCE(cg_p.status, ''))) NOT IN ('CANCELADA', 'CANCELADO', 'DENEGADA', 'INUTILIZADA')
         ),
         notas_base AS (
@@ -435,7 +435,7 @@ function buildFiscalUnifiedCte({
                 'NF-e (XML)'::text AS modelo_doc,
                 COALESCE(NULLIF(TRIM(cg.numero), ''), NULLIF(TRIM(cg.dados_nfe->>'numero_nota'), ''), '-')::text AS numero_nota,
                 COALESCE(NULLIF(TRIM(cg.serie), ''), NULLIF(TRIM(cg.dados_nfe->>'serie'), ''), '1')::text AS serie,
-                COALESCE(NULLIF(TRIM(cg.id_pedido), ''), NULLIF(TRIM(cg.dados_nfe->>'id_pedido'), ''), '-')::text AS numero_pedido,
+                COALESCE(NULLIF(TRIM(cg.dados_nfe->>'id_pedido'), ''), '-')::text AS numero_pedido,
                 COALESCE(NULLIF(TRIM(cg.chave_acesso), ''), NULLIF(TRIM(cg.dados_nfe->>'chave_nfe'), ''))::text AS chave_nfe,
                 (${cargasEffectiveDateExpr})::timestamptz AS data_emissao,
                 CASE

@@ -2704,32 +2704,16 @@ router.get('/supplier/analytics', async (req, res, next) => {
             ORDER BY c.cidade ASC
         `, [tenantId]);
 
-        // ── KPIs de Estoque do Fornecedor/Marca ────────────────────
-        let stockKpiQuery = `
-            SELECT 
-                COALESCE(SUM(p.estoque * p.custo), 0) as custo_total,
-                COALESCE(SUM(p.estoque * p.preco), 0) as venda_total,
-                COALESCE(SUM(p.estoque), 0) as volume_total
-            FROM dash_produtos p
-            WHERE p.tenant_id = $1 AND p.ativo = true
-        `;
-        let stockKpiParams = [tenantId];
-        if (marca) {
-            stockKpiQuery += ` AND UPPER(p.marca) = UPPER($2)`;
-            stockKpiParams.push(marca);
-        } else {
-            stockKpiQuery += ` AND p.marca IS NOT NULL AND p.marca <> ''`;
-        }
-        const { rows: stockKpisRes } = await db.query(stockKpiQuery, stockKpiParams);
-        const stock_kpis = {
-            custo_total: parseFloat(stockKpisRes[0]?.custo_total || 0),
-            venda_total: parseFloat(stockKpisRes[0]?.venda_total || 0),
-            volume_total: parseFloat(stockKpisRes[0]?.volume_total || 0)
-        };
+        // ── KPIs e Lista de Estoque do Fornecedor/Marca ────────────
+        const onlyNfActive = cfopUtil.isOnlyNfSalesActive();
+        const fiscalStockInfo = onlyNfActive
+            ? await getFiscalStockMap(tenantId, deptoId)
+            : { hasFiscalStock: false, stockMap: new Map() };
+        const useFiscalStock = Boolean(onlyNfActive && fiscalStockInfo.hasFiscalStock);
 
-        // ── Lista de Estoque (Produtos da Marca/Fornecedor) ───────
         let inventoryQuery = `
             SELECT 
+                p.id_firebird,
                 COALESCE(NULLIF(p.referencia, ''), NULLIF(p.codigo_fabrica, ''), p.id_firebird::text, NULLIF(p.codigo, '')) as cod,
                 p.nome as desc,
                 'UN' as un,
@@ -2750,8 +2734,52 @@ router.get('/supplier/analytics', async (req, res, next) => {
         } else {
             inventoryQuery += ` AND p.marca IS NOT NULL AND p.marca <> ''`;
         }
-        inventoryQuery += ` ORDER BY p.estoque DESC LIMIT 150`;
-        const { rows: inventory } = await db.query(inventoryQuery, invParams);
+        inventoryQuery += ` ORDER BY p.estoque DESC`;
+        const { rows: rawInventory } = await db.query(inventoryQuery, invParams);
+
+        let stockCustoTotal = 0;
+        let stockVendaTotal = 0;
+        let stockVolumeTotal = 0;
+
+        const mappedInventoryAll = rawInventory.map(item => {
+            const rawEst = useFiscalStock
+                ? Number(fiscalStockInfo.stockMap.get(String(item.id_firebird)) ?? 0)
+                : parseFloat(item.estoque || 0);
+            const est = Number.isFinite(rawEst) ? rawEst : 0;
+            const custo = parseFloat(item.custo || 0);
+            const preco = parseFloat(item.preco || 0);
+            const posEst = est > 0 ? est : 0;
+            if (est > 0) {
+                stockCustoTotal += posEst * custo;
+                stockVendaTotal += posEst * preco;
+                stockVolumeTotal += posEst;
+            }
+            const min = parseFloat(item.estoque_minimo || 0);
+            let status = 'Ideal';
+            if (est <= 0) status = 'Ruptura';
+            else if (est < min) status = 'Critico';
+            return {
+                cod: item.cod || '—',
+                desc: item.desc || 'Sem descrição',
+                un: item.un || 'UN',
+                marca: item.marca || '—',
+                estoque: est,
+                custo,
+                preco,
+                valor_total: Math.round(posEst * custo * 100) / 100,
+                status
+            };
+        });
+
+        const inventory = (useFiscalStock ? mappedInventoryAll.filter(i => i.estoque > 0) : mappedInventoryAll)
+            .sort((a, b) => b.estoque - a.estoque)
+            .slice(0, 150);
+
+        const stock_kpis = {
+            custo_total: Math.round(stockCustoTotal * 100) / 100,
+            venda_total: Math.round(stockVendaTotal * 100) / 100,
+            volume_total: Math.round(stockVolumeTotal * 100) / 100
+        };
 
         res.json({
             overview: {
