@@ -163,7 +163,7 @@ export default function FiscalDashboard() {
   })
 
   const [activeTab, setActiveTab] = useState<'SAIDA' | 'ENTRADA'>('SAIDA')
-  const [apenasNfe, setApenasNfe] = useState(false)
+  const [apenasNfe, setApenasNfe] = useState(true)
   const [searchInput, setSearchInput] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [selectedOperacao, setSelectedOperacao] = useState('todos')
@@ -174,8 +174,8 @@ export default function FiscalDashboard() {
   const [selectedNota, setSelectedNota] = useState<{ origem: 'cargas' | 'vendas'; id: number } | null>(null)
 
   useEffect(() => {
-    if (tenantParams && typeof tenantParams.somente_vendas_com_nf === 'boolean') {
-      setApenasNfe(tenantParams.somente_vendas_com_nf)
+    if (tenantParams && tenantParams.somente_vendas_com_nf === true) {
+      setApenasNfe(true)
     }
     if (tenantParams && Array.isArray(tenantParams.cfops_faturamento) && tenantParams.cfops_faturamento.length > 0 && checkedCfops === null) {
       setCheckedCfops(tenantParams.cfops_faturamento)

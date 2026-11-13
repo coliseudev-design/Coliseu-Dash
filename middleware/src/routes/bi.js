@@ -2729,7 +2729,7 @@ router.get('/supplier/analytics', async (req, res, next) => {
         `;
         let invParams = [tenantId];
         if (marca) {
-            inventoryQuery += ` AND UPPER(p.marca) = UPPER($2)`;
+            inventoryQuery += ` AND UPPER(TRIM(p.marca)) = UPPER(TRIM($2))`;
             invParams.push(marca);
         } else {
             inventoryQuery += ` AND p.marca IS NOT NULL AND p.marca <> ''`;

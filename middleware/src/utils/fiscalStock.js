@@ -64,6 +64,7 @@ async function getFiscalStockMap(tenantId, deptoId = null) {
             ? `AND (
                 SUBSTRING(regexp_replace(COALESCE(cg.chave_acesso, ''), '\\D', '', 'g') FROM 7 FOR 14) = $2
                 OR regexp_replace(COALESCE(cg.remetente_documento, ''), '\\D', '', 'g') = $2
+                OR regexp_replace(COALESCE(cg.destinatario_documento, ''), '\\D', '', 'g') = $2
             )`
             : '';
 

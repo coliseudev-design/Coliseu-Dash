@@ -591,9 +591,10 @@ function buildFiscalUnifiedCte({
     return { cteSql, params };
 }
 
-function parseApenasNfe(val, defaultVal = false) {
+function parseApenasNfe(val, defaultVal = true) {
     if (val === undefined || val === null || String(val).trim() === '') return Boolean(defaultVal);
     const s = String(val).trim().toLowerCase();
+    if (s === 'false' || s === '0' || s === 'nao' || s === 'não' || s === 'todos') return false;
     return s === 'true' || s === '1' || s === 'sim';
 }
 
@@ -630,11 +631,13 @@ router.get('/resumo', async (req, res, next) => {
         const period = req.query.period || 'thisMonth';
         const { start_date, end_date, depto_id, cfop, cfops: cfopsParam, operacao, search, apenas_nfe } = req.query;
 
+        const headerOverride = req.headers['x-only-nf-sales'];
+        const sessionOverride = headerOverride === 'true' ? true : (headerOverride === 'false' ? false : null);
         const userKey = req.user?.email || req.user?.id || req.headers['x-user-key'] || null;
-        const settings = await getUserSettings(tenantId, userKey, null);
+        const settings = await getUserSettings(tenantId, userKey, sessionOverride);
         const hasSyncedNf = Boolean(settings.has_synced_nf);
         const hasChaveNfe = Boolean(settings.has_chave_nfe);
-        const apenasNfeSolicitado = parseApenasNfe(apenas_nfe, settings.somente_vendas_com_nf);
+        const apenasNfeSolicitado = parseApenasNfe(apenas_nfe, true);
         // Proteção inteligente: se o tenant possui 0 NFs sincronizadas no banco, não zera a tela
         const apenasNfeEfetivo = Boolean(apenasNfeSolicitado && hasSyncedNf);
         const operacaoFilter = parseOperacaoFilter(operacao, cfop);
@@ -831,11 +834,13 @@ router.get('/notas', async (req, res, next) => {
         const period = req.query.period || 'thisMonth';
         const { start_date, end_date, depto_id, cfop, cfops: cfopsParam, operacao, search, apenas_nfe } = req.query;
 
+        const headerOverride = req.headers['x-only-nf-sales'];
+        const sessionOverride = headerOverride === 'true' ? true : (headerOverride === 'false' ? false : null);
         const userKey = req.user?.email || req.user?.id || req.headers['x-user-key'] || null;
-        const settings = await getUserSettings(tenantId, userKey, null);
+        const settings = await getUserSettings(tenantId, userKey, sessionOverride);
         const hasSyncedNf = Boolean(settings.has_synced_nf);
         const hasChaveNfe = Boolean(settings.has_chave_nfe);
-        const apenasNfeSolicitado = parseApenasNfe(apenas_nfe, settings.somente_vendas_com_nf);
+        const apenasNfeSolicitado = parseApenasNfe(apenas_nfe, true);
         const apenasNfeEfetivo = Boolean(apenasNfeSolicitado && hasSyncedNf);
         const operacaoFilter = parseOperacaoFilter(operacao, cfop);
         const selectedCfops = parseSelectedCfops(cfopsParam, settings.cfops_faturamento);
