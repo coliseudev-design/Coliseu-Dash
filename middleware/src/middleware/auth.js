@@ -191,6 +191,7 @@ async function bindDbContext(req, res, next) {
 
     let onlyNfSales = false;
     let hasChaveNfe = false;
+    let hasFiscalProcesso9 = false;
     let cfopsFaturamento = null;
     if (req.tenant?.id) {
         const userKey = req.user?.email || req.user?.id || req.headers['x-user-key'] || null;
@@ -206,12 +207,13 @@ async function bindDbContext(req, res, next) {
         // Proteção inteligente: só aplica filtro restritivo se o tenant já possuir NFs sincronizadas no banco
         onlyNfSales = Boolean(settings.somente_vendas_com_nf && settings.has_synced_nf);
         hasChaveNfe = Boolean(settings.has_chave_nfe);
+        hasFiscalProcesso9 = Boolean(settings.has_fiscal_processo9);
         if (Array.isArray(settings.cfops_faturamento) && settings.cfops_faturamento.length > 0) {
             cfopsFaturamento = settings.cfops_faturamento;
         }
     }
 
-    db.dbContext.run({ dbType, tzOffset, onlyNfSales, hasChaveNfe, cfopsFaturamento }, () => {
+    db.dbContext.run({ dbType, tzOffset, onlyNfSales, hasChaveNfe, hasFiscalProcesso9, cfopsFaturamento }, () => {
         next();
     });
 }

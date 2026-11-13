@@ -7,6 +7,7 @@ const { getPeriodRange } = require('../utils/period');
 const { getCache, setCache } = require('../config/cache');
 const { buildDeptoFilter, buildVendedorFilter } = require('./filiais');
 const cfopUtil = require('../utils/cfop');
+const { getFiscalStockMap } = require('../utils/fiscalStock');
 
 // GET /api/estatisticas/overview
 router.get('/overview', async (req, res, next) => {
@@ -17,7 +18,7 @@ router.get('/overview', async (req, res, next) => {
         const deptoId = req.query.depto_id;
         const vendedorId = req.query.vendedor_id;
 
-        const nfFlag = cfopUtil.isOnlyNfSalesActive() ? 'nf1' : 'nf0';
+        const nfFlag = cfopUtil.isOnlyNfSalesActive() ? `nf1:${cfopUtil.getActiveCfopsKey()}` : 'nf0';
         const cacheKey = `overview:${tenantId}:${period}:${start_date || 'null'}:${end_date || 'null'}:${deptoId || 'todas'}:${vendedorId || 'todas'}:${nfFlag}`;
         const cached = getCache(cacheKey);
         if (cached) return res.json(cached);
@@ -647,6 +648,27 @@ router.get('/kpis', async (req, res, next) => {
         const totalClientes = parseInt(rTotCli[0].total, 10);
         const taxa_conversao_pct = totalClientes > 0 ? (clientesAtivos / totalClientes) * 100 : 0;
 
+        let estoqueQtd = parseFloat(rEst[0].qtd);
+        let estoqueValor = parseFloat(rEst[0].valor);
+        if (cfopUtil.isOnlyNfSalesActive()) {
+            const fiscalStockInfo = await getFiscalStockMap(tenantId, deptoId);
+            if (fiscalStockInfo && fiscalStockInfo.hasFiscalStock) {
+                const { rows: prodPrices } = await db.query(
+                    `SELECT id_firebird, preco FROM dash_produtos WHERE tenant_id = $1 AND ativo = true`,
+                    [tenantId]
+                );
+                estoqueQtd = 0;
+                estoqueValor = 0;
+                for (const pr of prodPrices) {
+                    const est = Number(fiscalStockInfo.stockMap.get(String(pr.id_firebird)) ?? 0);
+                    if (est > 0) {
+                        estoqueQtd += est;
+                        estoqueValor += est * parseFloat(pr.preco || 0);
+                    }
+                }
+            }
+        }
+
         res.json({
             period: { start, end, label: period },
             vendas: {
@@ -667,8 +689,8 @@ router.get('/kpis', async (req, res, next) => {
                 ticket_medio: ticketMedio,
                 top_clientes: topClientes.map(c => ({ nome: c.nome, total: parseFloat(c.total) })),
                 estoque: {
-                    qtd: parseFloat(rEst[0].qtd),
-                    valor: parseFloat(rEst[0].valor)
+                    qtd: estoqueQtd,
+                    valor: estoqueValor
                 },
                 taxa_conversao_pct,
                 produto_mais_vendido: topProd.length > 0 ? topProd[0].nome : '—',

@@ -6,6 +6,7 @@ const db = require('../db/postgres');
 const logger = require('../config/logger');
 const { invalidateTenant } = require('../config/cache');
 const { invalidateTenantSettingsCache } = require('../utils/tenantSettings');
+const { syncFiscalCargasToVendas } = require('../utils/fiscalVendasSync');
 
 const lastAnalyzeByTable = new Map();
 const ANALYZE_THROTTLE_MS = 10 * 60 * 1000;
@@ -445,6 +446,19 @@ router.post('/:tabela', async (req, res) => {
         // Não recalculamos a partir dos itens para não perder o frete, acréscimos, outras despesas e descontos de cabeçalho.
 
         await client.query('COMMIT');
+
+        // Quando recebe lote de dash_cargas, sincroniza o espelho fiscal (processo = 9) em dash_vendas e dash_vendas_itens
+        if (tabela === 'dash_cargas') {
+            const chavesAcesso = rows
+                .map(r => (r && r.chave_acesso ? String(r.chave_acesso).trim() : ''))
+                .filter(Boolean);
+            syncFiscalCargasToVendas(tenantId, { chavesAcesso })
+                .then(() => {
+                    invalidateTenantSettingsCache(tenantId);
+                    invalidateTenant(tenantId);
+                })
+                .catch(err => logger.warn('[Sync] Erro ao sincronizar espelho fiscal de dash_cargas:', { error: err.message, tenantId }));
+        }
 
         // Pós-Processamento: Atualizar Cache e Materialized Views
         if (['dash_vendas', 'dash_vendas_itens', 'dash_cargas'].includes(tabela)) {

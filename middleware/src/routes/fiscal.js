@@ -281,6 +281,7 @@ function buildFiscalUnifiedCte({
                     SELECT COALESCE(vx.data_hora_proc, vx.data_venda)::timestamptz AS dt
                     FROM dash_vendas vx
                     WHERE vx.tenant_id = cg.tenant_id
+                      AND COALESCE(vx.processo, 1) != 9
                       AND vx.id_firebird >= (cg.dados_nfe->>'id_pedido')::int
                     ORDER BY vx.id_firebird ASC
                     LIMIT 5
@@ -441,6 +442,8 @@ function buildFiscalUnifiedCte({
                 CASE
                     WHEN ${isCargasCompraComercialExpr}
                     THEN COALESCE(NULLIF(TRIM(cg.destinatario_nome), ''), 'Fornecedor não informado')
+                    WHEN ${isCargasSaidaFallbackExpr} AND regexp_replace(COALESCE(cg.destinatario_documento, ''), '\\D', '', 'g') IN (SELECT doc FROM tenant_docs)
+                    THEN COALESCE(NULLIF(TRIM(cg.remetente_nome), ''), NULLIF(TRIM(cg.destinatario_nome), ''), 'Consumidor Final')
                     WHEN ${isCargasSaidaFallbackExpr}
                     THEN COALESCE(NULLIF(TRIM(cg.destinatario_nome), ''), NULLIF(TRIM(cg.remetente_nome), ''), 'Consumidor Final')
                     WHEN UPPER(COALESCE(cg.dados_nfe->>'tipo_operacao', 'SAIDA')) = 'ENTRADA'
@@ -450,6 +453,8 @@ function buildFiscalUnifiedCte({
                 CASE
                     WHEN ${isCargasCompraComercialExpr}
                     THEN COALESCE(NULLIF(TRIM(cg.destinatario_documento), ''), '')
+                    WHEN ${isCargasSaidaFallbackExpr} AND regexp_replace(COALESCE(cg.destinatario_documento, ''), '\\D', '', 'g') IN (SELECT doc FROM tenant_docs)
+                    THEN COALESCE(NULLIF(TRIM(cg.remetente_documento), ''), '')
                     WHEN ${isCargasSaidaFallbackExpr}
                     THEN COALESCE(NULLIF(TRIM(cg.destinatario_documento), ''), '')
                     WHEN UPPER(COALESCE(cg.dados_nfe->>'tipo_operacao', 'SAIDA')) = 'ENTRADA'
@@ -459,6 +464,8 @@ function buildFiscalUnifiedCte({
                 CASE
                     WHEN ${isCargasCompraComercialExpr}
                     THEN COALESCE(NULLIF(TRIM(cg.destinatario_municipio), ''), '')
+                    WHEN ${isCargasSaidaFallbackExpr} AND regexp_replace(COALESCE(cg.destinatario_documento, ''), '\\D', '', 'g') IN (SELECT doc FROM tenant_docs)
+                    THEN COALESCE(NULLIF(TRIM(cg.remetente_municipio), ''), '')
                     WHEN ${isCargasSaidaFallbackExpr}
                     THEN COALESCE(NULLIF(TRIM(cg.destinatario_municipio), ''), '')
                     WHEN UPPER(COALESCE(cg.dados_nfe->>'tipo_operacao', 'SAIDA')) = 'ENTRADA'
@@ -468,6 +475,8 @@ function buildFiscalUnifiedCte({
                 CASE
                     WHEN ${isCargasCompraComercialExpr}
                     THEN COALESCE(NULLIF(TRIM(cg.destinatario_uf), ''), '')
+                    WHEN ${isCargasSaidaFallbackExpr} AND regexp_replace(COALESCE(cg.destinatario_documento, ''), '\\D', '', 'g') IN (SELECT doc FROM tenant_docs)
+                    THEN COALESCE(NULLIF(TRIM(cg.remetente_uf), ''), '')
                     WHEN ${isCargasSaidaFallbackExpr}
                     THEN COALESCE(NULLIF(TRIM(cg.destinatario_uf), ''), '')
                     WHEN UPPER(COALESCE(cg.dados_nfe->>'tipo_operacao', 'SAIDA')) = 'ENTRADA'
@@ -542,6 +551,7 @@ function buildFiscalUnifiedCte({
             LEFT JOIN cargas_nfe_keys cnk ON cnk.chave = TRIM(v.chave_nfe)
             LEFT JOIN cargas_ped_ids cpi ON cpi.pid = v.id_firebird::text
             WHERE v.tenant_id = ${pTenant}
+              AND COALESCE(v.processo, 1) != 9
               AND cnk.chave IS NULL
               AND cpi.pid IS NULL
               AND (${vendaDateExpr}) >= ${pStartTs}
@@ -673,8 +683,8 @@ router.get('/resumo', async (req, res, next) => {
                 ${cteSql}
                 SELECT
                     COUNT(*) FILTER (WHERE tipo_operacao = 'SAIDA') AS emitidas_qtd,
-                    COALESCE(SUM(valor_produtos) FILTER (WHERE tipo_operacao = 'SAIDA'), 0) AS emitidas_valor_produtos,
-                    COALESCE(SUM(valor_total) FILTER (WHERE tipo_operacao = 'SAIDA'), 0) AS emitidas_valor,
+                    COALESCE(SUM(CASE WHEN cfop ~ '^[123]' THEN -valor_produtos ELSE valor_produtos END) FILTER (WHERE tipo_operacao = 'SAIDA'), 0) AS emitidas_valor_produtos,
+                    COALESCE(SUM(CASE WHEN cfop ~ '^[123]' THEN -valor_total ELSE valor_total END) FILTER (WHERE tipo_operacao = 'SAIDA'), 0) AS emitidas_valor,
                     COUNT(*) FILTER (
                         WHERE tipo_operacao = 'SAIDA'
                           AND (origem = 'cargas' OR modelo_doc = 'NF-e / NFC-e' OR (chave_nfe IS NOT NULL AND chave_nfe <> ''))
@@ -721,7 +731,7 @@ router.get('/resumo', async (req, res, next) => {
                 ${cteSql}
                 SELECT
                     TO_CHAR(data_emissao, 'YYYY-MM-DD') AS data,
-                    COALESCE(SUM(valor_total) FILTER (WHERE tipo_operacao = 'SAIDA'), 0) AS valor_saida,
+                    COALESCE(SUM(CASE WHEN cfop ~ '^[123]' THEN -valor_total ELSE valor_total END) FILTER (WHERE tipo_operacao = 'SAIDA'), 0) AS valor_saida,
                     COUNT(*) FILTER (WHERE tipo_operacao = 'SAIDA') AS qtd_saida,
                     COALESCE(SUM(valor_total) FILTER (WHERE tipo_operacao = 'ENTRADA'), 0) AS valor_entrada,
                     COUNT(*) FILTER (WHERE tipo_operacao = 'ENTRADA') AS qtd_entrada

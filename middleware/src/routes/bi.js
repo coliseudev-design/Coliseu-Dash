@@ -3011,6 +3011,7 @@ router.get('/seller/summary', async (req, res, next) => {
                 SELECT v.vendedor_id_firebird AS id
                 FROM dash_vendas v
                 WHERE v.tenant_id = $1 AND v.vendedor_id_firebird IS NOT NULL
+                  ${cfopUtil.getSalesFilterClause('v')}
                 GROUP BY 1 ORDER BY COUNT(*) DESC LIMIT 1
             `, [tenantId]);
             if (sellerRes.rowCount > 0) {
@@ -3193,6 +3194,7 @@ router.get('/seller/summary', async (req, res, next) => {
             FROM dash_vendas v
             WHERE v.tenant_id = $1 
               AND v.vendedor_id_firebird = $2
+              ${salesFilter}
         `, [tenantId, vendedorId]);
 
         const clientes_novos = parseInt(newClientsRes.rows[0]?.total || 0, 10);
@@ -3683,6 +3685,7 @@ router.get('/compras/resumo', async (req, res, next) => {
             JOIN dash_clientes c ON c.tenant_id = v.tenant_id AND c.id_firebird = v.cliente_id_firebird
             LEFT JOIN dash_vendas_itens vi ON vi.tenant_id = v.tenant_id AND vi.venda_id_firebird = v.id_firebird
             WHERE v.tenant_id = $1 AND c.tipo = '2'
+              AND COALESCE(v.processo, 1) != 9
               AND v.data_venda >= $2 AND v.data_venda <= $3
               ${comprasClause}
         `, comprasParams);
@@ -3723,6 +3726,7 @@ router.get('/compras/resumo', async (req, res, next) => {
             JOIN dash_clientes c ON c.tenant_id = v.tenant_id AND c.id_firebird = v.cliente_id_firebird
             LEFT JOIN dash_vendas_itens vi ON vi.tenant_id = v.tenant_id AND vi.venda_id_firebird = v.id_firebird
             WHERE v.tenant_id = $1 AND c.tipo = '2'
+              AND COALESCE(v.processo, 1) != 9
             GROUP BY v.id_firebird, v.numero_pedido, v.numero_nota, v.data_venda, v.valor_total, c.id_firebird, c.nome, c.cidade, c.estado, v.status
             ORDER BY v.data_venda DESC
             LIMIT 10
@@ -3742,6 +3746,7 @@ router.get('/compras/resumo', async (req, res, next) => {
             FROM dash_vendas v
             JOIN dash_clientes c ON c.tenant_id = v.tenant_id AND c.id_firebird = v.cliente_id_firebird
             WHERE v.tenant_id = $1 AND c.tipo = '2' AND c.nome NOT ILIKE '%CONSUMIDOR%'
+              AND COALESCE(v.processo, 1) != 9
               AND v.data_venda >= $2 AND v.data_venda <= $3
             GROUP BY c.id_firebird, c.nome, c.documento, c.cidade, c.estado
             ORDER BY total_comprado DESC
@@ -3790,6 +3795,7 @@ router.get('/compras/resumo', async (req, res, next) => {
                 JOIN dash_vendas v ON v.tenant_id = vi.tenant_id AND v.id_firebird = vi.venda_id_firebird
                 JOIN dash_clientes c2 ON c2.tenant_id = v.tenant_id AND c2.id_firebird = v.cliente_id_firebird
                 WHERE vi.tenant_id = p.tenant_id AND vi.produto_id_firebird = p.id_firebird AND c2.tipo = '2'
+                  AND COALESCE(v.processo, 1) != 9
                 ORDER BY v.data_venda DESC
                 LIMIT 1
             ) ult ON true
@@ -3874,6 +3880,7 @@ router.get('/compras/fornecedores', async (req, res, next) => {
                 SELECT SUM(v.valor_total) as total_comprado
                 FROM dash_vendas v
                 WHERE v.tenant_id = c.tenant_id AND v.cliente_id_firebird = c.id_firebird
+                  AND COALESCE(v.processo, 1) != 9
             ) compras ON true
             ${whereClause}
             ${saldoFilter}
@@ -3909,6 +3916,7 @@ router.get('/compras/fornecedores', async (req, res, next) => {
                 FROM dash_vendas v
                 LEFT JOIN dash_vendas_itens vi ON vi.tenant_id = v.tenant_id AND vi.venda_id_firebird = v.id_firebird
                 WHERE v.tenant_id = c.tenant_id AND v.cliente_id_firebird = c.id_firebird
+                  AND COALESCE(v.processo, 1) != 9
             ) compras ON true
             ${whereClause}
             ${saldoFilter}
@@ -3968,6 +3976,7 @@ router.get('/compras/fornecedor/:id', async (req, res, next) => {
             FROM dash_vendas v
             LEFT JOIN dash_vendas_itens vi ON vi.tenant_id = v.tenant_id AND vi.venda_id_firebird = v.id_firebird
             WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2
+              AND COALESCE(v.processo, 1) != 9
         `, [tenantId, fornecedorId]);
         const resumo = resumoRes.rows[0];
 
@@ -3985,6 +3994,7 @@ router.get('/compras/fornecedor/:id', async (req, res, next) => {
             FROM dash_vendas v
             LEFT JOIN dash_vendas_itens vi ON vi.tenant_id = v.tenant_id AND vi.venda_id_firebird = v.id_firebird
             WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2
+              AND COALESCE(v.processo, 1) != 9
             GROUP BY v.id_firebird, v.numero_pedido, v.numero_nota, v.data_venda, v.valor_total, v.especie, v.status
             ORDER BY v.data_venda DESC
             LIMIT 50
@@ -4004,6 +4014,7 @@ router.get('/compras/fornecedor/:id', async (req, res, next) => {
                     FROM dash_vendas_itens vi2 
                     JOIN dash_vendas v2 ON v2.tenant_id = vi2.tenant_id AND v2.id_firebird = vi2.venda_id_firebird 
                     WHERE vi2.tenant_id = $1 AND v2.cliente_id_firebird = $2 AND vi2.produto_id_firebird = p.id_firebird 
+                      AND COALESCE(v2.processo, 1) != 9
                     ORDER BY v2.data_venda DESC 
                     LIMIT 1
                 ) as qtd_ultima_compra,
@@ -4012,6 +4023,7 @@ router.get('/compras/fornecedor/:id', async (req, res, next) => {
                     FROM dash_vendas_itens vi2 
                     JOIN dash_vendas v2 ON v2.tenant_id = vi2.tenant_id AND v2.id_firebird = vi2.venda_id_firebird 
                     WHERE vi2.tenant_id = $1 AND v2.cliente_id_firebird = $2 AND vi2.produto_id_firebird = p.id_firebird 
+                      AND COALESCE(v2.processo, 1) != 9
                     ORDER BY v2.data_venda DESC 
                     LIMIT 1
                 ) as custo_atual,
@@ -4030,6 +4042,7 @@ router.get('/compras/fornecedor/:id', async (req, res, next) => {
             JOIN dash_vendas v ON v.tenant_id = vi.tenant_id AND v.id_firebird = vi.venda_id_firebird
             JOIN dash_produtos p ON p.tenant_id = vi.tenant_id AND p.id_firebird = vi.produto_id_firebird
             WHERE vi.tenant_id = $1 AND v.cliente_id_firebird = $2
+              AND COALESCE(v.processo, 1) != 9
             GROUP BY p.id_firebird, p.nome, p.codigo, p.categoria, p.marca, p.estoque, p.estoque_minimo
             ORDER BY necessidade DESC, total_valor_comprado DESC
             LIMIT 100
@@ -4062,7 +4075,7 @@ router.get('/compras/pedidos', async (req, res, next) => {
         const data_inicio = req.query.data_inicio ? req.query.data_inicio.trim() : null;
         const data_fim = req.query.data_fim ? req.query.data_fim.trim() : null;
 
-        let whereClause = `WHERE v.tenant_id = $1 AND c.tipo = '2'`;
+        let whereClause = `WHERE v.tenant_id = $1 AND c.tipo = '2' AND COALESCE(v.processo, 1) != 9`;
         const params = [tenantId];
         let idx = 2;
 
@@ -4175,6 +4188,7 @@ router.get('/compras/confronto', async (req, res, next) => {
                     FROM dash_vendas_itens vi2 
                     JOIN dash_vendas v2 ON v2.tenant_id = vi2.tenant_id AND v2.id_firebird = vi2.venda_id_firebird 
                     WHERE vi2.tenant_id = $1 AND v2.cliente_id_firebird = $2 AND vi2.produto_id_firebird = p.id_firebird 
+                      AND COALESCE(v2.processo, 1) != 9
                     ORDER BY v2.data_venda DESC 
                     LIMIT 1
                 ) as qtd_ultima_compra,
@@ -4183,6 +4197,7 @@ router.get('/compras/confronto', async (req, res, next) => {
                     FROM dash_vendas_itens vi2 
                     JOIN dash_vendas v2 ON v2.tenant_id = vi2.tenant_id AND v2.id_firebird = vi2.venda_id_firebird 
                     WHERE vi2.tenant_id = $1 AND v2.cliente_id_firebird = $2 AND vi2.produto_id_firebird = p.id_firebird 
+                      AND COALESCE(v2.processo, 1) != 9
                     ORDER BY v2.data_venda DESC 
                     LIMIT 1
                 ) as custo_ultima_compra,
@@ -4203,6 +4218,7 @@ router.get('/compras/confronto', async (req, res, next) => {
             JOIN dash_vendas v ON v.tenant_id = vi.tenant_id AND v.id_firebird = vi.venda_id_firebird
             JOIN dash_produtos p ON p.tenant_id = vi.tenant_id AND p.id_firebird = vi.produto_id_firebird
             WHERE vi.tenant_id = $1 AND v.cliente_id_firebird = $2
+              AND COALESCE(v.processo, 1) != 9
             GROUP BY p.id_firebird, p.nome, p.codigo, p.categoria, p.marca, p.estoque, p.estoque_minimo
             ORDER BY 
                 CASE
@@ -4244,6 +4260,7 @@ router.get('/compras/fornecedores-select', async (req, res, next) => {
             FROM dash_clientes c
             JOIN dash_vendas v ON v.tenant_id = c.tenant_id AND v.cliente_id_firebird = c.id_firebird
             WHERE c.tenant_id = $1 AND c.tipo = '2' AND c.nome NOT ILIKE '%CONSUMIDOR%'
+              AND COALESCE(v.processo, 1) != 9
             ORDER BY c.nome ASC
             LIMIT 500
         `, [tenantId]);

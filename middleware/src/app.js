@@ -84,7 +84,11 @@ const logger = require('./config/logger');
 app.use('/api', async (req, res, next) => {
     try {
         if (req.user && req.tenant) {
-            req.user.allowedSellers = await rbac.getUserAllowedSellers(req.user.id, req.tenant.id);
+            if (req.user.role === 'master' || !req.user.id || !/^\d+$/.test(String(req.user.id))) {
+                req.user.allowedSellers = null;
+            } else {
+                req.user.allowedSellers = await rbac.getUserAllowedSellers(req.user.id, req.tenant.id);
+            }
         }
         next();
     } catch (err) {

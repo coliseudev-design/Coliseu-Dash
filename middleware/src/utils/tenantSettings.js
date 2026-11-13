@@ -90,7 +90,7 @@ async function ensureSettingsTable() {
  */
 async function checkTenantNfCoverage(tenantId) {
     if (!tenantId || tenantId === '00000000-0000-0000-0000-000000000000') {
-        return { hasSyncedNf: false, hasChaveNfe: false };
+        return { hasSyncedNf: false, hasChaveNfe: false, hasFiscalProcesso9: false };
     }
 
     const cached = nfCoverageCache.get(tenantId);
@@ -98,12 +98,19 @@ async function checkTenantNfCoverage(tenantId) {
         return {
             hasSyncedNf: Boolean(cached.hasSyncedNf),
             hasChaveNfe: Boolean(cached.hasChaveNfe),
+            hasFiscalProcesso9: Boolean(cached.hasFiscalProcesso9),
         };
     }
 
     try {
         const { rows } = await db.query(
             `SELECT
+                EXISTS (
+                    SELECT 1 FROM dash_vendas
+                    WHERE tenant_id = $1
+                      AND processo = 9
+                    LIMIT 1
+                ) AS has_fiscal_processo9,
                 EXISTS (
                     SELECT 1 FROM dash_vendas
                     WHERE tenant_id = $1
@@ -141,16 +148,24 @@ async function checkTenantNfCoverage(tenantId) {
 
         const hasSyncedNf = Boolean(rows[0]?.has_synced_nf);
         const hasChaveNfe = Boolean(rows[0]?.has_chave_nfe);
+        const hasFiscalProcesso9 = Boolean(rows[0]?.has_fiscal_processo9);
         nfCoverageCache.set(tenantId, {
             hasSyncedNf,
             hasChaveNfe,
+            hasFiscalProcesso9,
             expiresAt: Date.now() + NF_COVERAGE_TTL_MS,
         });
-        return { hasSyncedNf, hasChaveNfe };
+        return { hasSyncedNf, hasChaveNfe, hasFiscalProcesso9 };
     } catch (err) {
         try {
             const { rows } = await db.query(
                 `SELECT
+                    EXISTS (
+                        SELECT 1 FROM dash_vendas
+                        WHERE tenant_id = $1
+                          AND processo = 9
+                        LIMIT 1
+                    ) AS has_fiscal_processo9,
                     EXISTS (
                         SELECT 1 FROM dash_vendas
                         WHERE tenant_id = $1
@@ -171,18 +186,20 @@ async function checkTenantNfCoverage(tenantId) {
             );
             const hasSyncedNf = Boolean(rows[0]?.has_synced_nf);
             const hasChaveNfe = Boolean(rows[0]?.has_chave_nfe);
+            const hasFiscalProcesso9 = Boolean(rows[0]?.has_fiscal_processo9);
             nfCoverageCache.set(tenantId, {
                 hasSyncedNf,
                 hasChaveNfe,
+                hasFiscalProcesso9,
                 expiresAt: Date.now() + NF_COVERAGE_TTL_MS,
             });
-            return { hasSyncedNf, hasChaveNfe };
+            return { hasSyncedNf, hasChaveNfe, hasFiscalProcesso9 };
         } catch (innerErr) {
             logger.warn('[TenantSettings] Falha ao checar cobertura de NF do tenant', {
                 tenantId,
                 error: innerErr.message,
             });
-            return { hasSyncedNf: false, hasChaveNfe: false };
+            return { hasSyncedNf: false, hasChaveNfe: false, hasFiscalProcesso9: false };
         }
     }
 }
@@ -197,6 +214,11 @@ function invalidateTenantSettingsCache(tenantId) {
     settingsCache.delete(tenantId);
     nfCoverageCache.delete(tenantId);
     availableCfopsCache.delete(tenantId);
+    for (const k of userSettingsCache.keys()) {
+        if (k.startsWith(`${tenantId}:`)) {
+            userSettingsCache.delete(k);
+        }
+    }
 }
 
 /**
@@ -265,6 +287,7 @@ async function getAvailableTenantCfops(tenantId) {
                 LEFT JOIN cargas_nfe_keys cnk ON cnk.chave = TRIM(v.chave_nfe)
                 LEFT JOIN cargas_ped_ids cpi ON cpi.pid = v.id_firebird::text
                 WHERE v.tenant_id = $1
+                  AND COALESCE(v.processo, 1) != 9
                   AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO', 'PROCESSADO')
                   AND v.chave_nfe IS NOT NULL
                   AND LENGTH(TRIM(v.chave_nfe)) >= 40
@@ -316,6 +339,7 @@ async function getTenantSettings(tenantId) {
         cfops_faturamento: null,
         has_synced_nf: false,
         has_chave_nfe: false,
+        has_fiscal_processo9: false,
         efetivo_somente_nf: false,
         updated_at: null,
         updated_by: null,
@@ -325,7 +349,7 @@ async function getTenantSettings(tenantId) {
         return defaultSettings;
     }
 
-    const { hasSyncedNf, hasChaveNfe } = await checkTenantNfCoverage(tenantId);
+    const { hasSyncedNf, hasChaveNfe, hasFiscalProcesso9 } = await checkTenantNfCoverage(tenantId);
 
     const cached = settingsCache.get(tenantId);
     if (cached && cached.expiresAt > Date.now()) {
@@ -334,6 +358,7 @@ async function getTenantSettings(tenantId) {
             ...cached.data,
             has_synced_nf: hasSyncedNf,
             has_chave_nfe: hasChaveNfe,
+            has_fiscal_processo9: Boolean(hasFiscalProcesso9),
             efetivo_somente_nf: Boolean(somenteNf && hasSyncedNf),
         };
     }
@@ -372,6 +397,7 @@ async function getTenantSettings(tenantId) {
             ...baseData,
             has_synced_nf: hasSyncedNf,
             has_chave_nfe: hasChaveNfe,
+            has_fiscal_processo9: Boolean(hasFiscalProcesso9),
             efetivo_somente_nf: Boolean(somenteNf && hasSyncedNf),
         };
     } catch (err) {
@@ -383,6 +409,7 @@ async function getTenantSettings(tenantId) {
             ...defaultSettings,
             has_synced_nf: hasSyncedNf,
             has_chave_nfe: hasChaveNfe,
+            has_fiscal_processo9: Boolean(hasFiscalProcesso9),
         };
     }
 }
@@ -455,7 +482,7 @@ async function updateTenantSettings(tenantId, patch, updatedBy = null) {
     }
 
     nfCoverageCache.delete(tenantId);
-    const { hasSyncedNf, hasChaveNfe } = await checkTenantNfCoverage(tenantId);
+    const { hasSyncedNf, hasChaveNfe, hasFiscalProcesso9 } = await checkTenantNfCoverage(tenantId);
     const somenteNf = Boolean(rows[0]?.somente_vendas_com_nf);
     const savedCfops = normalizeCfopList(rows[0]?.cfops_faturamento);
 
@@ -471,11 +498,17 @@ async function updateTenantSettings(tenantId, patch, updatedBy = null) {
         expiresAt: Date.now() + SETTINGS_TTL_MS,
     });
 
+    for (const k of userSettingsCache.keys()) {
+        if (k.startsWith(`${tenantId}:`)) {
+            userSettingsCache.delete(k);
+        }
+    }
     invalidateTenant(tenantId);
     return {
         ...baseData,
         has_synced_nf: hasSyncedNf,
         has_chave_nfe: hasChaveNfe,
+        has_fiscal_processo9: Boolean(hasFiscalProcesso9),
         efetivo_somente_nf: Boolean(somenteNf && hasSyncedNf),
     };
 }
@@ -495,7 +528,7 @@ function normalizeUserKey(userKey) {
  * @param {boolean|null} sessionOverride
  */
 async function getUserSettings(tenantId, userKey = null, sessionOverride = null) {
-    const { hasSyncedNf, hasChaveNfe } = await checkTenantNfCoverage(tenantId);
+    const { hasSyncedNf, hasChaveNfe, hasFiscalProcesso9 } = await checkTenantNfCoverage(tenantId);
     const normUser = normalizeUserKey(userKey);
 
     if (!tenantId || tenantId === '00000000-0000-0000-0000-000000000000') {
@@ -504,6 +537,7 @@ async function getUserSettings(tenantId, userKey = null, sessionOverride = null)
             cfops_faturamento: null,
             has_synced_nf: hasSyncedNf,
             has_chave_nfe: hasChaveNfe,
+            has_fiscal_processo9: Boolean(hasFiscalProcesso9),
             efetivo_somente_nf: false,
             updated_at: null,
             updated_by: normUser,
@@ -521,12 +555,13 @@ async function getUserSettings(tenantId, userKey = null, sessionOverride = null)
             const somenteNf = typeof sessionOverride === 'boolean'
                 ? sessionOverride
                 : Boolean(cached.data.somente_vendas_com_nf);
-            const effectiveCfops = cached.data.cfops_faturamento || tenantCfops;
+            const effectiveCfops = tenantCfops || cached.data.cfops_faturamento;
             return {
                 somente_vendas_com_nf: somenteNf,
                 cfops_faturamento: effectiveCfops,
                 has_synced_nf: hasSyncedNf,
                 has_chave_nfe: hasChaveNfe,
+                has_fiscal_processo9: Boolean(hasFiscalProcesso9),
                 efetivo_somente_nf: Boolean(somenteNf && hasSyncedNf),
                 updated_at: cached.data.updated_at || null,
                 updated_by: cached.data.updated_at ? normUser : null,
@@ -558,9 +593,10 @@ async function getUserSettings(tenantId, userKey = null, sessionOverride = null)
                 const effectiveToggle = typeof sessionOverride === 'boolean' ? sessionOverride : dbSomenteNf;
                 return {
                     somente_vendas_com_nf: effectiveToggle,
-                    cfops_faturamento: dbCfops || tenantCfops,
+                    cfops_faturamento: tenantCfops || dbCfops,
                     has_synced_nf: hasSyncedNf,
                     has_chave_nfe: hasChaveNfe,
+                    has_fiscal_processo9: Boolean(hasFiscalProcesso9),
                     efetivo_somente_nf: Boolean(effectiveToggle && hasSyncedNf),
                     updated_at: uData.updated_at,
                     updated_by: normUser,
@@ -592,6 +628,7 @@ async function getUserSettings(tenantId, userKey = null, sessionOverride = null)
         cfops_faturamento: tenantCfops,
         has_synced_nf: hasSyncedNf,
         has_chave_nfe: hasChaveNfe,
+        has_fiscal_processo9: Boolean(hasFiscalProcesso9),
         efetivo_somente_nf: Boolean(fallbackToggle && hasSyncedNf),
         updated_at: null,
         updated_by: null,
@@ -647,8 +684,9 @@ async function updateUserSettings(tenantId, userKey, patch) {
         data: uData,
         expiresAt: Date.now() + SETTINGS_TTL_MS,
     });
+    invalidateTenant(tenantId);
 
-    const { hasSyncedNf, hasChaveNfe } = await checkTenantNfCoverage(tenantId);
+    const { hasSyncedNf, hasChaveNfe, hasFiscalProcesso9 } = await checkTenantNfCoverage(tenantId);
     return {
         somente_vendas_com_nf: uData.somente_vendas_com_nf,
         cfops_faturamento: uData.cfops_faturamento,
@@ -656,6 +694,7 @@ async function updateUserSettings(tenantId, userKey, patch) {
         updated_by: normUser,
         has_synced_nf: hasSyncedNf,
         has_chave_nfe: hasChaveNfe,
+        has_fiscal_processo9: Boolean(hasFiscalProcesso9),
         efetivo_somente_nf: Boolean(uData.somente_vendas_com_nf && hasSyncedNf),
         escopo: 'usuario'
     };

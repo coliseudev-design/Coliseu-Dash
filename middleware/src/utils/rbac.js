@@ -82,6 +82,9 @@ async function getUserPermissions(userId, tenantId) {
  * @returns {Promise<number[]|null>}
  */
 async function getUserAllowedSellers(userId, tenantId) {
+    if (!userId || userId === '00000000-0000-0000-0000-000000000000' || !/^\d+$/.test(String(userId))) {
+        return null;
+    }
     const userRes = await db.query(
         'SELECT id, role, grupo_id, versao FROM dash_usuarios WHERE id = $1 AND tenant_id = $2',
         [userId, tenantId]

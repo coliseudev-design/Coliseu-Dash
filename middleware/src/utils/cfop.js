@@ -29,19 +29,50 @@ const SALES_STATUS_EXCLUDE = [
 ];
 
 /**
- * STRICT_SALES_FILTER (CFOP): sem filtro de CFOP para Sistema Coliseu.
- */
-function getCfopFilterClause(tableAlias = 'v') {
-    return '';
-}
-
-/**
  * Indica se o parâmetro global "Visualizar somente vendas com Nota Fiscal vinculada"
  * está ativo para a requisição atual.
  */
 function isOnlyNfSalesActive() {
     const store = db.dbContext.getStore();
     return Boolean(store && store.onlyNfSales === true);
+}
+
+/**
+ * Retorna chave de cache representando os CFOPs ativos na requisição atual.
+ */
+function getActiveCfopsKey() {
+    if (!isOnlyNfSalesActive()) {
+        return 'gerencial';
+    }
+    const store = db.dbContext.getStore();
+    if (store && Array.isArray(store.cfopsFaturamento) && store.cfopsFaturamento.length > 0) {
+        return [...store.cfopsFaturamento].sort().join(',');
+    }
+    return 'all_nf';
+}
+
+/**
+ * STRICT_SALES_FILTER (CFOP):
+ * - No modo Gerencial (onlyNfSales = false): sem filtro de CFOP para bater 100% com o Gerência Geral.
+ * - No modo Fiscal (onlyNfSales = true): aplica os CFOPs selecionados em Configurações Administrativas -> Parâmetros.
+ */
+function getCfopFilterClause(tableAlias = 'v') {
+    if (!isOnlyNfSalesActive()) {
+        return '';
+    }
+    const store = db.dbContext.getStore();
+    const cfops = store && Array.isArray(store.cfopsFaturamento) ? store.cfopsFaturamento : null;
+    if (!cfops || cfops.length === 0) {
+        return '';
+    }
+    const clean = cfops
+        .map((c) => parseInt(String(c || '').replace(/\D/g, ''), 10))
+        .filter((n) => Number.isFinite(n) && n >= 1000 && n <= 9999);
+    if (clean.length === 0) {
+        return '';
+    }
+    const prefix = (tableAlias !== undefined && tableAlias !== null && tableAlias !== '') ? `${tableAlias}.` : '';
+    return `AND ${prefix}cfop IN (${clean.join(', ')})`;
 }
 
 /**
@@ -73,6 +104,9 @@ function getDevolucaoNfFilterClause(vendaAlias = 'v2', devAlias = 'd') {
         return '';
     }
     const store = db.dbContext.getStore();
+    if (store && store.hasFiscalProcesso9) {
+        return ' AND 1=0';
+    }
     const hasChaveNfe = store ? store.hasChaveNfe !== false : true;
 
     if (hasChaveNfe) {
@@ -85,21 +119,21 @@ function getDevolucaoNfFilterClause(vendaAlias = 'v2', devAlias = 'd') {
 }
 
 /**
- * STATUS_FILTER para Sistema Coliseu — alinhado ao ERP Gerência Geral.
- *
- * REGRAS VALIDADAS DE NEGÓCIO DO ERP COLISEU:
- * 1. Apenas vendas em status comercial efetivo ('FATURADO', 'FINALIZADO', 'PROCESSADO').
- * 2. Exclui transferências entre filiais (status, espécie, natureza_operacao ou CFOP de transferência).
- * 3. Exclui espécies 'SEM PAGAMENTO' (remessas/complementos fiscais sem valor comercial),
- *    exceto quando vinculadas a itens reais faturados a clientes finais.
- * 4. Exclui registros/pedidos sem itens de estoque (lançamentos financeiros/fantasmas ou cancelados na origem sem itens),
- *    mantendo compatibilidade com vendas recentes do mês corrente ainda em fila de sincronização.
+ * STATUS_FILTER para Sistema Coliseu — alinhado ao ERP Gerência Geral (Modo Gerencial)
+ * e ao espelho integral de NF-es emitidas (processo = 9) quando em Modo Fiscal.
  */
 function getStatusFilterClause(tableAlias = 'v') {
     const prefix = (tableAlias !== undefined && tableAlias !== null && tableAlias !== '') ? `${tableAlias}.` : '';
     const tableRef = prefix || 'dash_vendas.';
     const nfClause = getNfFilterClause(tableAlias);
-    return `AND TRIM(${prefix}status) IN ('FATURADO', 'FINALIZADO', 'PROCESSADO')
+    const store = db.dbContext.getStore();
+
+    if (isOnlyNfSalesActive() && store && store.hasFiscalProcesso9) {
+        return `AND ${prefix}processo = 9 ${nfClause}`;
+    }
+
+    return `AND COALESCE(${prefix}processo, 1) != 9
+      AND TRIM(${prefix}status) IN ('FATURADO', 'FINALIZADO', 'PROCESSADO')
       AND ${prefix}status NOT ILIKE '%TRANSF%'
       AND (${prefix}especie IS NULL OR ${prefix}especie NOT ILIKE '%TRANSF%')
       AND (${prefix}natureza_operacao IS NULL OR (${prefix}natureza_operacao NOT ILIKE '%TRANSF%' AND ${prefix}natureza_operacao NOT ILIKE '%SIMPLES REMESSA%'))
@@ -151,6 +185,7 @@ module.exports = {
     TRANSFER_CFOPS,
     SALES_STATUS_EXCLUDE,
     isOnlyNfSalesActive,
+    getActiveCfopsKey,
     getNfFilterClause,
     getDevolucaoNfFilterClause,
     getCfopFilterClause,
