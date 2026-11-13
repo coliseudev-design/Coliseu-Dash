@@ -54,7 +54,7 @@ export default function SellerHubDashboard() {
   const vdFull = useBranchPeriodQuery<any>('/ranking/vendedores', { limit: 100 });
 
   // Local Filter state
-  const [selectedVendedor, setSelectedVendedor] = useState<string>('');
+  const [selectedVendedor, setSelectedVendedor] = useState<string>(sellerId || 'todas');
   const [selectedCidade, setSelectedCidade] = useState<string>('todas');
   const [selectedMarca, setSelectedMarca] = useState<string>('todas');
 
@@ -73,18 +73,16 @@ export default function SellerHubDashboard() {
   const [invoiceSortOrder, setInvoiceSortOrder] = useState<'asc' | 'desc'>('desc');
   const [visibleInvoicesCount, setVisibleInvoicesCount] = useState(50);
 
-  // Set default seller when list loaded
+  // Set seller when route param is provided
   useEffect(() => {
     if (sellerId) {
       setSelectedVendedor(sellerId);
-    } else if (vdFull.data?.data && vdFull.data.data.length > 0 && !selectedVendedor) {
-      setSelectedVendedor(String(vdFull.data.data[0].id));
     }
-  }, [vdFull.data, selectedVendedor, sellerId]);
+  }, [sellerId]);
 
   const activeFilter = useMemo(() => ({
     ...globalFilter,
-    vendedor_id: selectedVendedor || undefined,
+    vendedor_id: selectedVendedor && selectedVendedor !== 'todas' && selectedVendedor !== 'all' ? selectedVendedor : undefined,
     cidade: selectedCidade !== 'todas' && selectedCidade !== 'all' ? selectedCidade : undefined,
     marca: selectedMarca !== 'todas' && selectedMarca !== 'all' ? selectedMarca : undefined
   }), [globalFilter, selectedVendedor, selectedCidade, selectedMarca]);
@@ -212,7 +210,7 @@ export default function SellerHubDashboard() {
               onChange={(e) => setSelectedVendedor(e.target.value)}
               className="bi-select w-full appearance-none pr-7 truncate"
             >
-              <option value="">Vendedor: Todos / Selecione</option>
+              <option value="todas">Vendedor: Todos</option>
               {vdFull.data?.data?.map((v: any) => (
                 <option key={v.id} value={v.id}>{v.nome}</option>
               ))}

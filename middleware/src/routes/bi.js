@@ -3006,9 +3006,8 @@ router.get('/seller/summary', async (req, res, next) => {
         const cidade = req.query.cidade;
         const marca = req.query.marca;
 
-        if (vendedorId === 'undefined' || vendedorId === 'null') {
-            vendedorId = null;
-        }
+        const isAllSellers = !vendedorId || vendedorId === 'todas' || vendedorId === 'all' || vendedorId === 'TODOS' || vendedorId === 'undefined' || vendedorId === 'null';
+        const resolvedSellerParam = isAllSellers ? null : (parseInt(vendedorId, 10) || null);
 
         // Se não vier mes/ano, busca a data máxima das vendas do tenant
         if (!mes || !ano) {
@@ -3019,50 +3018,6 @@ router.get('/seller/summary', async (req, res, next) => {
             const anchor = maxRes.rows[0].max_date ? new Date(maxRes.rows[0].max_date) : new Date();
             mes = anchor.getMonth() + 1;
             ano = anchor.getFullYear();
-        }
-
-        if (!vendedorId) {
-            // Tenta pegar o primeiro vendedor ativo com vendas no período, ou qualquer vendedor ativo
-            const sellerRes = await db.query(`
-                SELECT v.vendedor_id_firebird AS id
-                FROM dash_vendas v
-                WHERE v.tenant_id = $1 AND v.vendedor_id_firebird IS NOT NULL
-                  ${cfopUtil.getSalesFilterClause('v')}
-                GROUP BY 1 ORDER BY COUNT(*) DESC LIMIT 1
-            `, [tenantId]);
-            if (sellerRes.rowCount > 0) {
-                vendedorId = sellerRes.rows[0].id;
-            } else {
-                const altRes = await db.query(`
-                    SELECT id_firebird AS id FROM dash_vendedores WHERE tenant_id = $1 LIMIT 1
-                `, [tenantId]);
-                vendedorId = altRes.rowCount > 0 ? altRes.rows[0].id : null;
-            }
-        }
-
-        if (!vendedorId) {
-            return res.json({
-                faturamento: 0,
-                ticket_medio: 0,
-                notas_emitidas: 0,
-                clientes_novos: 0,
-                novos_pct: 0,
-                antigos_pct: 0,
-                cidade_top: 'N/A',
-                cidade_top_valor: 0,
-                crescimento_pct: 0,
-                meta_vendedor: 0,
-                faturamento_anterior: 0,
-                top_marcas: [],
-                top_clientes: [],
-                top_grupos: [],
-                top_produtos: [],
-                historico_vendas: [],
-                vendas_por_dia_semana: [],
-                heatmap_dados: [],
-                notas_fiscais: [],
-                melhor_mes_12m: { mes: 'N/A', valor: 0 }
-            });
         }
 
         // Obter start e end baseado no date range padrão (com suporte a mes/ano legado)
@@ -3103,7 +3058,7 @@ router.get('/seller/summary', async (req, res, next) => {
         const needsCidadeJoin = (cidade && cidade !== 'todas' && cidade !== 'all' && cidade !== 'TODOS');
         const needsItemJoin = hasItemFilter;
 
-        const baseParams = [tenantId, null, null, vendedorId, ...df.params, ...cf.params];
+        const baseParams = [tenantId, null, null, resolvedSellerParam, ...df.params, ...cf.params];
         if (hasItemFilter) {
             baseParams.push(...mf.params);
         }
@@ -3146,7 +3101,7 @@ router.get('/seller/summary', async (req, res, next) => {
                 COUNT(DISTINCT v.id_firebird) AS total_pedidos
             FROM dash_vendas v
             ${salesJoins}
-            WHERE v.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3 AND v.vendedor_id_firebird = $4
+            WHERE v.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3 AND ($4::int IS NULL OR v.vendedor_id_firebird = $4::int)
               ${salesClauses}
         `, getQueryParams(start, end));
 
@@ -3154,7 +3109,7 @@ router.get('/seller/summary', async (req, res, next) => {
             SELECT COALESCE(SUM(d.valor), 0) AS total
             FROM dash_devolucoes d
             ${devJoins}
-            WHERE d.tenant_id = $1 AND d.data_devolucao >= $2 AND d.data_devolucao <= $3 AND v.vendedor_id_firebird = $4
+            WHERE d.tenant_id = $1 AND d.data_devolucao >= $2 AND d.data_devolucao <= $3 AND ($4::int IS NULL OR v.vendedor_id_firebird = $4::int)
               ${df.clause} ${cf.clause} ${mf.clause} ${cfopUtil.getDevolucaoNfFilterClause('v', 'd')}
         `, getQueryParams(start, end));
 
@@ -3168,7 +3123,7 @@ router.get('/seller/summary', async (req, res, next) => {
                 COALESCE(SUM(${sellerValueExpr}), 0) AS total_bruto
             FROM dash_vendas v
             ${salesJoins}
-            WHERE v.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3 AND v.vendedor_id_firebird = $4
+            WHERE v.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3 AND ($4::int IS NULL OR v.vendedor_id_firebird = $4::int)
               ${salesClauses}
         `, getQueryParams(prevStart, prevEnd));
 
@@ -3176,7 +3131,7 @@ router.get('/seller/summary', async (req, res, next) => {
             SELECT COALESCE(SUM(d.valor), 0) AS total
             FROM dash_devolucoes d
             ${devJoins}
-            WHERE d.tenant_id = $1 AND d.data_devolucao >= $2 AND d.data_devolucao <= $3 AND v.vendedor_id_firebird = $4
+            WHERE d.tenant_id = $1 AND d.data_devolucao >= $2 AND d.data_devolucao <= $3 AND ($4::int IS NULL OR v.vendedor_id_firebird = $4::int)
               ${df.clause} ${cf.clause} ${mf.clause} ${cfopUtil.getDevolucaoNfFilterClause('v', 'd')}
         `, getQueryParams(prevStart, prevEnd));
 
@@ -3191,7 +3146,7 @@ router.get('/seller/summary', async (req, res, next) => {
             ${needsItemJoin ? 'INNER JOIN dash_vendas_itens vi ON vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id' : ''}
             WHERE c.tenant_id = $1 
               AND c.data_cadastro >= $2 AND c.data_cadastro <= $3
-              AND v.vendedor_id_firebird = $4
+              AND ($4::int IS NULL OR v.vendedor_id_firebird = $4::int)
               ${salesFilter} ${df.clause} ${cf.clause} ${mf.clause}
         `, getQueryParams(start, end));
 
@@ -3201,7 +3156,7 @@ router.get('/seller/summary', async (req, res, next) => {
             ${salesJoins}
             WHERE v.tenant_id = $1 
               AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
-              AND v.vendedor_id_firebird = $4
+              AND ($4::int IS NULL OR v.vendedor_id_firebird = $4::int)
               ${salesClauses}
         `, getQueryParams(start, end));
 
@@ -3209,9 +3164,9 @@ router.get('/seller/summary', async (req, res, next) => {
             SELECT COUNT(DISTINCT v.cliente_id_firebird) AS total
             FROM dash_vendas v
             WHERE v.tenant_id = $1 
-              AND v.vendedor_id_firebird = $2
+              AND ($2::int IS NULL OR v.vendedor_id_firebird = $2::int)
               ${salesFilter}
-        `, [tenantId, vendedorId]);
+        `, [tenantId, resolvedSellerParam]);
 
         const clientes_novos = parseInt(newClientsRes.rows[0]?.total || 0, 10);
         const clientes_ativos = parseInt(activeClientsRes.rows[0]?.total || 0, 10);
@@ -3230,7 +3185,7 @@ router.get('/seller/summary', async (req, res, next) => {
             ${needsItemJoin ? 'INNER JOIN dash_vendas_itens vi ON vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id' : ''}
             WHERE v.tenant_id = $1 
               AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
-              AND v.vendedor_id_firebird = $4
+              AND ($4::int IS NULL OR v.vendedor_id_firebird = $4::int)
               ${salesClauses}
             GROUP BY 1 ORDER BY total DESC LIMIT 1
         `, getQueryParams(start, end));
@@ -3245,7 +3200,7 @@ router.get('/seller/summary', async (req, res, next) => {
                 ${needsCidadeJoin ? 'LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id' : ''}
                 WHERE v.tenant_id = $1 
                   AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
-                  AND v.vendedor_id_firebird = $4
+                  AND ($4::int IS NULL OR v.vendedor_id_firebird = $4::int)
                   ${salesFilter} ${df.clause} ${cf.clause}
             )
             SELECT COALESCE(NULLIF(TRIM(vi.marca), ''), NULLIF(TRIM(p.marca), ''), 'S/ MARCA') AS nome, 
@@ -3275,7 +3230,7 @@ router.get('/seller/summary', async (req, res, next) => {
             ${needsItemJoin ? 'INNER JOIN dash_vendas_itens vi ON vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id' : ''}
             WHERE v.tenant_id = $1 
               AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
-              AND v.vendedor_id_firebird = $4
+              AND ($4::int IS NULL OR v.vendedor_id_firebird = $4::int)
               ${salesClauses}
             GROUP BY 1 ORDER BY total DESC LIMIT 10
         `, getQueryParams(start, end));
@@ -3297,7 +3252,7 @@ router.get('/seller/summary', async (req, res, next) => {
                 ${needsCidadeJoin ? 'LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id' : ''}
                 WHERE v.tenant_id = $1 
                   AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
-                  AND v.vendedor_id_firebird = $4
+                  AND ($4::int IS NULL OR v.vendedor_id_firebird = $4::int)
                   ${salesFilter} ${df.clause} ${cf.clause}
             )
             SELECT COALESCE(NULLIF(TRIM(vi.categoria), ''), NULLIF(TRIM(p.categoria), ''), 'S/ GRUPO') AS nome, 
@@ -3327,7 +3282,7 @@ router.get('/seller/summary', async (req, res, next) => {
                 ${needsCidadeJoin ? 'LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id' : ''}
                 WHERE v.tenant_id = $1 
                   AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
-                  AND v.vendedor_id_firebird = $4
+                  AND ($4::int IS NULL OR v.vendedor_id_firebird = $4::int)
                   ${salesFilter} ${df.clause} ${cf.clause}
             )
             SELECT COALESCE(NULLIF(TRIM(vi.produto), ''), NULLIF(TRIM(p.nome), ''), 'Produto ' || COALESCE(vi.produto_id_firebird::text, '?')) AS nome, 
@@ -3359,7 +3314,7 @@ router.get('/seller/summary', async (req, res, next) => {
             ${salesJoins}
             WHERE v.tenant_id = $1 
               AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
-              AND v.vendedor_id_firebird = $4
+              AND ($4::int IS NULL OR v.vendedor_id_firebird = $4::int)
               ${salesClauses}
             GROUP BY DATE_TRUNC('day', COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda)), TO_CHAR(COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda), 'DD/MM')
             ORDER BY DATE_TRUNC('day', COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda)) ASC
@@ -3375,7 +3330,7 @@ router.get('/seller/summary', async (req, res, next) => {
             ${salesJoins}
             WHERE v.tenant_id = $1 
               AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
-              AND v.vendedor_id_firebird = $4
+              AND ($4::int IS NULL OR v.vendedor_id_firebird = $4::int)
               ${salesClauses}
             GROUP BY 1 ORDER BY 1 ASC
         `, getQueryParams(start, end));
@@ -3399,7 +3354,7 @@ router.get('/seller/summary', async (req, res, next) => {
             ${salesJoins}
             WHERE v.tenant_id = $1 
               AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
-              AND v.vendedor_id_firebird = $4
+              AND ($4::int IS NULL OR v.vendedor_id_firebird = $4::int)
               ${salesClauses}
             GROUP BY 1, 2
         `, getQueryParams(start, end));
@@ -3431,7 +3386,7 @@ router.get('/seller/summary', async (req, res, next) => {
             ${needsItemJoin ? 'INNER JOIN dash_vendas_itens vi ON vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id' : ''}
             WHERE v.tenant_id = $1 
               AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
-              AND v.vendedor_id_firebird = $4
+              AND ($4::int IS NULL OR v.vendedor_id_firebird = $4::int)
               ${salesClauses}
             GROUP BY v.id_firebird, v.numero_pedido, c.nome, COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda), v.status
             ORDER BY COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) DESC, v.id_firebird DESC
@@ -3458,12 +3413,12 @@ router.get('/seller/summary', async (req, res, next) => {
             FROM dash_vendas v
             WHERE v.tenant_id = $1 
               AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
-              AND v.vendedor_id_firebird = $4
+              AND ($4::int IS NULL OR v.vendedor_id_firebird = $4::int)
               ${salesFilter}
             GROUP BY 1
             ORDER BY total DESC
             LIMIT 1
-        `, [tenantId, toSafeSqlString(start12m), toSafeSqlString(end), vendedorId]);
+        `, [tenantId, toSafeSqlString(start12m), toSafeSqlString(end), resolvedSellerParam]);
         
         const melhor_mes_12m = bestMonthRes.rowCount > 0 ? {
             mes: bestMonthRes.rows[0].mes_ano,
@@ -3479,11 +3434,11 @@ router.get('/seller/summary', async (req, res, next) => {
             FROM dash_vendas v
             WHERE v.tenant_id = $1 
               AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
-              AND v.vendedor_id_firebird = $4
+              AND ($4::int IS NULL OR v.vendedor_id_firebird = $4::int)
               ${salesFilter}
             GROUP BY 1, 2
             ORDER BY mes_trunc ASC
-        `, [tenantId, toSafeSqlString(start12m), toSafeSqlString(end), vendedorId]);
+        `, [tenantId, toSafeSqlString(start12m), toSafeSqlString(end), resolvedSellerParam]);
 
         const evol12mDev = await db.query(`
             SELECT 
@@ -3493,10 +3448,10 @@ router.get('/seller/summary', async (req, res, next) => {
             LEFT JOIN dash_vendas v2 ON v2.id_firebird = d.venda_id_firebird AND v2.tenant_id = d.tenant_id
             WHERE d.tenant_id = $1 
               AND d.data_devolucao >= $2 AND d.data_devolucao <= $3
-              AND v2.vendedor_id_firebird = $4
+              AND ($4::int IS NULL OR v2.vendedor_id_firebird = $4::int)
               ${cfopUtil.getDevolucaoNfFilterClause('v2', 'd')}
             GROUP BY 1
-        `, [tenantId, toSafeSqlString(start12m), toSafeSqlString(end), vendedorId]);
+        `, [tenantId, toSafeSqlString(start12m), toSafeSqlString(end), resolvedSellerParam]);
 
         const evolucao_12m = evol12mSales.rows.map(s => {
             const dev = evol12mDev.rows.find(d => d.mes_ano === s.mes_ano);
@@ -3512,11 +3467,14 @@ router.get('/seller/summary', async (req, res, next) => {
         const start_date = formatDateStr(start);
         const end_date = formatDateStr(end);
 
-        const sellerNameRes = await db.query(
-            `SELECT TRIM(nome) AS nome FROM dash_vendedores WHERE tenant_id = $1 AND id_firebird = $2`,
-            [tenantId, vendedorId]
-        );
-        const vendedor_nome = sellerNameRes.rows[0]?.nome || `Vendedor #${vendedorId}`;
+        let vendedor_nome = 'Todos os Vendedores';
+        if (resolvedSellerParam) {
+            const sellerNameRes = await db.query(
+                `SELECT TRIM(nome) AS nome FROM dash_vendedores WHERE tenant_id = $1 AND id_firebird = $2`,
+                [tenantId, resolvedSellerParam]
+            );
+            vendedor_nome = sellerNameRes.rows[0]?.nome || `Vendedor #${resolvedSellerParam}`;
+        }
 
         // 12. Orçamentos e Taxa de Conversão do Vendedor (e comparativo entre vendedores)
         const orcamentosRes = await db.query(`
@@ -3527,11 +3485,11 @@ router.get('/seller/summary', async (req, res, next) => {
             WHERE v.tenant_id = $1
               AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2
               AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
-              AND v.vendedor_id_firebird = $4
+              AND ($4::int IS NULL OR v.vendedor_id_firebird = $4::int)
               AND UPPER(TRIM(v.status)) IN ('ABERTO', 'ORÇAMENTO', 'ORCAMENTO', 'PENDENTE')
               AND COALESCE(v.processo, 1) != 2
               AND COALESCE(v.valor_total, 0) > 0
-        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), vendedorId]);
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), resolvedSellerParam]);
 
         const orcamentosListaRes = await db.query(`
             SELECT 
@@ -3546,13 +3504,13 @@ router.get('/seller/summary', async (req, res, next) => {
             WHERE v.tenant_id = $1
               AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2
               AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
-              AND v.vendedor_id_firebird = $4
+              AND ($4::int IS NULL OR v.vendedor_id_firebird = $4::int)
               AND UPPER(TRIM(v.status)) IN ('ABERTO', 'ORÇAMENTO', 'ORCAMENTO', 'PENDENTE')
               AND COALESCE(v.processo, 1) != 2
               AND COALESCE(v.valor_total, 0) > 0
             ORDER BY COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) DESC, v.id_firebird DESC
             LIMIT 30
-        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), vendedorId]);
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), resolvedSellerParam]);
 
         const orcamentosRankingRes = await db.query(`
             WITH fat_v AS (
@@ -3628,7 +3586,7 @@ router.get('/seller/summary', async (req, res, next) => {
         });
 
         res.json({
-            vendedor_id: vendedorId,
+            vendedor_id: resolvedSellerParam || 'todas',
             vendedor_nome,
             faturamento,
             ticket_medio,
