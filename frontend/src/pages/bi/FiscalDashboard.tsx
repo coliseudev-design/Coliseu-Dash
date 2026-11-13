@@ -327,9 +327,14 @@ export default function FiscalDashboard() {
     let totalProd = 0
     let totalNf = 0
     let checkedQtd = 0
+    let checkedSaidaQtd = 0
+    let checkedDevolQtd = 0
     let checkedProd = 0
     let checkedNf = 0
+    let checkedNetProd = 0
+    let checkedNetNf = 0
     for (const item of cfopsEmitidosResumo) {
+      const isDevolucao = item.cfop.startsWith('1') || item.cfop.startsWith('2')
       totalQtd += item.qtd
       totalProd += item.valor_produtos
       totalNf += item.valor
@@ -337,9 +342,33 @@ export default function FiscalDashboard() {
         checkedQtd += item.qtd
         checkedProd += item.valor_produtos
         checkedNf += item.valor
+        if (isDevolucao) {
+          checkedDevolQtd += item.qtd
+          checkedNetProd -= item.valor_produtos
+          checkedNetNf -= item.valor
+        } else {
+          checkedSaidaQtd += item.qtd
+          checkedNetProd += item.valor_produtos
+          checkedNetNf += item.valor
+        }
       }
     }
-    return { totalQtd, totalProd, totalNf, checkedQtd, checkedProd, checkedNf }
+    const checkedDesc = Math.max(0, checkedProd - checkedNf)
+    const checkedNetDesc = Math.max(0, checkedNetProd - checkedNetNf)
+    return {
+      totalQtd,
+      totalProd,
+      totalNf,
+      checkedQtd,
+      checkedSaidaQtd,
+      checkedDevolQtd,
+      checkedProd,
+      checkedDesc,
+      checkedNf,
+      checkedNetProd,
+      checkedNetDesc,
+      checkedNetNf,
+    }
   }, [cfopsEmitidosResumo, effectiveCheckedCfops])
 
   const saveCfopsProjectMutation = useMutation({
@@ -674,7 +703,7 @@ export default function FiscalDashboard() {
         )}
 
         {/* Faixa de Totais dos CFOPs Selecionados vs Total Emitido */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/60 rounded-xl p-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/60 rounded-xl p-3">
           <div>
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
               Registros / Notas Selecionadas
@@ -685,22 +714,50 @@ export default function FiscalDashboard() {
                 (de {formatNum(cfopTotals.totalQtd)} emitidas)
               </span>
             </span>
+            {cfopTotals.checkedDevolQtd > 0 && (
+              <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 block mt-0.5">
+                {formatNum(cfopTotals.checkedSaidaQtd)} Saídas (S) • {formatNum(cfopTotals.checkedDevolQtd)} Devol. (E)
+              </span>
+            )}
           </div>
           <div>
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-              Valor Produtos (CFOPs Marcados)
+              Valor Produtos (Bruto Tabela)
             </span>
             <span className="text-sm font-black font-mono text-blue-600 dark:text-blue-400">
               {formatBRL(cfopTotals.checkedProd)}
             </span>
+            {cfopTotals.checkedDevolQtd > 0 && (
+              <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 block mt-0.5">
+                Líquido (S - E): <strong>{formatBRL(cfopTotals.checkedNetProd)}</strong>
+              </span>
+            )}
           </div>
           <div>
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-              Valor Total NF (CFOPs Marcados)
+              Desconto / Ajuste na Emissão
+            </span>
+            <span className="text-sm font-black font-mono text-amber-600 dark:text-amber-400">
+              - {formatBRL(cfopTotals.checkedDesc)}
+            </span>
+            {cfopTotals.checkedDevolQtd > 0 && (
+              <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 block mt-0.5">
+                Líquido (S - E): <strong>- {formatBRL(cfopTotals.checkedNetDesc)}</strong>
+              </span>
+            )}
+          </div>
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+              Valor Total NF (Líquido Emitido)
             </span>
             <span className="text-sm font-black font-mono text-emerald-600 dark:text-emerald-400">
               {formatBRL(cfopTotals.checkedNf)}
             </span>
+            {cfopTotals.checkedDevolQtd > 0 && (
+              <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 block mt-0.5">
+                Líquido (S - E): <strong>{formatBRL(cfopTotals.checkedNetNf)}</strong>
+              </span>
+            )}
           </div>
         </div>
 
@@ -713,7 +770,8 @@ export default function FiscalDashboard() {
                 <th className="py-2 px-3">CFOP</th>
                 <th className="py-2 px-3">NATUREZA DE OPERAÇÃO</th>
                 <th className="py-2 px-3 text-right">QTD NOTAS</th>
-                <th className="py-2 px-3 text-right">VALOR PRODUTOS</th>
+                <th className="py-2 px-3 text-right">VALOR PRODUTOS (TABELA)</th>
+                <th className="py-2 px-3 text-right">DESCONTO / AJUSTE</th>
                 <th className="py-2 px-3 text-right">VALOR TOTAL NF</th>
                 <th className="py-2 px-3 text-right">% TOTAL</th>
               </tr>
@@ -721,7 +779,7 @@ export default function FiscalDashboard() {
             <tbody className="divide-y divide-slate-200/60 dark:divide-slate-800/70">
               {cfopsEmitidosResumo.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-5 text-center text-slate-400">
+                  <td colSpan={8} className="py-5 text-center text-slate-400">
                     {loadingResumo ? 'Carregando resumo por CFOP...' : 'Nenhum CFOP emitido no período selecionado.'}
                   </td>
                 </tr>
@@ -729,6 +787,8 @@ export default function FiscalDashboard() {
                 cfopsEmitidosResumo.map((item) => {
                   const isChecked = effectiveCheckedCfops.includes(item.cfop)
                   const pct = cfopTotals.totalNf > 0 ? (item.valor / cfopTotals.totalNf) * 100 : 0
+                  const descontoItem = Math.max(0, item.valor_produtos - item.valor)
+                  const descPct = item.valor_produtos > 0 ? (descontoItem / item.valor_produtos) * 100 : 0
                   return (
                     <tr
                       key={item.cfop}
@@ -763,6 +823,16 @@ export default function FiscalDashboard() {
                       </td>
                       <td className="py-2 px-3 text-right font-mono font-semibold text-slate-700 dark:text-slate-300">
                         {formatBRL(item.valor_produtos)}
+                      </td>
+                      <td className="py-2 px-3 text-right font-mono font-semibold text-amber-600 dark:text-amber-400">
+                        {descontoItem > 0.009 ? (
+                          <span>
+                            - {formatBRL(descontoItem)}{' '}
+                            <span className="text-[10px] text-slate-400">({descPct.toFixed(1)}%)</span>
+                          </span>
+                        ) : (
+                          <span className="text-slate-400">R$ 0,00</span>
+                        )}
                       </td>
                       <td className="py-2 px-3 text-right font-mono font-black text-emerald-600 dark:text-emerald-400">
                         {formatBRL(item.valor)}
