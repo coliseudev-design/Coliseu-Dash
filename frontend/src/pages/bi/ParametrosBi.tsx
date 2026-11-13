@@ -148,7 +148,13 @@ export default function ParametrosBi() {
 
   const selectOnlySalesCfops = () => {
     const commercial = cfopsDisponiveis
-      .filter((c) => ['5101', '5102', '5117', '5401', '5403', '5405', '5922', '6101', '6102', '6108', '6403', '6404'].includes(c.cfop))
+      .filter((c) =>
+        [
+          '5101', '5102', '5117', '5401', '5403', '5405', '5922',
+          '6101', '6102', '6108', '6403', '6404',
+          '1201', '1202', '1411', '2201', '2202', '2411',
+        ].includes(c.cfop)
+      )
       .map((c) => c.cfop)
     setSelectedCfops(commercial.length > 0 ? commercial : cfopsDisponiveis.map((c) => c.cfop))
   }
@@ -159,9 +165,10 @@ export default function ParametrosBi() {
     let valorTotal = 0
     for (const item of cfopsDisponiveis) {
       if (selectedCfops.includes(item.cfop)) {
+        const isDevolucao = item.cfop.startsWith('1') || item.cfop.startsWith('2')
         qtd += Number(item.qtd_notas || 0)
-        valorProdutos += Number(item.valor_produtos || 0)
-        valorTotal += Number(item.valor_total || 0)
+        valorProdutos += isDevolucao ? -Number(item.valor_produtos || 0) : Number(item.valor_produtos || 0)
+        valorTotal += isDevolucao ? -Number(item.valor_total || 0) : Number(item.valor_total || 0)
       }
     }
     return { qtd, valorProdutos, valorTotal }
@@ -391,7 +398,7 @@ export default function ParametrosBi() {
               onClick={selectOnlySalesCfops}
               className="px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition-colors cursor-pointer"
             >
-              Apenas Vendas Comerciais
+              Vendas Líquidas (Com Devoluções • Sem 5949)
             </button>
             <button
               type="button"
@@ -459,6 +466,7 @@ export default function ParametrosBi() {
               ) : (
                 cfopsDisponiveis.map((item) => {
                   const checked = selectedCfops.includes(item.cfop)
+                  const isDevolucao = item.cfop.startsWith('1') || item.cfop.startsWith('2')
                   return (
                     <tr
                       key={item.cfop}
@@ -466,7 +474,9 @@ export default function ParametrosBi() {
                       className={clsx(
                         'transition-colors cursor-pointer',
                         checked
-                          ? 'bg-emerald-500/5 hover:bg-emerald-500/10'
+                          ? isDevolucao
+                            ? 'bg-rose-500/5 hover:bg-rose-500/10'
+                            : 'bg-emerald-500/5 hover:bg-emerald-500/10'
                           : 'opacity-60 hover:bg-slate-50 dark:hover:bg-slate-800/40'
                       )}
                     >
@@ -477,7 +487,12 @@ export default function ParametrosBi() {
                             e.stopPropagation()
                             toggleCfop(item.cfop)
                           }}
-                          className="inline-flex items-center justify-center text-emerald-600 dark:text-emerald-400"
+                          className={clsx(
+                            'inline-flex items-center justify-center',
+                            isDevolucao
+                              ? 'text-rose-600 dark:text-rose-400'
+                              : 'text-emerald-600 dark:text-emerald-400'
+                          )}
                         >
                           {checked ? <CheckSquare size={16} /> : <Square size={16} className="text-slate-400" />}
                         </button>
@@ -486,17 +501,34 @@ export default function ParametrosBi() {
                         {item.cfop}
                       </td>
                       <td className="py-2.5 px-3">
-                        <div className="font-bold text-slate-800 dark:text-slate-200">{item.natureza_operacao}</div>
+                        <div className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                          <span>{item.natureza_operacao}</span>
+                          {isDevolucao && (
+                            <span className="px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-600 dark:text-rose-400 text-[10px] font-extrabold uppercase shrink-0">
+                              Devolução (Deduz)
+                            </span>
+                          )}
+                        </div>
                         <div className="text-[11px] text-slate-500 dark:text-slate-400">{item.descricao}</div>
                       </td>
                       <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-700 dark:text-slate-300">
                         {formatNum(item.qtd_notas)}
                       </td>
-                      <td className="py-2.5 px-3 text-right font-mono font-semibold text-slate-700 dark:text-slate-300">
-                        {formatBRL(item.valor_produtos)}
+                      <td
+                        className={clsx(
+                          'py-2.5 px-3 text-right font-mono font-semibold',
+                          isDevolucao ? 'text-rose-600 dark:text-rose-400' : 'text-slate-700 dark:text-slate-300'
+                        )}
+                      >
+                        {isDevolucao ? `- ${formatBRL(item.valor_produtos)}` : formatBRL(item.valor_produtos)}
                       </td>
-                      <td className="py-2.5 px-3 text-right font-mono font-black text-emerald-600 dark:text-emerald-400">
-                        {formatBRL(item.valor_total)}
+                      <td
+                        className={clsx(
+                          'py-2.5 px-3 text-right font-mono font-black',
+                          isDevolucao ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'
+                        )}
+                      >
+                        {isDevolucao ? `- ${formatBRL(item.valor_total)}` : formatBRL(item.valor_total)}
                       </td>
                     </tr>
                   )

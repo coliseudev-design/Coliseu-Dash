@@ -624,6 +624,12 @@ function parseSelectedCfops(cfopsParam, defaultList = null) {
         return parts.length > 0 ? parts : null;
     }
     if (Array.isArray(defaultList) && defaultList.length > 0) {
+        const returnCfops = ['1201', '1202', '1411', '2201', '2202', '2411'];
+        const hasSales = defaultList.some((c) => /^[56]/.test(String(c)));
+        const hasReturn = defaultList.some((c) => returnCfops.includes(String(c)));
+        if (hasSales && !hasReturn) {
+            return Array.from(new Set([...defaultList, ...returnCfops]));
+        }
         return defaultList;
     }
     return null;
@@ -683,6 +689,12 @@ router.get('/resumo', async (req, res, next) => {
                 ${cteSql}
                 SELECT
                     COUNT(*) FILTER (WHERE tipo_operacao = 'SAIDA') AS emitidas_qtd,
+                    COUNT(*) FILTER (WHERE tipo_operacao = 'SAIDA' AND cfop !~ '^[123]') AS emitidas_saidas_brutas_qtd,
+                    COALESCE(SUM(valor_produtos) FILTER (WHERE tipo_operacao = 'SAIDA' AND cfop !~ '^[123]'), 0) AS emitidas_saidas_brutas_valor_produtos,
+                    COALESCE(SUM(valor_total) FILTER (WHERE tipo_operacao = 'SAIDA' AND cfop !~ '^[123]'), 0) AS emitidas_saidas_brutas_valor,
+                    COUNT(*) FILTER (WHERE tipo_operacao = 'SAIDA' AND cfop ~ '^[123]') AS emitidas_devolucoes_qtd,
+                    COALESCE(SUM(valor_produtos) FILTER (WHERE tipo_operacao = 'SAIDA' AND cfop ~ '^[123]'), 0) AS emitidas_devolucoes_valor_produtos,
+                    COALESCE(SUM(valor_total) FILTER (WHERE tipo_operacao = 'SAIDA' AND cfop ~ '^[123]'), 0) AS emitidas_devolucoes_valor,
                     COALESCE(SUM(CASE WHEN cfop ~ '^[123]' THEN -valor_produtos ELSE valor_produtos END) FILTER (WHERE tipo_operacao = 'SAIDA'), 0) AS emitidas_valor_produtos,
                     COALESCE(SUM(CASE WHEN cfop ~ '^[123]' THEN -valor_total ELSE valor_total END) FILTER (WHERE tipo_operacao = 'SAIDA'), 0) AS emitidas_valor,
                     COUNT(*) FILTER (
@@ -771,6 +783,12 @@ router.get('/resumo', async (req, res, next) => {
 
         const k = kpiRes.rows[0] || {};
         const emitidasQtd = parseInt(k.emitidas_qtd || 0, 10);
+        const emitidasSaidasBrutasQtd = parseInt(k.emitidas_saidas_brutas_qtd || 0, 10);
+        const emitidasSaidasBrutasValorProdutos = parseFloat(k.emitidas_saidas_brutas_valor_produtos || 0);
+        const emitidasSaidasBrutasValor = parseFloat(k.emitidas_saidas_brutas_valor || 0);
+        const emitidasDevolucoesQtd = parseInt(k.emitidas_devolucoes_qtd || 0, 10);
+        const emitidasDevolucoesValorProdutos = parseFloat(k.emitidas_devolucoes_valor_produtos || 0);
+        const emitidasDevolucoesValor = parseFloat(k.emitidas_devolucoes_valor || 0);
         const emitidasValorProdutos = parseFloat(k.emitidas_valor_produtos || 0);
         const emitidasValor = parseFloat(k.emitidas_valor || 0);
         const emitidasChaveQtd = parseInt(k.emitidas_chave_qtd || 0, 10);
@@ -806,6 +824,12 @@ router.get('/resumo', async (req, res, next) => {
             cfops_faturamento: settings.cfops_faturamento || null,
             kpis: {
                 emitidas_qtd: emitidasQtd,
+                emitidas_saidas_brutas_qtd: emitidasSaidasBrutasQtd,
+                emitidas_saidas_brutas_valor_produtos: emitidasSaidasBrutasValorProdutos,
+                emitidas_saidas_brutas_valor: emitidasSaidasBrutasValor,
+                emitidas_devolucoes_qtd: emitidasDevolucoesQtd,
+                emitidas_devolucoes_valor_produtos: emitidasDevolucoesValorProdutos,
+                emitidas_devolucoes_valor: emitidasDevolucoesValor,
                 emitidas_valor_produtos: emitidasValorProdutos,
                 emitidas_valor: emitidasValor,
                 emitidas_ticket_medio: emitidasQtd > 0 ? emitidasValor / emitidasQtd : 0,
@@ -889,8 +913,10 @@ router.get('/notas', async (req, res, next) => {
             `${cteSql}
              SELECT
                  COUNT(*) AS total,
-                 COALESCE(SUM(valor_produtos), 0) AS soma_valor_produtos,
-                 COALESCE(SUM(valor_total), 0) AS soma_valor
+                 COALESCE(SUM(CASE WHEN tipo_operacao = 'SAIDA' AND cfop ~ '^[123]' THEN -valor_produtos ELSE valor_produtos END), 0) AS soma_valor_produtos,
+                 COALESCE(SUM(CASE WHEN tipo_operacao = 'SAIDA' AND cfop ~ '^[123]' THEN -valor_total ELSE valor_total END), 0) AS soma_valor,
+                 COALESCE(SUM(valor_total) FILTER (WHERE tipo_operacao = 'SAIDA' AND cfop ~ '^[123]'), 0) AS soma_devolucoes,
+                 COUNT(*) FILTER (WHERE tipo_operacao = 'SAIDA' AND cfop ~ '^[123]') AS qtd_devolucoes
              FROM notas_filtradas`,
             params
         );
@@ -898,6 +924,8 @@ router.get('/notas', async (req, res, next) => {
         const total = parseInt(countRes.rows[0]?.total || 0, 10);
         const somaValorProdutos = parseFloat(countRes.rows[0]?.soma_valor_produtos || 0);
         const somaValor = parseFloat(countRes.rows[0]?.soma_valor || 0);
+        const somaDevolucoes = parseFloat(countRes.rows[0]?.soma_devolucoes || 0);
+        const qtdDevolucoes = parseInt(countRes.rows[0]?.qtd_devolucoes || 0, 10);
 
         const limitIdx = params.length + 1;
         const offsetIdx = params.length + 2;
@@ -1012,6 +1040,8 @@ router.get('/notas', async (req, res, next) => {
             total,
             soma_valor_produtos: somaValorProdutos,
             soma_valor: somaValor,
+            soma_devolucoes: somaDevolucoes,
+            qtd_devolucoes: qtdDevolucoes,
             page,
             limit,
             total_pages: Math.max(1, Math.ceil(total / limit)),

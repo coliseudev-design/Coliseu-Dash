@@ -22,6 +22,7 @@ const pool = new Pool({
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 10000,
     statement_timeout: 45000,
+    options: '-c max_parallel_workers_per_gather=0',
     keepAlive: true,
     keepAliveInitialDelayMillis: 10000,
 });

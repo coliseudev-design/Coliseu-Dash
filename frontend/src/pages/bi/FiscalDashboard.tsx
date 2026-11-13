@@ -14,6 +14,12 @@ import { useAuthStore } from '../../store/authStore'
 
 interface FiscalKpis {
   emitidas_qtd: number
+  emitidas_saidas_brutas_qtd?: number
+  emitidas_saidas_brutas_valor_produtos?: number
+  emitidas_saidas_brutas_valor?: number
+  emitidas_devolucoes_qtd?: number
+  emitidas_devolucoes_valor_produtos?: number
+  emitidas_devolucoes_valor?: number
   emitidas_valor_produtos?: number
   emitidas_valor: number
   emitidas_ticket_medio: number
@@ -84,6 +90,8 @@ interface FiscalNotasResponse {
   total: number
   soma_valor_produtos?: number
   soma_valor: number
+  soma_devolucoes?: number
+  qtd_devolucoes?: number
   page: number
   limit: number
   total_pages: number
@@ -154,7 +162,11 @@ export default function FiscalDashboard() {
   const activeUser = useAuthStore((s) => s.user)
   const userKey = String(activeUser?.email || activeUser?.id || 'default').toLowerCase()
 
-  const { data: tenantParams } = useQuery<{ somente_vendas_com_nf?: boolean; cfops_faturamento?: string[] | null }>({
+  const { data: tenantParams } = useQuery<{
+    somente_vendas_com_nf?: boolean
+    cfops_faturamento?: string[] | null
+    cfops_disponiveis?: Array<{ cfop: string }>
+  }>({
     queryKey: ['tenant-parametros', userKey],
     queryFn: async () => {
       const res = await api.get('/configuracoes/parametros')
@@ -309,17 +321,24 @@ export default function FiscalDashboard() {
   }, [resumo?.cfops])
 
   const allEmitidosCodes = useMemo(() => cfopsEmitidosResumo.map((c) => c.cfop), [cfopsEmitidosResumo])
+  const allHistoricalCfopCodes = useMemo(() => {
+    const set = new Set<string>(allEmitidosCodes)
+    for (const item of tenantParams?.cfops_disponiveis || []) {
+      if (item.cfop) set.add(String(item.cfop).trim())
+    }
+    return Array.from(set)
+  }, [allEmitidosCodes, tenantParams?.cfops_disponiveis])
   const effectiveCheckedCfops = useMemo(
-    () => (checkedCfops !== null ? checkedCfops : allEmitidosCodes),
-    [checkedCfops, allEmitidosCodes]
+    () => (checkedCfops !== null ? checkedCfops : allHistoricalCfopCodes),
+    [checkedCfops, allHistoricalCfopCodes]
   )
 
   const toggleCfopCheck = (code: string) => {
-    const current = checkedCfops !== null ? checkedCfops : allEmitidosCodes
+    const current = checkedCfops !== null ? checkedCfops : allHistoricalCfopCodes
     const next = current.includes(code)
       ? current.filter((c) => c !== code)
       : [...current, code]
-    setCheckedCfops(next.length === allEmitidosCodes.length ? null : next)
+    setCheckedCfops(next.length >= allHistoricalCfopCodes.length && allHistoricalCfopCodes.every((c) => next.includes(c)) ? null : next)
   }
 
   const cfopTotals = useMemo(() => {
@@ -329,6 +348,10 @@ export default function FiscalDashboard() {
     let checkedQtd = 0
     let checkedSaidaQtd = 0
     let checkedDevolQtd = 0
+    let checkedSaidaProd = 0
+    let checkedSaidaNf = 0
+    let checkedDevolProd = 0
+    let checkedDevolNf = 0
     let checkedProd = 0
     let checkedNf = 0
     let checkedNetProd = 0
@@ -336,18 +359,22 @@ export default function FiscalDashboard() {
     for (const item of cfopsEmitidosResumo) {
       const isDevolucao = item.cfop.startsWith('1') || item.cfop.startsWith('2')
       totalQtd += item.qtd
-      totalProd += item.valor_produtos
-      totalNf += item.valor
+      totalProd += isDevolucao ? -item.valor_produtos : item.valor_produtos
+      totalNf += isDevolucao ? -item.valor : item.valor
       if (effectiveCheckedCfops.includes(item.cfop)) {
         checkedQtd += item.qtd
         checkedProd += item.valor_produtos
         checkedNf += item.valor
         if (isDevolucao) {
           checkedDevolQtd += item.qtd
+          checkedDevolProd += item.valor_produtos
+          checkedDevolNf += item.valor
           checkedNetProd -= item.valor_produtos
           checkedNetNf -= item.valor
         } else {
           checkedSaidaQtd += item.qtd
+          checkedSaidaProd += item.valor_produtos
+          checkedSaidaNf += item.valor
           checkedNetProd += item.valor_produtos
           checkedNetNf += item.valor
         }
@@ -362,6 +389,10 @@ export default function FiscalDashboard() {
       checkedQtd,
       checkedSaidaQtd,
       checkedDevolQtd,
+      checkedSaidaProd,
+      checkedSaidaNf,
+      checkedDevolProd,
+      checkedDevolNf,
       checkedProd,
       checkedDesc,
       checkedNf,
@@ -671,20 +702,31 @@ export default function FiscalDashboard() {
             <button
               type="button"
               onClick={() => {
-                const salesOnly = cfopsEmitidosResumo
-                  .filter((c) => ['5101', '5102', '5117', '5401', '5403', '5405', '5922', '6101', '6102', '6108', '6403', '6404'].includes(c.cfop))
-                  .map((c) => c.cfop)
-                setCheckedCfops(salesOnly)
+                const commercialAndReturnDefaults = [
+                  '5101', '5102', '5117', '5401', '5403', '5405', '5922',
+                  '6101', '6102', '6108', '6403', '6404',
+                  '1201', '1202', '1411', '2201', '2202', '2411',
+                ]
+                const nonCommercialCfops = ['5949', '6949', '5910', '6910', '5151', '5152', '6151', '6152']
+                const combined = Array.from(
+                  new Set([
+                    ...commercialAndReturnDefaults,
+                    ...allHistoricalCfopCodes.filter((code) => !nonCommercialCfops.includes(code)),
+                  ])
+                )
+                setCheckedCfops(combined)
               }}
               className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition-colors cursor-pointer"
             >
-              Apenas Vendas (Sem 5949 / Devolução)
+              Vendas Líquidas (Com Devoluções • Sem 5949)
             </button>
             <button
               type="button"
               disabled={saveCfopsProjectMutation.isPending}
               onClick={() => {
-                const isAll = checkedCfops === null || checkedCfops.length === allEmitidosCodes.length
+                const isAll =
+                  checkedCfops === null ||
+                  (allHistoricalCfopCodes.length > 0 && allHistoricalCfopCodes.every((c) => effectiveCheckedCfops.includes(c)))
                 saveCfopsProjectMutation.mutate(isAll ? null : effectiveCheckedCfops)
               }}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-xs transition-colors cursor-pointer disabled:opacity-50"
@@ -716,20 +758,26 @@ export default function FiscalDashboard() {
             </span>
             {cfopTotals.checkedDevolQtd > 0 && (
               <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 block mt-0.5">
-                {formatNum(cfopTotals.checkedSaidaQtd)} Saídas (S) • {formatNum(cfopTotals.checkedDevolQtd)} Devol. (E)
+                {formatNum(cfopTotals.checkedSaidaQtd)} Saídas (S) •{' '}
+                <strong className="text-rose-600 dark:text-rose-400">
+                  {formatNum(cfopTotals.checkedDevolQtd)} Devol. (E)
+                </strong>
               </span>
             )}
           </div>
           <div>
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-              Valor Produtos (Bruto Tabela)
+              Valor Produtos (Líquido S − E)
             </span>
             <span className="text-sm font-black font-mono text-blue-600 dark:text-blue-400">
-              {formatBRL(cfopTotals.checkedProd)}
+              {formatBRL(cfopTotals.checkedNetProd)}
             </span>
             {cfopTotals.checkedDevolQtd > 0 && (
               <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 block mt-0.5">
-                Líquido (S - E): <strong>{formatBRL(cfopTotals.checkedNetProd)}</strong>
+                Saídas: {formatBRL(cfopTotals.checkedSaidaProd)} •{' '}
+                <strong className="text-rose-600 dark:text-rose-400">
+                  Devol.: - {formatBRL(cfopTotals.checkedDevolProd)}
+                </strong>
               </span>
             )}
           </div>
@@ -738,11 +786,11 @@ export default function FiscalDashboard() {
               Desconto / Ajuste na Emissão
             </span>
             <span className="text-sm font-black font-mono text-amber-600 dark:text-amber-400">
-              - {formatBRL(cfopTotals.checkedDesc)}
+              - {formatBRL(cfopTotals.checkedNetDesc)}
             </span>
             {cfopTotals.checkedDevolQtd > 0 && (
               <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 block mt-0.5">
-                Líquido (S - E): <strong>- {formatBRL(cfopTotals.checkedNetDesc)}</strong>
+                Desconto Comercial Deduzido nas NFs
               </span>
             )}
           </div>
@@ -751,11 +799,14 @@ export default function FiscalDashboard() {
               Valor Total NF (Líquido Emitido)
             </span>
             <span className="text-sm font-black font-mono text-emerald-600 dark:text-emerald-400">
-              {formatBRL(cfopTotals.checkedNf)}
+              {formatBRL(cfopTotals.checkedNetNf)}
             </span>
             {cfopTotals.checkedDevolQtd > 0 && (
               <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 block mt-0.5">
-                Líquido (S - E): <strong>{formatBRL(cfopTotals.checkedNetNf)}</strong>
+                Saídas: {formatBRL(cfopTotals.checkedSaidaNf)} •{' '}
+                <strong className="text-rose-600 dark:text-rose-400">
+                  Devol.: - {formatBRL(cfopTotals.checkedDevolNf)}
+                </strong>
               </span>
             )}
           </div>
@@ -786,7 +837,8 @@ export default function FiscalDashboard() {
               ) : (
                 cfopsEmitidosResumo.map((item) => {
                   const isChecked = effectiveCheckedCfops.includes(item.cfop)
-                  const pct = cfopTotals.totalNf > 0 ? (item.valor / cfopTotals.totalNf) * 100 : 0
+                  const isDevolucao = item.cfop.startsWith('1') || item.cfop.startsWith('2')
+                  const pct = cfopTotals.totalNf > 0 ? ((isDevolucao ? -item.valor : item.valor) / cfopTotals.totalNf) * 100 : 0
                   const descontoItem = Math.max(0, item.valor_produtos - item.valor)
                   const descPct = item.valor_produtos > 0 ? (descontoItem / item.valor_produtos) * 100 : 0
                   return (
@@ -796,7 +848,9 @@ export default function FiscalDashboard() {
                       className={clsx(
                         'transition-colors cursor-pointer',
                         isChecked
-                          ? 'bg-emerald-500/5 hover:bg-emerald-500/10'
+                          ? isDevolucao
+                            ? 'bg-rose-500/5 hover:bg-rose-500/10'
+                            : 'bg-emerald-500/5 hover:bg-emerald-500/10'
                           : 'opacity-55 hover:bg-slate-50 dark:hover:bg-slate-800/40'
                       )}
                     >
@@ -807,7 +861,12 @@ export default function FiscalDashboard() {
                             e.stopPropagation()
                             toggleCfopCheck(item.cfop)
                           }}
-                          className="inline-flex items-center justify-center text-emerald-600 dark:text-emerald-400"
+                          className={clsx(
+                            'inline-flex items-center justify-center',
+                            isDevolucao
+                              ? 'text-rose-600 dark:text-rose-400'
+                              : 'text-emerald-600 dark:text-emerald-400'
+                          )}
                         >
                           {isChecked ? <CheckSquare size={15} /> : <Square size={15} className="text-slate-400" />}
                         </button>
@@ -815,14 +874,26 @@ export default function FiscalDashboard() {
                       <td className="py-2 px-3 font-mono font-black text-slate-900 dark:text-white">
                         {item.cfop}
                       </td>
-                      <td className="py-2 px-3 font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[320px]" title={item.natureza}>
-                        {item.natureza}
+                      <td className="py-2 px-3 font-semibold text-slate-700 dark:text-slate-200 max-w-[360px]" title={item.natureza}>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="truncate">{item.natureza}</span>
+                          {isDevolucao && (
+                            <span className="px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-600 dark:text-rose-400 text-[10px] font-extrabold uppercase shrink-0">
+                              Devolução (Deduz)
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="py-2 px-3 text-right font-mono font-bold text-slate-700 dark:text-slate-300">
                         {formatNum(item.qtd)}
                       </td>
-                      <td className="py-2 px-3 text-right font-mono font-semibold text-slate-700 dark:text-slate-300">
-                        {formatBRL(item.valor_produtos)}
+                      <td
+                        className={clsx(
+                          'py-2 px-3 text-right font-mono font-semibold',
+                          isDevolucao ? 'text-rose-600 dark:text-rose-400' : 'text-slate-700 dark:text-slate-300'
+                        )}
+                      >
+                        {isDevolucao ? `- ${formatBRL(item.valor_produtos)}` : formatBRL(item.valor_produtos)}
                       </td>
                       <td className="py-2 px-3 text-right font-mono font-semibold text-amber-600 dark:text-amber-400">
                         {descontoItem > 0.009 ? (
@@ -834,10 +905,20 @@ export default function FiscalDashboard() {
                           <span className="text-slate-400">R$ 0,00</span>
                         )}
                       </td>
-                      <td className="py-2 px-3 text-right font-mono font-black text-emerald-600 dark:text-emerald-400">
-                        {formatBRL(item.valor)}
+                      <td
+                        className={clsx(
+                          'py-2 px-3 text-right font-mono font-black',
+                          isDevolucao ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'
+                        )}
+                      >
+                        {isDevolucao ? `- ${formatBRL(item.valor)}` : formatBRL(item.valor)}
                       </td>
-                      <td className="py-2 px-3 text-right font-mono text-[11px] font-bold text-slate-500">
+                      <td
+                        className={clsx(
+                          'py-2 px-3 text-right font-mono text-[11px] font-bold',
+                          isDevolucao ? 'text-rose-500' : 'text-slate-500'
+                        )}
+                      >
                         {pct.toFixed(1)}%
                       </td>
                     </tr>
@@ -879,6 +960,11 @@ export default function FiscalDashboard() {
           <div className="mt-1 text-[11px] font-mono text-blue-600 dark:text-blue-400 font-bold">
             Valor Produtos: {loadingResumo ? '...' : formatBRL(kpis.emitidas_valor_produtos ?? kpis.emitidas_valor)}
           </div>
+          {(kpis.emitidas_devolucoes_valor ?? 0) > 0 && (
+            <div className="mt-0.5 text-[11px] font-mono text-rose-600 dark:text-rose-400 font-bold">
+              Devoluções ({formatNum(kpis.emitidas_devolucoes_qtd || 0)}): - {formatBRL(kpis.emitidas_devolucoes_valor || 0)}
+            </div>
+          )}
           <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-[11px] text-slate-500 dark:text-slate-400">
             <span>
               <strong className="text-slate-700 dark:text-slate-200">{formatNum(kpis.emitidas_qtd)}</strong> saídas
@@ -1176,8 +1262,17 @@ export default function FiscalDashboard() {
                       )}
                     </td>
 
-                    <td className="py-3 px-3 text-right whitespace-nowrap font-bold text-slate-900 dark:text-white">
-                      {formatBRL(row.valor_total)}
+                    <td
+                      className={clsx(
+                        'py-3 px-3 text-right whitespace-nowrap font-bold font-mono',
+                        activeTab === 'SAIDA' && (row.cfop.startsWith('1') || row.cfop.startsWith('2'))
+                          ? 'text-rose-600 dark:text-rose-400'
+                          : 'text-slate-900 dark:text-white'
+                      )}
+                    >
+                      {activeTab === 'SAIDA' && (row.cfop.startsWith('1') || row.cfop.startsWith('2'))
+                        ? `- ${formatBRL(row.valor_total)}`
+                        : formatBRL(row.valor_total)}
                     </td>
 
                     <td className="py-3 px-4 text-center">

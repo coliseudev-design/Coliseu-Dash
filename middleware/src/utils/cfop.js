@@ -13,7 +13,7 @@ const SALES_CFOPS = [
 ];
 
 // CFOPs de devolução para desconto no faturamento líquido
-const RETURN_CFOPS = [1201, 1202, 2201, 2202, 1411];
+const RETURN_CFOPS = [1201, 1202, 1411, 2201, 2202, 2411];
 
 // CFOPs de transferência entre matriz e filiais (nunca compõem faturamento comercial)
 const TRANSFER_CFOPS = [
@@ -71,8 +71,13 @@ function getCfopFilterClause(tableAlias = 'v') {
     if (clean.length === 0) {
         return '';
     }
+    const hasSalesCfop = clean.some((n) => n >= 5000);
+    const hasReturnCfop = clean.some((n) => RETURN_CFOPS.includes(n));
+    const finalCfops = (hasSalesCfop && !hasReturnCfop)
+        ? Array.from(new Set([...clean, ...RETURN_CFOPS]))
+        : clean;
     const prefix = (tableAlias !== undefined && tableAlias !== null && tableAlias !== '') ? `${tableAlias}.` : '';
-    return `AND ${prefix}cfop IN (${clean.join(', ')})`;
+    return `AND ${prefix}cfop IN (${finalCfops.join(', ')})`;
 }
 
 /**

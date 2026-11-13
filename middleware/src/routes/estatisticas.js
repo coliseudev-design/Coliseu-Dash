@@ -83,6 +83,29 @@ router.get('/overview', async (req, res, next) => {
         // ORDEM BIVETSEED: exatamente 12 resultados
         // 1.vHoje 2.vMes 3.vAnterior 4.pAbertos 5.pProc 6.pCanc
         // 7.fReceber 8.fRecebido 9.fPagar 10.fPago 11.topMarcasVendas 12.topCatsVendas
+        const buildPeriodSummarySql = () => `
+            WITH vf AS NOT MATERIALIZED (
+                SELECT v.id_firebird, v.tenant_id, v.valor_total, v.valor_desconto
+                FROM dash_vendas v
+                WHERE v.tenant_id = $1
+                  AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2
+                  AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
+                  ${salesFilter} ${df.clause} ${vf.clause}
+            )
+            SELECT
+                COALESCE((SELECT SUM(vf.valor_total - COALESCE(vf.valor_desconto, 0)) FROM vf), 0) AS total,
+                COALESCE((SELECT SUM(CASE WHEN vf.valor_total >= 0 THEN (vf.valor_total - COALESCE(vf.valor_desconto, 0)) ELSE 0 END) FROM vf), 0) AS total_saidas_bruto,
+                COALESCE((SELECT SUM(CASE WHEN vf.valor_total < 0 THEN ABS(vf.valor_total - COALESCE(vf.valor_desconto, 0)) ELSE 0 END) FROM vf), 0) AS total_devolucoes,
+                (SELECT COUNT(*) FROM vf) AS qtd,
+                (SELECT COUNT(*) FILTER (WHERE vf.valor_total < 0) FROM vf) AS qtd_devolucoes,
+                COALESCE((
+                    SELECT SUM(vi.quantidade * (CASE WHEN vf.valor_total < 0 THEN -1 ELSE 1 END))
+                    FROM dash_vendas_itens vi
+                    JOIN vf ON vf.id_firebird = vi.venda_id_firebird AND vf.tenant_id = vi.tenant_id
+                    WHERE vi.tenant_id = $1
+                ), 0) AS qtd_itens
+        `;
+
         const [
             vHoje, dHoje,
             vMes, dMes,
@@ -92,28 +115,13 @@ router.get('/overview', async (req, res, next) => {
             topMarcasVendas, topCatsVendas
         ] = await Promise.all([
             // 1. Vendas do dia âncora
-            db.query(`
-                SELECT 
-                    (SELECT COALESCE(SUM(v.valor_total - COALESCE(v.valor_desconto, 0)), 0) FROM dash_vendas v WHERE v.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3 ${salesFilter} ${df.clause} ${vf.clause}) AS total,
-                    (SELECT COUNT(*) FROM dash_vendas v WHERE v.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3 ${salesFilter} ${df.clause} ${vf.clause}) AS qtd,
-                    (SELECT COALESCE(SUM(vi.quantidade * (CASE WHEN v.valor_total < 0 THEN -1 ELSE 1 END)), 0) FROM dash_vendas_itens vi JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id WHERE v.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3 ${salesFilter} ${df.clause} ${vf.clause}) AS qtd_itens
-            `, [tenantId, startHojeStr, endHojeStr, ...df.params, ...vf.params]),
+            db.query(buildPeriodSummarySql(), [tenantId, startHojeStr, endHojeStr, ...df.params, ...vf.params]),
             db.query(devHoje.sql, devHoje.params),
             // 2. Vendas do período selecionado
-            db.query(`
-                SELECT 
-                    (SELECT COALESCE(SUM(v.valor_total - COALESCE(v.valor_desconto, 0)), 0) FROM dash_vendas v WHERE v.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3 ${salesFilter} ${df.clause} ${vf.clause}) AS total,
-                    (SELECT COUNT(*) FROM dash_vendas v WHERE v.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3 ${salesFilter} ${df.clause} ${vf.clause}) AS qtd,
-                    (SELECT COALESCE(SUM(vi.quantidade * (CASE WHEN v.valor_total < 0 THEN -1 ELSE 1 END)), 0) FROM dash_vendas_itens vi JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id WHERE v.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3 ${salesFilter} ${df.clause} ${vf.clause}) AS qtd_itens
-            `, [tenantId, start, end, ...df.params, ...vf.params]),
+            db.query(buildPeriodSummarySql(), [tenantId, start, end, ...df.params, ...vf.params]),
             db.query(devMes.sql, devMes.params),
             // 3. Período anterior de mesmo tamanho
-            db.query(`
-                SELECT 
-                    (SELECT COALESCE(SUM(v.valor_total - COALESCE(v.valor_desconto, 0)), 0) FROM dash_vendas v WHERE v.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3 ${salesFilter} ${df.clause} ${vf.clause}) AS total,
-                    (SELECT COUNT(*) FROM dash_vendas v WHERE v.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3 ${salesFilter} ${df.clause} ${vf.clause}) AS qtd,
-                    (SELECT COALESCE(SUM(vi.quantidade * (CASE WHEN v.valor_total < 0 THEN -1 ELSE 1 END)), 0) FROM dash_vendas_itens vi JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id WHERE v.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3 ${salesFilter} ${df.clause} ${vf.clause}) AS qtd_itens
-            `, [tenantId, prevStart, prevEnd, ...df.params, ...vf.params]),
+            db.query(buildPeriodSummarySql(), [tenantId, prevStart, prevEnd, ...df.params, ...vf.params]),
             db.query(devAnterior.sql, devAnterior.params),
             // 4. Status PENDENTE/ABERTO
             db.query(`SELECT COUNT(*) AS qtd FROM dash_vendas v WHERE v.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3 AND UPPER(TRIM(v.status)) IN ('PENDENTE','ABERTO') ${cfopFilter} ${df.clause} ${vf.clause}`, [tenantId, start, end, ...df.params, ...vf.params]),
@@ -173,17 +181,26 @@ router.get('/overview', async (req, res, next) => {
         const result = {
             hoje: { 
                 total: totalHoje, 
+                total_saidas_bruto: parseFloat(vHoje.rows[0].total_saidas_bruto || 0),
+                total_devolucoes: parseFloat(vHoje.rows[0].total_devolucoes || 0) + parseFloat(dHoje.rows[0].total || 0),
+                qtd_devolucoes: parseInt(vHoje.rows[0].qtd_devolucoes || 0, 10),
                 qtd: parseInt(vHoje.rows[0].qtd),
                 qtd_itens: parseFloat(vHoje.rows[0].qtd_itens || 0)
             },
             mes: { 
                 total: totalMes, 
+                total_saidas_bruto: parseFloat(vMes.rows[0].total_saidas_bruto || 0),
+                total_devolucoes: parseFloat(vMes.rows[0].total_devolucoes || 0) + parseFloat(dMes.rows[0].total || 0),
+                qtd_devolucoes: parseInt(vMes.rows[0].qtd_devolucoes || 0, 10),
                 qtd: qtdMes, 
                 qtd_itens: parseFloat(vMes.rows[0].qtd_itens || 0),
                 ticket_medio: ticketMedio 
             },
             anterior: { 
                 total: totalAnt, 
+                total_saidas_bruto: parseFloat(vAnterior.rows[0].total_saidas_bruto || 0),
+                total_devolucoes: parseFloat(vAnterior.rows[0].total_devolucoes || 0) + parseFloat(dAnterior.rows[0].total || 0),
+                qtd_devolucoes: parseInt(vAnterior.rows[0].qtd_devolucoes || 0, 10),
                 qtd: parseInt(vAnterior.rows[0].qtd),
                 qtd_itens: parseFloat(vAnterior.rows[0].qtd_itens || 0)
             },
@@ -569,6 +586,9 @@ router.get('/kpis', async (req, res, next) => {
             db.query(`
                 SELECT 
                     COALESCE(SUM(v.valor_total), 0) AS total_bruto,
+                    COALESCE(SUM(CASE WHEN v.valor_total >= 0 THEN (v.valor_total - COALESCE(v.valor_desconto, 0)) ELSE 0 END), 0) AS total_saidas_bruto,
+                    COALESCE(SUM(CASE WHEN v.valor_total < 0 THEN ABS(v.valor_total - COALESCE(v.valor_desconto, 0)) ELSE 0 END), 0) AS total_devolucoes_vendas,
+                    COUNT(*) FILTER (WHERE v.valor_total < 0) AS qtd_devolucoes,
                     COUNT(DISTINCT v.id_firebird) AS qtd_pedidos,
                     COALESCE(SUM(v.valor_desconto), 0) AS total_descontos,
                     (SELECT COALESCE(SUM(vi.quantidade * (CASE WHEN v2.valor_total < 0 THEN -1 ELSE 1 END)), 0) FROM dash_vendas_itens vi JOIN dash_vendas v2 ON v2.id_firebird = vi.venda_id_firebird AND v2.tenant_id = vi.tenant_id WHERE v2.tenant_id = $1 AND COALESCE(v2.data_hora_proc, v2.data_vencimento, v2.data_venda) >= $2 AND COALESCE(v2.data_hora_proc, v2.data_vencimento, v2.data_venda) <= $3 ${salesFilter.replace(/v\./g, 'v2.')} ${df.clause.replace(/v\./g, 'v2.')} ${vf.clause.replace(/v\./g, 'v2.')}) AS qtd_itens
@@ -673,6 +693,9 @@ router.get('/kpis', async (req, res, next) => {
             period: { start, end, label: period },
             vendas: {
                 faturamento: faturamentoLiquido,
+                total_saidas_bruto: parseFloat(salesData.total_saidas_bruto || 0),
+                total_devolucoes: parseFloat(salesData.total_devolucoes_vendas || 0) + totalDev,
+                qtd_devolucoes: parseInt(salesData.qtd_devolucoes || 0, 10),
                 qtd_pedidos: qtdPedidos,
                 qtd_itens: parseFloat(salesData.qtd_itens || 0),
                 ticket_medio: ticketMedio,
