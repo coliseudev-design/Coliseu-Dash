@@ -592,21 +592,25 @@ router.get('/kpis', async (req, res, next) => {
                     COUNT(*) FILTER (WHERE v.valor_total < 0) AS qtd_devolucoes,
                     COUNT(DISTINCT v.id_firebird) AS qtd_pedidos,
                     COALESCE(SUM(v.valor_desconto), 0) AS total_descontos,
-                    COALESCE(SUM(
+                    GREATEST(0, COALESCE(SUM(
                         CASE
                             WHEN COALESCE(v.valor_desconto, 0) > 0 THEN v.valor_desconto
-                            WHEN v.processo = 9 AND cg.valor_produtos IS NOT NULL THEN
-                                (CASE WHEN v.valor_total < 0 THEN -1 ELSE 1 END) * GREATEST(0, COALESCE(cg.valor_produtos, ABS(v.valor_total)) - ABS(v.valor_total))
+                            WHEN v.processo = 9 THEN
+                                (CASE WHEN v.valor_total < 0 THEN -1 ELSE 1 END) * (
+                                    COALESCE(
+                                        (SELECT cg.valor_produtos FROM dash_cargas cg WHERE cg.tenant_id = v.tenant_id AND cg.chave_acesso = v.chave_nfe LIMIT 1),
+                                        ABS(v.valor_total)
+                                    ) - ABS(v.valor_total)
+                                )
                             ELSE COALESCE((
                                 SELECT SUM((CASE WHEN v.valor_total < 0 THEN -1 ELSE 1 END) * (vi.valor_total * (COALESCE(vi.desconto_item, 0) / 100.0)))
                                 FROM dash_vendas_itens vi
                                 WHERE vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id
                             ), 0)
                         END
-                    ), 0) AS total_descontos_efetivo,
+                    ), 0)) AS total_descontos_efetivo,
                     (SELECT COALESCE(SUM(vi.quantidade * (CASE WHEN v2.valor_total < 0 THEN -1 ELSE 1 END)), 0) FROM dash_vendas_itens vi JOIN dash_vendas v2 ON v2.id_firebird = vi.venda_id_firebird AND v2.tenant_id = vi.tenant_id WHERE v2.tenant_id = $1 AND COALESCE(v2.data_hora_proc, v2.data_vencimento, v2.data_venda) >= $2 AND COALESCE(v2.data_hora_proc, v2.data_vencimento, v2.data_venda) <= $3 ${salesFilter.replace(/v\./g, 'v2.')} ${df.clause.replace(/v\./g, 'v2.')} ${vf.clause.replace(/v\./g, 'v2.')}) AS qtd_itens
                 FROM dash_vendas v
-                LEFT JOIN dash_cargas cg ON cg.tenant_id = v.tenant_id AND v.processo = 9 AND cg.chave_acesso = v.chave_nfe
                 WHERE v.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3 ${salesFilter} ${df.clause} ${vf.clause}
             `, [tenantId, start, end, ...df.params, ...vf.params]),
             db.query(devQuery.sql, devQuery.params),
