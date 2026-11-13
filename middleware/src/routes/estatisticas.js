@@ -19,7 +19,8 @@ router.get('/overview', async (req, res, next) => {
         const vendedorId = req.query.vendedor_id;
 
         const nfFlag = cfopUtil.isOnlyNfSalesActive() ? `nf1:${cfopUtil.getActiveCfopsKey()}` : 'nf0';
-        const cacheKey = `overview:${tenantId}:${period}:${start_date || 'null'}:${end_date || 'null'}:${deptoId || 'todas'}:${vendedorId || 'todas'}:${nfFlag}`;
+        const sellersKey = Array.isArray(req.user?.allowedSellers) ? req.user.allowedSellers.join(',') : 'all';
+        const cacheKey = `overview:${tenantId}:${period}:${start_date || 'null'}:${end_date || 'null'}:${deptoId || 'todas'}:${vendedorId || 'todas'}:${nfFlag}:${sellersKey}`;
         const cached = getCache(cacheKey);
         if (cached) return res.json(cached);
 
