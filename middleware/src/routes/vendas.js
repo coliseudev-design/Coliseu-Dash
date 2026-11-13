@@ -142,6 +142,8 @@ router.get('/kpis', async (req, res, next) => {
     try {
         const period = req.query.period || 'hoje';
         const tenantId = req.tenant.id;
+        const vendedorId = req.query.vendedor_id;
+        const deptoId = req.query.depto_id;
         const { start_date, end_date } = req.query;
 
         const store = db.dbContext.getStore();
@@ -150,25 +152,45 @@ router.get('/kpis', async (req, res, next) => {
         const { start, end } = getPeriodRange(period, start_date, end_date, anchorDate);
 
         const salesFilter = cfopUtil.getSalesFilterClause('v');
+        const df = buildDeptoFilter(deptoId, 4, 'v');
+        const vf = buildVendedorFilter(vendedorId, 4 + df.params.length, 'v', req.user?.allowedSellers);
 
-        const { rows } = await db.query(`
-            SELECT 
-                COALESCE(SUM(v.valor_total - COALESCE(v.valor_desconto, 0)), 0) AS total_faturado,
-                COUNT(*) AS qtd_pedidos,
-                COALESCE(AVG(v.valor_total - COALESCE(v.valor_desconto, 0)), 0) AS ticket_medio,
-                COALESCE(MAX(v.valor_total - COALESCE(v.valor_desconto, 0)), 0) AS maior_venda,
-                COALESCE(MIN(v.valor_total - COALESCE(v.valor_desconto, 0)), 0) AS menor_venda
-            FROM dash_vendas v
-            WHERE v.tenant_id = $1
-              AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2
-              AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
-              ${salesFilter}
-        `, [tenantId, start, end]);
+        const devSql = `
+            SELECT COALESCE(SUM(d.valor), 0) AS total
+            FROM dash_devolucoes d
+            LEFT JOIN dash_vendas v2 ON v2.id_firebird = d.venda_id_firebird AND v2.tenant_id = d.tenant_id
+            WHERE d.tenant_id = $1
+              AND d.data_devolucao >= $2
+              AND d.data_devolucao <= $3
+              ${df.clause.replace(/v\./g, 'v2.')}
+              ${vf.clause.replace(/v\./g, 'v2.')}
+              ${cfopUtil.getDevolucaoNfFilterClause('v2', 'd')}
+        `;
 
+        const [{ rows }, { rows: devRows }] = await Promise.all([
+            db.query(`
+                SELECT 
+                    COALESCE(SUM(v.valor_total - COALESCE(v.valor_desconto, 0)), 0) AS total_faturado,
+                    COUNT(*) AS qtd_pedidos,
+                    COALESCE(MAX(v.valor_total - COALESCE(v.valor_desconto, 0)), 0) AS maior_venda,
+                    COALESCE(MIN(v.valor_total - COALESCE(v.valor_desconto, 0)), 0) AS menor_venda
+                FROM dash_vendas v
+                WHERE v.tenant_id = $1
+                  AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2
+                  AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
+                  ${salesFilter}
+                  ${df.clause}
+                  ${vf.clause}
+            `, [tenantId, start, end, ...df.params, ...vf.params]),
+            db.query(devSql, [tenantId, start, end, ...df.params, ...vf.params])
+        ]);
+
+        const totalFaturado = parseFloat(rows[0].total_faturado) - parseFloat(devRows[0]?.total || 0);
+        const qtdPedidos = parseInt(rows[0].qtd_pedidos, 10);
         const kpis = {
-            total_faturado: parseFloat(rows[0].total_faturado),
-            qtd_pedidos: parseInt(rows[0].qtd_pedidos, 10),
-            ticket_medio: parseFloat(rows[0].ticket_medio),
+            total_faturado: totalFaturado,
+            qtd_pedidos: qtdPedidos,
+            ticket_medio: qtdPedidos > 0 ? totalFaturado / qtdPedidos : 0,
             maior_venda: parseFloat(rows[0].maior_venda),
             menor_venda: parseFloat(rows[0].menor_venda)
         };
@@ -185,8 +207,10 @@ router.get('/recentes', async (req, res, next) => {
         const limit = parseInt(req.query.limit, 10) || 20;
         const tenantId = req.tenant.id;
         const vendedorId = req.query.vendedor_id;
+        const deptoId = req.query.depto_id;
 
-        const vf = buildVendedorFilter(vendedorId, 3, 'v', req.user?.allowedSellers);
+        const df = buildDeptoFilter(deptoId, 3, 'v');
+        const vf = buildVendedorFilter(vendedorId, 3 + df.params.length, 'v', req.user?.allowedSellers);
 
         // join com tabelas sincronizadas usa id_firebird pq é ele quem vem nos FKs da tabela de vendas
         const salesFilter = cfopUtil.getSalesFilterClause('v');
@@ -202,10 +226,10 @@ router.get('/recentes', async (req, res, next) => {
             FROM dash_vendas v
             LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
             LEFT JOIN dash_vendedores vd ON vd.id_firebird = v.vendedor_id_firebird AND vd.tenant_id = v.tenant_id
-            WHERE v.tenant_id = $1 ${salesFilter} ${vf.clause}
+            WHERE v.tenant_id = $1 ${salesFilter} ${df.clause} ${vf.clause}
             ORDER BY COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) DESC
             LIMIT $2
-        `, [tenantId, limit, ...vf.params]);
+        `, [tenantId, limit, ...df.params, ...vf.params]);
 
         res.json({ data: rows });
     } catch (err) {

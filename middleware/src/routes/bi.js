@@ -600,8 +600,20 @@ router.get('/sales/commercial-kpis', async (req, res, next) => {
             `;
         } else {
             discountQuery = `
-                SELECT COALESCE(SUM(v.valor_desconto), 0) AS descontos
+                SELECT COALESCE(SUM(
+                    CASE
+                        WHEN COALESCE(v.valor_desconto, 0) > 0 THEN v.valor_desconto
+                        WHEN v.processo = 9 AND cg.valor_produtos IS NOT NULL THEN
+                            (CASE WHEN v.valor_total < 0 THEN -1 ELSE 1 END) * GREATEST(0, COALESCE(cg.valor_produtos, ABS(v.valor_total)) - ABS(v.valor_total))
+                        ELSE COALESCE((
+                            SELECT SUM((CASE WHEN v.valor_total < 0 THEN -1 ELSE 1 END) * (vi.valor_total * (COALESCE(vi.desconto_item, 0) / 100.0)))
+                            FROM dash_vendas_itens vi
+                            WHERE vi.venda_id_firebird = v.id_firebird AND vi.tenant_id = v.tenant_id
+                        ), 0)
+                    END
+                ), 0) AS descontos
                 FROM dash_vendas v
+                LEFT JOIN dash_cargas cg ON cg.tenant_id = v.tenant_id AND v.processo = 9 AND cg.chave_acesso = v.chave_nfe
                 LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
                 WHERE v.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
                   ${salesFilter}

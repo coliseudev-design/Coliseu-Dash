@@ -16,11 +16,14 @@ interface FiscalKpis {
   emitidas_qtd: number
   emitidas_saidas_brutas_qtd?: number
   emitidas_saidas_brutas_valor_produtos?: number
+  emitidas_saidas_brutas_descontos?: number
   emitidas_saidas_brutas_valor?: number
   emitidas_devolucoes_qtd?: number
   emitidas_devolucoes_valor_produtos?: number
+  emitidas_devolucoes_descontos?: number
   emitidas_devolucoes_valor?: number
   emitidas_valor_produtos?: number
+  emitidas_descontos_valor?: number
   emitidas_valor: number
   emitidas_ticket_medio: number
   emitidas_chave_qtd: number
@@ -88,7 +91,11 @@ interface FiscalNotaRow {
 interface FiscalNotasResponse {
   tipo: 'SAIDA' | 'ENTRADA'
   total: number
+  soma_saidas_brutas_produtos?: number
+  soma_saidas_brutas_valor?: number
+  soma_devolucoes_produtos?: number
   soma_valor_produtos?: number
+  soma_descontos?: number
   soma_valor: number
   soma_devolucoes?: number
   qtd_devolucoes?: number
@@ -381,6 +388,8 @@ export default function FiscalDashboard() {
       }
     }
     const checkedDesc = Math.max(0, checkedProd - checkedNf)
+    const checkedSaidaDesc = Math.max(0, checkedSaidaProd - checkedSaidaNf)
+    const checkedDevolDesc = Math.max(0, checkedDevolProd - checkedDevolNf)
     const checkedNetDesc = Math.max(0, checkedNetProd - checkedNetNf)
     return {
       totalQtd,
@@ -390,8 +399,10 @@ export default function FiscalDashboard() {
       checkedSaidaQtd,
       checkedDevolQtd,
       checkedSaidaProd,
+      checkedSaidaDesc,
       checkedSaidaNf,
       checkedDevolProd,
+      checkedDevolDesc,
       checkedDevolNf,
       checkedProd,
       checkedDesc,
@@ -401,6 +412,29 @@ export default function FiscalDashboard() {
       checkedNetNf,
     }
   }, [cfopsEmitidosResumo, effectiveCheckedCfops])
+
+  const emitidasComp = useMemo(() => {
+    const devolucoesQtd = kpis.emitidas_devolucoes_qtd ?? 0
+    const saidasBrutasQtd = kpis.emitidas_saidas_brutas_qtd ?? Math.max(0, kpis.emitidas_qtd - devolucoesQtd)
+    const devolucoesProd = kpis.emitidas_devolucoes_valor_produtos ?? 0
+    const produtosAposDevol = kpis.emitidas_valor_produtos ?? kpis.emitidas_valor
+    const saidasBrutasProd = kpis.emitidas_saidas_brutas_valor_produtos ?? (produtosAposDevol + devolucoesProd)
+    const totalLiquidoNf = kpis.emitidas_valor ?? 0
+    const descontosEmissao = kpis.emitidas_descontos_valor ?? Math.max(0, Number((produtosAposDevol - totalLiquidoNf).toFixed(2)))
+    const devolucoesNfLiquida = kpis.emitidas_devolucoes_valor ?? 0
+    const saidasBrutasNfLiquida = kpis.emitidas_saidas_brutas_valor ?? (totalLiquidoNf + devolucoesNfLiquida)
+    return {
+      saidasBrutasQtd,
+      devolucoesQtd,
+      saidasBrutasProd,
+      devolucoesProd,
+      produtosAposDevol,
+      descontosEmissao,
+      totalLiquidoNf,
+      saidasBrutasNfLiquida,
+      devolucoesNfLiquida,
+    }
+  }, [kpis])
 
   const saveCfopsProjectMutation = useMutation({
     mutationFn: async (cfopsToSave: string[] | null) => {
@@ -756,59 +790,73 @@ export default function FiscalDashboard() {
                 (de {formatNum(cfopTotals.totalQtd)} emitidas)
               </span>
             </span>
-            {cfopTotals.checkedDevolQtd > 0 && (
-              <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 block mt-0.5">
-                {formatNum(cfopTotals.checkedSaidaQtd)} Saídas (S) •{' '}
-                <strong className="text-rose-600 dark:text-rose-400">
-                  {formatNum(cfopTotals.checkedDevolQtd)} Devol. (E)
-                </strong>
-              </span>
-            )}
+            <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 block mt-0.5">
+              {formatNum(cfopTotals.checkedSaidaQtd)} Saídas (S)
+              {cfopTotals.checkedDevolQtd > 0 && (
+                <>
+                  {' '}•{' '}
+                  <strong className="text-rose-600 dark:text-rose-400">
+                    {formatNum(cfopTotals.checkedDevolQtd)} Devol. (E)
+                  </strong>
+                </>
+              )}
+            </span>
           </div>
           <div>
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-              Valor Produtos (Líquido S − E)
+              Produtos após Devoluções (S − E)
             </span>
             <span className="text-sm font-black font-mono text-blue-600 dark:text-blue-400">
               {formatBRL(cfopTotals.checkedNetProd)}
             </span>
-            {cfopTotals.checkedDevolQtd > 0 && (
-              <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 block mt-0.5">
-                Saídas: {formatBRL(cfopTotals.checkedSaidaProd)} •{' '}
-                <strong className="text-rose-600 dark:text-rose-400">
-                  Devol.: - {formatBRL(cfopTotals.checkedDevolProd)}
-                </strong>
-              </span>
-            )}
+            <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 block mt-0.5">
+              Saídas brutos: + {formatBRL(cfopTotals.checkedSaidaProd)}
+              {cfopTotals.checkedDevolQtd > 0 && (
+                <>
+                  {' '}•{' '}
+                  <strong className="text-rose-600 dark:text-rose-400">
+                    Devol. prod.: − {formatBRL(cfopTotals.checkedDevolProd)}
+                  </strong>
+                </>
+              )}
+            </span>
           </div>
           <div>
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-              Desconto / Ajuste na Emissão
+              Descontos / Ajustes na Emissão
             </span>
             <span className="text-sm font-black font-mono text-amber-600 dark:text-amber-400">
-              - {formatBRL(cfopTotals.checkedNetDesc)}
+              − {formatBRL(cfopTotals.checkedNetDesc)}
             </span>
-            {cfopTotals.checkedDevolQtd > 0 && (
-              <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 block mt-0.5">
-                Desconto Comercial Deduzido nas NFs
-              </span>
-            )}
+            <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 block mt-0.5">
+              {cfopTotals.checkedDevolQtd > 0 ? (
+                <>
+                  Saídas: − {formatBRL(cfopTotals.checkedSaidaDesc)} • Ajuste devol.: − {formatBRL(cfopTotals.checkedDevolDesc)}
+                </>
+              ) : (
+                'Desconto comercial deduzido nas NFs'
+              )}
+            </span>
           </div>
           <div>
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-              Valor Total NF (Líquido Emitido)
+              Total NF Líquido Emitido
             </span>
             <span className="text-sm font-black font-mono text-emerald-600 dark:text-emerald-400">
               {formatBRL(cfopTotals.checkedNetNf)}
             </span>
-            {cfopTotals.checkedDevolQtd > 0 && (
-              <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 block mt-0.5">
-                Saídas: {formatBRL(cfopTotals.checkedSaidaNf)} •{' '}
-                <strong className="text-rose-600 dark:text-rose-400">
-                  Devol.: - {formatBRL(cfopTotals.checkedDevolNf)}
-                </strong>
-              </span>
-            )}
+            <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 block mt-0.5">
+              {cfopTotals.checkedDevolQtd > 0 ? (
+                <>
+                  Saídas NF: {formatBRL(cfopTotals.checkedSaidaNf)} •{' '}
+                  <strong className="text-rose-600 dark:text-rose-400">
+                    NF devol. líq.: − {formatBRL(cfopTotals.checkedDevolNf)}
+                  </strong>
+                </>
+              ) : (
+                'Valor líquido total das NFs emitidas'
+              )}
+            </span>
           </div>
         </div>
 
@@ -943,31 +991,90 @@ export default function FiscalDashboard() {
               : 'border-slate-200/80 dark:border-slate-800 hover:border-slate-300'
           )}
         >
-          <div className="flex items-center justify-between gap-2 mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 truncate">
-              Notas Fiscais Emitidas
-            </span>
-            <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-              style={{ backgroundColor: '#10B98114', border: '1px solid #10B98133' }}
-            >
-              <ArrowUpRight size={16} style={{ color: '#10B981' }} strokeWidth={2} />
+          <div>
+            <div className="flex items-center justify-between gap-2 mb-1.5">
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">
+                  Notas Fiscais Emitidas
+                </span>
+                <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                  Total NF líquido emitido
+                </span>
+              </div>
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                style={{ backgroundColor: '#10B98114', border: '1px solid #10B98133' }}
+              >
+                <ArrowUpRight size={16} style={{ color: '#10B981' }} strokeWidth={2} />
+              </div>
+            </div>
+            <div className="bi-kpi-value font-extrabold font-mono text-slate-900 dark:text-white tracking-tight">
+              {loadingResumo ? '...' : formatBRL(emitidasComp.totalLiquidoNf)}
+            </div>
+
+            {/* Composição passo a passo do valor líquido emitido */}
+            <div className="mt-2.5 pt-2 border-t border-slate-200/70 dark:border-slate-800 space-y-1 text-[11px] leading-snug">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-2">
+                <span className="text-slate-500 dark:text-slate-400 font-medium">
+                  Saídas — produtos brutos:
+                </span>
+                <span className="font-mono font-semibold text-slate-700 dark:text-slate-200">
+                  {loadingResumo ? '...' : `+ ${formatBRL(emitidasComp.saidasBrutasProd)}`}
+                </span>
+              </div>
+              <div className="flex flex-wrap items-baseline justify-between gap-x-2">
+                <span className="text-rose-600 dark:text-rose-400 font-medium">
+                  Devoluções — valor dos produtos:
+                </span>
+                <span className="font-mono font-bold text-rose-600 dark:text-rose-400">
+                  {loadingResumo ? '...' : `− ${formatBRL(emitidasComp.devolucoesProd)}`}
+                </span>
+              </div>
+              <div className="flex flex-wrap items-baseline justify-between gap-x-2">
+                <span className="text-blue-600 dark:text-blue-400 font-semibold">
+                  Produtos após devoluções:
+                </span>
+                <span className="font-mono font-bold text-blue-600 dark:text-blue-400">
+                  {loadingResumo ? '...' : formatBRL(emitidasComp.produtosAposDevol)}
+                </span>
+              </div>
+              <div className="flex flex-wrap items-baseline justify-between gap-x-2">
+                <span className="text-amber-600 dark:text-amber-400 font-semibold">
+                  Descontos/ajustes na emissão:
+                </span>
+                <span className="font-mono font-bold text-amber-600 dark:text-amber-400">
+                  {loadingResumo ? '...' : `− ${formatBRL(emitidasComp.descontosEmissao)}`}
+                </span>
+              </div>
+              <div className="flex flex-wrap items-baseline justify-between gap-x-2 pt-1 border-t border-slate-200/60 dark:border-slate-800/80">
+                <span className="text-emerald-700 dark:text-emerald-400 font-bold">
+                  Total NF líquido emitido:
+                </span>
+                <span className="font-mono font-black text-emerald-600 dark:text-emerald-400">
+                  {loadingResumo ? '...' : formatBRL(emitidasComp.totalLiquidoNf)}
+                </span>
+              </div>
+              {emitidasComp.devolucoesQtd > 0 && (
+                <div className="flex flex-wrap items-baseline justify-between gap-x-2 pt-1 text-[10px] text-slate-500 dark:text-slate-400">
+                  <span>
+                    Valor líquido da NF de devolução ({formatNum(emitidasComp.devolucoesQtd)}):
+                  </span>
+                  <span className="font-mono font-semibold text-rose-600 dark:text-rose-400">
+                    − {formatBRL(emitidasComp.devolucoesNfLiquida)}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
-          <div className="bi-kpi-value font-extrabold font-mono text-slate-900 dark:text-white tracking-tight">
-            {loadingResumo ? '...' : formatBRL(kpis.emitidas_valor)}
-          </div>
-          <div className="mt-1 text-[11px] font-mono text-blue-600 dark:text-blue-400 font-bold">
-            Valor Produtos: {loadingResumo ? '...' : formatBRL(kpis.emitidas_valor_produtos ?? kpis.emitidas_valor)}
-          </div>
-          {(kpis.emitidas_devolucoes_valor ?? 0) > 0 && (
-            <div className="mt-0.5 text-[11px] font-mono text-rose-600 dark:text-rose-400 font-bold">
-              Devoluções ({formatNum(kpis.emitidas_devolucoes_qtd || 0)}): - {formatBRL(kpis.emitidas_devolucoes_valor || 0)}
-            </div>
-          )}
-          <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-[11px] text-slate-500 dark:text-slate-400">
+
+          <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800/60 flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-[11px] text-slate-500 dark:text-slate-400">
             <span>
-              <strong className="text-slate-700 dark:text-slate-200">{formatNum(kpis.emitidas_qtd)}</strong> saídas
+              <strong className="text-slate-700 dark:text-slate-200">{formatNum(kpis.emitidas_qtd)}</strong> NFs
+              {emitidasComp.devolucoesQtd > 0 && (
+                <span className="text-[10px] ml-1">
+                  ({formatNum(emitidasComp.saidasBrutasQtd)} saídas • {formatNum(emitidasComp.devolucoesQtd)} devol.)
+                </span>
+              )}
             </span>
             <span className="font-mono">Ticket: {formatBRL(kpis.emitidas_ticket_medio)}</span>
           </div>
@@ -1117,7 +1224,7 @@ export default function FiscalDashboard() {
             </button>
           </div>
 
-          <div className="text-xs text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-3">
+          <div className="text-xs text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-x-3 gap-y-1">
             {selectedOperacao !== 'todos' && (
               <button
                 type="button"
@@ -1129,17 +1236,33 @@ export default function FiscalDashboard() {
               </button>
             )}
             <span>
-              Valor Produtos:{' '}
+              {activeTab === 'SAIDA' ? 'Produtos após devoluções:' : 'Valor Produtos:'}{' '}
               <strong className="text-blue-600 dark:text-blue-400 font-mono">
                 {formatBRL(notasPage?.soma_valor_produtos ?? notasPage?.soma_valor ?? 0)}
               </strong>
             </span>
+            {activeTab === 'SAIDA' && (
+              <span>
+                Descontos/ajustes na emissão:{' '}
+                <strong className="text-amber-600 dark:text-amber-400 font-mono">
+                  − {formatBRL(notasPage?.soma_descontos ?? Math.max(0, (notasPage?.soma_valor_produtos ?? 0) - (notasPage?.soma_valor ?? 0)))}
+                </strong>
+              </span>
+            )}
             <span>
-              Valor Total NF:{' '}
-              <strong className="text-slate-800 dark:text-slate-100 font-mono">
+              {activeTab === 'SAIDA' ? 'Total NF líquido emitido:' : 'Valor Total NF:'}{' '}
+              <strong className="text-emerald-600 dark:text-emerald-400 font-mono">
                 {formatBRL(notasPage?.soma_valor || 0)}
               </strong>
             </span>
+            {activeTab === 'SAIDA' && (notasPage?.qtd_devolucoes || 0) > 0 && (
+              <span>
+                Valor líquido da NF de devolução ({formatNum(notasPage?.qtd_devolucoes || 0)}):{' '}
+                <strong className="text-rose-600 dark:text-rose-400 font-mono">
+                  − {formatBRL(notasPage?.soma_devolucoes || 0)}
+                </strong>
+              </span>
+            )}
           </div>
         </div>
 

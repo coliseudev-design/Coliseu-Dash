@@ -791,6 +791,9 @@ router.get('/resumo', async (req, res, next) => {
         const emitidasDevolucoesValor = parseFloat(k.emitidas_devolucoes_valor || 0);
         const emitidasValorProdutos = parseFloat(k.emitidas_valor_produtos || 0);
         const emitidasValor = parseFloat(k.emitidas_valor || 0);
+        const emitidasSaidasBrutasDescontos = Math.max(0, Number((emitidasSaidasBrutasValorProdutos - emitidasSaidasBrutasValor).toFixed(2)));
+        const emitidasDevolucoesDescontos = Math.max(0, Number((emitidasDevolucoesValorProdutos - emitidasDevolucoesValor).toFixed(2)));
+        const emitidasDescontosValor = Math.max(0, Number((emitidasValorProdutos - emitidasValor).toFixed(2)));
         const emitidasChaveQtd = parseInt(k.emitidas_chave_qtd || 0, 10);
         const entradasQtd = parseInt(k.entradas_qtd || 0, 10);
         const entradasValorProdutos = parseFloat(k.entradas_valor_produtos || 0);
@@ -826,11 +829,14 @@ router.get('/resumo', async (req, res, next) => {
                 emitidas_qtd: emitidasQtd,
                 emitidas_saidas_brutas_qtd: emitidasSaidasBrutasQtd,
                 emitidas_saidas_brutas_valor_produtos: emitidasSaidasBrutasValorProdutos,
+                emitidas_saidas_brutas_descontos: emitidasSaidasBrutasDescontos,
                 emitidas_saidas_brutas_valor: emitidasSaidasBrutasValor,
                 emitidas_devolucoes_qtd: emitidasDevolucoesQtd,
                 emitidas_devolucoes_valor_produtos: emitidasDevolucoesValorProdutos,
+                emitidas_devolucoes_descontos: emitidasDevolucoesDescontos,
                 emitidas_devolucoes_valor: emitidasDevolucoesValor,
                 emitidas_valor_produtos: emitidasValorProdutos,
+                emitidas_descontos_valor: emitidasDescontosValor,
                 emitidas_valor: emitidasValor,
                 emitidas_ticket_medio: emitidasQtd > 0 ? emitidasValor / emitidasQtd : 0,
                 emitidas_chave_qtd: emitidasChaveQtd,
@@ -913,6 +919,9 @@ router.get('/notas', async (req, res, next) => {
             `${cteSql}
              SELECT
                  COUNT(*) AS total,
+                 COALESCE(SUM(valor_produtos) FILTER (WHERE tipo_operacao = 'SAIDA' AND cfop !~ '^[123]'), 0) AS soma_saidas_brutas_produtos,
+                 COALESCE(SUM(valor_total) FILTER (WHERE tipo_operacao = 'SAIDA' AND cfop !~ '^[123]'), 0) AS soma_saidas_brutas_valor,
+                 COALESCE(SUM(valor_produtos) FILTER (WHERE tipo_operacao = 'SAIDA' AND cfop ~ '^[123]'), 0) AS soma_devolucoes_produtos,
                  COALESCE(SUM(CASE WHEN tipo_operacao = 'SAIDA' AND cfop ~ '^[123]' THEN -valor_produtos ELSE valor_produtos END), 0) AS soma_valor_produtos,
                  COALESCE(SUM(CASE WHEN tipo_operacao = 'SAIDA' AND cfop ~ '^[123]' THEN -valor_total ELSE valor_total END), 0) AS soma_valor,
                  COALESCE(SUM(valor_total) FILTER (WHERE tipo_operacao = 'SAIDA' AND cfop ~ '^[123]'), 0) AS soma_devolucoes,
@@ -922,8 +931,12 @@ router.get('/notas', async (req, res, next) => {
         );
 
         const total = parseInt(countRes.rows[0]?.total || 0, 10);
+        const somaSaidasBrutasProdutos = parseFloat(countRes.rows[0]?.soma_saidas_brutas_produtos || 0);
+        const somaSaidasBrutasValor = parseFloat(countRes.rows[0]?.soma_saidas_brutas_valor || 0);
+        const somaDevolucoesProdutos = parseFloat(countRes.rows[0]?.soma_devolucoes_produtos || 0);
         const somaValorProdutos = parseFloat(countRes.rows[0]?.soma_valor_produtos || 0);
         const somaValor = parseFloat(countRes.rows[0]?.soma_valor || 0);
+        const somaDescontos = Math.max(0, Number((somaValorProdutos - somaValor).toFixed(2)));
         const somaDevolucoes = parseFloat(countRes.rows[0]?.soma_devolucoes || 0);
         const qtdDevolucoes = parseInt(countRes.rows[0]?.qtd_devolucoes || 0, 10);
 
@@ -1038,7 +1051,11 @@ router.get('/notas', async (req, res, next) => {
             apenas_nfe_efetivo: apenasNfeEfetivo,
             has_synced_nf: hasSyncedNf,
             total,
+            soma_saidas_brutas_produtos: somaSaidasBrutasProdutos,
+            soma_saidas_brutas_valor: somaSaidasBrutasValor,
+            soma_devolucoes_produtos: somaDevolucoesProdutos,
             soma_valor_produtos: somaValorProdutos,
+            soma_descontos: somaDescontos,
             soma_valor: somaValor,
             soma_devolucoes: somaDevolucoes,
             qtd_devolucoes: qtdDevolucoes,
