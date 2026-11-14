@@ -4,9 +4,38 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db/postgres');
 const { getPeriodRange } = require('../utils/period');
-const { getTenantSettings, getUserSettings } = require('../utils/tenantSettings');
+const { getTenantSettings, getUserSettings, fiscalResponseCache } = require('../utils/tenantSettings');
 
+const FISCAL_CACHE_TTL_MS = 30 * 1000;
 let fiscalColumnsEnsured = false;
+
+function getFiscalCache(key) {
+    if (!fiscalResponseCache) return null;
+    const entry = fiscalResponseCache.get(key);
+    if (entry && entry.expiresAt > Date.now()) {
+        return entry.data;
+    }
+    if (entry) fiscalResponseCache.delete(key);
+    return null;
+}
+
+function setFiscalCache(key, data) {
+    if (!fiscalResponseCache) return;
+    if (fiscalResponseCache.size > 300) {
+        const now = Date.now();
+        for (const [k, v] of fiscalResponseCache.entries()) {
+            if (v.expiresAt <= now) fiscalResponseCache.delete(k);
+        }
+        if (fiscalResponseCache.size > 300) {
+            const firstKey = fiscalResponseCache.keys().next().value;
+            if (firstKey) fiscalResponseCache.delete(firstKey);
+        }
+    }
+    fiscalResponseCache.set(key, {
+        data,
+        expiresAt: Date.now() + FISCAL_CACHE_TTL_MS,
+    });
+}
 
 async function ensureFiscalColumns() {
     if (fiscalColumnsEnsured) return;
@@ -15,6 +44,8 @@ async function ensureFiscalColumns() {
             ALTER TABLE dash_vendas ADD COLUMN IF NOT EXISTS processo INTEGER DEFAULT NULL;
             ALTER TABLE dash_vendas ADD COLUMN IF NOT EXISTS natureza_id INTEGER DEFAULT NULL;
             ALTER TABLE dash_vendas ADD COLUMN IF NOT EXISTS natureza_operacao VARCHAR(255) DEFAULT NULL;
+            CREATE INDEX IF NOT EXISTS idx_dash_vendas_effective_date
+            ON dash_vendas (tenant_id, COALESCE(data_hora_proc, data_vencimento, data_venda));
         `);
         fiscalColumnsEnsured = true;
     } catch (_) {
@@ -410,21 +441,6 @@ function buildFiscalUnifiedCte({
             WHERE tenant_id = ${pTenant}
               AND LENGTH(regexp_replace(COALESCE(documento, ''), '\\D', '', 'g')) >= 11
         ),
-        cargas_nfe_keys AS (
-            SELECT DISTINCT TRIM(cg_k.chave_acesso) AS chave
-            FROM dash_cargas cg_k
-            WHERE cg_k.tenant_id = ${pTenant}
-              AND cg_k.chave_acesso IS NOT NULL
-              AND TRIM(cg_k.chave_acesso) <> ''
-              AND UPPER(TRIM(COALESCE(cg_k.status, ''))) NOT IN ('CANCELADA', 'CANCELADO', 'DENEGADA', 'INUTILIZADA')
-        ),
-        cargas_ped_ids AS (
-            SELECT DISTINCT TRIM(COALESCE(cg_p.dados_nfe->>'id_pedido', '')) AS pid
-            FROM dash_cargas cg_p
-            WHERE cg_p.tenant_id = ${pTenant}
-              AND COALESCE(cg_p.dados_nfe->>'id_pedido', '') <> ''
-              AND UPPER(TRIM(COALESCE(cg_p.status, ''))) NOT IN ('CANCELADA', 'CANCELADO', 'DENEGADA', 'INUTILIZADA')
-        ),
         notas_base AS (
             SELECT
                 'cargas'::text AS origem,
@@ -438,7 +454,7 @@ function buildFiscalUnifiedCte({
                 COALESCE(NULLIF(TRIM(cg.serie), ''), NULLIF(TRIM(cg.dados_nfe->>'serie'), ''), '1')::text AS serie,
                 COALESCE(NULLIF(TRIM(cg.dados_nfe->>'id_pedido'), ''), '-')::text AS numero_pedido,
                 COALESCE(NULLIF(TRIM(cg.chave_acesso), ''), NULLIF(TRIM(cg.dados_nfe->>'chave_nfe'), ''))::text AS chave_nfe,
-                (${cargasEffectiveDateExpr})::timestamptz AS data_emissao,
+                (${tipo === 'SAIDA' ? 'cg.data_emissao::timestamptz' : cargasEffectiveDateExpr})::timestamptz AS data_emissao,
                 CASE
                     WHEN ${isCargasCompraComercialExpr}
                     THEN COALESCE(NULLIF(TRIM(cg.destinatario_nome), ''), 'Fornecedor não informado')
@@ -502,8 +518,12 @@ function buildFiscalUnifiedCte({
             FROM dash_cargas cg
             WHERE cg.tenant_id = ${pTenant}
               AND COALESCE(cg.tipo_documento, 'NFE') = 'NFE'
-              AND cg.data_emissao >= (${pStartDate}::date - INTERVAL '60 days')
-              AND cg.data_emissao <= (${pEndDate}::date + INTERVAL '15 days')
+              AND cg.data_emissao >= (${tipo === 'SAIDA' ? `${pStartDate}::date` : `${pStartDate}::date - INTERVAL '60 days'`})
+              AND cg.data_emissao <= (${tipo === 'SAIDA' ? `(${pEndDate}::date + INTERVAL '1 day')` : `${pEndDate}::date + INTERVAL '15 days'`})
+              AND (
+                  (cg.data_emissao >= ${pStartTs} AND cg.data_emissao <= ${pEndTs})
+                  OR (${tipo === 'SAIDA' ? 'FALSE' : isCargasCompraComercialExpr})
+              )
               AND UPPER(TRIM(COALESCE(cg.status, ''))) NOT IN ('CANCELADA', 'CANCELADO', 'DENEGADA', 'INUTILIZADA')
               ${cargasTipoClause}
               ${cargasDeptoClause}
@@ -548,14 +568,27 @@ function buildFiscalUnifiedCte({
                 0::int AS qtd_itens
             FROM dash_vendas v
             LEFT JOIN dash_clientes c ON c.tenant_id = v.tenant_id AND c.id_firebird = v.cliente_id_firebird
-            LEFT JOIN cargas_nfe_keys cnk ON cnk.chave = TRIM(v.chave_nfe)
-            LEFT JOIN cargas_ped_ids cpi ON cpi.pid = v.id_firebird::text
             WHERE v.tenant_id = ${pTenant}
+              AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= ${pStartTs}
+              AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= ${pEndTs}
               AND COALESCE(v.processo, 1) != 9
-              AND cnk.chave IS NULL
-              AND cpi.pid IS NULL
               AND (${vendaDateExpr}) >= ${pStartTs}
               AND (${vendaDateExpr}) <= ${pEndTs}
+              AND NOT EXISTS (
+                  SELECT 1 FROM dash_cargas cg_k
+                  WHERE cg_k.tenant_id = ${pTenant}
+                    AND cg_k.chave_acesso = TRIM(v.chave_nfe)
+                    AND cg_k.chave_acesso IS NOT NULL
+                    AND cg_k.chave_acesso <> ''
+                    AND UPPER(TRIM(COALESCE(cg_k.status, ''))) NOT IN ('CANCELADA', 'CANCELADO', 'DENEGADA', 'INUTILIZADA')
+              )
+              AND NOT EXISTS (
+                  SELECT 1 FROM dash_cargas cg_p
+                  WHERE cg_p.tenant_id = ${pTenant}
+                    AND (cg_p.dados_nfe ->> 'id_pedido') = v.id_firebird::text
+                    AND (cg_p.dados_nfe ->> 'id_pedido') IS NOT NULL
+                    AND UPPER(TRIM(COALESCE(cg_p.status, ''))) NOT IN ('CANCELADA', 'CANCELADO', 'DENEGADA', 'INUTILIZADA')
+              )
               AND UPPER(TRIM(COALESCE(v.status, ''))) NOT IN ('CANCELADO', 'CANCELADA', 'ABERTO', 'PENDENTE', 'ORÇAMENTO', 'ORCAMENTO', 'NULO', 'TESTE')
               AND COALESCE(v.status, '') NOT ILIKE '%TRANSF%'
               AND (v.especie IS NULL OR v.especie NOT ILIKE '%TRANSF%')
@@ -588,11 +621,11 @@ function buildFiscalUnifiedCte({
               ${vendasTipoClause}
               ${vendasDeptoClause}
         ),
-        notas_periodo AS (
+        notas_periodo AS MATERIALIZED (
             SELECT * FROM notas_base nb
             ${searchFilter}
         ),
-        notas_filtradas AS (
+        notas_filtradas AS MATERIALIZED (
             SELECT * FROM notas_periodo nf
             ${operacaoWhere}
         )
@@ -666,6 +699,21 @@ router.get('/resumo', async (req, res, next) => {
 
         const startDateOnly = start.slice(0, 10);
         const endDateOnly = end.slice(0, 10);
+
+        const cacheKey = `${tenantId}:resumo:${JSON.stringify({
+            start,
+            end,
+            depto_id: depto_id || 'todas',
+            operacaoFilter,
+            selectedCfops,
+            search: search || '',
+            apenasNfeEfetivo,
+        })}`;
+        const cachedResumo = getFiscalCache(cacheKey);
+        if (cachedResumo) {
+            return res.json(cachedResumo);
+        }
+
         const filialDoc = await resolveFilialDoc(tenantId, depto_id);
 
         const { cteSql, params } = buildFiscalUnifiedCte({
@@ -684,9 +732,9 @@ router.get('/resumo', async (req, res, next) => {
         });
         params[0] = tenantId;
 
-        const [kpiRes, naturezasRes, cfopListRes, evolucaoRes] = await Promise.all([
-            db.query(`
-                ${cteSql}
+        const combinedRes = await db.query(`
+            ${cteSql},
+            kpi_agg AS (
                 SELECT
                     COUNT(*) FILTER (WHERE tipo_operacao = 'SAIDA') AS emitidas_qtd,
                     COUNT(*) FILTER (WHERE tipo_operacao = 'SAIDA' AND cfop !~ '^[123]') AS emitidas_saidas_brutas_qtd,
@@ -709,51 +757,67 @@ router.get('/resumo', async (req, res, next) => {
                           AND (origem = 'cargas' OR modelo_doc = 'NF-e / NFC-e' OR (chave_nfe IS NOT NULL AND chave_nfe <> ''))
                     ) AS entradas_chave_qtd
                 FROM notas_filtradas
-            `, params),
-            db.query(`
-                ${cteSql}
-                SELECT
-                    TRIM(natureza_operacao) AS natureza_operacao,
-                    tipo_operacao,
-                    COUNT(*) AS qtd,
-                    COALESCE(SUM(valor_produtos), 0) AS valor_produtos,
-                    COALESCE(SUM(valor_total), 0) AS valor
-                FROM notas_periodo
-                WHERE natureza_operacao IS NOT NULL AND TRIM(natureza_operacao) <> ''
-                GROUP BY TRIM(natureza_operacao), tipo_operacao
-                ORDER BY valor DESC
-                LIMIT 40
-            `, params),
-            db.query(`
-                ${cteSql}
-                SELECT
-                    cfop,
-                    tipo_operacao,
-                    STRING_AGG(DISTINCT TRIM(natureza_operacao), ' / ' ORDER BY TRIM(natureza_operacao)) AS natureza_operacao,
-                    COUNT(*) AS qtd,
-                    COALESCE(SUM(valor_produtos), 0) AS valor_produtos,
-                    COALESCE(SUM(valor_total), 0) AS valor
-                FROM notas_periodo
-                WHERE cfop IS NOT NULL AND cfop <> ''
-                GROUP BY cfop, tipo_operacao
-                ORDER BY CASE WHEN tipo_operacao = 'SAIDA' THEN 0 ELSE 1 END ASC, valor DESC, cfop ASC
-                LIMIT 50
-            `, params),
-            db.query(`
-                ${cteSql}
-                SELECT
-                    TO_CHAR(data_emissao, 'YYYY-MM-DD') AS data,
-                    COALESCE(SUM(CASE WHEN cfop ~ '^[123]' THEN -valor_total ELSE valor_total END) FILTER (WHERE tipo_operacao = 'SAIDA'), 0) AS valor_saida,
-                    COUNT(*) FILTER (WHERE tipo_operacao = 'SAIDA') AS qtd_saida,
-                    COALESCE(SUM(valor_total) FILTER (WHERE tipo_operacao = 'ENTRADA'), 0) AS valor_entrada,
-                    COUNT(*) FILTER (WHERE tipo_operacao = 'ENTRADA') AS qtd_entrada
-                FROM notas_filtradas
-                GROUP BY 1
-                ORDER BY 1 ASC
-            `, params),
-        ]);
+            ),
+            nat_agg AS (
+                SELECT COALESCE(json_agg(t), '[]'::json) AS rows
+                FROM (
+                    SELECT
+                        TRIM(natureza_operacao) AS natureza_operacao,
+                        tipo_operacao,
+                        COUNT(*) AS qtd,
+                        COALESCE(SUM(valor_produtos), 0) AS valor_produtos,
+                        COALESCE(SUM(valor_total), 0) AS valor
+                    FROM notas_periodo
+                    WHERE natureza_operacao IS NOT NULL AND TRIM(natureza_operacao) <> ''
+                    GROUP BY TRIM(natureza_operacao), tipo_operacao
+                    ORDER BY valor DESC
+                    LIMIT 40
+                ) t
+            ),
+            cfop_agg AS (
+                SELECT COALESCE(json_agg(t), '[]'::json) AS rows
+                FROM (
+                    SELECT
+                        cfop,
+                        tipo_operacao,
+                        STRING_AGG(DISTINCT TRIM(natureza_operacao), ' / ' ORDER BY TRIM(natureza_operacao)) AS natureza_operacao,
+                        COUNT(*) AS qtd,
+                        COALESCE(SUM(valor_produtos), 0) AS valor_produtos,
+                        COALESCE(SUM(valor_total), 0) AS valor
+                    FROM notas_periodo
+                    WHERE cfop IS NOT NULL AND cfop <> ''
+                    GROUP BY cfop, tipo_operacao
+                    ORDER BY CASE WHEN tipo_operacao = 'SAIDA' THEN 0 ELSE 1 END ASC, valor DESC, cfop ASC
+                    LIMIT 50
+                ) t
+            ),
+            evol_agg AS (
+                SELECT COALESCE(json_agg(t), '[]'::json) AS rows
+                FROM (
+                    SELECT
+                        TO_CHAR(data_emissao, 'YYYY-MM-DD') AS data,
+                        COALESCE(SUM(CASE WHEN cfop ~ '^[123]' THEN -valor_total ELSE valor_total END) FILTER (WHERE tipo_operacao = 'SAIDA'), 0) AS valor_saida,
+                        COUNT(*) FILTER (WHERE tipo_operacao = 'SAIDA') AS qtd_saida,
+                        COALESCE(SUM(valor_total) FILTER (WHERE tipo_operacao = 'ENTRADA'), 0) AS valor_entrada,
+                        COUNT(*) FILTER (WHERE tipo_operacao = 'ENTRADA') AS qtd_entrada
+                    FROM notas_filtradas
+                    GROUP BY 1
+                    ORDER BY 1 ASC
+                ) t
+            )
+            SELECT
+                (SELECT row_to_json(kpi_agg) FROM kpi_agg) AS kpi,
+                (SELECT rows FROM nat_agg) AS naturezas,
+                (SELECT rows FROM cfop_agg) AS cfops,
+                (SELECT rows FROM evol_agg) AS evolucao
+        `, params);
 
-        let cfopRows = cfopListRes.rows;
+        const row0 = combinedRes.rows[0] || {};
+        const k = row0.kpi || {};
+        const naturezasRows = Array.isArray(row0.naturezas) ? row0.naturezas : [];
+        let cfopRows = Array.isArray(row0.cfops) ? row0.cfops : [];
+        const evolucaoRows = Array.isArray(row0.evolucao) ? row0.evolucao : [];
+
         if (cfopRows.length === 0) {
             const fallbackCfopRes = await db.query(
                 `SELECT
@@ -781,7 +845,6 @@ router.get('/resumo', async (req, res, next) => {
             cfopRows = fallbackCfopRes.rows;
         }
 
-        const k = kpiRes.rows[0] || {};
         const emitidasQtd = parseInt(k.emitidas_qtd || 0, 10);
         const emitidasSaidasBrutasQtd = parseInt(k.emitidas_saidas_brutas_qtd || 0, 10);
         const emitidasSaidasBrutasValorProdutos = parseFloat(k.emitidas_saidas_brutas_valor_produtos || 0);
@@ -800,7 +863,7 @@ router.get('/resumo', async (req, res, next) => {
         const entradasValor = parseFloat(k.entradas_valor || 0);
         const entradasChaveQtd = parseInt(k.entradas_chave_qtd || 0, 10);
 
-        const naturezas = naturezasRes.rows.map((r) => ({
+        const naturezas = naturezasRows.map((r) => ({
             key: `nat:${r.natureza_operacao}`,
             natureza_operacao: r.natureza_operacao,
             tipo_operacao: r.tipo_operacao,
@@ -819,7 +882,7 @@ router.get('/resumo', async (req, res, next) => {
             valor: parseFloat(r.valor || 0),
         }));
 
-        res.json({
+        const payload = {
             period: { start, end, label: period },
             apenas_nfe: apenasNfeSolicitado,
             apenas_nfe_efetivo: apenasNfeEfetivo,
@@ -850,14 +913,16 @@ router.get('/resumo', async (req, res, next) => {
             },
             naturezas,
             cfops,
-            evolucao: evolucaoRes.rows.map((r) => ({
+            evolucao: evolucaoRows.map((r) => ({
                 data: r.data,
                 valor_saida: parseFloat(r.valor_saida || 0),
                 qtd_saida: parseInt(r.qtd_saida || 0, 10),
                 valor_entrada: parseFloat(r.valor_entrada || 0),
                 qtd_entrada: parseInt(r.qtd_entrada || 0, 10),
             })),
-        });
+        };
+        setFiscalCache(cacheKey, payload);
+        res.json(payload);
     } catch (err) {
         next(err);
     }
@@ -897,6 +962,24 @@ router.get('/notas', async (req, res, next) => {
 
         const startDateOnly = start.slice(0, 10);
         const endDateOnly = end.slice(0, 10);
+
+        const cacheKey = `${tenantId}:notas:${JSON.stringify({
+            start,
+            end,
+            depto_id: depto_id || 'todas',
+            operacaoFilter,
+            selectedCfops,
+            search: search || '',
+            tipo,
+            page,
+            limit,
+            apenasNfeEfetivo,
+        })}`;
+        const cachedNotas = getFiscalCache(cacheKey);
+        if (cachedNotas) {
+            return res.json(cachedNotas);
+        }
+
         const filialDoc = await resolveFilialDoc(tenantId, depto_id);
 
         const { cteSql, params } = buildFiscalUnifiedCte({
@@ -915,43 +998,49 @@ router.get('/notas', async (req, res, next) => {
         });
         params[0] = tenantId;
 
-        const countRes = await db.query(
-            `${cteSql}
-             SELECT
-                 COUNT(*) AS total,
-                 COALESCE(SUM(valor_produtos) FILTER (WHERE tipo_operacao = 'SAIDA' AND cfop !~ '^[123]'), 0) AS soma_saidas_brutas_produtos,
-                 COALESCE(SUM(valor_total) FILTER (WHERE tipo_operacao = 'SAIDA' AND cfop !~ '^[123]'), 0) AS soma_saidas_brutas_valor,
-                 COALESCE(SUM(valor_produtos) FILTER (WHERE tipo_operacao = 'SAIDA' AND cfop ~ '^[123]'), 0) AS soma_devolucoes_produtos,
-                 COALESCE(SUM(CASE WHEN tipo_operacao = 'SAIDA' AND cfop ~ '^[123]' THEN -valor_produtos ELSE valor_produtos END), 0) AS soma_valor_produtos,
-                 COALESCE(SUM(CASE WHEN tipo_operacao = 'SAIDA' AND cfop ~ '^[123]' THEN -valor_total ELSE valor_total END), 0) AS soma_valor,
-                 COALESCE(SUM(valor_total) FILTER (WHERE tipo_operacao = 'SAIDA' AND cfop ~ '^[123]'), 0) AS soma_devolucoes,
-                 COUNT(*) FILTER (WHERE tipo_operacao = 'SAIDA' AND cfop ~ '^[123]') AS qtd_devolucoes
-             FROM notas_filtradas`,
-            params
-        );
-
-        const total = parseInt(countRes.rows[0]?.total || 0, 10);
-        const somaSaidasBrutasProdutos = parseFloat(countRes.rows[0]?.soma_saidas_brutas_produtos || 0);
-        const somaSaidasBrutasValor = parseFloat(countRes.rows[0]?.soma_saidas_brutas_valor || 0);
-        const somaDevolucoesProdutos = parseFloat(countRes.rows[0]?.soma_devolucoes_produtos || 0);
-        const somaValorProdutos = parseFloat(countRes.rows[0]?.soma_valor_produtos || 0);
-        const somaValor = parseFloat(countRes.rows[0]?.soma_valor || 0);
-        const somaDescontos = Math.max(0, Number((somaValorProdutos - somaValor).toFixed(2)));
-        const somaDevolucoes = parseFloat(countRes.rows[0]?.soma_devolucoes || 0);
-        const qtdDevolucoes = parseInt(countRes.rows[0]?.qtd_devolucoes || 0, 10);
-
         const limitIdx = params.length + 1;
         const offsetIdx = params.length + 2;
-        const rowsRes = await db.query(
-            `${cteSql}
-             SELECT *
-             FROM notas_filtradas
-             ORDER BY data_emissao DESC, registro_id DESC
-             LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+        const combinedNotasRes = await db.query(
+            `${cteSql},
+             totals_agg AS (
+                 SELECT
+                     COUNT(*) AS total,
+                     COALESCE(SUM(valor_produtos) FILTER (WHERE tipo_operacao = 'SAIDA' AND cfop !~ '^[123]'), 0) AS soma_saidas_brutas_produtos,
+                     COALESCE(SUM(valor_total) FILTER (WHERE tipo_operacao = 'SAIDA' AND cfop !~ '^[123]'), 0) AS soma_saidas_brutas_valor,
+                     COALESCE(SUM(valor_produtos) FILTER (WHERE tipo_operacao = 'SAIDA' AND cfop ~ '^[123]'), 0) AS soma_devolucoes_produtos,
+                     COALESCE(SUM(CASE WHEN tipo_operacao = 'SAIDA' AND cfop ~ '^[123]' THEN -valor_produtos ELSE valor_produtos END), 0) AS soma_valor_produtos,
+                     COALESCE(SUM(CASE WHEN tipo_operacao = 'SAIDA' AND cfop ~ '^[123]' THEN -valor_total ELSE valor_total END), 0) AS soma_valor,
+                     COALESCE(SUM(valor_total) FILTER (WHERE tipo_operacao = 'SAIDA' AND cfop ~ '^[123]'), 0) AS soma_devolucoes,
+                     COUNT(*) FILTER (WHERE tipo_operacao = 'SAIDA' AND cfop ~ '^[123]') AS qtd_devolucoes
+                 FROM notas_filtradas
+             ),
+             paged_rows AS (
+                 SELECT COALESCE(json_agg(t), '[]'::json) AS rows
+                 FROM (
+                     SELECT *
+                     FROM notas_filtradas
+                     ORDER BY data_emissao DESC, registro_id DESC
+                     LIMIT $${limitIdx} OFFSET $${offsetIdx}
+                 ) t
+             )
+             SELECT
+                 (SELECT row_to_json(totals_agg) FROM totals_agg) AS totals,
+                 (SELECT rows FROM paged_rows) AS rows`,
             [...params, limit, offset]
         );
 
-        const rows = rowsRes.rows;
+        const totalsRow = combinedNotasRes.rows[0]?.totals || {};
+        const total = parseInt(totalsRow.total || 0, 10);
+        const somaSaidasBrutasProdutos = parseFloat(totalsRow.soma_saidas_brutas_produtos || 0);
+        const somaSaidasBrutasValor = parseFloat(totalsRow.soma_saidas_brutas_valor || 0);
+        const somaDevolucoesProdutos = parseFloat(totalsRow.soma_devolucoes_produtos || 0);
+        const somaValorProdutos = parseFloat(totalsRow.soma_valor_produtos || 0);
+        const somaValor = parseFloat(totalsRow.soma_valor || 0);
+        const somaDescontos = Math.max(0, Number((somaValorProdutos - somaValor).toFixed(2)));
+        const somaDevolucoes = parseFloat(totalsRow.soma_devolucoes || 0);
+        const qtdDevolucoes = parseInt(totalsRow.qtd_devolucoes || 0, 10);
+
+        const rows = Array.isArray(combinedNotasRes.rows[0]?.rows) ? combinedNotasRes.rows[0].rows : [];
 
         // Enriquecer qtd_itens, CFOP, numero_nota, serie e chave_nfe a partir de dash_vendas_itens e dash_cargas na página atual
         const vendaIds = rows.filter((r) => r.origem === 'vendas').map((r) => Number(r.registro_id));
@@ -1045,7 +1134,7 @@ router.get('/notas', async (req, res, next) => {
             };
         });
 
-        res.json({
+        const payload = {
             tipo,
             apenas_nfe: apenasNfeSolicitado,
             apenas_nfe_efetivo: apenasNfeEfetivo,
@@ -1063,7 +1152,9 @@ router.get('/notas', async (req, res, next) => {
             limit,
             total_pages: Math.max(1, Math.ceil(total / limit)),
             data,
-        });
+        };
+        setFiscalCache(cacheKey, payload);
+        res.json(payload);
     } catch (err) {
         next(err);
     }

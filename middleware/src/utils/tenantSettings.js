@@ -8,8 +8,10 @@ const settingsCache = new Map();
 const userSettingsCache = new Map();
 const nfCoverageCache = new Map();
 const availableCfopsCache = new Map();
-const SETTINGS_TTL_MS = 60 * 1000;
-const NF_COVERAGE_TTL_MS = 60 * 1000;
+const fiscalResponseCache = new Map();
+const SETTINGS_TTL_MS = 10 * 60 * 1000;
+const NF_COVERAGE_TTL_MS = 10 * 60 * 1000;
+const AVAILABLE_CFOPS_TTL_MS = 30 * 60 * 1000;
 let tableEnsured = false;
 
 const CFOP_LABELS = {
@@ -219,6 +221,11 @@ function invalidateTenantSettingsCache(tenantId) {
             userSettingsCache.delete(k);
         }
     }
+    for (const k of fiscalResponseCache.keys()) {
+        if (k.startsWith(`${tenantId}:`)) {
+            fiscalResponseCache.delete(k);
+        }
+    }
 }
 
 /**
@@ -243,21 +250,6 @@ async function getAvailableTenantCfops(tenantId) {
                 WHERE tenant_id = $1
                   AND LENGTH(regexp_replace(COALESCE(documento, ''), '\\D', '', 'g')) >= 11
             ),
-            cargas_nfe_keys AS (
-                SELECT DISTINCT TRIM(chave_acesso) AS chave
-                FROM dash_cargas
-                WHERE tenant_id = $1
-                  AND chave_acesso IS NOT NULL
-                  AND TRIM(chave_acesso) <> ''
-                  AND COALESCE(status, '') NOT IN ('CANCELADA', 'CANCELADO', 'DENEGADA', 'INUTILIZADA')
-            ),
-            cargas_ped_ids AS (
-                SELECT DISTINCT TRIM(COALESCE(dados_nfe->>'id_pedido', '')) AS pid
-                FROM dash_cargas
-                WHERE tenant_id = $1
-                  AND COALESCE(dados_nfe->>'id_pedido', '') <> ''
-                  AND COALESCE(status, '') NOT IN ('CANCELADA', 'CANCELADO', 'DENEGADA', 'INUTILIZADA')
-            ),
             notas_emitidas AS (
                 SELECT
                     COALESCE(
@@ -269,6 +261,7 @@ async function getAvailableTenantCfops(tenantId) {
                     COALESCE(cg.valor_total, 0)::numeric(15,2) AS valor_total
                 FROM dash_cargas cg
                 WHERE cg.tenant_id = $1
+                  AND cg.data_emissao >= (CURRENT_DATE - INTERVAL '180 days')
                   AND COALESCE(cg.status, '') NOT IN ('CANCELADA', 'CANCELADO', 'DENEGADA', 'INUTILIZADA')
                   AND SUBSTRING(regexp_replace(COALESCE(cg.chave_acesso, ''), '\\D', '', 'g') FROM 7 FOR 14) IN (SELECT doc FROM tenant_docs)
                   AND NOT (
@@ -284,15 +277,27 @@ async function getAvailableTenantCfops(tenantId) {
                     COALESCE(v.valor_total, 0)::numeric(15,2) AS valor_produtos,
                     (v.valor_total - COALESCE(v.valor_desconto, 0))::numeric(15,2) AS valor_total
                 FROM dash_vendas v
-                LEFT JOIN cargas_nfe_keys cnk ON cnk.chave = TRIM(v.chave_nfe)
-                LEFT JOIN cargas_ped_ids cpi ON cpi.pid = v.id_firebird::text
                 WHERE v.tenant_id = $1
+                  AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= (CURRENT_DATE - INTERVAL '180 days')
                   AND COALESCE(v.processo, 1) != 9
                   AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO', 'PROCESSADO')
                   AND v.chave_nfe IS NOT NULL
                   AND LENGTH(TRIM(v.chave_nfe)) >= 40
-                  AND cnk.chave IS NULL
-                  AND cpi.pid IS NULL
+                  AND NOT EXISTS (
+                      SELECT 1 FROM dash_cargas cg_k
+                      WHERE cg_k.tenant_id = $1
+                        AND cg_k.chave_acesso = TRIM(v.chave_nfe)
+                        AND cg_k.chave_acesso IS NOT NULL
+                        AND cg_k.chave_acesso <> ''
+                        AND COALESCE(cg_k.status, '') NOT IN ('CANCELADA', 'CANCELADO', 'DENEGADA', 'INUTILIZADA')
+                  )
+                  AND NOT EXISTS (
+                      SELECT 1 FROM dash_cargas cg_p
+                      WHERE cg_p.tenant_id = $1
+                        AND (cg_p.dados_nfe ->> 'id_pedido') = v.id_firebird::text
+                        AND (cg_p.dados_nfe ->> 'id_pedido') IS NOT NULL
+                        AND COALESCE(cg_p.status, '') NOT IN ('CANCELADA', 'CANCELADO', 'DENEGADA', 'INUTILIZADA')
+                  )
             )
             SELECT
                 cfop,
@@ -317,7 +322,7 @@ async function getAvailableTenantCfops(tenantId) {
 
         availableCfopsCache.set(tenantId, {
             data: list,
-            expiresAt: Date.now() + SETTINGS_TTL_MS,
+            expiresAt: Date.now() + AVAILABLE_CFOPS_TTL_MS,
         });
         return list;
     } catch (err) {
@@ -709,4 +714,5 @@ module.exports = {
     checkTenantHasSyncedNf,
     checkTenantNfCoverage,
     invalidateTenantSettingsCache,
+    fiscalResponseCache,
 };

@@ -213,7 +213,8 @@ export default function FiscalDashboard() {
   const [searchInput, setSearchInput] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [selectedOperacao, setSelectedOperacao] = useState('todos')
-  const [checkedCfops, setCheckedCfops] = useState<string[] | null>(null)
+  // undefined = usa padrão configurado no projeto (sem waterfall no mount); null = todos os CFOPs; string[] = seleção customizada
+  const [checkedCfops, setCheckedCfops] = useState<string[] | null | undefined>(undefined)
   const [cfopSaveMsg, setCfopSaveMsg] = useState<string | null>(null)
   const [expandedCfopDetails, setExpandedCfopDetails] = useState<Record<string, boolean>>({})
   const [showSecondaryMetrics, setShowSecondaryMetrics] = useState(false)
@@ -229,10 +230,7 @@ export default function FiscalDashboard() {
     if (tenantParams && tenantParams.somente_vendas_com_nf === true) {
       setApenasNfe(true)
     }
-    if (tenantParams && Array.isArray(tenantParams.cfops_faturamento) && tenantParams.cfops_faturamento.length > 0 && checkedCfops === null) {
-      setCheckedCfops(tenantParams.cfops_faturamento)
-    }
-  }, [tenantParams?.somente_vendas_com_nf, tenantParams?.cfops_faturamento])
+  }, [tenantParams?.somente_vendas_com_nf])
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -267,9 +265,9 @@ export default function FiscalDashboard() {
     }
     if (branchParam.depto_id) p.depto_id = branchParam.depto_id
     if (selectedOperacao !== 'todos') p.operacao = selectedOperacao
-    if (checkedCfops !== null) {
+    if (Array.isArray(checkedCfops)) {
       p.cfops = checkedCfops.length > 0 ? checkedCfops.join(',') : 'nenhum'
-    } else {
+    } else if (checkedCfops === null) {
       p.cfops = 'todos'
     }
     if (debouncedSearch) p.search = debouncedSearch
@@ -385,13 +383,21 @@ export default function FiscalDashboard() {
     return Array.from(set)
   }, [allEmitidosCodes, tenantParams?.cfops_disponiveis])
 
-  const effectiveCheckedCfops = useMemo(
-    () => (checkedCfops !== null ? checkedCfops : allHistoricalCfopCodes),
-    [checkedCfops, allHistoricalCfopCodes]
-  )
+  const effectiveCheckedCfops = useMemo(() => {
+    if (Array.isArray(checkedCfops)) return checkedCfops
+    if (checkedCfops === null) return allHistoricalCfopCodes
+    const configured = resumo?.cfops_faturamento ?? tenantParams?.cfops_faturamento
+    if (Array.isArray(configured) && configured.length > 0) {
+      const returnCfops = ['1201', '1202', '1411', '2201', '2202', '2411']
+      const hasSales = configured.some((c) => /^[56]/.test(String(c)))
+      const hasReturn = configured.some((c) => returnCfops.includes(String(c)))
+      return hasSales && !hasReturn ? Array.from(new Set([...configured, ...returnCfops])) : configured
+    }
+    return allHistoricalCfopCodes
+  }, [checkedCfops, resumo?.cfops_faturamento, tenantParams?.cfops_faturamento, allHistoricalCfopCodes])
 
   const toggleCfopCheck = (code: string) => {
-    const current = checkedCfops !== null ? checkedCfops : allHistoricalCfopCodes
+    const current = effectiveCheckedCfops
     const next = current.includes(code)
       ? current.filter((c) => c !== code)
       : [...current, code]
