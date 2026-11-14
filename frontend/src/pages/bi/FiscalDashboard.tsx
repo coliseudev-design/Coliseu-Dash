@@ -13,7 +13,6 @@ import {
   RefreshCw,
   ChevronLeft,
   ChevronRight,
-  Scale,
   Filter,
   Truck,
   Building2,
@@ -25,12 +24,9 @@ import {
   CheckSquare,
   Square,
   Save,
-  Layers,
   Calendar,
   ArrowUpDown,
   CheckCircle2,
-  Info,
-  CornerDownRight,
 } from 'lucide-react'
 import clsx from 'clsx'
 import api from '../../services/api'
@@ -199,7 +195,6 @@ export default function FiscalDashboard() {
   const userKey = String(activeUser?.email || activeUser?.id || 'default').toLowerCase()
 
   const tabelaSectionRef = useRef<HTMLDivElement | null>(null)
-  const cfopSectionRef = useRef<HTMLDivElement | null>(null)
 
   const { data: tenantParams } = useQuery<{
     somente_vendas_com_nf?: boolean
@@ -220,13 +215,13 @@ export default function FiscalDashboard() {
   const [selectedOperacao, setSelectedOperacao] = useState('todos')
   const [checkedCfops, setCheckedCfops] = useState<string[] | null>(null)
   const [cfopSaveMsg, setCfopSaveMsg] = useState<string | null>(null)
-  const [showCfopPanel, setShowCfopPanel] = useState(true)
+  const [expandedCfopDetails, setExpandedCfopDetails] = useState<Record<string, boolean>>({})
+  const [showSecondaryMetrics, setShowSecondaryMetrics] = useState(false)
+  const [alertExpanded, setAlertExpanded] = useState(false)
   const [page, setPage] = useState(1)
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
   const [selectedNota, setSelectedNota] = useState<{ origem: 'cargas' | 'vendas'; id: number } | null>(null)
 
-  // Controles locais de visualização da tabela (baseados apenas em campos já existentes)
-  const [tableQuickFilter, setTableQuickFilter] = useState<'TODOS' | 'SAIDAS_NORMAIS' | 'DEVOLUCOES' | 'COM_CHAVE'>('TODOS')
   const [tableSortField, setTableSortField] = useState<'emissao' | 'numero' | 'valor'>('emissao')
   const [tableSortDir, setTableSortDir] = useState<'asc' | 'desc'>('desc')
 
@@ -249,13 +244,12 @@ export default function FiscalDashboard() {
 
   useEffect(() => {
     setPage(1)
-    setTableQuickFilter('TODOS')
   }, [activeTab, apenasNfe, selectedOperacao, checkedCfops, periodState.period, periodState.startDate, periodState.endDate, branchParam.depto_id])
 
   const activeBranchInfo = useMemo(() => {
     if (selectedBranch === 'todas') {
       return {
-        label: filiais.length > 1 ? `Todas as Filiais (${filiais.length} unidades)` : 'Todas as Filiais',
+        label: filiais.length > 1 ? `Todas as Filiais (${filiais.length})` : 'Todas as Filiais',
         documento: null,
       }
     }
@@ -404,82 +398,48 @@ export default function FiscalDashboard() {
     setCheckedCfops(next.length >= allHistoricalCfopCodes.length && allHistoricalCfopCodes.every((c) => next.includes(c)) ? null : next)
   }
 
-  const cfopTotals = useMemo(() => {
-    let totalQtd = 0
-    let totalProd = 0
-    let totalNf = 0
-    let checkedQtd = 0
-    let checkedSaidaQtd = 0
-    let checkedDevolQtd = 0
-    let checkedSaidaProd = 0
-    let checkedSaidaNf = 0
-    let checkedDevolProd = 0
-    let checkedDevolNf = 0
-    let checkedProd = 0
-    let checkedNf = 0
-    let checkedNetProd = 0
-    let checkedNetNf = 0
-    let uncheckedQtd = 0
-    let uncheckedNf = 0
-    const uncheckedCfopCodes: string[] = []
-    const devolucaoCfopCodes: string[] = []
+  // Agrupamento dos CFOPs em 3 categorias visuais: Vendas, Devoluções e Fora da Apuração
+  const cfopGroups = useMemo(() => {
+    const vendas: typeof cfopsEmitidosResumo = []
+    const devolucoes: typeof cfopsEmitidosResumo = []
+    const foraApuracao: typeof cfopsEmitidosResumo = []
+
+    let vendasTotalValor = 0
+    let vendasTotalQtd = 0
+    let devolucoesTotalValor = 0
+    let devolucoesTotalQtd = 0
+    let foraTotalValor = 0
+    let foraTotalQtd = 0
 
     for (const item of cfopsEmitidosResumo) {
+      const isChecked = effectiveCheckedCfops.includes(item.cfop)
       const isDevolucao = item.cfop.startsWith('1') || item.cfop.startsWith('2')
-      if (isDevolucao) devolucaoCfopCodes.push(item.cfop)
-      totalQtd += item.qtd
-      totalProd += isDevolucao ? -item.valor_produtos : item.valor_produtos
-      totalNf += isDevolucao ? -item.valor : item.valor
-      if (effectiveCheckedCfops.includes(item.cfop)) {
-        checkedQtd += item.qtd
-        checkedProd += item.valor_produtos
-        checkedNf += item.valor
-        if (isDevolucao) {
-          checkedDevolQtd += item.qtd
-          checkedDevolProd += item.valor_produtos
-          checkedDevolNf += item.valor
-          checkedNetProd -= item.valor_produtos
-          checkedNetNf -= item.valor
-        } else {
-          checkedSaidaQtd += item.qtd
-          checkedSaidaProd += item.valor_produtos
-          checkedSaidaNf += item.valor
-          checkedNetProd += item.valor_produtos
-          checkedNetNf += item.valor
-        }
+
+      if (!isChecked) {
+        foraApuracao.push(item)
+        foraTotalValor += item.valor
+        foraTotalQtd += item.qtd
+      } else if (isDevolucao) {
+        devolucoes.push(item)
+        devolucoesTotalValor += item.valor
+        devolucoesTotalQtd += item.qtd
       } else {
-        uncheckedQtd += item.qtd
-        uncheckedNf += item.valor
-        uncheckedCfopCodes.push(item.cfop)
+        vendas.push(item)
+        vendasTotalValor += item.valor
+        vendasTotalQtd += item.qtd
       }
     }
-    const checkedDesc = Math.max(0, checkedProd - checkedNf)
-    const checkedSaidaDesc = Math.max(0, checkedSaidaProd - checkedSaidaNf)
-    const checkedDevolDesc = Math.max(0, checkedDevolProd - checkedDevolNf)
-    const checkedNetDesc = Math.max(0, checkedNetProd - checkedNetNf)
+
     return {
-      totalQtd,
-      totalProd,
-      totalNf,
-      checkedQtd,
-      checkedSaidaQtd,
-      checkedDevolQtd,
-      checkedSaidaProd,
-      checkedSaidaDesc,
-      checkedSaidaNf,
-      checkedDevolProd,
-      checkedDevolDesc,
-      checkedDevolNf,
-      checkedProd,
-      checkedDesc,
-      checkedNf,
-      checkedNetProd,
-      checkedNetDesc,
-      checkedNetNf,
-      uncheckedQtd,
-      uncheckedNf,
-      uncheckedCfopCodes,
-      devolucaoCfopCodes,
+      vendas,
+      devolucoes,
+      foraApuracao,
+      vendasTotalValor,
+      vendasTotalQtd,
+      devolucoesTotalValor,
+      devolucoesTotalQtd,
+      foraTotalValor,
+      foraTotalQtd,
     }
   }, [cfopsEmitidosResumo, effectiveCheckedCfops])
 
@@ -493,7 +453,8 @@ export default function FiscalDashboard() {
     const descontosEmissao = kpis.emitidas_descontos_valor ?? Math.max(0, Number((produtosAposDevol - totalLiquidoNf).toFixed(2)))
     const devolucoesNfLiquida = kpis.emitidas_devolucoes_valor ?? 0
     const saidasBrutasNfLiquida = kpis.emitidas_saidas_brutas_valor ?? (totalLiquidoNf + devolucoesNfLiquida)
-    const pctDescontoMedio = saidasBrutasProd > 0 ? (descontosEmissao / saidasBrutasProd) * 100 : 0
+    const saidasBrutasDescontos = kpis.emitidas_saidas_brutas_descontos ?? Math.max(0, saidasBrutasProd - saidasBrutasNfLiquida)
+    const devolucoesDescontos = kpis.emitidas_devolucoes_descontos ?? Math.max(0, devolucoesProd - devolucoesNfLiquida)
     return {
       saidasBrutasQtd,
       devolucoesQtd,
@@ -504,7 +465,8 @@ export default function FiscalDashboard() {
       totalLiquidoNf,
       saidasBrutasNfLiquida,
       devolucoesNfLiquida,
-      pctDescontoMedio,
+      saidasBrutasDescontos,
+      devolucoesDescontos,
     }
   }, [kpis])
 
@@ -520,8 +482,8 @@ export default function FiscalDashboard() {
       queryClient.invalidateQueries({
         predicate: (q) => q.queryKey[0] !== 'tenant-parametros',
       })
-      setCfopSaveMsg('Configuração de CFOPs salva como padrão do projeto.')
-      setTimeout(() => setCfopSaveMsg(null), 5000)
+      setCfopSaveMsg('Configuração de CFOPs salva no projeto.')
+      setTimeout(() => setCfopSaveMsg(null), 4000)
     },
   })
 
@@ -543,31 +505,6 @@ export default function FiscalDashboard() {
     return Array.from(unique.values()).sort((a, b) => b.valor - a.valor)
   }, [resumo?.cfops])
 
-  const topOperacoesTab = useMemo(() => {
-    const natTab = (resumo?.naturezas || [])
-      .filter((n) => n.tipo_operacao === activeTab && (n.natureza_operacao || '').trim() !== '')
-      .map((n) => ({
-        key: n.key || `nat:${n.natureza_operacao.trim()}`,
-        shortLabel: n.natureza_operacao.trim(),
-        qtd: n.qtd,
-        valor: n.valor,
-      }))
-
-    const cfopTab = (resumo?.cfops || [])
-      .filter((c) => c.tipo_operacao === activeTab && (c.cfop || '').trim() !== '')
-      .map((c) => ({
-        key: c.key || `cfop:${c.cfop.trim()}`,
-        shortLabel: `CFOP ${c.cfop.trim()}`,
-        qtd: c.qtd,
-        valor: c.valor,
-      }))
-
-    if (cfopTab.length > 0 && natTab.length > 0) {
-      return [...natTab.slice(0, 2), ...cfopTab.slice(0, 3)]
-    }
-    return (natTab.length > 0 ? natTab : cfopTab).slice(0, 4)
-  }, [resumo?.naturezas, resumo?.cfops, activeTab])
-
   const selectedOperacaoLabel = useMemo(() => {
     if (selectedOperacao === 'todos') return ''
     if (selectedOperacao.startsWith('cfop:')) return `CFOP ${selectedOperacao.slice(5)}`
@@ -575,94 +512,25 @@ export default function FiscalDashboard() {
     return selectedOperacao
   }, [selectedOperacao])
 
-  // Situações reais que exigem atenção (baseadas exclusivamente nos dados existentes)
-  const attentionItems = useMemo(() => {
-    const list: Array<{
-      id: string
-      priority: 'alta' | 'media' | 'info'
-      badgeLabel: string
-      title: string
-      description: string
-      affectedCount?: string
-      relatedValue?: string
-      actionLabel: string
-      onAction: () => void
-    }> = []
-
-    if (apenasNfe && resumo && resumo.has_synced_nf === false) {
-      list.push({
-        id: 'sync-nfe-fallback',
-        priority: 'alta',
-        badgeLabel: 'Atenção • Sincronização NF-e',
-        title: 'Ausência de chaves NF-e / XML sincronizadas neste período',
-        description:
-          'O SyncAgent desta empresa ainda não enviou número/chave de NF-e para o período. O sistema ativou a proteção automática e está exibindo todos os documentos do ERP.',
-        affectedCount: `${formatNum(kpis.total_documentos)} registros exibidos`,
-        actionLabel: 'Alternar filtro para Todos',
-        onAction: () => setApenasNfe(false),
-      })
+  const handleSelectCfopCard = (cfopCode: string) => {
+    const targetKey = `cfop:${cfopCode}`
+    if (selectedOperacao === targetKey) {
+      setSelectedOperacao('todos')
+    } else {
+      setActiveTab('SAIDA')
+      setSelectedOperacao(targetKey)
+      tabelaSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
+  }
 
-    if (emitidasComp.devolucoesQtd > 0) {
-      const firstReturnCfop = cfopTotals.devolucaoCfopCodes[0]
-      list.push({
-        id: 'devolucoes-periodo',
-        priority: 'alta',
-        badgeLabel: 'Dedução Fiscal • Devoluções',
-        title: 'Notas fiscais de devolução deduzidas do faturamento emitido',
-        description:
-          'Existem notas de entrada por devolução (CFOPs iniciados em 1 ou 2) abatendo o total de produtos e o valor líquido emitido no período.',
-        affectedCount: `${formatNum(emitidasComp.devolucoesQtd)} NF(s) de devolução`,
-        relatedValue: `− ${formatBRL(emitidasComp.devolucoesNfLiquida)} (Prod.: − ${formatBRL(emitidasComp.devolucoesProd)})`,
-        actionLabel: firstReturnCfop ? `Investigar CFOP ${firstReturnCfop}` : 'Ver devoluções na tabela',
-        onAction: () => {
-          setActiveTab('SAIDA')
-          if (firstReturnCfop && cfopTotals.devolucaoCfopCodes.length === 1) {
-            setSelectedOperacao(`cfop:${firstReturnCfop}`)
-          } else {
-            setTableQuickFilter('DEVOLUCOES')
-          }
-          tabelaSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        },
-      })
-    }
+  const toggleCfopDetailExpand = (cfopCode: string) => {
+    setExpandedCfopDetails((prev) => ({ ...prev, [cfopCode]: !prev[cfopCode] }))
+  }
 
-    if (cfopTotals.uncheckedQtd > 0) {
-      const firstUnchecked = cfopTotals.uncheckedCfopCodes[0]
-      list.push({
-        id: 'cfops-desmarcados',
-        priority: 'info',
-        badgeLabel: 'Regra de Contabilização • CFOP',
-        title: `CFOPs desmarcados da apuração líquida (${cfopTotals.uncheckedCfopCodes.join(', ')})`,
-        description:
-          'Documentos com CFOPs desmarcados (como transferências entre filiais ou simples remessas) não compõem o total líquido dos indicadores acima.',
-        affectedCount: `${formatNum(cfopTotals.uncheckedQtd)} NF(s) fora da soma`,
-        relatedValue: formatBRL(cfopTotals.uncheckedNf),
-        actionLabel: firstUnchecked ? `Revisar CFOP ${firstUnchecked}` : 'Revisar CFOPs',
-        onAction: () => {
-          setShowCfopPanel(true)
-          cfopSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        },
-      })
-    }
-
-    return list
-  }, [apenasNfe, resumo, kpis.total_documentos, emitidasComp, cfopTotals])
-
-  // Filtragem e ordenação da página atual da tabela
+  // Ordenação da listagem de documentos
   const displayedNotas = useMemo(() => {
     const raw = notasPage?.data || []
-    let filtered = raw
-
-    if (tableQuickFilter === 'DEVOLUCOES') {
-      filtered = raw.filter((r) => r.cfop.startsWith('1') || r.cfop.startsWith('2'))
-    } else if (tableQuickFilter === 'SAIDAS_NORMAIS') {
-      filtered = raw.filter((r) => !r.cfop.startsWith('1') && !r.cfop.startsWith('2'))
-    } else if (tableQuickFilter === 'COM_CHAVE') {
-      filtered = raw.filter((r) => Boolean(r.chave_nfe))
-    }
-
-    return [...filtered].sort((a, b) => {
+    return [...raw].sort((a, b) => {
       const dir = tableSortDir === 'asc' ? 1 : -1
       if (tableSortField === 'valor') {
         return (a.valor_total - b.valor_total) * dir
@@ -674,7 +542,7 @@ export default function FiscalDashboard() {
       }
       return String(a.data_emissao || '').localeCompare(String(b.data_emissao || '')) * dir
     })
-  }, [notasPage?.data, tableQuickFilter, tableSortField, tableSortDir])
+  }, [notasPage?.data, tableSortField, tableSortDir])
 
   const handleSortToggle = (field: 'emissao' | 'numero' | 'valor') => {
     if (tableSortField === field) {
@@ -752,157 +620,224 @@ export default function FiscalDashboard() {
     URL.revokeObjectURL(url)
   }
 
-  const hasActiveFilters =
-    selectedOperacao !== 'todos' ||
-    Boolean(debouncedSearch) ||
-    checkedCfops !== null ||
-    tableQuickFilter !== 'TODOS'
+  const periodContextText = resumo?.period
+    ? `${resumo.period.label} (${formatDate(resumo.period.start)} a ${formatDate(resumo.period.end)})`
+    : 'Período selecionado'
+
+  const renderCfopCard = (
+    item: { cfop: string; natureza: string; qtd: number; valor_produtos: number; valor: number },
+    category: 'VENDA' | 'DEVOLUCAO' | 'FORA',
+    referenceTotal: number,
+    referenceLabel: string
+  ) => {
+    const isChecked = effectiveCheckedCfops.includes(item.cfop)
+    const isSelectedFilter = selectedOperacao === `cfop:${item.cfop}`
+    const isDetailOpen = Boolean(expandedCfopDetails[item.cfop])
+    const descontoVal = Math.max(0, item.valor_produtos - item.valor)
+    const pct = referenceTotal > 0 ? (item.valor / referenceTotal) * 100 : 0
+
+    return (
+      <div
+        key={item.cfop}
+        onClick={() => handleSelectCfopCard(item.cfop)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') handleSelectCfopCard(item.cfop)
+        }}
+        className={clsx(
+          'rounded-xl p-4 border transition-all cursor-pointer flex flex-col justify-between text-left bg-white dark:bg-slate-900',
+          isSelectedFilter
+            ? 'border-blue-600 dark:border-blue-500 ring-2 ring-blue-500/20 shadow-sm'
+            : category === 'FORA'
+              ? 'border-slate-200/80 dark:border-slate-800 opacity-75 hover:opacity-100 hover:border-slate-300'
+              : 'border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-2xs'
+        )}
+      >
+        <div>
+          {/* Topo do Card: Código CFOP em destaque + Classificação atual + Checkbox de apuração */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  toggleCfopCheck(item.cfop)
+                }}
+                className="inline-flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-blue-600 cursor-pointer"
+                title={isChecked ? 'Desmarcar este CFOP da apuração' : 'Incluir este CFOP na apuração'}
+                aria-label={`Alternar CFOP ${item.cfop} na apuração`}
+              >
+                {isChecked ? (
+                  <CheckSquare size={16} className="text-blue-600 dark:text-blue-400" />
+                ) : (
+                  <Square size={16} className="text-slate-400" />
+                )}
+              </button>
+              <span className="text-base font-extrabold font-mono text-slate-900 dark:text-white tracking-tight">
+                CFOP {item.cfop}
+              </span>
+            </div>
+
+            {category === 'VENDA' && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[11px] font-semibold">
+                <ArrowUpRight size={12} />
+                Conta como venda
+              </span>
+            )}
+            {category === 'DEVOLUCAO' && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 text-[11px] font-semibold">
+                <ArrowDownLeft size={12} />
+                Deduz como devolução
+              </span>
+            )}
+            {category === 'FORA' && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[11px] font-semibold">
+                Fora da apuração
+              </span>
+            )}
+          </div>
+
+          {/* Nome / Natureza da Operação */}
+          <p
+            className="text-xs font-medium text-slate-600 dark:text-slate-400 mt-1.5 line-clamp-1"
+            title={item.natureza}
+          >
+            {item.natureza}
+          </p>
+
+          {/* Valor Total Correspondente + Quantidade de Documentos */}
+          <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-baseline justify-between gap-2">
+            <div>
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 block">
+                Valor Total NF
+              </span>
+              <span
+                className={clsx(
+                  'text-lg font-extrabold font-mono tabular-nums',
+                  category === 'DEVOLUCAO'
+                    ? 'text-rose-700 dark:text-rose-400'
+                    : 'text-slate-900 dark:text-white'
+                )}
+              >
+                {formatBRL(item.valor)}
+              </span>
+            </div>
+
+            <div className="text-right">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 block">
+                Documentos
+              </span>
+              <span className="text-sm font-bold font-mono tabular-nums text-slate-800 dark:text-slate-200">
+                {formatNum(item.qtd)} {item.qtd === 1 ? 'NF' : 'NFs'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Rodapé do Card: Participação % + Botão de Detalhes Secundários */}
+        <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800/60 space-y-2">
+          <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+            <span>
+              {referenceTotal > 0 ? `${pct.toFixed(1)}% ${referenceLabel}` : '0,0%'}
+            </span>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                toggleCfopDetailExpand(item.cfop)
+              }}
+              className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 inline-flex items-center gap-0.5 cursor-pointer"
+            >
+              <span>{isDetailOpen ? 'Ocultar cálculo' : 'Detalhes'}</span>
+              {isDetailOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+            </button>
+          </div>
+
+          {isDetailOpen && (
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="rounded-lg bg-slate-50 dark:bg-slate-800/60 p-2.5 text-[11px] space-y-1 border border-slate-200/60 dark:border-slate-700/60"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 dark:text-slate-400">Produtos (tabela):</span>
+                <span className="font-mono tabular-nums font-medium text-slate-800 dark:text-slate-200">
+                  {formatBRL(item.valor_produtos)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 dark:text-slate-400">Descontos/ajustes:</span>
+                <span className="font-mono tabular-nums font-medium text-slate-700 dark:text-slate-300">
+                  {descontoVal > 0.009 ? `− ${formatBRL(descontoVal)}` : 'R$ 0,00'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between pt-1 border-t border-slate-200/70 dark:border-slate-700">
+                <span className="font-semibold text-slate-700 dark:text-slate-200">Total NF:</span>
+                <span className="font-mono tabular-nums font-bold text-slate-900 dark:text-white">
+                  {formatBRL(item.valor)}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-5 pb-10">
       {/* =====================================================================
-          1. CABEÇALHO DA ÁREA FISCAL (CONTEXTO + FILTROS ORGANIZADOS)
+          1. CONTEXTO E FILTROS COMPACTOS
       ===================================================================== */}
       <section
-        aria-label="Cabeçalho e contexto fiscal"
-        className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xs space-y-4"
+        aria-label="Contexto e filtros fiscais"
+        className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl px-4 py-3 shadow-2xs space-y-2.5"
       >
-        {/* Linha 1: Título, descrição curta, contexto ativo e ações utilitárias */}
-        <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4 pb-3.5 border-b border-slate-100 dark:border-slate-800/80">
-          <div className="space-y-1.5 min-w-0">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <h1 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white tracking-tight">
-                Escrituração e Resumo Fiscal
-              </h1>
-              <span
-                className={clsx(
-                  'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border',
-                  apenasNfe
-                    ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/70'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
-                )}
-              >
-                <FileCheck2 size={13} />
-                <span>{apenasNfe ? 'Modo Fiscal (Somente c/ NF-e)' : 'Modo Gerencial (Todos os Documentos)'}</span>
-              </span>
-            </div>
-
-            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
-              Visão consolidada de notas fiscais emitidas, entradas, deduções de devolução e consulta individual de documentos.
-            </p>
-
-            {/* Pílulas de Contexto Ativo (Empresa/Filial + Período + CFOPs) */}
-            <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100/90 dark:bg-slate-800/90 text-slate-700 dark:text-slate-200 font-medium">
-                <Building2 size={13} className="text-slate-500 dark:text-slate-400 shrink-0" />
-                <span>Unidade:</span>
-                <strong className="font-semibold text-slate-900 dark:text-white">{activeBranchInfo.label}</strong>
-                {activeBranchInfo.documento && (
-                  <span className="font-mono text-[11px] text-slate-500">({activeBranchInfo.documento})</span>
-                )}
-              </div>
-
-              {resumo?.period && (
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100/90 dark:bg-slate-800/90 text-slate-700 dark:text-slate-200 font-medium">
-                  <Calendar size={13} className="text-slate-500 dark:text-slate-400 shrink-0" />
-                  <span>Período:</span>
-                  <strong className="font-semibold text-slate-900 dark:text-white">{resumo.period.label}</strong>
-                  <span className="text-slate-500 dark:text-slate-400">
-                    ({formatDate(resumo.period.start)} a {formatDate(resumo.period.end)})
-                  </span>
-                </div>
-              )}
-
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100/90 dark:bg-slate-800/90 text-slate-700 dark:text-slate-200 font-medium">
-                <Layers size={13} className="text-slate-500 dark:text-slate-400 shrink-0" />
-                <span>CFOPs somados:</span>
-                <strong className="font-semibold text-slate-900 dark:text-white">
-                  {cfopsEmitidosResumo.filter((c) => effectiveCheckedCfops.includes(c.cfop)).length} de {cfopsEmitidosResumo.length}
-                </strong>
-              </div>
-            </div>
-          </div>
-
-          {/* Ações utilitárias secundárias */}
-          <div className="flex items-center gap-2 shrink-0 self-start">
-            <button
-              type="button"
-              onClick={() => {
-                refetchResumo()
-                refetchNotas()
-              }}
-              className="inline-flex items-center gap-1.5 h-9 px-3 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 transition-colors cursor-pointer"
-              title="Recarregar resumo e listagem de notas"
-            >
-              <RefreshCw size={14} className={clsx((loadingResumo || fetchingNotas) && 'animate-spin text-blue-600')} />
-              <span>Atualizar</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleExportCsv}
-              disabled={!displayedNotas.length}
-              className="inline-flex items-center gap-1.5 h-9 px-3.5 bg-slate-900 dark:bg-blue-600 hover:bg-slate-800 dark:hover:bg-blue-500 disabled:opacity-40 text-white rounded-xl text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap"
-              title="Exportar registros exibidos na tabela para CSV"
-            >
-              <Download size={14} />
-              <span>Exportar CSV</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Linha 2: Barra de Filtros Compacta */}
-        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-2.5">
           <div className="min-w-0 overflow-x-auto">
             <PeriodFilter />
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2">
             {/* Alternador: Todos vs Somente c/ NF-e */}
-            <div
-              role="group"
-              aria-label="Filtro de tipo de documento"
-              className="inline-flex items-center p-0.5 bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-xl h-9"
-            >
+            <div className="inline-flex items-center p-0.5 bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-lg h-8">
               <button
                 type="button"
                 onClick={() => setApenasNfe(false)}
                 className={clsx(
-                  'px-3 h-full rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap',
+                  'px-2.5 h-full rounded-md text-[11px] font-bold transition-all cursor-pointer whitespace-nowrap',
                   !apenasNfe
-                    ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                    ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                 )}
-                title="Exibe todas as vendas faturadas e notas de entrada sincronizadas do ERP"
               >
-                Todos os Docs
+                Todos
               </button>
               <button
                 type="button"
                 onClick={() => setApenasNfe(true)}
                 className={clsx(
-                  'px-3 h-full rounded-lg text-xs font-semibold transition-all cursor-pointer inline-flex items-center gap-1.5 whitespace-nowrap',
+                  'px-2.5 h-full rounded-md text-[11px] font-bold transition-all cursor-pointer inline-flex items-center gap-1 whitespace-nowrap',
                   apenasNfe
-                    ? 'bg-blue-600 text-white shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                    ? 'bg-blue-600 text-white shadow-2xs'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                 )}
-                title="Filtra exclusivamente documentos com número ou chave NF-e / XML vinculado"
               >
-                <FileCheck2 size={13} />
+                <FileCheck2 size={12} />
                 <span>Somente c/ NF-e</span>
               </button>
             </div>
 
-            {/* Seletor de Natureza de Operação / CFOP */}
+            {/* Filtro por Natureza ou CFOP */}
             <div className="relative flex items-center">
-              <Filter size={13} className="absolute left-3 text-slate-400 pointer-events-none" />
+              <Filter size={13} className="absolute left-2.5 text-slate-400 pointer-events-none" />
               <select
                 value={selectedOperacao}
                 onChange={(e) => setSelectedOperacao(e.target.value)}
-                className="h-9 pl-8 pr-8 bg-slate-50 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-800 dark:text-slate-100 appearance-none max-w-[260px] truncate outline-none focus:ring-2 focus:ring-blue-500/30 cursor-pointer"
+                className="bi-select appearance-none pl-7 pr-7 max-w-[220px] truncate"
                 aria-label="Filtrar por Natureza de Operação ou CFOP"
               >
-                <option value="todos">Todas as Naturezas e CFOPs</option>
+                <option value="todos">Todas as Naturezas / CFOPs</option>
                 {naturezasDisponiveis.length > 0 && (
                   <optgroup label="Natureza de Operação">
                     {naturezasDisponiveis.map((n) => (
@@ -922,18 +857,18 @@ export default function FiscalDashboard() {
                   </optgroup>
                 )}
               </select>
-              <ChevronDown size={13} className="absolute right-2.5 text-slate-400 pointer-events-none" />
+              <ChevronDown size={13} className="absolute right-2 text-slate-400 pointer-events-none" />
             </div>
 
-            {/* Busca por documento, pedido, chave ou parceiro */}
-            <div className="relative flex-1 sm:flex-none sm:w-64 min-w-[210px]">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            {/* Busca Rápida */}
+            <div className="relative flex-1 sm:flex-none sm:w-56 min-w-[180px]">
+              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="Buscar Nº nota, pedido, chave ou cliente..."
-                className="w-full h-9 pl-8 pr-7 bg-slate-50 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-100 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-blue-500/30"
+                placeholder="Nº Nota, Pedido, Chave, Cliente..."
+                className="w-full h-8 pl-8 pr-7 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-800 dark:text-slate-100 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-blue-500/30"
               />
               {searchInput && (
                 <button
@@ -947,33 +882,74 @@ export default function FiscalDashboard() {
               )}
             </div>
 
-            {hasActiveFilters && (
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedOperacao('todos')
-                  setSearchInput('')
-                  setDebouncedSearch('')
-                  setTableQuickFilter('TODOS')
-                }}
-                className="inline-flex items-center gap-1 h-9 px-3 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
-              >
-                <X size={13} />
-                <span>Limpar filtros</span>
-              </button>
+            <button
+              type="button"
+              onClick={() => {
+                refetchResumo()
+                refetchNotas()
+              }}
+              className="h-8 w-8 inline-flex items-center justify-center bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-300 transition-colors cursor-pointer shrink-0"
+              title="Atualizar dados fiscais"
+            >
+              <RefreshCw size={13} className={clsx((loadingResumo || fetchingNotas) && 'animate-spin text-blue-600')} />
+            </button>
+
+            <button
+              type="button"
+              onClick={handleExportCsv}
+              disabled={!displayedNotas.length}
+              className="inline-flex items-center gap-1.5 h-8 px-3 bg-slate-900 dark:bg-blue-600 hover:bg-slate-800 dark:hover:bg-blue-500 disabled:opacity-40 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap"
+            >
+              <Download size={13} />
+              <span>CSV</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Linha de Contexto Ativo Discreta */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/70 text-xs text-slate-500 dark:text-slate-400">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span className="inline-flex items-center gap-1">
+              <Building2 size={12} className="text-slate-400" />
+              Unidade: <strong className="text-slate-700 dark:text-slate-200">{activeBranchInfo.label}</strong>
+            </span>
+            <span>•</span>
+            <span className="inline-flex items-center gap-1">
+              <Calendar size={12} className="text-slate-400" />
+              Período: <strong className="text-slate-700 dark:text-slate-200">{periodContextText}</strong>
+            </span>
+            {selectedOperacao !== 'todos' && (
+              <>
+                <span>•</span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedOperacao('todos')}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 font-semibold cursor-pointer"
+                >
+                  <span>Filtro ativo: {selectedOperacaoLabel}</span>
+                  <X size={11} />
+                </button>
+              </>
             )}
           </div>
+
+          <button
+            type="button"
+            onClick={() => setShowSecondaryMetrics((v) => !v)}
+            className="text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 inline-flex items-center gap-1 cursor-pointer"
+          >
+            <span>{showSecondaryMetrics ? 'Ocultar métricas secundárias' : 'Ver entradas, descontos e saldo fiscal'}</span>
+            {showSecondaryMetrics ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+          </button>
         </div>
       </section>
 
-      {/* Tratamento de Erro de Carregamento */}
+      {/* Tratamento de Erro */}
       {(errorResumo || errorNotas) && (
-        <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-2xl p-4 flex items-center justify-between gap-3 text-xs sm:text-sm text-rose-900 dark:text-rose-200">
-          <div className="flex items-center gap-2.5">
-            <AlertTriangle size={18} className="text-rose-600 dark:text-rose-400 shrink-0" />
-            <span>
-              Não foi possível carregar todos os dados fiscais no momento. Verifique sua conexão e tente novamente.
-            </span>
+        <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl p-3.5 flex items-center justify-between gap-3 text-xs text-rose-900 dark:text-rose-200">
+          <div className="flex items-center gap-2">
+            <AlertTriangle size={16} className="text-rose-600 shrink-0" />
+            <span>Não foi possível carregar os dados fiscais. Tente novamente.</span>
           </div>
           <button
             type="button"
@@ -981,416 +957,174 @@ export default function FiscalDashboard() {
               refetchResumo()
               refetchNotas()
             }}
-            className="px-3 py-1.5 rounded-lg bg-rose-600 text-white font-semibold text-xs hover:bg-rose-500 cursor-pointer shrink-0"
+            className="px-3 py-1 rounded-lg bg-rose-600 text-white font-semibold cursor-pointer"
           >
-            Tentar novamente
+            Recarregar
           </button>
         </div>
       )}
 
       {/* =====================================================================
-          2. RESUMO DOS INDICADORES PRINCIPAIS (4 CARTÕES EXECUTIVOS)
+          2. DOIS TOTAIS PRINCIPAIS: TOTAL DE VENDAS E TOTAL DE DEVOLUÇÕES
       ===================================================================== */}
-      <section aria-label="Resumo dos indicadores fiscais" className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-        {/* Cartão 1: Notas Fiscais Emitidas (Saídas Líquidas + Memória de Cálculo) */}
-        <div
-          onClick={() => {
-            setActiveTab('SAIDA')
-            tabelaSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-          }}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') setActiveTab('SAIDA')
-          }}
-          className={clsx(
-            'bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border transition-all cursor-pointer flex flex-col justify-between min-w-0',
-            activeTab === 'SAIDA'
-              ? 'border-slate-900 dark:border-blue-500 ring-1 ring-slate-900/10 dark:ring-blue-500/20 shadow-sm'
-              : 'border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
-          )}
-        >
-          <div>
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">
-                  Notas Fiscais Emitidas
+      <section aria-label="Totais principais de vendas e devoluções" className="space-y-3">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Card Principal 1: TOTAL DE VENDAS */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-5 sm:p-6 shadow-xs flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Total de Vendas
                 </span>
-                <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Total NF líquido emitido no período
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-xs font-semibold">
+                  <ArrowUpRight size={14} />
+                  Vendas líquidas apuradas
                 </span>
               </div>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[11px] font-semibold shrink-0">
-                <ArrowUpRight size={13} />
-                Saídas
+
+              <div className="mt-2 text-3xl sm:text-4xl font-extrabold font-mono tabular-nums text-slate-900 dark:text-white tracking-tight">
+                {loadingResumo ? '...' : formatBRL(emitidasComp.totalLiquidoNf)}
+              </div>
+
+              <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
+                Referente a <strong className="text-slate-700 dark:text-slate-300">{periodContextText}</strong> •{' '}
+                <strong className="text-slate-700 dark:text-slate-300">{ activeBranchInfo.label }</strong>
+              </p>
+            </div>
+
+            <div className="mt-4 pt-3.5 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600 dark:text-slate-300">
+              <span>
+                Saídas brutas (CFOPs de venda):{' '}
+                <strong className="font-mono tabular-nums text-slate-900 dark:text-white">
+                  {formatBRL(emitidasComp.saidasBrutasNfLiquida)}
+                </strong>{' '}
+                ({formatNum(emitidasComp.saidasBrutasQtd)} NFs)
               </span>
-            </div>
-
-            <div className="mt-2.5 text-2xl sm:text-[26px] font-extrabold font-mono tabular-nums text-slate-900 dark:text-white tracking-tight">
-              {loadingResumo ? '...' : formatBRL(emitidasComp.totalLiquidoNf)}
-            </div>
-
-            {/* Composição Contábil Vertical Limpa */}
-            <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 space-y-1.5 text-xs">
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="text-slate-600 dark:text-slate-400">Saídas — produtos brutos:</span>
-                <span className="font-mono tabular-nums font-medium text-slate-800 dark:text-slate-200">
-                  {loadingResumo ? '...' : `+ ${formatBRL(emitidasComp.saidasBrutasProd)}`}
-                </span>
-              </div>
-
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="text-slate-600 dark:text-slate-400">Devoluções — valor dos produtos:</span>
-                <span className="font-mono tabular-nums font-medium text-rose-700 dark:text-rose-400">
-                  {loadingResumo ? '...' : `− ${formatBRL(emitidasComp.devolucoesProd)}`}
-                </span>
-              </div>
-
-              <div className="flex items-baseline justify-between gap-2 pt-1 border-t border-dashed border-slate-200 dark:border-slate-800">
-                <span className="font-medium text-slate-700 dark:text-slate-300">Produtos após devoluções:</span>
-                <span className="font-mono tabular-nums font-semibold text-slate-900 dark:text-white">
-                  {loadingResumo ? '...' : formatBRL(emitidasComp.produtosAposDevol)}
-                </span>
-              </div>
-
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="text-slate-600 dark:text-slate-400">Descontos/ajustes na emissão:</span>
-                <span className="font-mono tabular-nums font-medium text-slate-700 dark:text-slate-300">
-                  {loadingResumo ? '...' : `− ${formatBRL(emitidasComp.descontosEmissao)}`}
-                </span>
-              </div>
-
-              <div className="flex items-baseline justify-between gap-2 pt-1 border-t border-slate-200 dark:border-slate-800">
-                <span className="font-bold text-slate-900 dark:text-white">Total NF líquido emitido:</span>
-                <span className="font-mono tabular-nums font-bold text-emerald-700 dark:text-emerald-400">
-                  {loadingResumo ? '...' : formatBRL(emitidasComp.totalLiquidoNf)}
-                </span>
-              </div>
-
-              {emitidasComp.devolucoesQtd > 0 && (
-                <div className="flex items-baseline justify-between gap-2 pt-1 text-[11px] text-slate-500 dark:text-slate-400">
-                  <span>Valor líquido da NF de devolução ({formatNum(emitidasComp.devolucoesQtd)}):</span>
-                  <span className="font-mono tabular-nums font-semibold text-rose-700 dark:text-rose-400">
-                    − {formatBRL(emitidasComp.devolucoesNfLiquida)}
-                  </span>
-                </div>
-              )}
+              <span>
+                Deduzido de devoluções:{' '}
+                <strong className="font-mono tabular-nums text-rose-700 dark:text-rose-400">
+                  {formatBRL(emitidasComp.devolucoesNfLiquida)}
+                </strong>
+              </span>
             </div>
           </div>
 
-          <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-            <span>
-              <strong className="text-slate-800 dark:text-slate-200">{formatNum(kpis.emitidas_qtd)}</strong> NFs (
-              {formatNum(emitidasComp.saidasBrutasQtd)} saídas
-              {emitidasComp.devolucoesQtd > 0 ? ` • ${formatNum(emitidasComp.devolucoesQtd)} devol.` : ''})
-            </span>
-            <span className="font-mono tabular-nums">Ticket: {formatBRL(kpis.emitidas_ticket_medio)}</span>
+          {/* Card Principal 2: TOTAL DE DEVOLUÇÕES */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-5 sm:p-6 shadow-xs flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Total de Devoluções
+                </span>
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 text-xs font-semibold">
+                  <ArrowDownLeft size={14} />
+                  Dedução das vendas
+                </span>
+              </div>
+
+              <div className="mt-2 text-3xl sm:text-4xl font-extrabold font-mono tabular-nums text-rose-700 dark:text-rose-400 tracking-tight">
+                {loadingResumo ? '...' : formatBRL(emitidasComp.devolucoesNfLiquida)}
+              </div>
+
+              <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
+                Valor deduzido do faturamento em <strong className="text-slate-700 dark:text-slate-300">{periodContextText}</strong>
+              </p>
+            </div>
+
+            <div className="mt-4 pt-3.5 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600 dark:text-slate-300">
+              <span>
+                Documentos de devolução:{' '}
+                <strong className="font-mono tabular-nums text-slate-900 dark:text-white">
+                  {formatNum(emitidasComp.devolucoesQtd)} {emitidasComp.devolucoesQtd === 1 ? 'NF' : 'NFs'}
+                </strong>
+              </span>
+              <span>
+                Valor dos produtos devolvidos:{' '}
+                <strong className="font-mono tabular-nums text-slate-900 dark:text-white">
+                  {formatBRL(emitidasComp.devolucoesProd)}
+                </strong>
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Cartão 2: Notas de Entrada */}
-        <div
-          onClick={() => {
-            setActiveTab('ENTRADA')
-            tabelaSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-          }}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') setActiveTab('ENTRADA')
-          }}
-          className={clsx(
-            'bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border transition-all cursor-pointer flex flex-col justify-between min-w-0',
-            activeTab === 'ENTRADA'
-              ? 'border-slate-900 dark:border-blue-500 ring-1 ring-slate-900/10 dark:ring-blue-500/20 shadow-sm'
-              : 'border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
-          )}
-        >
-          <div>
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">
-                  Notas de Entrada
-                </span>
-                <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Compras e aquisições registradas no ERP
-                </span>
-              </div>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 text-[11px] font-semibold shrink-0">
-                <ArrowDownLeft size={13} />
-                Entradas
+        {/* Detalhes Secundários Opcionais (Recolhidos por padrão para não competir com os 2 totais) */}
+        {showSecondaryMetrics && (
+          <div className="bg-slate-50/90 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+            <div>
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 block">
+                Produtos após Devoluções
+              </span>
+              <span className="text-sm font-bold font-mono tabular-nums text-slate-900 dark:text-white mt-0.5 block">
+                {formatBRL(emitidasComp.produtosAposDevol)}
+              </span>
+              <span className="text-[11px] text-slate-500">
+                Saídas prod.: {formatBRL(emitidasComp.saidasBrutasProd)}
               </span>
             </div>
 
-            <div className="mt-2.5 text-2xl sm:text-[26px] font-extrabold font-mono tabular-nums text-slate-900 dark:text-white tracking-tight">
-              {loadingResumo ? '...' : formatBRL(kpis.entradas_valor)}
-            </div>
-
-            <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 space-y-1.5 text-xs">
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="text-slate-600 dark:text-slate-400">Documentos de entrada:</span>
-                <span className="font-mono tabular-nums font-semibold text-slate-800 dark:text-slate-200">
-                  {formatNum(kpis.entradas_qtd)} NFs
-                </span>
-              </div>
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="text-slate-600 dark:text-slate-400">Valor dos produtos (entradas):</span>
-                <span className="font-mono tabular-nums font-medium text-slate-800 dark:text-slate-200">
-                  {formatBRL(kpis.entradas_valor_produtos ?? kpis.entradas_valor)}
-                </span>
-              </div>
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="text-slate-600 dark:text-slate-400">Chaves NF-e vinculadas:</span>
-                <span className="font-mono tabular-nums font-medium text-slate-800 dark:text-slate-200">
-                  {formatNum(kpis.entradas_chave_qtd)} chaves
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-            <span>Clique para listar as entradas</span>
-            <span className="font-mono tabular-nums">Média: {formatBRL(kpis.entradas_ticket_medio)}</span>
-          </div>
-        </div>
-
-        {/* Cartão 3: Saldo Fiscal (Saídas − Entradas) */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200/90 dark:border-slate-800 flex flex-col justify-between min-w-0">
-          <div>
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">
-                  Saldo Fiscal do Período
-                </span>
-                <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Diferença entre saídas líquidas e entradas
-                </span>
-              </div>
-              <span
-                className={clsx(
-                  'inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold shrink-0',
-                  kpis.saldo_fiscal >= 0
-                    ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300'
-                    : 'bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300'
-                )}
-              >
-                <Scale size={13} />
-                {kpis.saldo_fiscal >= 0 ? 'Superávit' : 'Déficit'}
+            <div>
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 block">
+                Descontos / Ajustes na Emissão
+              </span>
+              <span className="text-sm font-bold font-mono tabular-nums text-slate-900 dark:text-white mt-0.5 block">
+                {formatBRL(emitidasComp.descontosEmissao)}
+              </span>
+              <span className="text-[11px] text-slate-500">
+                Diferença entre tabela e NF líquida
               </span>
             </div>
 
-            <div className="mt-2.5 text-2xl sm:text-[26px] font-extrabold font-mono tabular-nums text-slate-900 dark:text-white tracking-tight">
-              {loadingResumo ? '...' : formatBRL(kpis.saldo_fiscal)}
-            </div>
-
-            <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 space-y-1.5 text-xs">
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="text-slate-600 dark:text-slate-400">Total NF líquido emitido (+):</span>
-                <span className="font-mono tabular-nums font-medium text-slate-800 dark:text-slate-200">
-                  {formatBRL(emitidasComp.totalLiquidoNf)}
-                </span>
-              </div>
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="text-slate-600 dark:text-slate-400">Total notas de entrada (−):</span>
-                <span className="font-mono tabular-nums font-medium text-slate-800 dark:text-slate-200">
-                  {formatBRL(kpis.entradas_valor)}
-                </span>
-              </div>
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="text-slate-600 dark:text-slate-400">Situação do saldo:</span>
-                <span className="font-semibold text-slate-800 dark:text-slate-200">
-                  {kpis.saldo_fiscal >= 0 ? 'Saídas superam entradas' : 'Entradas superam saídas'}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-            <span>Total: {formatNum(kpis.total_documentos)} docs</span>
-            <span>Chaves XML: {formatNum(kpis.emitidas_chave_qtd + kpis.entradas_chave_qtd)}</span>
-          </div>
-        </div>
-
-        {/* Cartão 4: Descontos na Emissão e Principais Naturezas */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200/90 dark:border-slate-800 flex flex-col justify-between min-w-0">
-          <div>
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">
-                  Descontos / Ajustes na Emissão
-                </span>
-                <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Diferença entre valor de tabela e NF líquida
-                </span>
-              </div>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[11px] font-semibold shrink-0">
-                {emitidasComp.pctDescontoMedio.toFixed(1)}% s/ bruto
+            <div>
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 block">
+                Notas de Entrada (Compras)
+              </span>
+              <span className="text-sm font-bold font-mono tabular-nums text-slate-900 dark:text-white mt-0.5 block">
+                {formatBRL(kpis.entradas_valor)}
+              </span>
+              <span className="text-[11px] text-slate-500">
+                {formatNum(kpis.entradas_qtd)} documentos de entrada
               </span>
             </div>
 
-            <div className="mt-2.5 text-2xl sm:text-[26px] font-extrabold font-mono tabular-nums text-slate-900 dark:text-white tracking-tight">
-              {loadingResumo ? '...' : formatBRL(emitidasComp.descontosEmissao)}
-            </div>
-
-            <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2 text-xs">
-              <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                Principais operações ({activeTab === 'SAIDA' ? 'Saída' : 'Entrada'}) — clique p/ filtrar:
-              </div>
-              {topOperacoesTab.length === 0 ? (
-                <div className="text-xs text-slate-400 py-1">Nenhuma operação registrada no período.</div>
-              ) : (
-                <div className="flex flex-wrap gap-1.5">
-                  {topOperacoesTab.map((item) => {
-                    const isSelected = selectedOperacao === item.key
-                    return (
-                      <button
-                        key={item.key}
-                        type="button"
-                        onClick={() => setSelectedOperacao(isSelected ? 'todos' : item.key)}
-                        className={clsx(
-                          'px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-colors cursor-pointer max-w-full truncate',
-                          isSelected
-                            ? 'bg-blue-600 text-white border-blue-600'
-                            : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
-                        )}
-                        title={`Filtrar por ${item.shortLabel} (${formatBRL(item.valor)})`}
-                      >
-                        {item.shortLabel} <span className="opacity-75">({formatNum(item.qtd)})</span>
-                      </button>
-                    )
-                  })}
-                </div>
-              )}
+            <div>
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 block">
+                Saldo Fiscal (Saídas − Entradas)
+              </span>
+              <span className="text-sm font-bold font-mono tabular-nums text-slate-900 dark:text-white mt-0.5 block">
+                {formatBRL(kpis.saldo_fiscal)}
+              </span>
+              <span className="text-[11px] text-slate-500">
+                {formatNum(kpis.total_documentos)} docs • {formatNum(kpis.emitidas_chave_qtd + kpis.entradas_chave_qtd)} chaves XML
+              </span>
             </div>
           </div>
-
-          <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-            <span>Produtos líq.: {formatBRL(emitidasComp.produtosAposDevol)}</span>
-            <button
-              type="button"
-              onClick={() => {
-                setShowCfopPanel(true)
-                cfopSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-              }}
-              className="font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
-            >
-              Configurar CFOPs
-            </button>
-          </div>
-        </div>
+        )}
       </section>
 
       {/* =====================================================================
-          3. ALERTAS E ITENS QUE EXIGEM ATENÇÃO (EXIBIDO APENAS SE EXISTIREM)
-      ===================================================================== */}
-      {attentionItems.length > 0 && (
-        <section
-          aria-label="Alertas e itens que exigem atenção"
-          className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3"
-        >
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <AlertTriangle size={16} className="text-amber-600 dark:text-amber-400 shrink-0" />
-              <h2 className="text-sm font-bold text-slate-900 dark:text-white">
-                Pontos de Atenção e Deduções no Período ({attentionItems.length})
-              </h2>
-            </div>
-            <span className="text-xs text-slate-500 dark:text-slate-400 hidden sm:inline">
-              Itens identificados automaticamente nas notas e regras de CFOP
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            {attentionItems.map((alert) => (
-              <div
-                key={alert.id}
-                className={clsx(
-                  'rounded-xl p-3.5 border flex flex-col sm:flex-row sm:items-center justify-between gap-3',
-                  alert.priority === 'alta'
-                    ? 'bg-amber-50/50 dark:bg-amber-950/20 border-amber-200/90 dark:border-amber-800/60'
-                    : 'bg-slate-50/80 dark:bg-slate-800/40 border-slate-200/90 dark:border-slate-700/70'
-                )}
-              >
-                <div className="space-y-1 min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span
-                      className={clsx(
-                        'inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wide',
-                        alert.priority === 'alta'
-                          ? 'bg-amber-100 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200'
-                          : 'bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200'
-                      )}
-                    >
-                      {alert.priority === 'alta' ? <AlertTriangle size={11} /> : <Info size={11} />}
-                      {alert.badgeLabel}
-                    </span>
-                    {alert.affectedCount && (
-                      <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                        • {alert.affectedCount}
-                      </span>
-                    )}
-                    {alert.relatedValue && (
-                      <span className="text-xs font-mono font-bold text-slate-900 dark:text-white">
-                        • {alert.relatedValue}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">{alert.title}</p>
-                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">{alert.description}</p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={alert.onAction}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-800 dark:text-slate-200 shrink-0 self-start sm:self-center cursor-pointer shadow-2xs"
-                >
-                  <CornerDownRight size={13} />
-                  <span>{alert.actionLabel}</span>
-                </button>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* =====================================================================
-          3B. APURAÇÃO E SELEÇÃO DINÂMICA POR CFOP (RECOLHÍVEL E ORGANIZADA)
+          3. RESUMO POR CFOP EM CARDS (DIVIDIDO EM VENDAS, DEVOLUÇÕES E FORA DA APURAÇÃO)
       ===================================================================== */}
       <section
-        ref={cfopSectionRef}
-        aria-label="Apuração emitida por CFOP"
-        className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl shadow-xs overflow-hidden"
+        aria-label="Resumo por CFOP em cards"
+        className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xs space-y-5"
       >
-        <div className="p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-start gap-3">
-            <button
-              type="button"
-              onClick={() => setShowCfopPanel((v) => !v)}
-              className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center shrink-0 mt-0.5 text-slate-700 dark:text-slate-200 cursor-pointer"
-              aria-label={showCfopPanel ? 'Recolher tabela de CFOPs' : 'Expandir tabela de CFOPs'}
-            >
-              {showCfopPanel ? <ChevronUp size={17} /> : <ChevronDown size={17} />}
-            </button>
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
-                  Apuração Emitida por CFOP — Seleção de Contabilização
-                </h2>
-                <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                  {formatNum(cfopTotals.checkedQtd)} de {formatNum(cfopTotals.totalQtd)} NFs somadas
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Marque quais CFOPs entram no cálculo de vendas líquidas e salve a regra padrão para todo o sistema.
-              </p>
-            </div>
+        {/* Cabeçalho da Seção de CFOPs + Controles de Apuração Existentes */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3.5 border-b border-slate-100 dark:border-slate-800">
+          <div>
+            <h2 className="text-base font-bold text-slate-900 dark:text-white">
+              Resumo por CFOP
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Clique em um card para filtrar os documentos daquele CFOP abaixo, ou marque/desmarque os CFOPs que compõem a apuração.
+            </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => setCheckedCfops(null)}
-              className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
             >
               Marcar Todos ({cfopsEmitidosResumo.length})
             </button>
@@ -1411,9 +1145,9 @@ export default function FiscalDashboard() {
                 )
                 setCheckedCfops(combined)
               }}
-              className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/70 hover:bg-blue-100 transition-colors cursor-pointer"
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/70 hover:bg-blue-100 transition-colors cursor-pointer"
             >
-              Padrão Vendas Líquidas (Sem 5949)
+              Vendas Líquidas (Sem 5949)
             </button>
             <button
               type="button"
@@ -1424,7 +1158,7 @@ export default function FiscalDashboard() {
                   (allHistoricalCfopCodes.length > 0 && allHistoricalCfopCodes.every((c) => effectiveCheckedCfops.includes(c)))
                 saveCfopsProjectMutation.mutate(isAll ? null : effectiveCheckedCfops)
               }}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white shadow-2xs transition-colors cursor-pointer disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors cursor-pointer disabled:opacity-50"
             >
               <Save size={13} />
               <span>Salvar CFOPs no Projeto</span>
@@ -1433,320 +1167,206 @@ export default function FiscalDashboard() {
         </div>
 
         {cfopSaveMsg && (
-          <div className="mx-4 sm:mx-5 mt-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-xl px-3.5 py-2 text-xs font-semibold text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
+          <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-xl px-3.5 py-2 text-xs font-semibold text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
             <Check size={14} className="text-emerald-600" />
             <span>{cfopSaveMsg}</span>
           </div>
         )}
 
-        {showCfopPanel && (
-          <div className="p-4 sm:p-5 space-y-4">
-            {/* Tabela Limpa de CFOPs Emitidos */}
-            <div className="overflow-x-auto border border-slate-200/80 dark:border-slate-800 rounded-xl">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="bg-slate-50 dark:bg-slate-800/70 border-b border-slate-200/80 dark:border-slate-800 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                    <th className="py-2.5 px-3 w-12 text-center">Somar</th>
-                    <th className="py-2.5 px-3 w-20">CFOP</th>
-                    <th className="py-2.5 px-3">Natureza de Operação</th>
-                    <th className="py-2.5 px-3 w-36">Papel no Cálculo</th>
-                    <th className="py-2.5 px-3 text-right">Qtd. Notas</th>
-                    <th className="py-2.5 px-3 text-right">Valor Produtos</th>
-                    <th className="py-2.5 px-3 text-right">Desconto / Ajuste</th>
-                    <th className="py-2.5 px-3 text-right">Valor Total NF</th>
-                    <th className="py-2.5 px-3 text-right w-20">% Part.</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200/60 dark:divide-slate-800/70">
-                  {cfopsEmitidosResumo.length === 0 ? (
-                    <tr>
-                      <td colSpan={9} className="py-6 text-center text-slate-400">
-                        {loadingResumo ? 'Carregando resumo por CFOP...' : 'Nenhum CFOP emitido no período selecionado.'}
-                      </td>
-                    </tr>
-                  ) : (
-                    cfopsEmitidosResumo.map((item) => {
-                      const isChecked = effectiveCheckedCfops.includes(item.cfop)
-                      const isDevolucao = item.cfop.startsWith('1') || item.cfop.startsWith('2')
-                      const pct = cfopTotals.totalNf > 0 ? ((isDevolucao ? -item.valor : item.valor) / cfopTotals.totalNf) * 100 : 0
-                      const descontoItem = Math.max(0, item.valor_produtos - item.valor)
-                      const descPct = item.valor_produtos > 0 ? (descontoItem / item.valor_produtos) * 100 : 0
-                      return (
-                        <tr
-                          key={item.cfop}
-                          onClick={() => toggleCfopCheck(item.cfop)}
-                          className={clsx(
-                            'transition-colors cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50',
-                            !isChecked && 'opacity-60 bg-slate-50/40 dark:bg-slate-900/40'
-                          )}
-                        >
-                          <td className="py-2.5 px-3 text-center">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                toggleCfopCheck(item.cfop)
-                              }}
-                              className="inline-flex items-center justify-center text-slate-700 dark:text-slate-200"
-                              aria-label={`Alternar contabilização do CFOP ${item.cfop}`}
-                            >
-                              {isChecked ? (
-                                <CheckSquare size={16} className="text-blue-600 dark:text-blue-400" />
-                              ) : (
-                                <Square size={16} className="text-slate-400" />
-                              )}
-                            </button>
-                          </td>
-                          <td className="py-2.5 px-3 font-mono font-bold text-slate-900 dark:text-white">
-                            {item.cfop}
-                          </td>
-                          <td className="py-2.5 px-3 font-medium text-slate-800 dark:text-slate-200 max-w-[340px]" title={item.natureza}>
-                            <span className="block truncate">{item.natureza}</span>
-                          </td>
-                          <td className="py-2.5 px-3">
-                            {!isChecked ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[11px] font-semibold">
-                                Ignorado na soma
-                              </span>
-                            ) : isDevolucao ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 text-[11px] font-semibold">
-                                <ArrowDownLeft size={12} />
-                                Devolução (Deduz)
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[11px] font-semibold">
-                                <ArrowUpRight size={12} />
-                                Saída (Soma)
-                              </span>
-                            )}
-                          </td>
-                          <td className="py-2.5 px-3 text-right font-mono tabular-nums font-semibold text-slate-700 dark:text-slate-300">
-                            {formatNum(item.qtd)}
-                          </td>
-                          <td className="py-2.5 px-3 text-right font-mono tabular-nums text-slate-700 dark:text-slate-300">
-                            {isDevolucao ? `− ${formatBRL(item.valor_produtos)}` : formatBRL(item.valor_produtos)}
-                          </td>
-                          <td className="py-2.5 px-3 text-right font-mono tabular-nums text-slate-600 dark:text-slate-400">
-                            {descontoItem > 0.009 ? (
-                              <span>
-                                − {formatBRL(descontoItem)}{' '}
-                                <span className="text-[10px] text-slate-400">({descPct.toFixed(1)}%)</span>
-                              </span>
-                            ) : (
-                              <span className="text-slate-400">R$ 0,00</span>
-                            )}
-                          </td>
-                          <td
-                            className={clsx(
-                              'py-2.5 px-3 text-right font-mono tabular-nums font-bold',
-                              isDevolucao ? 'text-rose-700 dark:text-rose-400' : 'text-slate-900 dark:text-white'
-                            )}
-                          >
-                            {isDevolucao ? `− ${formatBRL(item.valor)}` : formatBRL(item.valor)}
-                          </td>
-                          <td className="py-2.5 px-3 text-right font-mono tabular-nums text-[11px] text-slate-500">
-                            {pct.toFixed(1)}%
-                          </td>
-                        </tr>
-                      )
-                    })
+        {cfopsEmitidosResumo.length === 0 ? (
+          <div className="py-8 text-center text-xs text-slate-400">
+            {loadingResumo ? 'Carregando resumo por CFOP...' : 'Nenhum CFOP emitido no período selecionado.'}
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {/* Grupo 1: CFOPs de Vendas */}
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                    Vendas ({cfopGroups.vendas.length} {cfopGroups.vendas.length === 1 ? 'CFOP' : 'CFOPs'})
+                  </h3>
+                </div>
+                <span className="text-xs text-slate-500 dark:text-slate-400 font-mono tabular-nums">
+                  Soma de saídas brutas: <strong className="text-slate-900 dark:text-white">{formatBRL(cfopGroups.vendasTotalValor)}</strong> ({formatNum(cfopGroups.vendasTotalQtd)} NFs)
+                </span>
+              </div>
+
+              {cfopGroups.vendas.length === 0 ? (
+                <div className="text-xs text-slate-400 py-3 px-4 rounded-xl bg-slate-50 dark:bg-slate-800/40">
+                  Nenhum CFOP de venda selecionado no período.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
+                  {cfopGroups.vendas.map((item) =>
+                    renderCfopCard(item, 'VENDA', cfopGroups.vendasTotalValor, 'das vendas brutas')
                   )}
-                </tbody>
-                {cfopsEmitidosResumo.length > 0 && (
-                  <tfoot>
-                    <tr className="bg-slate-50/90 dark:bg-slate-800/80 border-t border-slate-200 dark:border-slate-700 font-mono text-xs font-bold text-slate-900 dark:text-white">
-                      <td colSpan={4} className="py-2.5 px-3 font-sans font-bold text-slate-700 dark:text-slate-200">
-                        Total Contabilizado nos CFOPs Marcados ({formatNum(cfopTotals.checkedSaidaQtd)} saídas
-                        {cfopTotals.checkedDevolQtd > 0 ? ` − ${formatNum(cfopTotals.checkedDevolQtd)} devoluções` : ''})
-                      </td>
-                      <td className="py-2.5 px-3 text-right tabular-nums">{formatNum(cfopTotals.checkedQtd)}</td>
-                      <td className="py-2.5 px-3 text-right tabular-nums">{formatBRL(cfopTotals.checkedNetProd)}</td>
-                      <td className="py-2.5 px-3 text-right tabular-nums text-slate-600 dark:text-slate-300">
-                        − {formatBRL(cfopTotals.checkedNetDesc)}
-                      </td>
-                      <td className="py-2.5 px-3 text-right tabular-nums text-emerald-700 dark:text-emerald-400">
-                        {formatBRL(cfopTotals.checkedNetNf)}
-                      </td>
-                      <td className="py-2.5 px-3 text-right tabular-nums">100%</td>
-                    </tr>
-                  </tfoot>
-                )}
-              </table>
+                </div>
+              )}
             </div>
+
+            {/* Grupo 2: CFOPs de Devoluções */}
+            <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800/80">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-rose-500" />
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                    Devoluções ({cfopGroups.devolucoes.length} {cfopGroups.devolucoes.length === 1 ? 'CFOP' : 'CFOPs'})
+                  </h3>
+                </div>
+                <span className="text-xs text-slate-500 dark:text-slate-400 font-mono tabular-nums">
+                  Total deduzido: <strong className="text-rose-700 dark:text-rose-400">{formatBRL(cfopGroups.devolucoesTotalValor)}</strong> ({formatNum(cfopGroups.devolucoesTotalQtd)} NFs)
+                </span>
+              </div>
+
+              {cfopGroups.devolucoes.length === 0 ? (
+                <div className="text-xs text-slate-400 py-3 px-4 rounded-xl bg-slate-50 dark:bg-slate-800/40">
+                  Nenhuma devolução registrada para os CFOPs selecionados neste período.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
+                  {cfopGroups.devolucoes.map((item) =>
+                    renderCfopCard(item, 'DEVOLUCAO', cfopGroups.devolucoesTotalValor, 'das devoluções')
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Grupo 3: Fora da Apuração (Exibido somente quando houver dados nessa categoria) */}
+            {cfopGroups.foraApuracao.length > 0 && (
+              <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800/80">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-slate-400" />
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                      Fora da Apuração / Não Contabilizados ({cfopGroups.foraApuracao.length})
+                    </h3>
+                  </div>
+                  <span className="text-xs text-slate-500 dark:text-slate-400 font-mono tabular-nums">
+                    Ignorado nos totais: <strong className="text-slate-700 dark:text-slate-300">{formatBRL(cfopGroups.foraTotalValor)}</strong> ({formatNum(cfopGroups.foraTotalQtd)} NFs)
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
+                  {cfopGroups.foraApuracao.map((item) =>
+                    renderCfopCard(item, 'FORA', cfopGroups.foraTotalValor, 'dos não contabilizados')
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </section>
 
       {/* =====================================================================
-          4. TABELA DE DOCUMENTOS E LANÇAMENTOS FISCAIS
+          4. PONTOS DE ATENÇÃO COMPACTOS (SOMENTE QUANDO EXIGIREM AÇÃO)
+      ===================================================================== */}
+      {apenasNfe && resumo && resumo.has_synced_nf === false && (
+        <section
+          aria-label="Ponto de atenção fiscal"
+          className="bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/70 rounded-xl px-4 py-3 text-xs text-amber-900 dark:text-amber-200"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <AlertTriangle size={15} className="text-amber-600 dark:text-amber-400 shrink-0" />
+              <span className="font-semibold">
+                Proteção automática ativa: nenhuma chave NF-e sincronizada neste período (exibindo todos os documentos do ERP).
+              </span>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setAlertExpanded((v) => !v)}
+                className="font-semibold underline cursor-pointer"
+              >
+                {alertExpanded ? 'Ocultar detalhes' : 'Ler detalhes'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setApenasNfe(false)}
+                className="px-2.5 py-1 rounded-lg bg-amber-600 text-white font-semibold hover:bg-amber-500 cursor-pointer"
+              >
+                Mudar filtro para Todos
+              </button>
+            </div>
+          </div>
+
+          {alertExpanded && (
+            <p className="mt-2 pt-2 border-t border-amber-200/60 dark:border-amber-800/50 text-amber-800 dark:text-amber-300 leading-relaxed">
+              O filtro &ldquo;Somente c/ NF-e&rdquo; está selecionado, porém o agente de sincronização desta empresa ainda não enviou número ou chave de acesso NF-e para este período. Para evitar que a tela fique zerada, o sistema exibe automaticamente todos os registros faturados do ERP.
+            </p>
+          )}
+        </section>
+      )}
+
+      {/* =====================================================================
+          5. DOCUMENTOS E LANÇAMENTOS (DETALHAMENTO SECUNDÁRIO)
       ===================================================================== */}
       <section
         ref={tabelaSectionRef}
-        aria-label="Tabela de documentos fiscais"
+        aria-label="Documentos e lançamentos fiscais"
         className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl shadow-xs overflow-hidden"
       >
-        {/* Cabeçalho da Seção da Tabela */}
-        <div className="p-4 sm:p-5 border-b border-slate-200/80 dark:border-slate-800 space-y-4">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-            <div>
-              <div className="flex flex-wrap items-center gap-2.5">
-                <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
-                  Documentos e Lançamentos Fiscais
-                </h2>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200">
-                  {formatNum(notasPage?.total || 0)} registros
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Clique em qualquer linha ou no botão &ldquo;Detalhes&rdquo; para abrir o espelho da nota fiscal e seus itens.
-              </p>
-            </div>
+        {/* Cabeçalho Enxuto da Tabela (Sem replicar todos os totais do topo) */}
+        <div className="px-4 sm:px-5 py-3.5 border-b border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
+              Documentos e Lançamentos
+            </h2>
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+              {formatNum(notasPage?.total || 0)} documentos
+            </span>
 
-            {/* Alternador de Aba: Saídas vs Entradas */}
-            <div className="inline-flex p-1 bg-slate-100 dark:bg-slate-800 rounded-xl gap-1 self-start">
+            {selectedOperacao !== 'todos' && (
               <button
                 type="button"
-                onClick={() => setActiveTab('SAIDA')}
-                className={clsx(
-                  'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer',
-                  activeTab === 'SAIDA'
-                    ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                )}
+                onClick={() => setSelectedOperacao('todos')}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-600 text-white text-xs font-semibold cursor-pointer shadow-2xs"
+                title="Remover filtro de CFOP / Natureza"
               >
-                <ArrowUpRight size={14} className="text-emerald-600" />
-                <span>Notas Emitidas (Saída)</span>
-                <span className="px-2 py-0.5 rounded-full text-[11px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold">
-                  {formatNum(kpis.emitidas_qtd)}
-                </span>
+                <span>Filtrado por: {selectedOperacaoLabel}</span>
+                <X size={13} />
               </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab('ENTRADA')}
-                className={clsx(
-                  'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer',
-                  activeTab === 'ENTRADA'
-                    ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                )}
-              >
-                <ArrowDownLeft size={14} className="text-blue-600" />
-                <span>Notas de Entrada</span>
-                <span className="px-2 py-0.5 rounded-full text-[11px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold">
-                  {formatNum(kpis.entradas_qtd)}
-                </span>
-              </button>
-            </div>
+            )}
           </div>
 
-          {/* Barra Secundária: Resumo Financeiro da Listagem + Filtros Rápidos de Situação */}
-          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
-            {/* Totais da Listagem Filtrada */}
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-600 dark:text-slate-400">
-              {selectedOperacao !== 'todos' && (
-                <button
-                  type="button"
-                  onClick={() => setSelectedOperacao('todos')}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 font-semibold cursor-pointer"
-                >
-                  <span>Filtro: {selectedOperacaoLabel}</span>
-                  <X size={12} />
-                </button>
+          <div className="inline-flex p-1 bg-slate-100 dark:bg-slate-800 rounded-xl gap-1 self-start sm:self-auto">
+            <button
+              type="button"
+              onClick={() => setActiveTab('SAIDA')}
+              className={clsx(
+                'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer',
+                activeTab === 'SAIDA'
+                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               )}
-              <span>
-                {activeTab === 'SAIDA' ? 'Produtos após devoluções:' : 'Valor dos produtos:'}{' '}
-                <strong className="font-mono tabular-nums text-slate-900 dark:text-white">
-                  {formatBRL(notasPage?.soma_valor_produtos ?? notasPage?.soma_valor ?? 0)}
-                </strong>
-              </span>
-              {activeTab === 'SAIDA' && (
-                <span>
-                  Descontos/ajustes:{' '}
-                  <strong className="font-mono tabular-nums text-slate-700 dark:text-slate-300">
-                    − {formatBRL(notasPage?.soma_descontos ?? Math.max(0, (notasPage?.soma_valor_produtos ?? 0) - (notasPage?.soma_valor ?? 0)))}
-                  </strong>
-                </span>
-              )}
-              <span>
-                {activeTab === 'SAIDA' ? 'Total NF líquido emitido:' : 'Valor Total NF:'}{' '}
-                <strong className="font-mono tabular-nums text-emerald-700 dark:text-emerald-400">
-                  {formatBRL(notasPage?.soma_valor || 0)}
-                </strong>
-              </span>
-              {activeTab === 'SAIDA' && (notasPage?.qtd_devolucoes || 0) > 0 && (
-                <span>
-                  NF devolução líquida ({formatNum(notasPage?.qtd_devolucoes || 0)}):{' '}
-                  <strong className="font-mono tabular-nums text-rose-700 dark:text-rose-400">
-                    − {formatBRL(notasPage?.soma_devolucoes || 0)}
-                  </strong>
-                </span>
-              )}
-            </div>
+            >
+              <span>Notas Emitidas</span>
+              <span className="text-[11px] opacity-75">({formatNum(kpis.emitidas_qtd)})</span>
+            </button>
 
-            {/* Filtros Rápidos por Tipo/Situação na Página */}
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-[11px] font-semibold text-slate-400 mr-1">Exibir:</span>
-              <button
-                type="button"
-                onClick={() => setTableQuickFilter('TODOS')}
-                className={clsx(
-                  'px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors cursor-pointer',
-                  tableQuickFilter === 'TODOS'
-                    ? 'bg-slate-900 dark:bg-blue-600 text-white'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
-                )}
-              >
-                Todos
-              </button>
-              {activeTab === 'SAIDA' && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setTableQuickFilter('SAIDAS_NORMAIS')}
-                    className={clsx(
-                      'px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors cursor-pointer',
-                      tableQuickFilter === 'SAIDAS_NORMAIS'
-                        ? 'bg-slate-900 dark:bg-blue-600 text-white'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
-                    )}
-                  >
-                    Saídas Comerciais
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTableQuickFilter('DEVOLUCOES')}
-                    className={clsx(
-                      'px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors cursor-pointer',
-                      tableQuickFilter === 'DEVOLUCOES'
-                        ? 'bg-rose-600 text-white'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
-                    )}
-                  >
-                    Devoluções
-                  </button>
-                </>
+            <button
+              type="button"
+              onClick={() => setActiveTab('ENTRADA')}
+              className={clsx(
+                'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer',
+                activeTab === 'ENTRADA'
+                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               )}
-              <button
-                type="button"
-                onClick={() => setTableQuickFilter('COM_CHAVE')}
-                className={clsx(
-                  'px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors cursor-pointer',
-                  tableQuickFilter === 'COM_CHAVE'
-                    ? 'bg-slate-900 dark:bg-blue-600 text-white'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
-                )}
-              >
-                Com Chave XML
-              </button>
-            </div>
+            >
+              <span>Notas de Entrada</span>
+              <span className="text-[11px] opacity-75">({formatNum(kpis.entradas_qtd)})</span>
+            </button>
           </div>
         </div>
 
-        {/* Tabela de Documentos com Cabeçalho Fixo na Rolagem */}
-        <div className="overflow-x-auto max-h-[680px] overflow-y-auto">
+        {/* Tabela de Documentos */}
+        <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
           <table className="w-full text-left border-collapse">
-            <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 shadow-2xs">
+            <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
               <tr className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 <th className="py-3 px-4">
                   <button
@@ -1754,7 +1374,7 @@ export default function FiscalDashboard() {
                     onClick={() => handleSortToggle('numero')}
                     className="inline-flex items-center gap-1 hover:text-slate-900 dark:hover:text-white cursor-pointer"
                   >
-                    <span>Documento / Série</span>
+                    <span>Nota / Série</span>
                     <ArrowUpDown size={12} />
                   </button>
                 </th>
@@ -1771,9 +1391,9 @@ export default function FiscalDashboard() {
                 <th className="py-3 px-3 min-w-[200px]">
                   {activeTab === 'SAIDA' ? 'Cliente / Destinatário' : 'Fornecedor / Emitente'}
                 </th>
-                <th className="py-3 px-3 min-w-[220px]">CFOP e Natureza da Operação</th>
-                <th className="py-3 px-3">Situação / Tipo</th>
-                <th className="py-3 px-3 hidden xl:table-cell">Chave de Acesso NF-e</th>
+                <th className="py-3 px-3 min-w-[220px]">CFOP / Natureza da Operação</th>
+                <th className="py-3 px-3">Classificação</th>
+                <th className="py-3 px-3 hidden xl:table-cell">Chave NF-e</th>
                 <th className="py-3 px-3 text-right">
                   <button
                     type="button"
@@ -1799,7 +1419,7 @@ export default function FiscalDashboard() {
               ) : !displayedNotas.length ? (
                 <tr>
                   <td colSpan={8} className="py-12 text-center text-slate-500 dark:text-slate-400">
-                    Nenhum documento fiscal encontrado para os filtros selecionados.
+                    Nenhum documento encontrado para os filtros selecionados.
                   </td>
                 </tr>
               ) : (
@@ -1813,107 +1433,77 @@ export default function FiscalDashboard() {
                       onClick={() => setSelectedNota({ origem: row.origem, id: row.registro_id })}
                       className="hover:bg-slate-50/90 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group"
                     >
-                      {/* Coluna 1: Nº Nota / Série / Pedido */}
-                      <td className="py-3.5 px-4 whitespace-nowrap">
+                      <td className="py-3 px-4 whitespace-nowrap">
                         <div className="flex items-center gap-2">
                           <span className="font-bold font-mono text-slate-900 dark:text-white">
                             Nº {row.numero_nota}
                           </span>
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium">
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 font-medium">
                             Série {row.serie}
                           </span>
                         </div>
-                        <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1.5">
-                          <span>{row.modelo_doc}</span>
-                          {row.numero_pedido && row.numero_pedido !== '-' && (
-                            <span>• Pedido {row.numero_pedido}</span>
-                          )}
-                        </div>
+                        {row.numero_pedido && row.numero_pedido !== '-' && (
+                          <div className="text-[11px] text-slate-400 mt-0.5">
+                            Pedido {row.numero_pedido}
+                          </div>
+                        )}
                       </td>
 
-                      {/* Coluna 2: Data de Emissão */}
-                      <td className="py-3.5 px-3 whitespace-nowrap font-mono text-slate-700 dark:text-slate-300">
+                      <td className="py-3 px-3 whitespace-nowrap font-mono text-slate-700 dark:text-slate-300">
                         {formatDate(row.data_emissao)}
                       </td>
 
-                      {/* Coluna 3: Cliente / Fornecedor + Cidade/UF */}
-                      <td className="py-3.5 px-3 max-w-[280px]">
-                        <div
-                          className="font-semibold text-slate-900 dark:text-slate-100 leading-snug line-clamp-1"
-                          title={row.parceiro_nome}
-                        >
+                      <td className="py-3 px-3 max-w-[260px]">
+                        <div className="font-semibold text-slate-900 dark:text-slate-100 truncate" title={row.parceiro_nome}>
                           {row.parceiro_nome}
                         </div>
-                        <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 flex flex-wrap items-center gap-x-2">
-                          {row.parceiro_documento && <span className="font-mono">{row.parceiro_documento}</span>}
-                          {(row.cidade || row.uf) && (
-                            <span>
-                              • {row.cidade ? `${row.cidade}${row.uf ? `/${row.uf}` : ''}` : row.uf}
-                            </span>
-                          )}
+                        <div className="text-[11px] text-slate-400 truncate">
+                          {row.parceiro_documento}
+                          {(row.cidade || row.uf) ? ` • ${row.cidade ? `${row.cidade}/${row.uf}` : row.uf}` : ''}
                         </div>
                       </td>
 
-                      {/* Coluna 4: CFOP e Natureza da Operação */}
-                      <td className="py-3.5 px-3 max-w-[300px]" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-start gap-2 min-w-0">
+                      <td className="py-3 px-3 max-w-[280px]" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-1.5 min-w-0">
                           {row.cfop && (
                             <button
                               type="button"
-                              onClick={() =>
-                                setSelectedOperacao(selectedOperacao === `cfop:${row.cfop}` ? 'todos' : `cfop:${row.cfop}`)
-                              }
-                              className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-950/60 text-slate-800 dark:text-slate-200 hover:text-blue-700 font-mono font-bold text-[11px] shrink-0 cursor-pointer border border-slate-200/80 dark:border-slate-700 transition-colors"
+                              onClick={() => handleSelectCfopCard(row.cfop)}
+                              className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-950/60 text-slate-800 dark:text-slate-200 hover:text-blue-700 font-mono font-bold text-[11px] shrink-0 cursor-pointer border border-slate-200/80 dark:border-slate-700"
                               title={`Filtrar pelo CFOP ${row.cfop}`}
                             >
                               {row.cfop}
                             </button>
                           )}
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setSelectedOperacao(
-                                selectedOperacao === `nat:${row.natureza_operacao}` ? 'todos' : `nat:${row.natureza_operacao}`
-                              )
-                            }
-                            className="text-left text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 text-xs leading-snug line-clamp-2 cursor-pointer transition-colors"
-                            title={`Filtrar pela natureza: ${row.natureza_operacao}`}
-                          >
+                          <span className="text-slate-600 dark:text-slate-300 truncate text-xs" title={row.natureza_operacao}>
                             {row.natureza_operacao}
-                          </button>
-                        </div>
-                      </td>
-
-                      {/* Coluna 5: Situação / Estado Fiscal (Texto + Ícone, nunca apenas cor) */}
-                      <td className="py-3.5 px-3 whitespace-nowrap">
-                        <div className="flex flex-col items-start gap-1">
-                          {isCancelada ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 text-[11px] font-semibold">
-                              <AlertTriangle size={12} />
-                              Cancelada
-                            </span>
-                          ) : isDevolucaoRow ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 text-[11px] font-semibold">
-                              <ArrowDownLeft size={12} />
-                              Devolução (Deduz)
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[11px] font-semibold">
-                              <CheckCircle2 size={12} />
-                              {row.status || 'Autorizada'}
-                            </span>
-                          )}
-                          <span className="text-[10px] text-slate-500 dark:text-slate-400">
-                            {row.chave_nfe ? 'Com chave NF-e' : 'Registro interno ERP'}
                           </span>
                         </div>
                       </td>
 
-                      {/* Coluna 6: Chave de Acesso NF-e */}
-                      <td className="py-3.5 px-3 hidden xl:table-cell whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                      <td className="py-3 px-3 whitespace-nowrap">
+                        {isCancelada ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 text-[11px] font-semibold">
+                            <AlertTriangle size={12} />
+                            Cancelada
+                          </span>
+                        ) : isDevolucaoRow ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 text-[11px] font-semibold">
+                            <ArrowDownLeft size={12} />
+                            Devolução
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[11px] font-semibold">
+                            <CheckCircle2 size={12} />
+                            {activeTab === 'SAIDA' ? 'Venda' : 'Entrada'}
+                          </span>
+                        )}
+                      </td>
+
+                      <td className="py-3 px-3 hidden xl:table-cell whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                         {row.chave_nfe ? (
-                          <div className="inline-flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 px-2.5 py-1 rounded-lg">
-                            <span className="font-mono text-[11px] text-slate-600 dark:text-slate-300" title={row.chave_nfe}>
+                          <div className="inline-flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 px-2 py-1 rounded-lg">
+                            <span className="font-mono text-[11px] text-slate-600 dark:text-slate-300">
                               {shortenChave(row.chave_nfe)}
                             </span>
                             <button
@@ -1930,37 +1520,24 @@ export default function FiscalDashboard() {
                             </button>
                           </div>
                         ) : (
-                          <span className="text-[11px] text-slate-400">Sem chave XML</span>
+                          <span className="text-[11px] text-slate-400">Nota interna ERP</span>
                         )}
                       </td>
 
-                      {/* Coluna 7: Valor Total NF (Alinhado à Direita) */}
-                      <td className="py-3.5 px-3 text-right whitespace-nowrap">
-                        <div
-                          className={clsx(
-                            'font-bold font-mono tabular-nums',
-                            isDevolucaoRow ? 'text-rose-700 dark:text-rose-400' : 'text-slate-900 dark:text-white'
-                          )}
-                        >
-                          {isDevolucaoRow ? `− ${formatBRL(row.valor_total)}` : formatBRL(row.valor_total)}
-                        </div>
-                        {row.valor_produtos !== undefined && Math.abs(row.valor_produtos - row.valor_total) > 0.01 && (
-                          <div className="text-[10px] font-mono tabular-nums text-slate-500 dark:text-slate-400">
-                            Prod.: {formatBRL(row.valor_produtos)}
-                          </div>
-                        )}
+                      <td className="py-3 px-3 text-right whitespace-nowrap font-bold font-mono tabular-nums">
+                        <span className={clsx(isDevolucaoRow ? 'text-rose-700 dark:text-rose-400' : 'text-slate-900 dark:text-white')}>
+                          {formatBRL(row.valor_total)}
+                        </span>
                       </td>
 
-                      {/* Coluna 8: Botão de Detalhes Previsível */}
-                      <td className="py-3.5 px-4 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                      <td className="py-3 px-4 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                         <button
                           type="button"
                           onClick={() => setSelectedNota({ origem: row.origem, id: row.registro_id })}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 group-hover:bg-blue-600 group-hover:text-white hover:bg-blue-600 hover:text-white text-slate-700 dark:text-slate-200 text-xs font-semibold transition-colors cursor-pointer"
-                          title="Abrir espelho da nota fiscal e lista de itens"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 group-hover:bg-blue-600 group-hover:text-white hover:bg-blue-600 hover:text-white text-slate-700 dark:text-slate-200 text-xs font-semibold transition-colors cursor-pointer"
                         >
-                          <Eye size={14} />
-                          <span>Detalhes {row.qtd_itens > 0 ? `(${row.qtd_itens})` : ''}</span>
+                          <Eye size={13} />
+                          <span>{row.qtd_itens > 0 ? `Itens (${row.qtd_itens})` : 'Ver'}</span>
                         </button>
                       </td>
                     </tr>
@@ -1973,11 +1550,11 @@ export default function FiscalDashboard() {
 
         {/* Paginação */}
         {notasPage && notasPage.total > 0 && (
-          <div className="px-4 sm:px-5 py-3.5 border-t border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
+          <div className="px-4 sm:px-5 py-3 border-t border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
             <div>
-              Exibindo página <strong className="text-slate-800 dark:text-slate-200">{notasPage.page}</strong> de{' '}
+              Página <strong className="text-slate-800 dark:text-slate-200">{notasPage.page}</strong> de{' '}
               <strong className="text-slate-800 dark:text-slate-200">{notasPage.total_pages}</strong> •{' '}
-              <strong className="text-slate-800 dark:text-slate-200">{formatNum(notasPage.total)}</strong> documentos no período
+              <strong className="text-slate-800 dark:text-slate-200">{formatNum(notasPage.total)}</strong> documentos
             </div>
 
             <div className="flex items-center gap-2">
@@ -2016,7 +1593,6 @@ export default function FiscalDashboard() {
             className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header do Modal */}
             <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 text-slate-700 dark:text-slate-200">
@@ -2058,7 +1634,6 @@ export default function FiscalDashboard() {
               </button>
             </div>
 
-            {/* Corpo do Modal */}
             <div className="p-5 overflow-y-auto space-y-5 flex-1">
               {loadingDetalhe || !detalheNota ? (
                 <div className="py-16 flex flex-col items-center justify-center gap-2 text-slate-400 text-sm">
@@ -2067,7 +1642,6 @@ export default function FiscalDashboard() {
                 </div>
               ) : (
                 <>
-                  {/* Chave de Acesso */}
                   {detalheNota.chave_nfe && (
                     <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div>
@@ -2098,7 +1672,6 @@ export default function FiscalDashboard() {
                     </div>
                   )}
 
-                  {/* Emitente & Destinatário */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                     <div className="border border-slate-200/80 dark:border-slate-800 rounded-xl p-4 space-y-1">
                       <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">
@@ -2129,7 +1702,6 @@ export default function FiscalDashboard() {
                     </div>
                   </div>
 
-                  {/* Resumo Financeiro da Nota */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-200/60 dark:border-slate-800">
                       <div className="text-[11px] text-slate-500">Valor dos Produtos</div>
@@ -2171,7 +1743,6 @@ export default function FiscalDashboard() {
                     </div>
                   )}
 
-                  {/* Tabela de Itens da Nota */}
                   <div className="border border-slate-200/80 dark:border-slate-800 rounded-xl overflow-hidden">
                     <div className="px-4 py-2.5 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between">
                       <span className="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
