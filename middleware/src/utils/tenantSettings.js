@@ -33,9 +33,18 @@ const CFOP_LABELS = {
     '6949': 'Outra saída de mercadoria ou prestação de serviço não especificado (Interestadual)',
     '1201': 'Devolução de venda de produção do estabelecimento',
     '1202': 'Devolução de venda de mercadoria adquirida ou recebida de terceiros',
+    '12026': 'Devolução de venda de mercadoria adquirida ou recebida de terceiros',
     '1411': 'Devolução de venda de mercadoria sujeita ao regime de substituição tributária',
     '2202': 'Devolução de venda de mercadoria (Interestadual)',
     '2411': 'Devolução de venda de mercadoria sujeita a ST (Interestadual)',
+    '5202': 'Devolução de compra para comercialização (Saída para fornecedor)',
+    '5411': 'Devolução de compra para comercialização em operação sujeita a ST',
+    '5413': 'Devolução de mercadoria destinada ao ativo imobilizado ou uso/consumo (ST)',
+    '5556': 'Devolução de compra de material de uso ou consumo',
+    '5901': 'Remessa para industrialização por encomenda',
+    '6202': 'Devolução de compra para comercialização (Interestadual)',
+    '6411': 'Devolução de compra para comercialização sujeita a ST (Interestadual)',
+    '6413': 'Devolução de mercadoria destinada ao ativo imobilizado ou uso/consumo ST (Interestadual)',
     '1102': 'Compra para comercialização',
     '2102': 'Compra para comercialização (Interestadual)',
     '1403': 'Compra para comercialização em operação com mercadoria sujeita a ST',
@@ -52,7 +61,7 @@ function normalizeCfopList(list) {
         new Set(
             list
                 .map((c) => String(c || '').replace(/\D/g, '').trim())
-                .filter((c) => c.length === 4)
+                .filter((c) => c.length >= 4 && c.length <= 5)
         )
     );
     return cleaned.length > 0 ? cleaned : null;
@@ -261,7 +270,6 @@ async function getAvailableTenantCfops(tenantId) {
                     COALESCE(cg.valor_total, 0)::numeric(15,2) AS valor_total
                 FROM dash_cargas cg
                 WHERE cg.tenant_id = $1
-                  AND cg.data_emissao >= (CURRENT_DATE - INTERVAL '180 days')
                   AND COALESCE(cg.status, '') NOT IN ('CANCELADA', 'CANCELADO', 'DENEGADA', 'INUTILIZADA')
                   AND SUBSTRING(regexp_replace(COALESCE(cg.chave_acesso, ''), '\\D', '', 'g') FROM 7 FOR 14) IN (SELECT doc FROM tenant_docs)
                   AND NOT (
@@ -278,7 +286,6 @@ async function getAvailableTenantCfops(tenantId) {
                     (v.valor_total - COALESCE(v.valor_desconto, 0))::numeric(15,2) AS valor_total
                 FROM dash_vendas v
                 WHERE v.tenant_id = $1
-                  AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= (CURRENT_DATE - INTERVAL '180 days')
                   AND COALESCE(v.processo, 1) != 9
                   AND TRIM(v.status) IN ('FATURADO', 'FINALIZADO', 'PROCESSADO')
                   AND v.chave_nfe IS NOT NULL

@@ -388,7 +388,7 @@ export default function FiscalDashboard() {
     if (checkedCfops === null) return allHistoricalCfopCodes
     const configured = resumo?.cfops_faturamento ?? tenantParams?.cfops_faturamento
     if (Array.isArray(configured) && configured.length > 0) {
-      const returnCfops = ['1201', '1202', '1411', '2201', '2202', '2411']
+      const returnCfops = ['1201', '1202', '12026', '1411', '2201', '2202', '2411']
       const hasSales = configured.some((c) => /^[56]/.test(String(c)))
       const hasReturn = configured.some((c) => returnCfops.includes(String(c)))
       return hasSales && !hasReturn ? Array.from(new Set([...configured, ...returnCfops])) : configured
@@ -1140,9 +1140,14 @@ export default function FiscalDashboard() {
                 const commercialAndReturnDefaults = [
                   '5101', '5102', '5117', '5401', '5403', '5405', '5922',
                   '6101', '6102', '6108', '6403', '6404',
-                  '1201', '1202', '1411', '2201', '2202', '2411',
+                  '1201', '1202', '12026', '1411', '2201', '2202', '2411',
                 ]
-                const nonCommercialCfops = ['5949', '6949', '5910', '6910', '5151', '5152', '6151', '6152']
+                const nonCommercialCfops = [
+                  '5949', '6949', '1949', '2949', '5901', '6901', '5910', '6910',
+                  '5151', '5152', '6151', '6152',
+                  '5201', '5202', '5410', '5411', '5412', '5413', '5556',
+                  '6201', '6202', '6410', '6411', '6412', '6413', '6556',
+                ]
                 const combined = Array.from(
                   new Set([
                     ...commercialAndReturnDefaults,

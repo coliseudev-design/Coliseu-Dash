@@ -146,15 +146,47 @@ export default function ParametrosBi() {
     setSelectedCfops(cfopsDisponiveis.map((c) => c.cfop))
   }
 
+  const isSalesReturnCfop = (code: string, natureza?: string) => {
+    const clean = String(code || '').trim()
+    if (['1201', '1202', '12026', '1411', '2201', '2202', '2411'].includes(clean)) return true
+    if (/^[12](20|41)/.test(clean)) return true
+    const nat = String(natureza || '').toUpperCase()
+    return (clean.startsWith('1') || clean.startsWith('2')) && nat.includes('DEVOLU')
+  }
+
+  const isPurchaseReturnCfop = (code: string, natureza?: string) => {
+    const clean = String(code || '').trim()
+    if (['5201', '5202', '5410', '5411', '5412', '5413', '5556', '6201', '6202', '6410', '6411', '6412', '6413', '6556'].includes(clean)) {
+      return true
+    }
+    const nat = String(natureza || '').toUpperCase()
+    return (clean.startsWith('5') || clean.startsWith('6')) && nat.includes('DEVOLU') && nat.includes('COMPRA')
+  }
+
+  const isNonCommercialCfop = (code: string, natureza?: string) => {
+    const clean = String(code || '').trim()
+    if (['5949', '6949', '1949', '2949', '5901', '6901', '5910', '6910', '5151', '5152', '6151', '6152'].includes(clean)) {
+      return true
+    }
+    const nat = String(natureza || '').toUpperCase()
+    return nat.includes('TRANSFER') || nat.includes('BONIFICA') || nat.includes('REMESSA P/ INDUSTRIALIZA') || nat.includes('OUTRA ENTRADA')
+  }
+
   const selectOnlySalesCfops = () => {
     const commercial = cfopsDisponiveis
-      .filter((c) =>
-        [
+      .filter((c) => {
+        const code = String(c.cfop || '').trim()
+        if (isPurchaseReturnCfop(code, c.natureza_operacao) || isNonCommercialCfop(code, c.natureza_operacao)) {
+          return false
+        }
+        if (isSalesReturnCfop(code, c.natureza_operacao)) {
+          return true
+        }
+        return [
           '5101', '5102', '5117', '5401', '5403', '5405', '5922',
           '6101', '6102', '6108', '6403', '6404',
-          '1201', '1202', '1411', '2201', '2202', '2411',
-        ].includes(c.cfop)
-      )
+        ].includes(code) || ((code.startsWith('5') || code.startsWith('6')) && String(c.natureza_operacao || '').toUpperCase().includes('VENDA'))
+      })
       .map((c) => c.cfop)
     setSelectedCfops(commercial.length > 0 ? commercial : cfopsDisponiveis.map((c) => c.cfop))
   }
@@ -165,7 +197,7 @@ export default function ParametrosBi() {
     let valorTotal = 0
     for (const item of cfopsDisponiveis) {
       if (selectedCfops.includes(item.cfop)) {
-        const isDevolucao = item.cfop.startsWith('1') || item.cfop.startsWith('2')
+        const isDevolucao = isSalesReturnCfop(item.cfop, item.natureza_operacao) || item.cfop.startsWith('1') || item.cfop.startsWith('2')
         qtd += Number(item.qtd_notas || 0)
         valorProdutos += isDevolucao ? -Number(item.valor_produtos || 0) : Number(item.valor_produtos || 0)
         valorTotal += isDevolucao ? -Number(item.valor_total || 0) : Number(item.valor_total || 0)
@@ -466,7 +498,10 @@ export default function ParametrosBi() {
               ) : (
                 cfopsDisponiveis.map((item) => {
                   const checked = selectedCfops.includes(item.cfop)
-                  const isDevolucao = item.cfop.startsWith('1') || item.cfop.startsWith('2')
+                  const isDevVenda = isSalesReturnCfop(item.cfop, item.natureza_operacao)
+                  const isDevCompra = isPurchaseReturnCfop(item.cfop, item.natureza_operacao)
+                  const isNonComm = isNonCommercialCfop(item.cfop, item.natureza_operacao)
+                  const isDevolucao = isDevVenda || (!isNonComm && (item.cfop.startsWith('1') || item.cfop.startsWith('2')))
                   return (
                     <tr
                       key={item.cfop}
@@ -501,11 +536,23 @@ export default function ParametrosBi() {
                         {item.cfop}
                       </td>
                       <td className="py-2.5 px-3">
-                        <div className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                        <div className="font-bold text-slate-800 dark:text-slate-200 flex flex-wrap items-center gap-1.5">
                           <span>{item.natureza_operacao}</span>
-                          {isDevolucao && (
+                          {isDevVenda ? (
                             <span className="px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-600 dark:text-rose-400 text-[10px] font-extrabold uppercase shrink-0">
-                              Devolução (Deduz)
+                              Devolução de Venda (Deduz)
+                            </span>
+                          ) : isDevCompra ? (
+                            <span className="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-400 text-[10px] font-extrabold uppercase shrink-0">
+                              Devolução de Compra (Ignorar)
+                            </span>
+                          ) : isNonComm ? (
+                            <span className="px-1.5 py-0.5 rounded bg-slate-500/15 text-slate-600 dark:text-slate-400 text-[10px] font-extrabold uppercase shrink-0">
+                              Sem Receita Comercial (Ignorar)
+                            </span>
+                          ) : (
+                            <span className="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 text-[10px] font-extrabold uppercase shrink-0">
+                              Venda (Soma)
                             </span>
                           )}
                         </div>
@@ -517,18 +564,26 @@ export default function ParametrosBi() {
                       <td
                         className={clsx(
                           'py-2.5 px-3 text-right font-mono font-semibold',
-                          isDevolucao ? 'text-rose-600 dark:text-rose-400' : 'text-slate-700 dark:text-slate-300'
+                          isDevVenda
+                            ? 'text-rose-600 dark:text-rose-400'
+                            : isDevCompra || isNonComm
+                              ? 'text-slate-500 dark:text-slate-400'
+                              : 'text-slate-700 dark:text-slate-300'
                         )}
                       >
-                        {isDevolucao ? `- ${formatBRL(item.valor_produtos)}` : formatBRL(item.valor_produtos)}
+                        {isDevVenda ? `- ${formatBRL(item.valor_produtos)}` : formatBRL(item.valor_produtos)}
                       </td>
                       <td
                         className={clsx(
                           'py-2.5 px-3 text-right font-mono font-black',
-                          isDevolucao ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'
+                          isDevVenda
+                            ? 'text-rose-600 dark:text-rose-400'
+                            : isDevCompra || isNonComm
+                              ? 'text-slate-500 dark:text-slate-400'
+                              : 'text-emerald-600 dark:text-emerald-400'
                         )}
                       >
-                        {isDevolucao ? `- ${formatBRL(item.valor_total)}` : formatBRL(item.valor_total)}
+                        {isDevVenda ? `- ${formatBRL(item.valor_total)}` : formatBRL(item.valor_total)}
                       </td>
                     </tr>
                   )

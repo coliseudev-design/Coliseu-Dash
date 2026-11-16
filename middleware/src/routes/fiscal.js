@@ -657,7 +657,7 @@ function parseSelectedCfops(cfopsParam, defaultList = null) {
         return parts.length > 0 ? parts : null;
     }
     if (Array.isArray(defaultList) && defaultList.length > 0) {
-        const returnCfops = ['1201', '1202', '1411', '2201', '2202', '2411'];
+        const returnCfops = ['1201', '1202', '12026', '1411', '2201', '2202', '2411'];
         const hasSales = defaultList.some((c) => /^[56]/.test(String(c)));
         const hasReturn = defaultList.some((c) => returnCfops.includes(String(c)));
         if (hasSales && !hasReturn) {
