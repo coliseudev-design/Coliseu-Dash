@@ -1042,7 +1042,28 @@ router.get('/notas', async (req, res, next) => {
 
         const rows = Array.isArray(combinedNotasRes.rows[0]?.rows) ? combinedNotasRes.rows[0].rows : [];
 
-        // Enriquecer qtd_itens, CFOP, numero_nota, serie e chave_nfe a partir de dash_vendas_itens e dash_cargas na página atual
+        // Enriquecer qtd_itens, CFOPs dos itens, numero_nota, serie e chave_nfe a partir de dash_vendas_itens e dash_cargas na página atual
+        const cargaIds = rows.filter((r) => r.origem === 'cargas').map((r) => Number(r.registro_id));
+        const cargaCfopsMap = new Map();
+        if (cargaIds.length > 0) {
+            const cgCfopRes = await db.query(
+                `SELECT
+                    cg.id,
+                    ARRAY_AGG(DISTINCT regexp_replace(COALESCE(it->>'cfop', ''), '\\D', '', 'g'))
+                        FILTER (WHERE regexp_replace(COALESCE(it->>'cfop', ''), '\\D', '', 'g') <> '') AS cfops_itens
+                 FROM dash_cargas cg,
+                 LATERAL jsonb_array_elements(
+                     CASE WHEN jsonb_typeof(cg.dados_nfe->'itens') = 'array' THEN cg.dados_nfe->'itens' ELSE '[]'::jsonb END
+                 ) it
+                 WHERE cg.tenant_id = $1 AND cg.id = ANY($2::bigint[])
+                 GROUP BY cg.id`,
+                [tenantId, cargaIds]
+            ).catch(() => ({ rows: [] }));
+            for (const row of cgCfopRes.rows) {
+                cargaCfopsMap.set(Number(row.id), Array.isArray(row.cfops_itens) ? row.cfops_itens.filter(Boolean) : []);
+            }
+        }
+
         const vendaIds = rows.filter((r) => r.origem === 'vendas').map((r) => Number(r.registro_id));
         const vendaStatsMap = new Map();
         const vendaCargasMap = new Map();
@@ -1054,6 +1075,8 @@ router.get('/notas', async (req, res, next) => {
                         venda_id_firebird,
                         COUNT(*) AS qtd_itens,
                         MAX(NULLIF(TRIM(cfop), '')) AS item_cfop,
+                        ARRAY_AGG(DISTINCT regexp_replace(COALESCE(cfop, ''), '\\D', '', 'g'))
+                            FILTER (WHERE regexp_replace(COALESCE(cfop, ''), '\\D', '', 'g') NOT IN ('', '0')) AS cfops_itens,
                         MAX(NULLIF(NULLIF(TRIM(numero_nota::text), ''), '0')) AS item_numero_nota,
                         MAX(NULLIF(TRIM(chave_nfe), '')) AS item_chave_nfe
                      FROM dash_vendas_itens
@@ -1085,6 +1108,7 @@ router.get('/notas', async (req, res, next) => {
                 vendaStatsMap.set(Number(st.venda_id_firebird), {
                     qtd_itens: parseInt(st.qtd_itens || 0, 10),
                     cfop: st.item_cfop && st.item_cfop !== '0' ? st.item_cfop : '',
+                    cfops_itens: Array.isArray(st.cfops_itens) ? st.cfops_itens.filter(Boolean) : [],
                     numero_nota: st.item_numero_nota || null,
                     chave_nfe: st.item_chave_nfe || null,
                 });
@@ -1108,6 +1132,11 @@ router.get('/notas', async (req, res, next) => {
             const resolvedModelo = r.origem === 'cargas'
                 ? r.modelo_doc
                 : (cgExtra ? 'NF-e (XML)' : ((hasHeaderNf || extra?.numero_nota || resolvedChave) ? 'NF-e / NFC-e' : r.modelo_doc));
+            const primaryCfop = r.cfop || cgExtra?.cfop || extra?.cfop || '';
+            const rawCfopsItens = r.origem === 'cargas'
+                ? (cargaCfopsMap.get(Number(r.registro_id)) || [])
+                : (extra?.cfops_itens || []);
+            const cfopsItens = Array.from(new Set([primaryCfop, ...rawCfopsItens].filter(Boolean)));
 
             return {
                 origem: r.origem,
@@ -1123,7 +1152,8 @@ router.get('/notas', async (req, res, next) => {
                 parceiro_documento: r.parceiro_documento,
                 cidade: r.cidade,
                 uf: r.uf,
-                cfop: r.cfop || cgExtra?.cfop || extra?.cfop || '',
+                cfop: primaryCfop,
+                cfops_itens: cfopsItens,
                 natureza_operacao: r.natureza_operacao,
                 valor_produtos: parseFloat(r.valor_produtos || r.valor_total || 0),
                 valor_total: parseFloat(r.valor_total || 0),
@@ -1211,26 +1241,55 @@ router.get('/notas/:origem/:id', async (req, res, next) => {
             );
             const isEntrada = !isSaidaCfop && (isCompraComercial || rawTipoOp === 'ENTRADA' || /^[123]/.test(cfop0));
 
-            const itens = rawItens.map((it, idx) => ({
-                ordem: idx + 1,
-                codigo: it.codigo || String(it.id_produto || idx + 1),
-                descricao: it.descricao || 'Produto sem descrição',
-                ncm: it.ncm || '',
-                cst: it.cst || '',
-                cfop: it.cfop || '',
-                unidade: it.unidade || 'UN',
-                quantidade: parseFloat(it.quantidade || 0),
-                valor_unitario: parseFloat(it.valor_unitario || 0),
-                desconto: parseFloat(it.desconto || 0),
-                valor_total: parseFloat(it.valor_total || 0),
-            }));
-
-            const totalDescontoItens = itens.reduce((acc, i) => acc + i.desconto, 0);
             const valProd = parseFloat(cg.valor_produtos || cg.valor_total || 0);
             const valTotRaw = parseFloat(cg.valor_total || 0);
-            const valorTotalEfetivo = (isCompraComercial && valProd > 0 && (valTotRaw - valProd) > 10 && ['1403', '2403'].includes(cfop0) && totalDescontoItens === 0)
+            const rawDescSum = rawItens.reduce((acc, i) => acc + parseFloat(i.desconto || 0), 0);
+            const valorTotalEfetivo = (isCompraComercial && valProd > 0 && (valTotRaw - valProd) > 10 && ['1403', '2403'].includes(cfop0) && rawDescSum === 0)
                 ? valProd
                 : valTotRaw;
+            const headerDesconto = Math.max(0, Number((valProd - valorTotalEfetivo).toFixed(2)));
+            const sumPctDesconto = rawItens.reduce((acc, i) => {
+                const b = parseFloat(i.valor_total || 0);
+                const d = parseFloat(i.desconto || 0);
+                return acc + (d > 0 && d <= 100 ? b * (d / 100) : 0);
+            }, 0);
+            const isItemDescPercentage = headerDesconto > 0 && Math.abs(sumPctDesconto - headerDesconto) <= Math.max(1, headerDesconto * 0.05);
+
+            const itens = rawItens.map((it, idx) => {
+                const bruto = parseFloat(it.valor_total || 0);
+                const rawDesc = parseFloat(it.desconto || 0);
+                const descPct = isItemDescPercentage ? rawDesc : (bruto > 0 && rawDesc > 0 ? Number(((rawDesc / bruto) * 100).toFixed(2)) : 0);
+                const descVal = isItemDescPercentage ? Number((bruto * (rawDesc / 100)).toFixed(2)) : rawDesc;
+                const liquido = Number(Math.max(0, bruto - descVal).toFixed(2));
+                return {
+                    ordem: idx + 1,
+                    codigo: it.codigo || String(it.id_produto || idx + 1),
+                    descricao: it.descricao || 'Produto sem descrição',
+                    ncm: it.ncm || '',
+                    cst: it.cst || '',
+                    cfop: String(it.cfop || '').replace(/\D/g, ''),
+                    unidade: it.unidade || 'UN',
+                    quantidade: parseFloat(it.quantidade || 0),
+                    valor_unitario: parseFloat(it.valor_unitario || 0),
+                    desconto_pct: descPct,
+                    desconto: descVal,
+                    valor_produtos: bruto,
+                    valor_total: liquido,
+                };
+            });
+
+            const cfopMap = new Map();
+            for (const item of itens) {
+                const code = item.cfop || cfop0 || '5102';
+                const prev = cfopMap.get(code) || { cfop: code, qtd_itens: 0, valor_produtos: 0, valor_desconto: 0, valor_total: 0 };
+                prev.qtd_itens += 1;
+                prev.valor_produtos = Number((prev.valor_produtos + (item.valor_produtos ?? item.valor_total)).toFixed(2));
+                prev.valor_desconto = Number((prev.valor_desconto + (item.desconto || 0)).toFixed(2));
+                prev.valor_total = Number((prev.valor_total + item.valor_total).toFixed(2));
+                cfopMap.set(code, prev);
+            }
+            const resumoCfops = Array.from(cfopMap.values());
+            const totalDescontoItens = headerDesconto > 0 ? headerDesconto : Number(itens.reduce((acc, i) => acc + i.desconto, 0).toFixed(2));
 
             // Em dash_cargas, quando rawTipoOp === 'ENTRADA' e é uma nota de saída por Ajuste (CFOP 5xxx/6xxx),
             // o sincronizador colocou a Filial em destinatario_* e o Cliente em remetente_*.
@@ -1289,6 +1348,7 @@ router.get('/notas/:origem/:id', async (req, res, next) => {
                     peso_bruto: parseFloat(cg.peso_bruto || 0),
                     peso_liquido: parseFloat(cg.peso_liquido || 0),
                 },
+                resumo_cfops: resumoCfops,
                 itens,
             });
         }
