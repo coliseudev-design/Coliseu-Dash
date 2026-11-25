@@ -1496,7 +1496,7 @@ router.get('/customer/list', async (req, res, next) => {
     try {
         const tenantId = req.tenant.id;
         const search = req.query.search || req.query.q || '';
-        const limit = Math.min(parseInt(req.query.limit, 10) || 50, 200);
+        const limit = Math.min(parseInt(req.query.limit, 10) || 50, 1000);
         const offset = parseInt(req.query.offset, 10) || 0;
         const cidade = req.query.cidade;
         const comSaldo = req.query.com_saldo;
@@ -1659,7 +1659,16 @@ router.get('/customer/list', async (req, res, next) => {
                             FROM dash_vendas v 
                             WHERE v.cliente_id_firebird = mc.id AND v.tenant_id = mc.tenant_id
                               ${salesFilter}
-                        ) as ultima_compra
+                        ) as ultima_compra,
+                        (
+                            SELECT TRIM(vend.nome)
+                            FROM dash_vendas v
+                            JOIN dash_vendedores vend ON vend.id_firebird = v.vendedor_id_firebird AND vend.tenant_id = v.tenant_id
+                            WHERE v.cliente_id_firebird = mc.id AND v.tenant_id = mc.tenant_id
+                              ${salesFilter}
+                            ORDER BY COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) DESC
+                            LIMIT 1
+                        ) as vendedor_resp
                     FROM base_clientes mc
                 )
                 SELECT * FROM calculated
@@ -1719,7 +1728,16 @@ router.get('/customer/list', async (req, res, next) => {
                         FROM dash_vendas v 
                         WHERE v.cliente_id_firebird = mc.id AND v.tenant_id = mc.tenant_id
                           ${salesFilter}
-                    ) as ultima_compra
+                    ) as ultima_compra,
+                    (
+                        SELECT TRIM(vend.nome)
+                        FROM dash_vendas v
+                        JOIN dash_vendedores vend ON vend.id_firebird = v.vendedor_id_firebird AND vend.tenant_id = v.tenant_id
+                        WHERE v.cliente_id_firebird = mc.id AND v.tenant_id = mc.tenant_id
+                          ${salesFilter}
+                        ORDER BY COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) DESC
+                        LIMIT 1
+                    ) as vendedor_resp
                 FROM matched_clientes mc
                 ${outerOrderClause}
             `;
@@ -1728,14 +1746,24 @@ router.get('/customer/list', async (req, res, next) => {
         binds.push(limit, offset);
         const { rows: clientRows } = await db.query(clientsQuery, binds);
 
-        // Busca lista de cidades disponíveis para o filtro
-        const { rows: cityRows } = await db.query(`
-            SELECT DISTINCT TRIM(c.cidade) as cidade 
-            FROM dash_clientes c 
-            WHERE c.tenant_id = $1 AND c.cidade IS NOT NULL AND TRIM(c.cidade) != ''
-            ORDER BY 1 ASC
-        `, [tenantId]);
+        // Busca lista de cidades e vendedores disponíveis para o filtro
+        const [{ rows: cityRows }, { rows: sellerRows }] = await Promise.all([
+            db.query(`
+                SELECT DISTINCT TRIM(c.cidade) as cidade 
+                FROM dash_clientes c 
+                WHERE c.tenant_id = $1 AND c.cidade IS NOT NULL AND TRIM(c.cidade) != ''
+                ORDER BY 1 ASC
+            `, [tenantId]),
+            db.query(`
+                SELECT DISTINCT vd.id_firebird as id, TRIM(vd.nome) as nome
+                FROM dash_vendedores vd
+                WHERE vd.tenant_id = $1 AND vd.nome IS NOT NULL AND TRIM(vd.nome) != ''
+                  AND EXISTS (SELECT 1 FROM dash_vendas vx WHERE vx.tenant_id = vd.tenant_id AND vx.vendedor_id_firebird = vd.id_firebird)
+                ORDER BY 2 ASC
+            `, [tenantId])
+        ]);
         const available_cities = cityRows.map(r => r.cidade);
+        const available_sellers = sellerRows.map(r => ({ id: String(r.id), nome: r.nome }));
 
         const data = clientRows.map(r => ({
             id: r.id,
@@ -1747,6 +1775,7 @@ router.get('/customer/list', async (req, res, next) => {
             estado: r.estado,
             telefone: r.telefone,
             email: r.email,
+            vendedor_resp: r.vendedor_resp || '—',
             status: r.ativo ? 'ATIVO' : 'INATIVO',
             ltv: parseFloat(r.ltv || 0),
             saldo_devedor: parseFloat(r.saldo_devedor || 0),
@@ -1758,6 +1787,7 @@ router.get('/customer/list', async (req, res, next) => {
             data,
             total,
             available_cities,
+            available_sellers,
             limit,
             offset
         });
@@ -2712,13 +2742,21 @@ router.get('/supplier/analytics', async (req, res, next) => {
             ORDER BY marca ASC
         `, [tenantId]);
 
-        // ── Lista de cidades disponíveis para o dropdown ──────────
-        const { rows: allCities } = await db.query(`
-            SELECT DISTINCT c.cidade 
-            FROM dash_clientes c 
-            WHERE c.tenant_id = $1 AND c.cidade IS NOT NULL AND c.cidade <> ''
-            ORDER BY c.cidade ASC
-        `, [tenantId]);
+        // ── Lista de cidades e categorias disponíveis para o dropdown ──
+        const [{ rows: allCities }, { rows: allCategories }] = await Promise.all([
+            db.query(`
+                SELECT DISTINCT c.cidade 
+                FROM dash_clientes c 
+                WHERE c.tenant_id = $1 AND c.cidade IS NOT NULL AND c.cidade <> ''
+                ORDER BY c.cidade ASC
+            `, [tenantId]),
+            db.query(`
+                SELECT DISTINCT TRIM(p.categoria) as categoria
+                FROM dash_produtos p
+                WHERE p.tenant_id = $1 AND p.ativo = true AND p.categoria IS NOT NULL AND TRIM(p.categoria) <> ''
+                ORDER BY 1 ASC
+            `, [tenantId])
+        ]);
 
         // ── KPIs e Lista de Estoque do Fornecedor/Marca ────────────
         const onlyNfActive = cfopUtil.isOnlyNfSalesActive();
@@ -2733,7 +2771,8 @@ router.get('/supplier/analytics', async (req, res, next) => {
                 COALESCE(NULLIF(p.referencia, ''), NULLIF(p.codigo_fabrica, ''), p.id_firebird::text, NULLIF(p.codigo, '')) as cod,
                 p.nome as desc,
                 'UN' as un,
-                COALESCE(p.marca, 'S/ MARCA') as marca,
+                COALESCE(NULLIF(TRIM(p.marca), ''), 'S/ MARCA') as marca,
+                COALESCE(NULLIF(TRIM(p.categoria), ''), 'S/ CATEGORIA') as categoria,
                 p.estoque,
                 p.custo,
                 p.preco,
@@ -2778,7 +2817,8 @@ router.get('/supplier/analytics', async (req, res, next) => {
                 cod: item.cod || '—',
                 desc: item.desc || 'Sem descrição',
                 un: item.un || 'UN',
-                marca: item.marca || '—',
+                marca: item.marca || 'S/ MARCA',
+                categoria: item.categoria || 'S/ CATEGORIA',
                 estoque: est,
                 custo,
                 preco,
@@ -2789,7 +2829,7 @@ router.get('/supplier/analytics', async (req, res, next) => {
 
         const inventory = (useFiscalStock ? mappedInventoryAll.filter(i => i.estoque > 0) : mappedInventoryAll)
             .sort((a, b) => b.estoque - a.estoque)
-            .slice(0, 150);
+            .slice(0, 5000);
 
         const stock_kpis = {
             custo_total: Math.round(stockCustoTotal * 100) / 100,
@@ -2825,6 +2865,7 @@ router.get('/supplier/analytics', async (req, res, next) => {
                 margem: 30
             })),
             available_brands: allBrands.map(b => b.marca),
+            available_categories: allCategories.map(c => c.categoria),
             available_cities: allCities.map(c => c.cidade),
             stock_kpis,
             inventory: inventory.map(item => {
@@ -2837,7 +2878,8 @@ router.get('/supplier/analytics', async (req, res, next) => {
                     cod: item.cod || '—',
                     desc: item.desc || 'Sem descrição',
                     un: item.un || 'UN',
-                    marca: item.marca || '—',
+                    marca: item.marca || 'S/ MARCA',
+                    categoria: item.categoria || 'S/ CATEGORIA',
                     estoque: est,
                     custo: parseFloat(item.custo || 0),
                     preco: parseFloat(item.preco || 0),

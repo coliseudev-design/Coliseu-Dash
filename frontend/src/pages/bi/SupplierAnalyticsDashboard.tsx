@@ -61,9 +61,12 @@ export default function SupplierAnalyticsDashboard() {
   const { filter } = useOutletContext<{ filter: BiPeriodFilter }>();
   const [activeTab, setActiveTab] = useState('Visão Geral de Vendas');
   const [selectedBrand, setSelectedBrand] = useState(''); // Default to empty (All Brands)
+  const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedCity, setSelectedCity] = useState('');
   const [stockSearch, setStockSearch] = useState('');
   const [stockSort, setStockSort] = useState('alto'); // 'alto', 'baixo', 'custo'
+  const [catalogSearch, setCatalogSearch] = useState('');
+  const [catalogSort, setCatalogSort] = useState('estoque_desc');
   const [selectedProductCode, setSelectedProductCode] = useState<string | null>(null);
 
   const supplierFilter = { ...filter, marca: selectedBrand, cidade: selectedCity };
@@ -93,14 +96,27 @@ export default function SupplierAnalyticsDashboard() {
   const rawInventory = data?.inventory || [];
   const stockMargem = stockKpis.venda_total > 0 ? ((stockKpis.venda_total - stockKpis.custo_total) / stockKpis.venda_total) * 100 : 0;
 
+  const availableCategories = useMemo(() => {
+    const set = new Set<string>(data?.available_categories || []);
+    rawInventory.forEach((item: any) => {
+      if (item.categoria && item.categoria !== '—') set.add(item.categoria);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [data?.available_categories, rawInventory]);
+
   const filteredInventory = useMemo(() => {
     let result = [...rawInventory];
     if (stockSearch) {
       const q = stockSearch.toLowerCase();
       result = result.filter(item => 
         item.desc.toLowerCase().includes(q) || 
-        item.cod.toLowerCase().includes(q)
+        item.cod.toLowerCase().includes(q) ||
+        (item.marca || '').toLowerCase().includes(q) ||
+        (item.categoria || '').toLowerCase().includes(q)
       );
+    }
+    if (selectedCategory) {
+      result = result.filter((item: any) => (item.categoria || 'S/ CATEGORIA') === selectedCategory);
     }
     if (stockSort === 'alto') {
       result.sort((a, b) => b.estoque - a.estoque);
@@ -110,7 +126,36 @@ export default function SupplierAnalyticsDashboard() {
       result.sort((a, b) => b.valor_total - a.valor_total);
     }
     return result;
-  }, [rawInventory, stockSearch, stockSort]);
+  }, [rawInventory, stockSearch, selectedCategory, stockSort]);
+
+  const filteredCatalog = useMemo(() => {
+    let result = [...rawInventory];
+    if (catalogSearch) {
+      const q = catalogSearch.toLowerCase();
+      result = result.filter((item: any) =>
+        (item.desc || '').toLowerCase().includes(q) ||
+        (item.cod || '').toLowerCase().includes(q) ||
+        (item.marca || '').toLowerCase().includes(q) ||
+        (item.categoria || '').toLowerCase().includes(q)
+      );
+    }
+    if (selectedBrand) {
+      result = result.filter((item: any) => (item.marca || '').toUpperCase().trim() === selectedBrand.toUpperCase().trim());
+    }
+    if (selectedCategory) {
+      result = result.filter((item: any) => (item.categoria || 'S/ CATEGORIA') === selectedCategory);
+    }
+    if (catalogSort === 'estoque_desc') {
+      result.sort((a, b) => b.estoque - a.estoque);
+    } else if (catalogSort === 'estoque_asc') {
+      result.sort((a, b) => a.estoque - b.estoque);
+    } else if (catalogSort === 'preco_desc') {
+      result.sort((a, b) => b.preco - a.preco);
+    } else if (catalogSort === 'nome_asc') {
+      result.sort((a, b) => (a.desc || '').localeCompare(b.desc || ''));
+    }
+    return result;
+  }, [rawInventory, catalogSearch, selectedBrand, selectedCategory, catalogSort]);
 
   if (isLoading) {
     return (
@@ -777,18 +822,23 @@ export default function SupplierAnalyticsDashboard() {
 
           {/* 4. Rastreamento de Estoque */}
           <div className="bg-bg-primary border border-border shadow-card rounded-xl overflow-hidden flex flex-col mt-6">
-            <div className="p-4 border-b border-divider flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-bg-secondary/30">
-              <h3 className="font-bold text-text-primary text-sm uppercase tracking-wider flex items-center gap-2">
-                <Box size={16} className="text-brand-500" />
-                Rastreamento de Estoque
-              </h3>
+            <div className="p-4 border-b border-divider flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-bg-secondary/30">
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-text-primary text-sm uppercase tracking-wider flex items-center gap-2">
+                  <Box size={16} className="text-brand-500" />
+                  Rastreamento de Estoque
+                </h3>
+                <span className="px-2 py-0.5 rounded-md bg-brand-500/10 text-brand-500 text-[10px] font-bold">
+                  {filteredInventory.length} itens
+                </span>
+              </div>
               
               <div className="flex flex-wrap items-center gap-2">
                 <div className="flex items-center gap-2 bg-bg-primary border border-border rounded-lg px-3 py-1.5 shadow-sm min-w-[220px]">
                   <Search size={14} className="text-text-muted shrink-0" />
                   <input 
                     type="text" 
-                    placeholder="Buscar produto por nome ou cod..."
+                    placeholder="Buscar produto por nome ou cód..."
                     value={stockSearch}
                     onChange={(e) => setStockSearch(e.target.value)}
                     className="bg-transparent text-xs text-text-primary placeholder-text-muted outline-none w-full"
@@ -799,6 +849,32 @@ export default function SupplierAnalyticsDashboard() {
                     </button>
                   )}
                 </div>
+
+                {/* Marca no Estoque */}
+                <select
+                  aria-label="Filtrar Estoque por Marca"
+                  value={selectedBrand}
+                  onChange={(e) => setSelectedBrand(e.target.value)}
+                  className="bg-bg-primary border border-border rounded-lg px-3 py-1.5 text-xs text-text-primary outline-none cursor-pointer max-w-[180px]"
+                >
+                  <option value="">Todas as Marcas</option>
+                  {availableBrands.map((b: string) => (
+                    <option key={b} value={b}>{b}</option>
+                  ))}
+                </select>
+
+                {/* Categoria no Estoque */}
+                <select
+                  aria-label="Filtrar Estoque por Categoria"
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="bg-bg-primary border border-border rounded-lg px-3 py-1.5 text-xs text-text-primary outline-none cursor-pointer max-w-[190px]"
+                >
+                  <option value="">Todas as Categorias</option>
+                  {availableCategories.map((cat: string) => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
                 
                 <select 
                   value={stockSort}
@@ -820,6 +896,7 @@ export default function SupplierAnalyticsDashboard() {
                     <th className="px-2 py-2">PRODUTO</th>
                     <th className="px-2 py-2 text-center">UN.</th>
                     <th className="px-2 py-2">MARCA</th>
+                    <th className="px-2 py-2">CATEGORIA</th>
                     <th className="px-2 py-2 text-right">ESTOQUE</th>
                     <th className="px-2 py-2 text-right">CUSTO UN.</th>
                     <th className="px-2 py-2 text-right">PREÇO UNIT.</th>
@@ -828,7 +905,7 @@ export default function SupplierAnalyticsDashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-divider/30 text-[11px]">
-                  {filteredInventory.map((item, idx) => (
+                  {filteredInventory.map((item: any, idx) => (
                     <tr key={idx} className="hover:bg-bg-secondary/50 transition-colors">
                       <td className="px-2 py-2 font-mono font-semibold text-text-secondary text-left">{item.cod}</td>
                       <td className="px-2 py-2 font-bold text-text-primary truncate max-w-[200px]" title={item.desc}>
@@ -844,7 +921,8 @@ export default function SupplierAnalyticsDashboard() {
                         </div>
                       </td>
                       <td className="px-2 py-2 text-center text-text-secondary">{item.un}</td>
-                      <td className="px-2 py-2 text-text-secondary">{item.marca}</td>
+                      <td className="px-2 py-2 text-text-secondary font-medium">{item.marca}</td>
+                      <td className="px-2 py-2 text-text-secondary">{item.categoria || 'S/ CATEGORIA'}</td>
                       <td className="px-2 py-2 text-right font-bold text-text-primary font-mono">{formatNum(item.estoque)}</td>
                       <td className="px-2 py-2 text-right font-mono text-text-secondary">{formatBRL(item.custo)}</td>
                       <td className="px-2 py-2 text-right font-mono text-text-secondary">{formatBRL(item.preco)}</td>
@@ -863,8 +941,8 @@ export default function SupplierAnalyticsDashboard() {
                   ))}
                   {filteredInventory.length === 0 && (
                     <tr>
-                      <td colSpan={9} className="px-5 py-12 text-center text-text-secondary font-semibold">
-                        Nenhum item em estoque para esta busca ou marca.
+                      <td colSpan={10} className="px-5 py-12 text-center text-text-secondary font-semibold">
+                        Nenhum item em estoque para esta busca, marca ou categoria.
                       </td>
                     </tr>
                   )}
@@ -878,11 +956,102 @@ export default function SupplierAnalyticsDashboard() {
       {activeTab === 'Catálogo' && (
         <div className="space-y-6 animate-in fade-in duration-300">
           <div className="bg-bg-primary border border-border shadow-card rounded-xl flex flex-col overflow-hidden">
-            <div className="p-4 border-b border-divider flex justify-between items-center bg-gradient-to-r from-bg-secondary to-bg-primary">
-              <h3 className="font-bold text-text-primary text-sm uppercase tracking-wider flex items-center gap-2">
-                <ShoppingCart size={18} className="text-brand-500" />
-                Catálogo Geral de Produtos
-              </h3>
+            <div className="p-4 border-b border-divider flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-gradient-to-r from-bg-secondary to-bg-primary">
+              <div className="flex items-center gap-2.5">
+                <h3 className="font-bold text-text-primary text-sm uppercase tracking-wider flex items-center gap-2">
+                  <ShoppingCart size={18} className="text-brand-500" />
+                  Catálogo Geral de Produtos
+                </h3>
+                <span className="px-2.5 py-0.5 rounded-full bg-brand-500/10 border border-brand-500/20 text-brand-500 text-[10px] font-bold whitespace-nowrap">
+                  {filteredCatalog.length} {filteredCatalog.length === 1 ? 'produto' : 'produtos'}
+                </span>
+              </div>
+
+              {/* FILTROS DO CATÁLOGO: PRODUTO, MARCA, CATEGORIA E ORDENAÇÃO */}
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Filtro de Produto (Código ou Descrição) */}
+                <div className="flex items-center gap-2 bg-bg-primary border border-border rounded-lg px-3 py-1.5 shadow-sm min-w-[230px] flex-1 sm:flex-initial">
+                  <Search size={14} className="text-text-muted shrink-0" />
+                  <input
+                    type="text"
+                    placeholder="Filtrar produto por código ou nome..."
+                    value={catalogSearch}
+                    onChange={(e) => setCatalogSearch(e.target.value)}
+                    className="bg-transparent text-xs text-text-primary placeholder-text-muted outline-none w-full font-medium"
+                  />
+                  {catalogSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setCatalogSearch('')}
+                      className="text-text-muted hover:text-text-primary cursor-pointer"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+
+                {/* Filtro de Marca */}
+                <div className="relative min-w-[165px] max-w-[220px]">
+                  <select
+                    aria-label="Filtrar Catálogo por Marca"
+                    value={selectedBrand}
+                    onChange={(e) => setSelectedBrand(e.target.value)}
+                    className="bg-bg-primary border border-border rounded-lg px-3 py-1.5 pr-7 text-xs font-semibold text-text-primary outline-none cursor-pointer appearance-none w-full shadow-sm"
+                  >
+                    <option value="">Marca: Todas ({availableBrands.length})</option>
+                    {availableBrands.map((b: string) => (
+                      <option key={b} value={b}>{b}</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+                </div>
+
+                {/* Filtro de Categoria */}
+                <div className="relative min-w-[175px] max-w-[230px]">
+                  <select
+                    aria-label="Filtrar Catálogo por Categoria"
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    className="bg-bg-primary border border-border rounded-lg px-3 py-1.5 pr-7 text-xs font-semibold text-text-primary outline-none cursor-pointer appearance-none w-full shadow-sm"
+                  >
+                    <option value="">Categoria: Todas ({availableCategories.length})</option>
+                    {availableCategories.map((cat: string) => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+                </div>
+
+                {/* Ordenação */}
+                <div className="relative min-w-[155px]">
+                  <select
+                    aria-label="Ordenar Catálogo"
+                    value={catalogSort}
+                    onChange={(e) => setCatalogSort(e.target.value)}
+                    className="bg-bg-primary border border-border rounded-lg px-3 py-1.5 pr-7 text-xs font-semibold text-text-primary outline-none cursor-pointer appearance-none w-full shadow-sm"
+                  >
+                    <option value="estoque_desc">Estoque (Maior)</option>
+                    <option value="estoque_asc">Estoque (Menor)</option>
+                    <option value="preco_desc">Maior Preço Venda</option>
+                    <option value="nome_asc">Ordem (A-Z)</option>
+                  </select>
+                  <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+                </div>
+
+                {(catalogSearch || selectedBrand || selectedCategory) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCatalogSearch('');
+                      setSelectedBrand('');
+                      setSelectedCategory('');
+                    }}
+                    className="h-7 px-2.5 bg-bg-secondary hover:bg-bg-tertiary text-text-secondary border border-border rounded-lg text-xs font-bold inline-flex items-center gap-1 transition-all cursor-pointer whitespace-nowrap"
+                  >
+                    <X size={12} /> Limpar
+                  </button>
+                )}
+              </div>
             </div>
             
             {/* Tabela — visível em sm+ */}
@@ -892,6 +1061,8 @@ export default function SupplierAnalyticsDashboard() {
                   <tr className="bg-bg-secondary/30 text-[10px] text-text-muted uppercase font-bold tracking-wider border-b border-divider">
                     <th className="px-2 py-2 text-left">CÓDIGO</th>
                     <th className="px-2 py-2 text-left">DESCRIÇÃO</th>
+                    <th className="px-2 py-2 text-left">MARCA</th>
+                    <th className="px-2 py-2 text-left">CATEGORIA</th>
                     <th className="px-2 py-2 text-right">PREÇO CUSTO (R$)</th>
                     <th className="px-2 py-2 text-right">PREÇO VENDA (R$)</th>
                     <th className="px-2 py-2 text-center">MARGEM (%)</th>
@@ -900,7 +1071,7 @@ export default function SupplierAnalyticsDashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-divider/30 text-[11px]">
-                  {rawInventory.map((item: any, idx: number) => {
+                  {filteredCatalog.map((item: any, idx: number) => {
                     const preco = parseFloat(item.preco || 0);
                     const custo = parseFloat(item.custo || 0);
                     const margemLucro = preco > 0 ? ((preco - custo) / preco) * 100 : 0;
@@ -921,7 +1092,7 @@ export default function SupplierAnalyticsDashboard() {
                     return (
                       <tr key={idx} className="hover:bg-bg-secondary/50 transition-colors">
                         <td className="px-2 py-2 font-mono font-semibold text-text-secondary text-left">{item.cod}</td>
-                        <td className="px-2 py-2 font-bold text-text-primary text-left truncate max-w-[200px]" title={item.desc}>
+                        <td className="px-2 py-2 font-bold text-text-primary text-left truncate max-w-[220px]" title={item.desc}>
                           <div className="flex items-center justify-between w-full">
                             <span className="truncate">{item.desc}</span>
                             <button 
@@ -933,6 +1104,8 @@ export default function SupplierAnalyticsDashboard() {
                             </button>
                           </div>
                         </td>
+                        <td className="px-2 py-2 text-text-secondary font-medium">{item.marca || 'S/ MARCA'}</td>
+                        <td className="px-2 py-2 text-text-secondary">{item.categoria || 'S/ CATEGORIA'}</td>
                         <td className="px-2 py-2 text-right font-mono font-bold text-text-secondary">{formatBRL(custo)}</td>
                         <td className="px-2 py-2 text-right font-mono font-bold text-brand-500">{formatBRL(preco)}</td>
                         <td className="px-2 py-2 text-center font-mono font-bold text-success">{margemLucro.toFixed(1)}%</td>
@@ -945,10 +1118,10 @@ export default function SupplierAnalyticsDashboard() {
                       </tr>
                     );
                   })}
-                  {rawInventory.length === 0 && (
+                  {filteredCatalog.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="px-5 py-12 text-center text-text-secondary font-semibold">
-                        Nenhum produto cadastrado no catálogo deste fornecedor.
+                      <td colSpan={9} className="px-5 py-12 text-center text-text-secondary font-semibold">
+                        Nenhum produto encontrado para os filtros selecionados.
                       </td>
                     </tr>
                   )}
@@ -958,7 +1131,7 @@ export default function SupplierAnalyticsDashboard() {
 
             {/* Cards mobile — visível apenas em xs */}
             <div className="sm:hidden flex flex-col divide-y divide-divider/30">
-              {rawInventory.map((item: any, idx: number) => {
+              {filteredCatalog.map((item: any, idx: number) => {
                 const preco = parseFloat(item.preco || 0);
                 const custo = parseFloat(item.custo || 0);
                 const margemLucro = preco > 0 ? ((preco - custo) / preco) * 100 : 0;
@@ -973,6 +1146,7 @@ export default function SupplierAnalyticsDashboard() {
                       <div>
                         <span className="text-[10px] font-mono text-brand-500 font-bold">{item.cod}</span>
                         <p className="text-[11px] font-bold text-text-primary truncate max-w-[180px]">{item.desc}</p>
+                        <p className="text-[9.5px] text-text-secondary">{item.marca} • {item.categoria || 'S/ CATEGORIA'}</p>
                       </div>
                       <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-bold border ${statusClass}`}>{item.status}</span>
                     </div>
@@ -995,7 +1169,7 @@ export default function SupplierAnalyticsDashboard() {
               </h4>
               <p className="text-xs text-text-secondary mb-2">Produto com melhor projeção de margem do catálogo.</p>
               {(() => {
-                const items = [...rawInventory].sort((a, b) => {
+                const items = [...filteredCatalog].sort((a, b) => {
                   const mA = a.preco > 0 ? ((a.preco - a.custo) / a.preco) : 0;
                   const mB = b.preco > 0 ? ((b.preco - b.custo) / b.preco) : 0;
                   return mB - mA;

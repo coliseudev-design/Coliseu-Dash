@@ -31,7 +31,10 @@ import {
   MessageCircle,
   ArrowUpDown,
   Filter,
-  Wallet
+  Wallet,
+  Printer,
+  Copy,
+  Check
 } from 'lucide-react';
 import clsx from 'clsx';
 import {
@@ -113,10 +116,18 @@ export default function Radar360Dashboard() {
   const [clientSearch, setClientSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedCity, setSelectedCity] = useState('todas');
+  const [selectedSeller, setSelectedSeller] = useState('todas');
   const [saldoFilter, setSaldoFilter] = useState<'todos' | 'com_saldo' | 'sem_saldo'>('todos');
   const [sortOrder, setSortOrder] = useState<string>('nome_asc');
   const [clientPage, setClientPage] = useState(1);
   const CLIENTS_PER_PAGE = 50;
+
+  // Estados de exportação PDF / E-mail da carteira
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+  const [emailTo, setEmailTo] = useState('');
+  const [emailSubject, setEmailSubject] = useState('Relatório de Carteira de Clientes');
+  const [copiedReport, setCopiedReport] = useState(false);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -126,15 +137,17 @@ export default function Radar360Dashboard() {
     return () => clearTimeout(handler);
   }, [clientSearch]);
 
+  const effectiveSellerId = selectedSeller !== 'todas' ? selectedSeller : filter?.vendedor_id;
+
   const { data: clientListData, isLoading: isClientListLoading } = useQuery({
-    queryKey: ['bi', 'customer', 'list', debouncedSearch, selectedCity, saldoFilter, sortOrder, clientPage, filter?.depto_id, filter?.vendedor_id],
+    queryKey: ['bi', 'customer', 'list', debouncedSearch, selectedCity, effectiveSellerId, saldoFilter, sortOrder, clientPage, filter?.depto_id],
     queryFn: () => BIService.getCustomerList({
       search: debouncedSearch,
       cidade: selectedCity,
       com_saldo: saldoFilter,
       ordenacao: sortOrder,
       depto_id: filter?.depto_id,
-      vendedor_id: filter?.vendedor_id,
+      vendedor_id: effectiveSellerId,
       limit: CLIENTS_PER_PAGE,
       offset: (clientPage - 1) * CLIENTS_PER_PAGE
     } as any),
@@ -203,6 +216,130 @@ export default function Radar360Dashboard() {
     const totalPages = Math.max(1, Math.ceil(totalClients / CLIENTS_PER_PAGE));
     const clients = clientListData?.data || [];
     const availableCities = clientListData?.available_cities || [];
+    const availableSellers = clientListData?.available_sellers || [];
+    const selectedSellerName = selectedSeller === 'todas'
+      ? 'Todos os Vendedores'
+      : availableSellers.find(s => String(s.id) === String(selectedSeller))?.nome || selectedSeller;
+
+    const handlePortfolioPdf = async () => {
+      setIsGeneratingPdf(true);
+      try {
+        let reportClients = clients;
+        try {
+          const fullRes = await BIService.getCustomerList({
+            search: debouncedSearch,
+            cidade: selectedCity,
+            com_saldo: saldoFilter,
+            ordenacao: sortOrder,
+            depto_id: filter?.depto_id,
+            vendedor_id: effectiveSellerId,
+            limit: 500,
+            offset: 0
+          });
+          if (fullRes?.data?.length) reportClients = fullRes.data;
+        } catch {
+          // fallback to current page
+        }
+
+        const printWin = window.open('', '_blank', 'width=1150,height=850');
+        if (!printWin) {
+          alert('Permita pop-ups no navegador para gerar o PDF.');
+          return;
+        }
+        const html = `
+          <!DOCTYPE html>
+          <html lang="pt-BR">
+          <head>
+            <meta charset="UTF-8" />
+            <title>Relatório de Carteira de Clientes</title>
+            <style>
+              * { box-sizing: border-box; margin: 0; padding: 0; }
+              body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; color: #0f172a; padding: 20px; font-size: 10.5px; }
+              .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #2563eb; padding-bottom: 10px; margin-bottom: 12px; }
+              .title { font-size: 16px; font-weight: 800; text-transform: uppercase; }
+              .meta { text-align: right; font-size: 10px; color: #475569; }
+              .filters { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px; margin-bottom: 12px; font-size: 10px; }
+              table { width: 100%; border-collapse: collapse; font-size: 9.5px; }
+              th { background: #f1f5f9; color: #334155; font-weight: 800; text-transform: uppercase; text-align: left; padding: 6px; border-bottom: 1px solid #cbd5e1; }
+              td { padding: 5px 6px; border-bottom: 1px solid #e2e8f0; }
+              tr:nth-child(even) td { background: #f8fafc; }
+              .text-right { text-align: right; }
+              .font-mono { font-family: monospace; }
+              .font-bold { font-weight: 700; }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <div>
+                <div class="title">Relatório de Carteira de Clientes</div>
+                <div style="color:#475569;font-size:10px;margin-top:2px;">Listagem Geral com Telefones, Vendedor, Saldo Devedor e Faturamento</div>
+              </div>
+              <div class="meta">
+                <div><strong>Emitido em:</strong> ${new Date().toLocaleString('pt-BR')}</div>
+                <div><strong>Registros:</strong> ${reportClients.length} de ${totalClients} clientes</div>
+              </div>
+            </div>
+            <div class="filters">
+              <strong>Vendedor:</strong> ${selectedSellerName} &nbsp;•&nbsp;
+              <strong>Cidade:</strong> ${selectedCity === 'todas' ? 'Todas' : selectedCity} &nbsp;•&nbsp;
+              <strong>Saldo:</strong> ${saldoFilter === 'todos' ? 'Todos' : saldoFilter === 'com_saldo' ? 'Com Saldo Devedor' : 'Em Dia'}
+              ${debouncedSearch ? ` &nbsp;•&nbsp; <strong>Busca:</strong> "${debouncedSearch}"` : ''}
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Cód</th>
+                  <th>Cliente / Razão Social</th>
+                  <th>CNPJ / CPF</th>
+                  <th>Telefone</th>
+                  <th>Cidade / UF</th>
+                  <th>Vendedor Resp.</th>
+                  <th class="text-right">Saldo Devedor</th>
+                  <th class="text-right">Faturamento (LTV)</th>
+                  <th class="text-right">Pedidos</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${reportClients.map(c => `
+                  <tr>
+                    <td class="font-mono font-bold">${c.cod || c.id}</td>
+                    <td class="font-bold">${c.nome}</td>
+                    <td class="font-mono">${c.documento || c.cnpj || '—'}</td>
+                    <td class="font-mono font-bold">${parsePhone(c.telefone).display}</td>
+                    <td>${c.cidade || '—'}${c.estado ? `/${c.estado}` : ''}</td>
+                    <td>${c.vendedor_resp || '—'}</td>
+                    <td class="text-right font-mono">${formatCurrency(c.saldo_devedor || 0)}</td>
+                    <td class="text-right font-mono font-bold">${formatCurrency(c.ltv || 0)}</td>
+                    <td class="text-right font-mono">${c.total_pedidos || 0}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </body>
+          </html>
+        `;
+        printWin.document.open();
+        printWin.document.write(html);
+        printWin.document.close();
+        printWin.focus();
+        setTimeout(() => printWin.print(), 350);
+      } finally {
+        setIsGeneratingPdf(false);
+      }
+    };
+
+    const buildPortfolioEmailText = () => {
+      const lines = [
+        `RELATÓRIO DE CARTEIRA DE CLIENTES`,
+        `Emitido em: ${new Date().toLocaleString('pt-BR')}`,
+        `Vendedor: ${selectedSellerName} | Cidade: ${selectedCity === 'todas' ? 'Todas' : selectedCity} | Total: ${totalClients} clientes`,
+        `------------------------------------------------------------`,
+        ...clients.map(c =>
+          `• [${c.cod || c.id}] ${c.nome} | Tel: ${parsePhone(c.telefone).display} | Cidade: ${c.cidade || '—'}${c.estado ? `/${c.estado}` : ''} | Vend: ${c.vendedor_resp || '—'} | Saldo: ${formatCurrency(c.saldo_devedor || 0)} | LTV: ${formatCurrency(c.ltv || 0)} (${c.total_pedidos} ped.)`
+        )
+      ];
+      return lines.join('\n');
+    };
 
     return (
       <div aria-label="Cliente 360 Dashboard Inicial" className="space-y-3 animate-in fade-in duration-300 relative min-h-[85vh] pb-8">
@@ -215,7 +352,7 @@ export default function Radar360Dashboard() {
         {/* BARRA UNIFICADA COMPACTA DE FILTROS DA CARTEIRA */}
         <div className="bi-filter-bar">
           {/* BUSCA TEXTUAL */}
-          <div className="relative flex-1 min-w-[220px]">
+          <div className="relative flex-1 min-w-[200px]">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             <input
               type="text"
@@ -235,8 +372,27 @@ export default function Radar360Dashboard() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            {/* FILTRO POR VENDEDOR */}
+            <div className="relative min-w-[165px] max-w-[220px]">
+              <select
+                aria-label="Filtrar Carteira por Vendedor"
+                value={selectedSeller}
+                onChange={(e) => {
+                  setSelectedSeller(e.target.value);
+                  setClientPage(1);
+                }}
+                className="bi-select appearance-none w-full pr-7"
+              >
+                <option value="todas">Vendedor: Todos ({availableSellers.length})</option>
+                {availableSellers.map((v) => (
+                  <option key={v.id} value={v.id}>{v.nome}</option>
+                ))}
+              </select>
+              <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            </div>
+
             {/* FILTRO POR CIDADE */}
-            <div className="relative min-w-[160px] max-w-[210px]">
+            <div className="relative min-w-[155px] max-w-[200px]">
               <select
                 value={selectedCity}
                 onChange={(e) => {
@@ -254,7 +410,7 @@ export default function Radar360Dashboard() {
             </div>
 
             {/* FILTRO POR SALDO */}
-            <div className="relative min-w-[155px]">
+            <div className="relative min-w-[145px]">
               <select
                 value={saldoFilter}
                 onChange={(e) => {
@@ -271,7 +427,7 @@ export default function Radar360Dashboard() {
             </div>
 
             {/* ORDENAÇÃO */}
-            <div className="relative min-w-[175px]">
+            <div className="relative min-w-[160px]">
               <select
                 value={sortOrder}
                 onChange={(e) => {
@@ -292,6 +448,25 @@ export default function Radar360Dashboard() {
               <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             </div>
 
+            <button
+              type="button"
+              onClick={handlePortfolioPdf}
+              disabled={isGeneratingPdf}
+              className="h-8 px-3 bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white rounded-lg text-xs font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap"
+            >
+              <Printer size={13} />
+              <span>{isGeneratingPdf ? 'Gerando...' : 'Gerar PDF'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsEmailModalOpen(true)}
+              className="h-8 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap"
+            >
+              <Mail size={13} />
+              <span>E-mail</span>
+            </button>
+
             <div className="h-8 px-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 inline-flex items-center gap-1.5 whitespace-nowrap">
               <Users size={13} className="text-brand-500" />
               <span><strong className="text-slate-900 dark:text-white font-mono">{formatNum(totalClients)}</strong> clientes</span>
@@ -310,6 +485,7 @@ export default function Radar360Dashboard() {
                   <th className="py-3 px-3 min-w-[120px]">CIDADE / UF</th>
                   <th className="py-3 px-3 min-w-[120px]">CNPJ / CPF</th>
                   <th className="py-3 px-3 min-w-[130px]">TELEFONES</th>
+                  <th className="py-3 px-3 min-w-[140px]">VENDEDOR</th>
                   <th className="py-3 px-3 min-w-[180px] max-w-[220px]">E-MAIL</th>
                   <th className="py-3 px-3 text-right min-w-[100px]">SALDO DEVEDOR</th>
                   <th className="py-3 px-3 text-right min-w-[120px]">FATURAMENTO (LTV)</th>
@@ -399,6 +575,11 @@ export default function Radar360Dashboard() {
                           )}
                         </td>
 
+                        {/* VENDEDOR */}
+                        <td className="py-3 px-3 text-text-secondary min-w-[140px]">
+                          <span className="truncate max-w-[150px] block font-semibold">{c.vendedor_resp || '—'}</span>
+                        </td>
+
                         {/* E-MAIL */}
                         <td className="py-3 px-3 text-text-secondary min-w-[180px] max-w-[220px]">
                           <div className="flex items-center gap-1.5 lowercase font-medium" title={c.email || ''}>
@@ -483,6 +664,117 @@ export default function Radar360Dashboard() {
             </div>
           )}
         </div>
+
+        {/* MODAL DE ENVIO POR E-MAIL DA CARTEIRA */}
+        {isEmailModalOpen && (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-bg-primary border border-divider shadow-2xl rounded-2xl w-full max-w-2xl overflow-hidden flex flex-col">
+              <div className="px-5 py-3.5 border-b border-divider flex items-center justify-between bg-bg-secondary/40">
+                <div className="flex items-center gap-2">
+                  <Mail size={17} className="text-emerald-500" />
+                  <h3 className="text-sm font-extrabold text-text-primary uppercase tracking-wider">
+                    Enviar Relatório de Carteira por E-mail
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsEmailModalOpen(false)}
+                  className="p-1 text-text-secondary hover:text-text-primary rounded-lg cursor-pointer"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="p-5 space-y-4 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-bold text-text-secondary uppercase mb-1">
+                      E-mail do Destinatário
+                    </label>
+                    <input
+                      type="email"
+                      placeholder="exemplo@empresa.com.br"
+                      value={emailTo}
+                      onChange={(e) => setEmailTo(e.target.value)}
+                      className="w-full h-9 px-3 bg-bg-secondary border border-divider rounded-lg text-xs font-semibold text-text-primary outline-none focus:ring-2 focus:ring-brand-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-text-secondary uppercase mb-1">
+                      Assunto
+                    </label>
+                    <input
+                      type="text"
+                      value={emailSubject}
+                      onChange={(e) => setEmailSubject(e.target.value)}
+                      className="w-full h-9 px-3 bg-bg-secondary border border-divider rounded-lg text-xs font-semibold text-text-primary outline-none focus:ring-2 focus:ring-brand-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-text-secondary uppercase mb-1">
+                    Prévia do Relatório (Com Telefone, Vendedor e Saldo)
+                  </label>
+                  <textarea
+                    readOnly
+                    rows={10}
+                    value={buildPortfolioEmailText()}
+                    className="w-full p-3 bg-bg-secondary/60 border border-divider rounded-xl font-mono text-[10.5px] text-text-primary outline-none resize-y"
+                  />
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-divider">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handlePortfolioPdf}
+                      disabled={isGeneratingPdf}
+                      className="h-9 px-3.5 bg-brand-500 hover:bg-brand-600 text-white rounded-lg text-xs font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer"
+                    >
+                      <Printer size={14} />
+                      <span>Baixar / Imprimir PDF</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(buildPortfolioEmailText());
+                          setCopiedReport(true);
+                          setTimeout(() => setCopiedReport(false), 2500);
+                        } catch {}
+                      }}
+                      className="h-9 px-3.5 bg-bg-secondary hover:bg-bg-tertiary border border-divider text-text-primary rounded-lg text-xs font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer"
+                    >
+                      {copiedReport ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                      <span>{copiedReport ? 'Copiado!' : 'Copiar Texto'}</span>
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsEmailModalOpen(false)}
+                      className="h-9 px-3 text-text-secondary hover:text-text-primary font-bold text-xs cursor-pointer"
+                    >
+                      Fechar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const body = buildPortfolioEmailText();
+                        window.location.href = `mailto:${encodeURIComponent(emailTo.trim())}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(body.slice(0, 1800))}`;
+                      }}
+                      className="h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer"
+                    >
+                      <Mail size={14} />
+                      <span>Abrir no Cliente de E-mail</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

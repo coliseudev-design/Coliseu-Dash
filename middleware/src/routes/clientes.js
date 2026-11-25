@@ -64,7 +64,7 @@ router.get('/lista', async (req, res, next) => {
         )`);
 
         if (search) {
-            mainWhere.push(`(c.nome ILIKE $${bIdx} OR c.documento ILIKE $${bIdx})`);
+            mainWhere.push(`(c.nome ILIKE $${bIdx} OR c.documento ILIKE $${bIdx} OR c.telefone ILIKE $${bIdx} OR CAST(c.id_firebird AS TEXT) ILIKE $${bIdx})`);
             binds.push(`%${search}%`);
             bIdx++;
         }
@@ -82,6 +82,7 @@ router.get('/lista', async (req, res, next) => {
             filtered_clients AS (
                 SELECT 
                     c.id_firebird AS id, TRIM(c.nome) as nome, TRIM(c.documento) as documento, TRIM(c.cidade) as cidade, TRIM(c.estado) as estado,
+                    TRIM(c.telefone) as telefone, TRIM(c.email) as email,
                     COALESCE(s.qtd_pedidos, 0) as qtd_pedidos,
                     s.ultimo_pedido,
                     COALESCE(s.total_gasto, 0) as total_gasto,
@@ -143,6 +144,8 @@ router.get('/lista', async (req, res, next) => {
                 documento: r.documento,
                 cidade: r.cidade,
                 estado: r.estado,
+                telefone: r.telefone || '',
+                email: r.email || '',
                 vendedor_resp: r.vendedor_resp,
                 qtd_pedidos: parseInt(r.qtd_pedidos, 10),
                 ultimo_pedido: r.ultimo_pedido,
@@ -267,7 +270,11 @@ router.get('/analytics-full', async (req, res, next) => {
         const topRecurrentPromise = db.query(`
             SELECT 
                 c.id_firebird as id, 
-                TRIM(c.nome) as nome, 
+                TRIM(c.nome) as nome,
+                TRIM(c.telefone) as telefone,
+                TRIM(c.documento) as documento,
+                TRIM(c.cidade) as cidade,
+                TRIM(c.estado) as estado,
                 COUNT(DISTINCT v.id_firebird) as qtd_pedidos,
                 SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) as total_gasto,
                 MAX(COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda)) as ultimo_pedido
@@ -276,7 +283,7 @@ router.get('/analytics-full', async (req, res, next) => {
             WHERE v.tenant_id = $1 AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $${startIdx} AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $${endIdx}
               ${salesFilter}
               ${filterClause}
-            GROUP BY c.id_firebird, c.nome
+            GROUP BY c.id_firebird, c.nome, c.telefone, c.documento, c.cidade, c.estado
             ORDER BY qtd_pedidos DESC, total_gasto DESC
             LIMIT 10
         `, currentSalesParams);
@@ -285,8 +292,13 @@ router.get('/analytics-full', async (req, res, next) => {
         const topChurnPromise = db.query(`
             SELECT 
                 c.id_firebird as id, 
-                TRIM(c.nome) as nome, 
+                TRIM(c.nome) as nome,
+                TRIM(c.telefone) as telefone,
+                TRIM(c.documento) as documento,
+                TRIM(c.cidade) as cidade,
+                TRIM(c.estado) as estado,
                 COUNT(DISTINCT v.id_firebird) as qtd_pedidos,
+                SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) as total_gasto,
                 MAX(COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda)) as ultimo_pedido,
                 COALESCE(EXTRACT(DAY FROM (NOW() - MAX(COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda)))), 999) as dias_inativo
             FROM dash_clientes c
@@ -303,10 +315,26 @@ router.get('/analytics-full', async (req, res, next) => {
                   ${salesFilterV2}
                   ${subqueryFilterClause}
               )
-            GROUP BY c.id_firebird, c.nome
+            GROUP BY c.id_firebird, c.nome, c.telefone, c.documento, c.cidade, c.estado
             ORDER BY ultimo_pedido ASC
             LIMIT 10
         `, currentSalesParams);
+
+        // 7. Vendedores e Cidades disponíveis na carteira
+        const sellersListPromise = db.query(`
+            SELECT DISTINCT vd.id_firebird as id, TRIM(vd.nome) as nome
+            FROM dash_vendedores vd
+            WHERE vd.tenant_id = $1 AND vd.nome IS NOT NULL AND TRIM(vd.nome) != ''
+              AND EXISTS (SELECT 1 FROM dash_vendas vx WHERE vx.tenant_id = vd.tenant_id AND vx.vendedor_id_firebird = vd.id_firebird)
+            ORDER BY 2 ASC
+        `, [tenantId]);
+
+        const citiesListPromise = db.query(`
+            SELECT DISTINCT TRIM(c.cidade) as cidade
+            FROM dash_clientes c
+            WHERE c.tenant_id = $1 AND c.ativo = true AND c.cidade IS NOT NULL AND TRIM(c.cidade) != ''
+            ORDER BY 1 ASC
+        `, [tenantId]);
 
         const [
             totalClientsRes,
@@ -314,14 +342,18 @@ router.get('/analytics-full', async (req, res, next) => {
             prevActiveRes,
             newClientsRes,
             topRecurrentRes,
-            topChurnRes
+            topChurnRes,
+            sellersListRes,
+            citiesListRes
         ] = await Promise.all([
             totalClientsPromise,
             currentActivePromise,
             prevActivePromise,
             newClientsPromise,
             topRecurrentPromise,
-            topChurnPromise
+            topChurnPromise,
+            sellersListPromise,
+            citiesListPromise
         ]);
 
         const total_clientes = parseInt(totalClientsRes.rows[0]?.total || 0, 10);
@@ -338,10 +370,16 @@ router.get('/analytics-full', async (req, res, next) => {
                 sem_vendas_atual: Math.max(0, total_clientes - mes_atual),
                 sem_vendas_anterior: Math.max(0, total_clientes - mes_anterior),
             },
+            available_sellers: sellersListRes.rows.map(r => ({ id: String(r.id), nome: r.nome })),
+            available_cities: citiesListRes.rows.map(r => r.cidade),
             recorrentes: topRecurrentRes.rows.map((r, i) => ({
                 rank: i + 1,
                 id: r.id,
                 name: r.nome,
+                telefone: r.telefone || '',
+                documento: r.documento || '',
+                cidade: r.cidade || '',
+                estado: r.estado || '',
                 pedidos: parseInt(r.qtd_pedidos, 10),
                 ultimo_pedido: r.ultimo_pedido,
                 total_gasto: parseFloat(r.total_gasto || 0)
@@ -350,7 +388,12 @@ router.get('/analytics-full', async (req, res, next) => {
                 rank: i + 1,
                 id: r.id,
                 name: r.nome,
+                telefone: r.telefone || '',
+                documento: r.documento || '',
+                cidade: r.cidade || '',
+                estado: r.estado || '',
                 pedidos: parseInt(r.qtd_pedidos, 10),
+                total_gasto: parseFloat(r.total_gasto || 0),
                 ultimo_pedido: r.ultimo_pedido,
                 dias_inativo: parseInt(r.dias_inativo || 0, 10)
             }))

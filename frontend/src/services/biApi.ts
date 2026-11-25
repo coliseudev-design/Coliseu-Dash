@@ -51,6 +51,8 @@ export const BIService = {
     limit?: number; 
     offset?: number; 
     cidade?: string;
+    vendedor_id?: string;
+    depto_id?: number | string;
     com_saldo?: string | boolean;
     ordenacao?: string;
   }): Promise<{
@@ -64,6 +66,7 @@ export const BIService = {
       estado: string;
       telefone: string;
       email: string;
+      vendedor_resp?: string;
       status: string;
       ltv: number;
       saldo_devedor: number;
@@ -72,6 +75,7 @@ export const BIService = {
     }>;
     total: number;
     available_cities?: string[];
+    available_sellers?: Array<{ id: string; nome: string }>;
     limit: number;
     offset: number;
   }> => {

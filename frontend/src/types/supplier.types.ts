@@ -18,6 +18,12 @@ export interface SupplierAnalyticsResponse {
     margem: number;
   }>;
   available_brands: string[];
+  available_categories?: string[];
+  available_cities?: string[];
+  top_client?: string;
+  top_city?: string;
+  top_seller?: string;
+  skus_count?: number;
   total_company_revenue?: number;
   top_brands?: Array<{
     rank: number;
@@ -35,6 +41,7 @@ export interface SupplierAnalyticsResponse {
     desc: string;
     un: string;
     marca: string;
+    categoria?: string;
     estoque: number;
     custo: number;
     preco: number;
