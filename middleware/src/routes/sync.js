@@ -447,6 +447,28 @@ router.post('/:tabela', async (req, res) => {
 
         await client.query('COMMIT');
 
+        // Limpeza automática de registros órfãos (excluídos no Firebird antes do full sync que preencheu natureza_operacao)
+        if (tabela === 'dash_vendas' && rows.some(r => r && (r.natureza_operacao || r.NATUREZA_OPERACAO || r.natureza_descricao || r.NATUREZA_DESCRICAO))) {
+            db.query(`
+                WITH stats AS (
+                    SELECT
+                        COUNT(*) AS total,
+                        COUNT(*) FILTER (WHERE natureza_operacao IS NOT NULL AND TRIM(natureza_operacao) <> '') AS with_nat
+                    FROM dash_vendas
+                    WHERE tenant_id = $1 AND COALESCE(processo, 1) != 9
+                )
+                DELETE FROM dash_vendas v
+                USING stats s
+                WHERE v.tenant_id = $1
+                  AND COALESCE(v.processo, 1) != 9
+                  AND v.natureza_id IS NOT NULL
+                  AND v.natureza_operacao IS NULL
+                  AND v.sincronizado_em < (NOW() - INTERVAL '6 hours')
+                  AND s.total > 50
+                  AND (s.with_nat::numeric / NULLIF(s.total, 0)) >= 0.995
+            `, [tenantId]).catch(() => {});
+        }
+
         // Quando recebe lote de dash_cargas, sincroniza o espelho fiscal (processo = 9) em dash_vendas e dash_vendas_itens
         if (tabela === 'dash_cargas') {
             const chavesAcesso = rows

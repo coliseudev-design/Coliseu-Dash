@@ -269,7 +269,23 @@ router.get('/caixa', async (req, res, next) => {
             )
             SELECT 
                 CASE 
-                    WHEN UPPER(especie_nome) LIKE '%CARTAO%' OR UPPER(especie_nome) LIKE '%CARTÃO%' OR UPPER(especie_nome) LIKE '%DINHEIRO%' OR UPPER(especie_nome) LIKE '%PIX%' THEN 'VISTA_CAIXA'
+                    WHEN UPPER(especie_nome) LIKE '%A CONFIRMAR%'
+                      OR UPPER(especie_nome) LIKE '%PRAZO%'
+                      OR UPPER(especie_nome) LIKE '%BOLETO%'
+                      OR UPPER(especie_nome) LIKE '%NOTA ASSINADA%'
+                      OR UPPER(especie_nome) LIKE '%DUPLICATA%'
+                    THEN 'PRAZO'
+                    WHEN UPPER(especie_nome) LIKE '%CARTAO%'
+                      OR UPPER(especie_nome) LIKE '%CARTÃO%'
+                      OR UPPER(especie_nome) LIKE '%DEBITO%'
+                      OR UPPER(especie_nome) LIKE '%DÉBITO%'
+                      OR UPPER(especie_nome) LIKE '%CREDITO%'
+                      OR UPPER(especie_nome) LIKE '%CRÉDITO%'
+                      OR UPPER(especie_nome) LIKE '%DINHEIRO%'
+                      OR UPPER(especie_nome) LIKE '%PIX%'
+                      OR UPPER(especie_nome) LIKE '%SEM PAGAMENTO%'
+                      OR UPPER(especie_nome) LIKE '%VISTA%'
+                    THEN 'VISTA_CAIXA'
                     ELSE 'PRAZO'
                 END as grupo,
                 especie_nome,
