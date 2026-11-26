@@ -172,6 +172,8 @@ function getPeriodRange(period, startDate, endDate, anchorDate) {
 
 /**
  * Dado um período (strings no formato SQL seguro), calcula o período equivalente imediatamente anterior.
+ * Se o período atual corresponder a um mês-calendário completo (dia 1 até o último dia do mês),
+ * retorna o mês-calendário imediatamente anterior completo (evitando deslocamentos de 30 vs 31 dias).
  */
 function getPreviousPeriodRange(startSqlStr, endSqlStr) {
     const startDateObj = parseDateString(startSqlStr, 'T00:00:00Z');
@@ -181,13 +183,48 @@ function getPreviousPeriodRange(startSqlStr, endSqlStr) {
         return { prevStart: startSqlStr, prevEnd: endSqlStr };
     }
 
+    const sYear = startDateObj.getUTCFullYear();
+    const sMonth = startDateObj.getUTCMonth();
+    const sDay = startDateObj.getUTCDate();
+
+    const eYear = endDateObj.getUTCFullYear();
+    const eMonth = endDateObj.getUTCMonth();
+    const eDay = endDateObj.getUTCDate();
+    const lastDayOfEndMonth = new Date(Date.UTC(eYear, eMonth + 1, 0)).getUTCDate();
+
+    // Caso 1: Mês-calendário fechado completo (ex: thisMonth ou lastMonth)
+    if (sYear === eYear && sMonth === eMonth && sDay === 1 && eDay === lastDayOfEndMonth) {
+        const prevMonthStart = new Date(Date.UTC(sYear, sMonth - 1, 1, 0, 0, 0, 0));
+        const prevMonthEnd = new Date(Date.UTC(sYear, sMonth, 0, 23, 59, 59, 999));
+        return {
+            prevStart: toSafeSqlString(prevMonthStart),
+            prevEnd: toSafeSqlString(prevMonthEnd),
+            prevStartObj: prevMonthStart,
+            prevEndObj: prevMonthEnd
+        };
+    }
+
+    // Caso 2: Ano-calendário fechado completo (01/01 a 31/12)
+    if (sYear === eYear && sMonth === 0 && sDay === 1 && eMonth === 11 && eDay === 31) {
+        const prevYearStart = new Date(Date.UTC(sYear - 1, 0, 1, 0, 0, 0, 0));
+        const prevYearEnd = new Date(Date.UTC(sYear - 1, 11, 31, 23, 59, 59, 999));
+        return {
+            prevStart: toSafeSqlString(prevYearStart),
+            prevEnd: toSafeSqlString(prevYearEnd),
+            prevStartObj: prevYearStart,
+            prevEndObj: prevYearEnd
+        };
+    }
+
     const diffTime = Math.abs(endDateObj.getTime() - startDateObj.getTime());
     const prevEndObj = new Date(startDateObj.getTime() - 1);
     const prevStartObj = new Date(prevEndObj.getTime() - diffTime);
 
     return {
         prevStart: toSafeSqlString(prevStartObj),
-        prevEnd: toSafeSqlString(prevEndObj)
+        prevEnd: toSafeSqlString(prevEndObj),
+        prevStartObj,
+        prevEndObj
     };
 }
 

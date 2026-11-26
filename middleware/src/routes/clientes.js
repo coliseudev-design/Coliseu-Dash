@@ -176,12 +176,8 @@ router.get('/analytics-full', async (req, res, next) => {
         const anchorDate = new Date(Date.now() + (tzOffset * 60 * 1000));
         const { start, end } = getPeriodRange(period, start_date, end_date, anchorDate);
 
-        // Período anterior
-        const startDateObj = new Date(start);
-        const endDateObj = new Date(end);
-        const diffMs = endDateObj.getTime() - startDateObj.getTime();
-        const prevStart = new Date(startDateObj.getTime() - diffMs - 1);
-        const prevEnd = new Date(startDateObj.getTime() - 1);
+        // Período anterior (respeitando mês-calendário completo quando aplicável)
+        const { prevStartObj: prevStart, prevEndObj: prevEnd } = require('../utils/period').getPreviousPeriodRange(start, end);
 
         const salesFilter = cfopUtil.getSalesFilterClause('v');
         const salesFilterV2 = cfopUtil.getSalesFilterClause('v2');

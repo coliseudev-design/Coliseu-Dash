@@ -3,7 +3,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db/postgres');
-const { getPeriodRange, toSafeSqlString, parseDateString } = require('../utils/period');
+const { getPeriodRange, getPreviousPeriodRange, toSafeSqlString, parseDateString } = require('../utils/period');
 const { 
     buildDeptoFilter, 
     buildCentroCustoFilter, 
@@ -72,10 +72,9 @@ router.get('/sales/executive-summary', async (req, res, next) => {
         const needsCidadeJoin = (cidade && cidade !== 'todas' && cidade !== 'all' && cidade !== 'TODOS');
         const cidadeJoin = needsCidadeJoin ? 'LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id' : '';
         
-        // Calcular período anterior de mesmo tamanho
-        const diffTime = Math.abs(end - start);
-        const prevEnd = new Date(start.getTime() - 1);
-        const prevStart = new Date(prevEnd.getTime() - diffTime);        // Define helper getDevQuery
+        // Calcular período anterior (respeitando mês-calendário completo quando aplicável)
+        const { prevStartObj: prevStart, prevEndObj: prevEnd } = getPreviousPeriodRange(toSafeSqlString(start), toSafeSqlString(end));
+        // Define helper getDevQuery
         const getDevQuery = (startStr, endStr) => {
             let sql = `SELECT COALESCE(SUM(d.valor), 0) AS total FROM dash_devolucoes d`;
             let params = [tenantId, startStr, endStr];
@@ -3079,9 +3078,9 @@ router.get('/seller/summary', async (req, res, next) => {
             prevStart = new Date(ano, mes - 2, 1, 0, 0, 0, 0);
             prevEnd = new Date(ano, mes - 1, 0, 23, 59, 59, 999);
         } else {
-            const diffMs = end.getTime() - start.getTime();
-            prevStart = new Date(start.getTime() - diffMs - 1);
-            prevEnd = new Date(start.getTime() - 1);
+            const prevRange = getPreviousPeriodRange(toSafeSqlString(start), toSafeSqlString(end));
+            prevStart = prevRange.prevStartObj;
+            prevEnd = prevRange.prevEndObj;
         }
 
         const salesFilter = cfopUtil.getSalesFilterClause('v');

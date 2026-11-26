@@ -71,14 +71,8 @@ router.get('/overview', async (req, res, next) => {
         const devHoje = getDevQuery(startHojeStr, endHojeStr);
         const devMes = getDevQuery(start, end);
 
-        // Calcular período anterior de mesmo tamanho
-        const startDateObj = new Date(start);
-        const endDateObj = new Date(end);
-        const diffTime = Math.abs(endDateObj.getTime() - startDateObj.getTime());
-        const prevEndObj = new Date(startDateObj.getTime() - 1);
-        const prevStartObj = new Date(prevEndObj.getTime() - diffTime);
-        const prevStart = require('../utils/period').toSafeSqlString(prevStartObj);
-        const prevEnd = require('../utils/period').toSafeSqlString(prevEndObj);
+        // Calcular período anterior (respeitando mês-calendário completo quando aplicável)
+        const { prevStart, prevEnd } = require('../utils/period').getPreviousPeriodRange(start, end);
         const devAnterior = getDevQuery(prevStart, prevEnd);
 
         // ORDEM BIVETSEED: exatamente 12 resultados
@@ -271,12 +265,8 @@ router.get('/visao-estrategica', async (req, res, next) => {
         const salesFilter = cfopUtil.getSalesFilterClause('v');
 
         // Ranges para os comparativos
-        // 1. Mês Anterior (período anterior de mesmo tamanho ou mês anterior)
-        const diffTime = Math.abs(endDateObj.getTime() - startDateObj.getTime());
-        const prevEndObj = new Date(startDateObj.getTime() - 1);
-        const prevStartObj = new Date(prevEndObj.getTime() - diffTime);
-        const prevStartStr = require('../utils/period').toSafeSqlString(prevStartObj);
-        const prevEndStr = require('../utils/period').toSafeSqlString(prevEndObj);
+        // 1. Mês Anterior (mês-calendário anterior completo ou período equivalente anterior)
+        const { prevStart: prevStartStr, prevEnd: prevEndStr } = require('../utils/period').getPreviousPeriodRange(start, end);
 
         // 2. Mesmo Período Ano Anterior (-1 ano)
         const samePeriodPrevYearStartObj = new Date(startDateObj);
