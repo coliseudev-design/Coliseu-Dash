@@ -266,6 +266,9 @@ router.post('/:tabela', async (req, res) => {
                     
                     row['data_venda'] = effectiveDate;
                     row['data_vencimento'] = effectiveDate;
+                    if (isOrcamento) {
+                        row['data_hora_proc'] = null;
+                    }
 
                     // Alinhamento Cirurgico com ERP Coliseu (Gerencia Geral):
                     // Em Firebird/Coliseu ERP, PEDIDOS_DOCS (especie) contem os titulos/documentos financeiros reais

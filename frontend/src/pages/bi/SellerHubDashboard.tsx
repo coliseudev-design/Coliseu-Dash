@@ -591,6 +591,54 @@ export default function SellerHubDashboard() {
             </table>
           </div>
         )}
+
+        {/* Listagem detalhada de Pedidos em Aberto / Orçamentos quando houver registros */}
+        {orcamentosLista.length > 0 && (
+          <div className="mt-4 overflow-x-auto border border-amber-500/20 rounded-xl bg-amber-500/5">
+            <div className="px-3.5 py-2.5 border-b border-amber-500/20 flex items-center justify-between">
+              <span className="text-[11px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider">
+                Relação de Pedidos em Aberto / Orçamentos ({orcamentosLista.length})
+              </span>
+              <span className="text-[10px] font-bold text-text-secondary">
+                Últimos orçamentos no período selecionado
+              </span>
+            </div>
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-bg-secondary/60 border-b border-border text-[10px] font-black text-text-secondary uppercase tracking-wider">
+                  <th className="py-2 px-3">Nº Pedido</th>
+                  <th className="py-2 px-3">Cliente</th>
+                  <th className="py-2 px-3">Data</th>
+                  <th className="py-2 px-3">Status</th>
+                  <th className="py-2 px-3 text-right">Valor em Aberto</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/60 text-xs">
+                {orcamentosLista.map((orc: any) => (
+                  <tr key={orc.cod} className="hover:bg-bg-secondary/40 transition-colors">
+                    <td className="py-2 px-3 font-mono font-bold text-text-primary">
+                      #{orc.numero_pedido || orc.cod}
+                    </td>
+                    <td className="py-2 px-3 font-medium text-text-primary uppercase truncate max-w-[260px]">
+                      {orc.cliente}
+                    </td>
+                    <td className="py-2 px-3 font-mono text-text-secondary">
+                      {orc.data}
+                    </td>
+                    <td className="py-2 px-3">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-md font-mono font-black text-[10px] bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                        {orc.status || 'ABERTO'}
+                      </span>
+                    </td>
+                    <td className="py-2 px-3 text-right font-mono font-bold text-amber-600 dark:text-amber-400">
+                      {formatBRL(orc.valor)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* 6. SEÇÃO: DESEMPENHO POR MARCA */}

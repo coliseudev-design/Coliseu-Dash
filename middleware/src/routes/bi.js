@@ -3518,40 +3518,48 @@ router.get('/seller/summary', async (req, res, next) => {
         }
 
         // 12. Orçamentos e Taxa de Conversão do Vendedor (e comparativo entre vendedores)
+        const dfOrcList = buildDeptoFilter(deptoId, 5, 'v');
+        const cfOrcList = buildCidadeFilter(cidade, 5 + dfOrcList.params.length, 'c');
+        const orcListParams = [tenantId, toSafeSqlString(start), toSafeSqlString(end), resolvedSellerParam, ...dfOrcList.params, ...cfOrcList.params];
+        const dfOrcRank = buildDeptoFilter(deptoId, 4, 'v');
+
         const orcamentosRes = await db.query(`
             SELECT 
                 COUNT(DISTINCT v.id_firebird) AS orcamentos_qtd,
-                COALESCE(SUM(v.valor_total - COALESCE(v.valor_desconto, 0)), 0) AS orcamentos_valor
+                COALESCE(SUM(${sellerValueExpr}), 0) AS orcamentos_valor
             FROM dash_vendas v
+            ${salesJoins}
             WHERE v.tenant_id = $1
-              AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2
-              AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
+              AND COALESCE(v.data_venda, v.data_hora_proc, v.data_vencimento) >= $2
+              AND COALESCE(v.data_venda, v.data_hora_proc, v.data_vencimento) <= $3
               AND ($4::int IS NULL OR v.vendedor_id_firebird = $4::int)
               AND UPPER(TRIM(v.status)) IN ('ABERTO', 'ORÇAMENTO', 'ORCAMENTO', 'PENDENTE')
-              AND COALESCE(v.processo, 1) != 2
+              AND COALESCE(v.processo, 1) NOT IN (2, 9)
               AND COALESCE(v.valor_total, 0) > 0
-        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), resolvedSellerParam]);
+              ${df.clause} ${cf.clause} ${mf.clause}
+        `, getQueryParams(start, end));
 
         const orcamentosListaRes = await db.query(`
             SELECT 
                 v.id_firebird AS id,
                 v.numero_pedido,
                 COALESCE(NULLIF(TRIM(c.nome), ''), 'Consumidor') AS cliente,
-                TO_CHAR(COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda), 'DD/MM/YYYY') AS data,
+                TO_CHAR(COALESCE(v.data_venda, v.data_hora_proc, v.data_vencimento), 'DD/MM/YYYY') AS data,
                 (v.valor_total - COALESCE(v.valor_desconto, 0)) AS valor,
                 TRIM(v.status) AS status
             FROM dash_vendas v
             LEFT JOIN dash_clientes c ON c.id_firebird = v.cliente_id_firebird AND c.tenant_id = v.tenant_id
             WHERE v.tenant_id = $1
-              AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2
-              AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
+              AND COALESCE(v.data_venda, v.data_hora_proc, v.data_vencimento) >= $2
+              AND COALESCE(v.data_venda, v.data_hora_proc, v.data_vencimento) <= $3
               AND ($4::int IS NULL OR v.vendedor_id_firebird = $4::int)
               AND UPPER(TRIM(v.status)) IN ('ABERTO', 'ORÇAMENTO', 'ORCAMENTO', 'PENDENTE')
-              AND COALESCE(v.processo, 1) != 2
+              AND COALESCE(v.processo, 1) NOT IN (2, 9)
               AND COALESCE(v.valor_total, 0) > 0
-            ORDER BY COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) DESC, v.id_firebird DESC
-            LIMIT 30
-        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), resolvedSellerParam]);
+              ${dfOrcList.clause} ${cfOrcList.clause}
+            ORDER BY COALESCE(v.data_venda, v.data_hora_proc, v.data_vencimento) DESC, v.id_firebird DESC
+            LIMIT 50
+        `, orcListParams);
 
         const orcamentosRankingRes = await db.query(`
             WITH fat_v AS (
@@ -3563,7 +3571,7 @@ router.get('/seller/summary', async (req, res, next) => {
                 WHERE v.tenant_id = $1
                   AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2
                   AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
-                  ${salesFilter}
+                  ${salesFilter} ${dfOrcRank.clause}
                 GROUP BY v.vendedor_id_firebird
             ),
             orc_v AS (
@@ -3573,11 +3581,12 @@ router.get('/seller/summary', async (req, res, next) => {
                     COALESCE(SUM(v.valor_total - COALESCE(v.valor_desconto, 0)), 0) AS orcamentos_valor
                 FROM dash_vendas v
                 WHERE v.tenant_id = $1
-                  AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $2
-                  AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $3
+                  AND COALESCE(v.data_venda, v.data_hora_proc, v.data_vencimento) >= $2
+                  AND COALESCE(v.data_venda, v.data_hora_proc, v.data_vencimento) <= $3
                   AND UPPER(TRIM(v.status)) IN ('ABERTO', 'ORÇAMENTO', 'ORCAMENTO', 'PENDENTE')
-                  AND COALESCE(v.processo, 1) != 2
+                  AND COALESCE(v.processo, 1) NOT IN (2, 9)
                   AND COALESCE(v.valor_total, 0) > 0
+                  ${dfOrcRank.clause}
                 GROUP BY v.vendedor_id_firebird
             )
             SELECT 
@@ -3592,7 +3601,7 @@ router.get('/seller/summary', async (req, res, next) => {
             LEFT JOIN dash_vendedores vend ON vend.id_firebird = COALESCE(f.vendedor_id_firebird, o.vendedor_id_firebird) AND vend.tenant_id = $1
             WHERE COALESCE(f.vendedor_id_firebird, o.vendedor_id_firebird) IS NOT NULL
             ORDER BY valor_efetivado DESC, orcamentos_valor DESC
-        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end)]);
+        `, [tenantId, toSafeSqlString(start), toSafeSqlString(end), ...dfOrcRank.params]);
 
         const orcamentos_qtd = parseInt(orcamentosRes.rows[0]?.orcamentos_qtd || 0, 10);
         const orcamentos_valor = parseFloat(orcamentosRes.rows[0]?.orcamentos_valor || 0);
