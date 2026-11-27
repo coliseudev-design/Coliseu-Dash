@@ -86,7 +86,7 @@ export default function PurchasesDashboard() {
       cidade: fornecedorCidade,
       status: fornecedorStatus !== 'todos' ? fornecedorStatus : undefined
     }),
-    enabled: activeTab === 'fornecedores' || activeTab === 'resumo'
+    enabled: activeTab === 'fornecedores'
   });
 
   // 3. Query: Ficha do Fornecedor selecionado
@@ -112,18 +112,21 @@ export default function PurchasesDashboard() {
   const fornecedoresSelectQuery = useQuery({
     queryKey: ['bi-compras-fornecedores-select'],
     queryFn: () => BIService.getComprasFornecedoresSelect(),
+    enabled: activeTab === 'confronto'
   });
 
   // 6. Query: Clientes e Fornecedores para Select de Baixa/Saída
   const clientesSelectQuery = useQuery({
     queryKey: ['bi-compras-clientes-select'],
     queryFn: () => BIService.getComprasClientesSelect(),
+    enabled: activeTab === 'baixa_saida' || isBaixaModalOpen
   });
 
   // 7. Query: Produtos com Estoque para Select de Baixa/Saída
   const produtosSelectQuery = useQuery({
     queryKey: ['bi-compras-produtos-select'],
     queryFn: () => BIService.getComprasProdutosSelect(),
+    enabled: activeTab === 'baixa_saida' || isBaixaModalOpen
   });
 
   // 8. Query: Histórico de Movimentações (Baixas e Entradas)

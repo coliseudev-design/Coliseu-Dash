@@ -73,8 +73,8 @@ export default function CustomerAnalyticsDashboard() {
   const [selectedCidade, setSelectedCidade] = useState<string>('todas');
 
   // Listas auxiliares para os filtros suspensos
-  const sellersQuery = useBranchPeriodQuery<any>('/ranking/vendedores', { limit: 200 });
-  const citiesQuery = useBranchPeriodQuery<any>('/ranking/cidades', { limit: 200 });
+  const sellersQuery = useBranchPeriodQuery<any>('/ranking/vendedores', { limit: 100 });
+  const citiesQuery = useBranchPeriodQuery<any>('/ranking/cidades', { limit: 100 });
 
   // Estados locais da listagem geral
   const [search, setSearch] = useState<string>('');

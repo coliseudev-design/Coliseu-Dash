@@ -27,6 +27,7 @@ export function useBiPeriodQuery<TData, TError = unknown>(
   return useQuery<TData, TError>({
     queryKey: [...queryKey, mergedFilter],
     queryFn: () => fetchFn(mergedFilter),
+    placeholderData: (previousData: any) => previousData,
     ...options,
   });
 }

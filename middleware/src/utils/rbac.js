@@ -2,6 +2,24 @@
 
 const db = require('../db/postgres');
 
+const permissionsCache = new Map();
+const allowedSellersCache = new Map();
+const RBAC_CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutos
+
+function invalidateRbacCache(tenantId = null) {
+    if (!tenantId) {
+        permissionsCache.clear();
+        allowedSellersCache.clear();
+        return;
+    }
+    for (const key of permissionsCache.keys()) {
+        if (key.startsWith(`${tenantId}:`)) permissionsCache.delete(key);
+    }
+    for (const key of allowedSellersCache.keys()) {
+        if (key.startsWith(`${tenantId}:`)) allowedSellersCache.delete(key);
+    }
+}
+
 /**
  * Recupera a lista de permissões ativa para o usuário do tenant correspondente.
  * @param {number|string} userId
@@ -9,6 +27,12 @@ const db = require('../db/postgres');
  * @returns {Promise<string[]>}
  */
 async function getUserPermissions(userId, tenantId) {
+    const cacheKey = `${tenantId}:${userId}`;
+    const cached = permissionsCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+        return cached.data;
+    }
+
     const userRes = await db.query(
         'SELECT id, role, grupo_id, versao, permissions FROM dash_usuarios WHERE id = $1 AND tenant_id = $2',
         [userId, tenantId]
@@ -31,6 +55,7 @@ async function getUserPermissions(userId, tenantId) {
 
     // Se for master, tem acesso irrestrito a todos os layouts e abas
     if (user.role === 'master') {
+        permissionsCache.set(cacheKey, { data: allAdminPermissions, expiresAt: Date.now() + RBAC_CACHE_TTL_MS });
         return allAdminPermissions;
     }
 
@@ -45,7 +70,9 @@ async function getUserPermissions(userId, tenantId) {
     );
 
     if (permRes.rowCount > 0) {
-        return permRes.rows.map(r => r.recurso);
+        const perms = permRes.rows.map(r => r.recurso);
+        permissionsCache.set(cacheKey, { data: perms, expiresAt: Date.now() + RBAC_CACHE_TTL_MS });
+        return perms;
     }
 
     // Fallback: se não achar na tabela associativa, mas tiver o grupo_id no usuário
@@ -54,18 +81,23 @@ async function getUserPermissions(userId, tenantId) {
             'SELECT recurso FROM dash_permissoes WHERE grupo_id = $1 AND pode_acessar = true',
             [user.grupo_id]
         );
-        return legacyPermRes.rows.map(r => r.recurso);
+        const perms = legacyPermRes.rows.map(r => r.recurso);
+        permissionsCache.set(cacheKey, { data: perms, expiresAt: Date.now() + RBAC_CACHE_TTL_MS });
+        return perms;
     }
 
     // Se for administrador do tenant e não tiver grupo associado, libera todos os acessos do layout dele por padrão
     if (user.role === 'admin') {
+        permissionsCache.set(cacheKey, { data: allAdminPermissions, expiresAt: Date.now() + RBAC_CACHE_TTL_MS });
         return allAdminPermissions;
     }
 
     // Fallback: permissões estáticas do campo antigo
     if (user.permissions) {
         try {
-            return typeof user.permissions === 'string' ? JSON.parse(user.permissions) : user.permissions;
+            const perms = typeof user.permissions === 'string' ? JSON.parse(user.permissions) : user.permissions;
+            permissionsCache.set(cacheKey, { data: perms, expiresAt: Date.now() + RBAC_CACHE_TTL_MS });
+            return perms;
         } catch (e) {
             return [];
         }
@@ -85,6 +117,13 @@ async function getUserAllowedSellers(userId, tenantId) {
     if (!userId || userId === '00000000-0000-0000-0000-000000000000' || !/^\d+$/.test(String(userId))) {
         return null;
     }
+
+    const cacheKey = `${tenantId}:${userId}`;
+    const cached = allowedSellersCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+        return cached.data;
+    }
+
     const userRes = await db.query(
         'SELECT id, role, grupo_id, versao FROM dash_usuarios WHERE id = $1 AND tenant_id = $2',
         [userId, tenantId]
@@ -96,6 +135,7 @@ async function getUserAllowedSellers(userId, tenantId) {
 
     // Se for master, tem acesso a todos os vendedores
     if (user.role === 'master') {
+        allowedSellersCache.set(cacheKey, { data: null, expiresAt: Date.now() + RBAC_CACHE_TTL_MS });
         return null;
     }
 
@@ -121,15 +161,15 @@ async function getUserAllowedSellers(userId, tenantId) {
 
     // Se o usuário não tiver grupo cadastrado, e for admin, vê todos
     if (checkGroups.length === 0) {
-        if (user.role === 'admin') {
-            return null;
-        }
-        return []; // Se não for admin e não tiver grupo, restringe tudo
+        const res = user.role === 'admin' ? null : [];
+        allowedSellersCache.set(cacheKey, { data: res, expiresAt: Date.now() + RBAC_CACHE_TTL_MS });
+        return res;
     }
 
     // Se qualquer um dos grupos permitir todos os vendedores, retorna null
     const permitAll = checkGroups.some(g => g.vendedores_todos === true || g.vendedores_todos === null);
     if (permitAll) {
+        allowedSellersCache.set(cacheKey, { data: null, expiresAt: Date.now() + RBAC_CACHE_TTL_MS });
         return null;
     }
 
@@ -140,10 +180,13 @@ async function getUserAllowedSellers(userId, tenantId) {
         [groupIds]
     );
 
-    return sellersRes.rows.map(r => r.vendedor_id);
+    const allowed = sellersRes.rows.map(r => r.vendedor_id);
+    allowedSellersCache.set(cacheKey, { data: allowed, expiresAt: Date.now() + RBAC_CACHE_TTL_MS });
+    return allowed;
 }
 
 module.exports = {
     getUserPermissions,
-    getUserAllowedSellers
+    getUserAllowedSellers,
+    invalidateRbacCache
 };

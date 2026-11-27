@@ -14,6 +14,7 @@ export function useApiQuery<T = unknown>(
       const { data } = await api.get<T>(endpoint, { params })
       return data
     },
+    placeholderData: (previousData: any) => previousData,
     ...options,
   })
 }

@@ -92,7 +92,8 @@ export default function FinancialIntelligenceDashboard() {
       end_date: periodState.endDate,
       ...(selectedCaixa !== 'todos' ? { caixa_id: selectedCaixa } : {}),
       ...branchParam
-    }
+    },
+    { enabled: activeTab === 'fluxo' }
   );
   const fluxoList = fluxoRes?.fluxo || [];
 
@@ -106,7 +107,8 @@ export default function FinancialIntelligenceDashboard() {
       ...(selectedCaixa !== 'todos' ? { caixa_id: selectedCaixa } : {}),
       ...branchParam,
       limit: 500
-    }
+    },
+    { enabled: activeTab === 'titulos' }
   );
   const resumoVendedores = titulosRes?.resumo_vendedores || [];
   const titulos = useMemo(() => {
@@ -123,17 +125,19 @@ export default function FinancialIntelligenceDashboard() {
 
   // 4. Dados da aba Caixas
   const caixaParams = {
+    ...periodToParams(periodState),
     ...(selectedCaixa !== 'todos' ? { caixa_id: selectedCaixa } : {}),
     ...branchParam
   };
-  const caixaSummary = usePeriodQuery<any>('/financeiro/caixa', caixaParams);
-  const caixasMovimentos = usePeriodQuery<any>('/financeiro/contas', {
+  const caixaSummary = useApiQuery<any>('/financeiro/caixa', caixaParams, { enabled: activeTab === 'caixas' });
+  const caixasMovimentos = useApiQuery<any>('/financeiro/contas', {
+    ...periodToParams(periodState),
     status: 'PAGO',
     limit: 250,
     apenas_vendas: apenasVendas,
     ...(selectedCaixa !== 'todos' ? { caixa_id: selectedCaixa } : {}),
     ...branchParam
-  });
+  }, { enabled: activeTab === 'caixas' });
   const movimentos = caixasMovimentos.data?.data || [];
 
   // Constrói lista de espécies de saldo no caixa

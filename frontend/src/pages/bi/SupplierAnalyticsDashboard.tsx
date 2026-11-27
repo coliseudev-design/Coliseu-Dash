@@ -65,9 +65,12 @@ export default function SupplierAnalyticsDashboard() {
   const [selectedCity, setSelectedCity] = useState('');
   const [stockSearch, setStockSearch] = useState('');
   const [stockSort, setStockSort] = useState('alto'); // 'alto', 'baixo', 'custo'
+  const [stockPage, setStockPage] = useState(1);
   const [catalogSearch, setCatalogSearch] = useState('');
   const [catalogSort, setCatalogSort] = useState('estoque_desc');
+  const [catalogPage, setCatalogPage] = useState(1);
   const [selectedProductCode, setSelectedProductCode] = useState<string | null>(null);
+  const ITEMS_PER_PAGE = 80;
 
   const supplierFilter = { ...filter, marca: selectedBrand, cidade: selectedCity };
 
@@ -157,7 +160,34 @@ export default function SupplierAnalyticsDashboard() {
     return result;
   }, [rawInventory, catalogSearch, selectedBrand, selectedCategory, catalogSort]);
 
-  if (isLoading) {
+  const totalStockPages = Math.max(1, Math.ceil(filteredInventory.length / ITEMS_PER_PAGE));
+  const safeStockPage = Math.min(stockPage, totalStockPages);
+  const paginatedInventory = useMemo(
+    () => filteredInventory.slice((safeStockPage - 1) * ITEMS_PER_PAGE, safeStockPage * ITEMS_PER_PAGE),
+    [filteredInventory, safeStockPage]
+  );
+
+  const totalCatalogPages = Math.max(1, Math.ceil(filteredCatalog.length / ITEMS_PER_PAGE));
+  const safeCatalogPage = Math.min(catalogPage, totalCatalogPages);
+  const paginatedCatalog = useMemo(
+    () => filteredCatalog.slice((safeCatalogPage - 1) * ITEMS_PER_PAGE, safeCatalogPage * ITEMS_PER_PAGE),
+    [filteredCatalog, safeCatalogPage]
+  );
+
+  const bestCatalogMarginItem = useMemo(() => {
+    let best: any = null;
+    let bestMargin = -Infinity;
+    for (const item of filteredCatalog) {
+      const m = item.preco > 0 ? (item.preco - item.custo) / item.preco : 0;
+      if (m > bestMargin) {
+        bestMargin = m;
+        best = item;
+      }
+    }
+    return best;
+  }, [filteredCatalog]);
+
+  if (isLoading && !data) {
     return (
       <div className="flex items-center justify-center h-64 text-text-secondary">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-500 mr-3"></div>
@@ -905,8 +935,8 @@ export default function SupplierAnalyticsDashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-divider/30 text-[11px]">
-                  {filteredInventory.map((item: any, idx) => (
-                    <tr key={idx} className="hover:bg-bg-secondary/50 transition-colors">
+                  {paginatedInventory.map((item: any, idx) => (
+                    <tr key={item.cod || idx} className="hover:bg-bg-secondary/50 transition-colors">
                       <td className="px-2 py-2 font-mono font-semibold text-text-secondary text-left">{item.cod}</td>
                       <td className="px-2 py-2 font-bold text-text-primary truncate max-w-[200px]" title={item.desc}>
                         <div className="flex items-center justify-between w-full">
@@ -949,6 +979,34 @@ export default function SupplierAnalyticsDashboard() {
                 </tbody>
               </table>
             </div>
+            {totalStockPages > 1 && (
+              <div className="px-4 py-3 border-t border-divider bg-bg-secondary/20 flex items-center justify-between text-xs">
+                <span className="text-text-secondary font-medium">
+                  Exibindo <strong>{(safeStockPage - 1) * ITEMS_PER_PAGE + 1}</strong>–<strong>{Math.min(safeStockPage * ITEMS_PER_PAGE, filteredInventory.length)}</strong> de <strong>{filteredInventory.length}</strong> itens
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={safeStockPage <= 1}
+                    onClick={() => setStockPage(Math.max(1, safeStockPage - 1))}
+                    className="px-3 py-1 rounded-lg border border-border bg-bg-primary text-text-primary font-semibold disabled:opacity-40 cursor-pointer"
+                  >
+                    Anterior
+                  </button>
+                  <span className="text-text-secondary font-bold">
+                    Página {safeStockPage} de {totalStockPages}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={safeStockPage >= totalStockPages}
+                    onClick={() => setStockPage(Math.min(totalStockPages, safeStockPage + 1))}
+                    className="px-3 py-1 rounded-lg border border-border bg-bg-primary text-text-primary font-semibold disabled:opacity-40 cursor-pointer"
+                  >
+                    Próxima
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1071,7 +1129,7 @@ export default function SupplierAnalyticsDashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-divider/30 text-[11px]">
-                  {filteredCatalog.map((item: any, idx: number) => {
+                  {paginatedCatalog.map((item: any, idx: number) => {
                     const preco = parseFloat(item.preco || 0);
                     const custo = parseFloat(item.custo || 0);
                     const margemLucro = preco > 0 ? ((preco - custo) / preco) * 100 : 0;
@@ -1090,7 +1148,7 @@ export default function SupplierAnalyticsDashboard() {
                     }
 
                     return (
-                      <tr key={idx} className="hover:bg-bg-secondary/50 transition-colors">
+                      <tr key={item.cod || idx} className="hover:bg-bg-secondary/50 transition-colors">
                         <td className="px-2 py-2 font-mono font-semibold text-text-secondary text-left">{item.cod}</td>
                         <td className="px-2 py-2 font-bold text-text-primary text-left truncate max-w-[220px]" title={item.desc}>
                           <div className="flex items-center justify-between w-full">
@@ -1131,7 +1189,7 @@ export default function SupplierAnalyticsDashboard() {
 
             {/* Cards mobile — visível apenas em xs */}
             <div className="sm:hidden flex flex-col divide-y divide-divider/30">
-              {filteredCatalog.map((item: any, idx: number) => {
+              {paginatedCatalog.map((item: any, idx: number) => {
                 const preco = parseFloat(item.preco || 0);
                 const custo = parseFloat(item.custo || 0);
                 const margemLucro = preco > 0 ? ((preco - custo) / preco) * 100 : 0;
@@ -1141,7 +1199,7 @@ export default function SupplierAnalyticsDashboard() {
                 else if (item.status === 'Critico') statusClass = 'text-warning bg-warning/10 border-warning/20';
 
                 return (
-                  <div key={idx} className="py-3 px-4 space-y-1.5">
+                  <div key={item.cod || idx} className="py-3 px-4 space-y-1.5">
                     <div className="flex justify-between items-center gap-2">
                       <div>
                         <span className="text-[10px] font-mono text-brand-500 font-bold">{item.cod}</span>
@@ -1160,6 +1218,35 @@ export default function SupplierAnalyticsDashboard() {
                 );
               })}
             </div>
+
+            {totalCatalogPages > 1 && (
+              <div className="px-4 py-3 border-t border-divider bg-bg-secondary/20 flex items-center justify-between text-xs">
+                <span className="text-text-secondary font-medium">
+                  Exibindo <strong>{(safeCatalogPage - 1) * ITEMS_PER_PAGE + 1}</strong>–<strong>{Math.min(safeCatalogPage * ITEMS_PER_PAGE, filteredCatalog.length)}</strong> de <strong>{filteredCatalog.length}</strong> produtos
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={safeCatalogPage <= 1}
+                    onClick={() => setCatalogPage(Math.max(1, safeCatalogPage - 1))}
+                    className="px-3 py-1 rounded-lg border border-border bg-bg-primary text-text-primary font-semibold disabled:opacity-40 cursor-pointer"
+                  >
+                    Anterior
+                  </button>
+                  <span className="text-text-secondary font-bold">
+                    Página {safeCatalogPage} de {totalCatalogPages}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={safeCatalogPage >= totalCatalogPages}
+                    onClick={() => setCatalogPage(Math.min(totalCatalogPages, safeCatalogPage + 1))}
+                    className="px-3 py-1 rounded-lg border border-border bg-bg-primary text-text-primary font-semibold disabled:opacity-40 cursor-pointer"
+                  >
+                    Próxima
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1169,12 +1256,7 @@ export default function SupplierAnalyticsDashboard() {
               </h4>
               <p className="text-xs text-text-secondary mb-2">Produto com melhor projeção de margem do catálogo.</p>
               {(() => {
-                const items = [...filteredCatalog].sort((a, b) => {
-                  const mA = a.preco > 0 ? ((a.preco - a.custo) / a.preco) : 0;
-                  const mB = b.preco > 0 ? ((b.preco - b.custo) / b.preco) : 0;
-                  return mB - mA;
-                });
-                const best = items[0];
+                const best = bestCatalogMarginItem;
                 if (!best) return <div className="text-xs text-text-secondary">Nenhum produto disponível</div>;
                 const margem = best.preco > 0 ? ((best.preco - best.custo) / best.preco) * 100 : 0;
                 return (

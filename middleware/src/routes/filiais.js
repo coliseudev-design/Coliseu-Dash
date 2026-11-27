@@ -111,48 +111,54 @@ function buildMarcaFilter(marca, nextParamIndex, itemAlias = 'vi', prodAlias = '
 }
 
 // ----------------------------------------------------------------
-// GET /api/filiais  →  Lista filiais do tenant
+// GET /api/filiais  →  Lista filiais do tenant (com cache de 5 min)
 // ----------------------------------------------------------------
+const filiaisSyncCache = new Map();
+const FILIAIS_SYNC_TTL_MS = 5 * 60 * 1000;
+
 router.get('/', async (req, res, next) => {
     const tenantId = req.tenant?.id;
     if (!tenantId) return res.status(401).json({ error: 'Tenant não autenticado.' });
 
     try {
         let syncDebugInfo = null;
-        let identityUrlUsed = '';
+        const cachedSync = filiaisSyncCache.get(tenantId);
+        const shouldSyncIdentity = !cachedSync || cachedSync.expiresAt <= Date.now();
 
-        // 1) Sincroniza filiais do Identity Server para este tenant
-        try {
-            const config = require('../config/env');
-            const identityUrl = config.security?.identityApiUrl || process.env.IDENTITY_API_URL || 'https://adminlicencas.coliseusistemas.com.br';
-            identityUrlUsed = identityUrl;
-            const internalKey = config.security?.identityInternalKey || process.env.IDENTITY_INTERNAL_KEY || 'Coliseu2026!IdentitySuperSecretKeyOauth20';
+        // 1) Sincroniza filiais do Identity Server no máximo a cada 5 minutos por tenant
+        if (shouldSyncIdentity) {
+            try {
+                const config = require('../config/env');
+                const identityUrl = config.security?.identityApiUrl || process.env.IDENTITY_API_URL || 'https://adminlicencas.coliseusistemas.com.br';
+                const internalKey = config.security?.identityInternalKey || process.env.IDENTITY_INTERNAL_KEY || 'Coliseu2026!IdentitySuperSecretKeyOauth20';
 
-            const resp = await fetch(`${identityUrl}/internal/companies/${tenantId}/branches`, {
-                headers: { 'x-internal-api-key': internalKey },
-                signal: AbortSignal.timeout(5000),
-            });
+                const resp = await fetch(`${identityUrl}/internal/companies/${tenantId}/branches`, {
+                    headers: { 'x-internal-api-key': internalKey },
+                    signal: AbortSignal.timeout(2500),
+                });
 
-            if (resp.ok) {
-                const branches = await resp.json();
-                const validBranches = branches.filter(b => b.erpDeptoPadrao != null);
-                
-                for (const b of validBranches) {
-                    await db.query(
-                        `INSERT INTO dash_filiais (tenant_id, empresa_erp, depto_id, centro_custo, nome, documento, is_default, ativo, sincronizado_em)
-                         VALUES ($1,$2,$3,$4,$5,$6,$7,true,NOW())
-                         ON CONFLICT (tenant_id, depto_id) DO UPDATE
-                         SET empresa_erp=$2, centro_custo=$4, nome=$5, documento=$6, is_default=$7, ativo=true, sincronizado_em=NOW()`,
-                        [tenantId, b.erpEmpresaId || 1, b.erpDeptoPadrao, b.erpCentroPadrao || null, b.name, b.cnpj || null, b.isDefault || false]
-                    );
+                if (resp.ok) {
+                    const branches = await resp.json();
+                    const validBranches = branches.filter(b => b.erpDeptoPadrao != null);
+                    
+                    for (const b of validBranches) {
+                        await db.query(
+                            `INSERT INTO dash_filiais (tenant_id, empresa_erp, depto_id, centro_custo, nome, documento, is_default, ativo, sincronizado_em)
+                             VALUES ($1,$2,$3,$4,$5,$6,$7,true,NOW())
+                             ON CONFLICT (tenant_id, depto_id) DO UPDATE
+                             SET empresa_erp=$2, centro_custo=$4, nome=$5, documento=$6, is_default=$7, ativo=true, sincronizado_em=NOW()`,
+                            [tenantId, b.erpEmpresaId || 1, b.erpDeptoPadrao, b.erpCentroPadrao || null, b.name, b.cnpj || null, b.isDefault || false]
+                        );
+                    }
+                } else {
+                    syncDebugInfo = `HTTP ${resp.status} - ${await resp.text().catch(()=>'')}`;
+                    logger.warn(`[Filiais] Falha no sync com Identity Server (HTTP ${resp.status}) para tenant ${tenantId}`);
                 }
-            } else {
-                syncDebugInfo = `HTTP ${resp.status} - ${await resp.text().catch(()=>'')}`;
-                logger.warn(`[Filiais] Falha no sync com Identity Server (HTTP ${resp.status}) para tenant ${tenantId}`);
+            } catch (syncErr) {
+                syncDebugInfo = syncErr.message;
+                logger.warn(`[Filiais] Erro ao sincronizar filiais do Identity Server: ${syncErr.message}`);
             }
-        } catch (syncErr) {
-            syncDebugInfo = syncErr.message;
-            logger.warn(`[Filiais] Erro ao sincronizar filiais do Identity Server: ${syncErr.message}`);
+            filiaisSyncCache.set(tenantId, { expiresAt: Date.now() + FILIAIS_SYNC_TTL_MS });
         }
 
         // 2) Retorna as filiais atualizadas

@@ -223,7 +223,7 @@ export default function InventoryManagementDashboard() {
   const maxGrupo = useMemo(() => Math.max(...distGrupo.map(g => g.value), 1), [distGrupo]);
   const maxMarca = useMemo(() => Math.max(...distMarca.map(m => m.value), 1), [distMarca]);
 
-  if (isLoading) {
+  if (isLoading && !data) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[450px] space-y-4">
         <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />

@@ -62,7 +62,7 @@ export default function ProfitabilityDashboard() {
     refetch();
   };
 
-  if (isLoading) {
+  if (isLoading && !data) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] text-brand-500 space-y-4">
         <LoaderSpinner />

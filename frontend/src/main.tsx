@@ -9,8 +9,8 @@ import { BranchProvider } from './contexts/BranchContext'
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 30_000,        // 30s
-      gcTime: 5 * 60_000,       // 5 min
+      staleTime: 2 * 60_000,    // 2 min
+      gcTime: 10 * 60_000,      // 10 min
       refetchOnWindowFocus: false,
       retry: 1,
     },
