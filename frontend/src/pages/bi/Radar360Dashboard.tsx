@@ -122,12 +122,8 @@ export default function Radar360Dashboard() {
   const [clientPage, setClientPage] = useState(1);
   const CLIENTS_PER_PAGE = 50;
 
-  // Estados de exportação PDF / E-mail da carteira
+  // Estado de exportação PDF da carteira
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
-  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
-  const [emailTo, setEmailTo] = useState('');
-  const [emailSubject, setEmailSubject] = useState('Relatório de Carteira de Clientes');
-  const [copiedReport, setCopiedReport] = useState(false);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -241,7 +237,14 @@ export default function Radar360Dashboard() {
           // fallback to current page
         }
 
-        const printWin = window.open('', '_blank', 'width=1150,height=850');
+        const totalPedidosRelatorio = reportClients.reduce((acc, c) => acc + Number(c.total_pedidos || 0), 0);
+        const totalSaldoRelatorio = reportClients.reduce((acc, c) => acc + Number(c.saldo_devedor || 0), 0);
+        const totalLtvRelatorio = reportClients.reduce((acc, c) => acc + Number(c.ltv || 0), 0);
+        const periodoTexto = filter?.start_date && filter?.end_date
+          ? `${filter.start_date} a ${filter.end_date}`
+          : 'Histórico Geral da Carteira';
+
+        const printWin = window.open('', '_blank', 'width=1180,height=860');
         if (!printWin) {
           alert('Permita pop-ups no navegador para gerar o PDF.');
           return;
@@ -253,67 +256,101 @@ export default function Radar360Dashboard() {
             <meta charset="UTF-8" />
             <title>Relatório de Carteira de Clientes</title>
             <style>
+              @page { size: A4 landscape; margin: 12mm; }
               * { box-sizing: border-box; margin: 0; padding: 0; }
-              body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; color: #0f172a; padding: 20px; font-size: 10.5px; }
-              .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #2563eb; padding-bottom: 10px; margin-bottom: 12px; }
-              .title { font-size: 16px; font-weight: 800; text-transform: uppercase; }
-              .meta { text-align: right; font-size: 10px; color: #475569; }
-              .filters { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px; margin-bottom: 12px; font-size: 10px; }
-              table { width: 100%; border-collapse: collapse; font-size: 9.5px; }
-              th { background: #f1f5f9; color: #334155; font-weight: 800; text-transform: uppercase; text-align: left; padding: 6px; border-bottom: 1px solid #cbd5e1; }
-              td { padding: 5px 6px; border-bottom: 1px solid #e2e8f0; }
-              tr:nth-child(even) td { background: #f8fafc; }
-              .text-right { text-align: right; }
-              .font-mono { font-family: monospace; }
+              body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; color: #0f172a; background: #fff; padding: 16px 20px; font-size: 10.5px; line-height: 1.4; }
+              .header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 14px; }
+              .title { font-size: 18px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
+              .subtitle { color: #475569; font-size: 11px; margin-top: 3px; font-weight: 600; }
+              .meta { text-align: right; font-size: 10px; color: #334155; line-height: 1.5; }
+              .params-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 14px; margin-bottom: 16px; }
+              .param-box { display: flex; flex-direction: column; border-right: 1px solid #e2e8f0; padding-right: 10px; }
+              .param-box:last-child { border-right: none; padding-right: 0; }
+              .param-label { font-size: 8.5px; font-weight: 800; text-transform: uppercase; color: #64748b; letter-spacing: 0.5px; margin-bottom: 2px; }
+              .param-value { font-size: 11px; font-weight: 700; color: #0f172a; }
+              table { width: 100%; border-collapse: collapse; border: 1px solid #cbd5e1; font-size: 10px; }
+              thead th { background: #1e293b; color: #fff; font-weight: 800; text-transform: uppercase; text-align: left; padding: 8px 10px; border: 1px solid #334155; font-size: 9px; white-space: nowrap; }
+              tbody td { padding: 7px 10px; border: 1px solid #e2e8f0; color: #1e293b; vertical-align: middle; }
+              tbody tr:nth-child(even) td { background: #f8fafc; }
+              tfoot td { background: #f1f5f9; color: #0f172a; font-weight: 800; padding: 8px 10px; border: 1px solid #cbd5e1; font-size: 10.5px; }
+              .text-right { text-align: right !important; }
+              .text-center { text-align: center !important; }
+              .font-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
               .font-bold { font-weight: 700; }
+              @media print {
+                body { padding: 0; }
+                thead { display: table-header-group; }
+                tfoot { display: table-footer-group; }
+                tr { page-break-inside: avoid; }
+              }
             </style>
           </head>
           <body>
             <div class="header">
               <div>
                 <div class="title">Relatório de Carteira de Clientes</div>
-                <div style="color:#475569;font-size:10px;margin-top:2px;">Listagem Geral com Telefones, Vendedor, Saldo Devedor e Faturamento</div>
+                <div class="subtitle">Listagem Comercial de Clientes, Telefones, Vendedor, Saldo Devedor e Faturamento</div>
               </div>
               <div class="meta">
-                <div><strong>Emitido em:</strong> ${new Date().toLocaleString('pt-BR')}</div>
-                <div><strong>Registros:</strong> ${reportClients.length} de ${totalClients} clientes</div>
+                <div><strong>Data de Emissão:</strong> ${new Date().toLocaleString('pt-BR')}</div>
+                <div><strong>Clientes no Relatório:</strong> ${reportClients.length} de ${totalClients} registros</div>
               </div>
             </div>
-            <div class="filters">
-              <strong>Vendedor:</strong> ${selectedSellerName} &nbsp;•&nbsp;
-              <strong>Cidade:</strong> ${selectedCity === 'todas' ? 'Todas' : selectedCity} &nbsp;•&nbsp;
-              <strong>Saldo:</strong> ${saldoFilter === 'todos' ? 'Todos' : saldoFilter === 'com_saldo' ? 'Com Saldo Devedor' : 'Em Dia'}
-              ${debouncedSearch ? ` &nbsp;•&nbsp; <strong>Busca:</strong> "${debouncedSearch}"` : ''}
+            <div class="params-grid">
+              <div class="param-box">
+                <span class="param-label">Período Selecionado</span>
+                <span class="param-value">${periodoTexto}</span>
+              </div>
+              <div class="param-box">
+                <span class="param-label">Vendedor</span>
+                <span class="param-value">${selectedSellerName}</span>
+              </div>
+              <div class="param-box">
+                <span class="param-label">Cidade</span>
+                <span class="param-value">${selectedCity === 'todas' ? 'Todas as Cidades' : selectedCity}</span>
+              </div>
+              <div class="param-box">
+                <span class="param-label">Filtro de Saldo</span>
+                <span class="param-value">${saldoFilter === 'todos' ? 'Todos' : saldoFilter === 'com_saldo' ? 'Com Saldo Devedor' : 'Em Dia'}${debouncedSearch ? ` • Busca: "${debouncedSearch}"` : ''}</span>
+              </div>
             </div>
             <table>
               <thead>
                 <tr>
-                  <th>Cód</th>
-                  <th>Cliente / Razão Social</th>
-                  <th>CNPJ / CPF</th>
-                  <th>Telefone</th>
-                  <th>Cidade / UF</th>
-                  <th>Vendedor Resp.</th>
-                  <th class="text-right">Saldo Devedor</th>
-                  <th class="text-right">Faturamento (LTV)</th>
-                  <th class="text-right">Pedidos</th>
+                  <th class="text-center" style="width: 38px;">#</th>
+                  <th style="width: 65px;">Cód.</th>
+                  <th>Nome do Cliente</th>
+                  <th style="width: 125px;">Telefone</th>
+                  <th style="width: 145px;">Cidade / UF</th>
+                  <th style="width: 160px;">Vendedor</th>
+                  <th class="text-right" style="width: 115px;">Saldo Devedor</th>
+                  <th class="text-right" style="width: 125px;">Valor Total (LTV)</th>
+                  <th class="text-right" style="width: 75px;">Pedidos</th>
                 </tr>
               </thead>
               <tbody>
-                ${reportClients.map(c => `
+                ${reportClients.map((c, idx) => `
                   <tr>
+                    <td class="text-center font-mono">${idx + 1}</td>
                     <td class="font-mono font-bold">${c.cod || c.id}</td>
                     <td class="font-bold">${c.nome}</td>
-                    <td class="font-mono">${c.documento || c.cnpj || '—'}</td>
                     <td class="font-mono font-bold">${parsePhone(c.telefone).display}</td>
-                    <td>${c.cidade || '—'}${c.estado ? `/${c.estado}` : ''}</td>
+                    <td>${c.cidade || '—'}${c.estado ? ` / ${c.estado}` : ''}</td>
                     <td>${c.vendedor_resp || '—'}</td>
                     <td class="text-right font-mono">${formatCurrency(c.saldo_devedor || 0)}</td>
                     <td class="text-right font-mono font-bold">${formatCurrency(c.ltv || 0)}</td>
-                    <td class="text-right font-mono">${c.total_pedidos || 0}</td>
+                    <td class="text-right font-mono font-bold">${c.total_pedidos || 0}</td>
                   </tr>
                 `).join('')}
               </tbody>
+              <tfoot>
+                <tr>
+                  <td colspan="6">TOTAL GERAL (${reportClients.length} clientes listados)</td>
+                  <td class="text-right font-mono">${formatCurrency(totalSaldoRelatorio)}</td>
+                  <td class="text-right font-mono">${formatCurrency(totalLtvRelatorio)}</td>
+                  <td class="text-right font-mono">${formatNum(totalPedidosRelatorio)}</td>
+                </tr>
+              </tfoot>
             </table>
           </body>
           </html>
@@ -326,19 +363,6 @@ export default function Radar360Dashboard() {
       } finally {
         setIsGeneratingPdf(false);
       }
-    };
-
-    const buildPortfolioEmailText = () => {
-      const lines = [
-        `RELATÓRIO DE CARTEIRA DE CLIENTES`,
-        `Emitido em: ${new Date().toLocaleString('pt-BR')}`,
-        `Vendedor: ${selectedSellerName} | Cidade: ${selectedCity === 'todas' ? 'Todas' : selectedCity} | Total: ${totalClients} clientes`,
-        `------------------------------------------------------------`,
-        ...clients.map(c =>
-          `• [${c.cod || c.id}] ${c.nome} | Tel: ${parsePhone(c.telefone).display} | Cidade: ${c.cidade || '—'}${c.estado ? `/${c.estado}` : ''} | Vend: ${c.vendedor_resp || '—'} | Saldo: ${formatCurrency(c.saldo_devedor || 0)} | LTV: ${formatCurrency(c.ltv || 0)} (${c.total_pedidos} ped.)`
-        )
-      ];
-      return lines.join('\n');
     };
 
     return (
@@ -456,15 +480,6 @@ export default function Radar360Dashboard() {
             >
               <Printer size={13} />
               <span>{isGeneratingPdf ? 'Gerando...' : 'Gerar PDF'}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setIsEmailModalOpen(true)}
-              className="h-8 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap"
-            >
-              <Mail size={13} />
-              <span>E-mail</span>
             </button>
 
             <div className="h-8 px-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 inline-flex items-center gap-1.5 whitespace-nowrap">
@@ -664,123 +679,12 @@ export default function Radar360Dashboard() {
             </div>
           )}
         </div>
-
-        {/* MODAL DE ENVIO POR E-MAIL DA CARTEIRA */}
-        {isEmailModalOpen && (
-          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-bg-primary border border-divider shadow-2xl rounded-2xl w-full max-w-2xl overflow-hidden flex flex-col">
-              <div className="px-5 py-3.5 border-b border-divider flex items-center justify-between bg-bg-secondary/40">
-                <div className="flex items-center gap-2">
-                  <Mail size={17} className="text-emerald-500" />
-                  <h3 className="text-sm font-extrabold text-text-primary uppercase tracking-wider">
-                    Enviar Relatório de Carteira por E-mail
-                  </h3>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsEmailModalOpen(false)}
-                  className="p-1 text-text-secondary hover:text-text-primary rounded-lg cursor-pointer"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-
-              <div className="p-5 space-y-4 text-xs">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[10px] font-bold text-text-secondary uppercase mb-1">
-                      E-mail do Destinatário
-                    </label>
-                    <input
-                      type="email"
-                      placeholder="exemplo@empresa.com.br"
-                      value={emailTo}
-                      onChange={(e) => setEmailTo(e.target.value)}
-                      className="w-full h-9 px-3 bg-bg-secondary border border-divider rounded-lg text-xs font-semibold text-text-primary outline-none focus:ring-2 focus:ring-brand-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-text-secondary uppercase mb-1">
-                      Assunto
-                    </label>
-                    <input
-                      type="text"
-                      value={emailSubject}
-                      onChange={(e) => setEmailSubject(e.target.value)}
-                      className="w-full h-9 px-3 bg-bg-secondary border border-divider rounded-lg text-xs font-semibold text-text-primary outline-none focus:ring-2 focus:ring-brand-500"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-bold text-text-secondary uppercase mb-1">
-                    Prévia do Relatório (Com Telefone, Vendedor e Saldo)
-                  </label>
-                  <textarea
-                    readOnly
-                    rows={10}
-                    value={buildPortfolioEmailText()}
-                    className="w-full p-3 bg-bg-secondary/60 border border-divider rounded-xl font-mono text-[10.5px] text-text-primary outline-none resize-y"
-                  />
-                </div>
-
-                <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-divider">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={handlePortfolioPdf}
-                      disabled={isGeneratingPdf}
-                      className="h-9 px-3.5 bg-brand-500 hover:bg-brand-600 text-white rounded-lg text-xs font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer"
-                    >
-                      <Printer size={14} />
-                      <span>Baixar / Imprimir PDF</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        try {
-                          await navigator.clipboard.writeText(buildPortfolioEmailText());
-                          setCopiedReport(true);
-                          setTimeout(() => setCopiedReport(false), 2500);
-                        } catch {}
-                      }}
-                      className="h-9 px-3.5 bg-bg-secondary hover:bg-bg-tertiary border border-divider text-text-primary rounded-lg text-xs font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer"
-                    >
-                      {copiedReport ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
-                      <span>{copiedReport ? 'Copiado!' : 'Copiar Texto'}</span>
-                    </button>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setIsEmailModalOpen(false)}
-                      className="h-9 px-3 text-text-secondary hover:text-text-primary font-bold text-xs cursor-pointer"
-                    >
-                      Fechar
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const body = buildPortfolioEmailText();
-                        window.location.href = `mailto:${encodeURIComponent(emailTo.trim())}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(body.slice(0, 1800))}`;
-                      }}
-                      className="h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer"
-                    >
-                      <Mail size={14} />
-                      <span>Abrir no Cliente de E-mail</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     );
   }
 
   // Render do loading (DNA Extractor)
-  if (isLoading) {
+  if (isLoading && !data) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[70vh] text-brand-500 space-y-4">
         <Loader2 size={54} className="animate-spin text-brand-500" />

@@ -1503,6 +1503,10 @@ router.get('/customer/analytics', async (req, res, next) => {
 // GET /api/bi/customer/list
 router.get('/customer/list', async (req, res, next) => {
     try {
+        const cacheKey = buildBiCacheKey('customer-list', req);
+        const cached = getCache(cacheKey);
+        if (cached) return res.json(cached);
+
         const tenantId = req.tenant.id;
         const search = req.query.search || req.query.q || '';
         const limit = Math.min(parseInt(req.query.limit, 10) || 50, 1000);
@@ -1792,14 +1796,16 @@ router.get('/customer/list', async (req, res, next) => {
             ultima_compra: r.ultima_compra
         }));
 
-        res.json({
+        const payload = {
             data,
             total,
             available_cities,
             available_sellers,
             limit,
             offset
-        });
+        };
+        setCache(cacheKey, payload, 120);
+        res.json(payload);
     } catch (err) { next(err); }
 });
 
@@ -1870,6 +1876,10 @@ router.get('/customer/search', async (req, res, next) => {
 
 router.get('/customer/radar-360', async (req, res, next) => {
     try {
+        const cacheKey = buildBiCacheKey('radar-360', req);
+        const cached = getCache(cacheKey);
+        if (cached) return res.json(cached);
+
         const tenantId = req.tenant.id;
         const searchId = req.query.id; // Expecting a customer ID
 
@@ -1882,25 +1892,160 @@ router.get('/customer/radar-360', async (req, res, next) => {
             });
         }
 
-        const { rows: c } = await db.query(`SELECT * FROM dash_clientes WHERE tenant_id = $1 AND id_firebird = $2`, [tenantId, searchId]);
+        const salesFilter = cfopUtil.getSalesFilterClause('v');
+        const { start, end } = await getBiDateRange(req, tenantId);
+        const startStr = toSafeSqlString(start);
+        const endStr = toSafeSqlString(end);
+
+        // Cache das top categorias da empresa (evita varrer todo dash_vendas_itens a cada abertura de ficha)
+        const topCatsCacheKey = `bi:tenant-top-cats:${tenantId}`;
+        let tenantTopCatsPromise = Promise.resolve(getCache(topCatsCacheKey));
+        if (!getCache(topCatsCacheKey)) {
+            tenantTopCatsPromise = db.query(`
+                SELECT COALESCE(NULLIF(TRIM(p.categoria), ''), 'GERAL') AS nome, COUNT(*) AS total_cat
+                FROM dash_produtos p
+                WHERE p.tenant_id = $1 AND p.ativo = true AND p.categoria IS NOT NULL AND TRIM(p.categoria) != ''
+                GROUP BY 1
+                ORDER BY total_cat DESC
+                LIMIT 25
+            `, [tenantId]).then(r => {
+                const list = r.rows.map(row => row.nome);
+                setCache(topCatsCacheKey, list, 600);
+                return list;
+            });
+        }
+
+        const [
+            { rows: c },
+            { rows: vInfo },
+            { rows: allSellers },
+            { rows: heatmap },
+            { rows: monthlySales },
+            { rows: topItemsConsolidated },
+            { rows: history },
+            { rows: finClient },
+            tenantTopCats
+        ] = await Promise.all([
+            // 1. Dados do Cliente
+            db.query(`SELECT * FROM dash_clientes WHERE tenant_id = $1 AND id_firebird = $2`, [tenantId, searchId]),
+
+            // 2. LTV e Ticket Médio Histórico (Lifetime)
+            db.query(`
+                SELECT 
+                    COALESCE(SUM(v.valor_total - COALESCE(v.valor_desconto, 0)), 0) as ltv,
+                    COUNT(DISTINCT v.id_firebird) as total_pedidos,
+                    MAX(COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda)) as ultima_compra
+                FROM dash_vendas v
+                WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2 
+                  ${salesFilter}
+            `, [tenantId, searchId]),
+
+            // 3. Vendedor Estrela e vendedores vinculados (Filtrado por data)
+            db.query(`
+                SELECT vend.nome AS vendedor, SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) as total_vendido
+                FROM dash_vendas v
+                LEFT JOIN dash_vendedores vend ON vend.id_firebird = v.vendedor_id_firebird AND vend.tenant_id = v.tenant_id
+                WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2 AND vend.nome IS NOT NULL AND vend.nome != ''
+                  AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $3 
+                  AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $4
+                  ${salesFilter}
+                GROUP BY vend.nome
+                ORDER BY total_vendido DESC
+            `, [tenantId, searchId, startStr, endStr]),
+
+            // 4. Melhor Horário (Densidade)
+            db.query(`
+                SELECT EXTRACT(HOUR FROM v.data_hora_proc) as hora, COUNT(*) as qtd
+                FROM dash_vendas v
+                WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2 AND v.data_hora_proc IS NOT NULL
+                  ${salesFilter}
+                GROUP BY hora
+                ORDER BY qtd DESC
+                LIMIT 1
+            `, [tenantId, searchId]),
+
+            // 5. Sazonalidade de Compras (Distribuição Mensal - Histórico)
+            db.query(`
+                SELECT 
+                    EXTRACT(MONTH FROM COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda)) as mes, 
+                    SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) as total
+                FROM dash_vendas v
+                WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2
+                  ${salesFilter}
+                GROUP BY mes
+                ORDER BY mes ASC
+            `, [tenantId, searchId]),
+
+            // 6. Top 5 Produtos + Top 5 Grupos + Top 5 Marcas + Categorias compradas consolidados em 1 único scan dos itens do cliente
+            db.query(`
+                WITH vf AS MATERIALIZED (
+                    SELECT v.id_firebird, (CASE WHEN v.valor_total < 0 THEN -1 ELSE 1 END) AS sign
+                    FROM dash_vendas v
+                    WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2
+                      AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $3 
+                      AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $4
+                      ${salesFilter}
+                ),
+                ib AS MATERIALIZED (
+                    SELECT
+                        COALESCE(NULLIF(TRIM(vi.produto), ''), NULLIF(TRIM(p.nome), ''), 'Sem Nome') AS prod_nome,
+                        COALESCE(NULLIF(TRIM(vi.categoria), ''), NULLIF(TRIM(p.categoria), ''), 'S/ GRUPO') AS grupo_nome,
+                        COALESCE(NULLIF(TRIM(vi.marca), ''), NULLIF(TRIM(p.marca), ''), 'S/ MARCA') AS marca_nome,
+                        (vi.quantidade * vf.sign) AS qtd,
+                        (vf.sign * (vi.valor_total * (1 - COALESCE(vi.desconto_item, 0) / 100.0))) AS total
+                    FROM dash_vendas_itens vi
+                    JOIN vf ON vf.id_firebird = vi.venda_id_firebird
+                    LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
+                    WHERE vi.tenant_id = $1
+                )
+                SELECT
+                    (SELECT COALESCE(json_agg(t), '[]'::json) FROM (
+                        SELECT prod_nome AS nome, SUM(qtd) AS qtd, SUM(total) AS total FROM ib GROUP BY 1 ORDER BY total DESC LIMIT 5
+                    ) t) AS top_produtos,
+                    (SELECT COALESCE(json_agg(t), '[]'::json) FROM (
+                        SELECT grupo_nome AS nome, SUM(qtd) AS qtd, SUM(total) AS total FROM ib GROUP BY 1 ORDER BY total DESC LIMIT 5
+                    ) t) AS top_grupos,
+                    (SELECT COALESCE(json_agg(t), '[]'::json) FROM (
+                        SELECT marca_nome AS nome, SUM(qtd) AS qtd, SUM(total) AS total FROM ib GROUP BY 1 ORDER BY total DESC LIMIT 5
+                    ) t) AS top_marcas,
+                    (SELECT COALESCE(json_agg(DISTINCT grupo_nome), '[]'::json) FROM ib) AS bought_categories
+            `, [tenantId, searchId, startStr, endStr]),
+
+            // 7. Order History (Filtrado pelo período selecionado)
+            db.query(`
+                SELECT 
+                    v.id_firebird as id, 
+                    v.numero_pedido as numero_nota, 
+                    COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) as data_emissao,
+                    TO_CHAR(COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda), 'DD/MM/YYYY') as data_emissao_fmt,
+                    COALESCE(NULLIF(TRIM(vend.nome), ''), 'Sem Vendedor') as vendedor_nome, 
+                    (v.valor_total - COALESCE(v.valor_desconto, 0)) as valor_total, 
+                    v.status 
+                FROM dash_vendas v
+                LEFT JOIN dash_vendedores vend ON vend.id_firebird = v.vendedor_id_firebird AND vend.tenant_id = v.tenant_id
+                WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2
+                  AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $3
+                  AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $4
+                  ${salesFilter}
+                ORDER BY COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) DESC
+                LIMIT 200
+            `, [tenantId, searchId, startStr, endStr]),
+
+            // 8. Saldo Devedor Financeiro
+            db.query(`
+                SELECT COALESCE(SUM(f.valor - COALESCE(f.valor_pago, 0)), 0) as saldo_devedor
+                FROM dash_financeiro f
+                WHERE f.tenant_id = $1 AND f.cliente_id_firebird = $2
+                  AND TRIM(f.tipo) = 'RECEBER' AND TRIM(f.status_pagamento) = 'ABERTO'
+            `, [tenantId, searchId]),
+
+            // 9. Top categorias da empresa cacheadas
+            tenantTopCatsPromise
+        ]);
         
         if (c.length === 0) return res.status(404).json({ error: 'Cliente não encontrado' });
 
         const cliente = c[0];
-        const salesFilter = cfopUtil.getSalesFilterClause('v');
-        const { start, end } = await getBiDateRange(req, tenantId);
-
-        // LTV e Ticket Medio Histórico (Lifetime)
-        const { rows: vInfo } = await db.query(`
-            SELECT 
-                COALESCE(SUM(v.valor_total - COALESCE(v.valor_desconto, 0)), 0) as ltv,
-                COUNT(DISTINCT v.id_firebird) as total_pedidos,
-                MAX(COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda)) as ultima_compra
-            FROM dash_vendas v
-            WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2 
-              ${salesFilter}
-        `, [tenantId, searchId]);
-
         const ltv = parseFloat(vInfo[0].ltv);
         const qtd_pedidos = parseInt(vInfo[0].total_pedidos);
         const ticket_medio_historico = qtd_pedidos > 0 ? ltv / qtd_pedidos : 0;
@@ -1914,43 +2059,8 @@ router.get('/customer/radar-360', async (req, res, next) => {
         else if (dias_sem_comprar > 45) risco_churn_pct = 60;
         else if (dias_sem_comprar > 30) risco_churn_pct = 30;
 
-        // Vendedor Estrela e todos os vendedores vinculados (Filtrado por data)
-        const { rows: allSellers } = await db.query(`
-            SELECT vend.nome AS vendedor, SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) as total_vendido
-            FROM dash_vendas v
-            LEFT JOIN dash_vendedores vend ON vend.id_firebird = v.vendedor_id_firebird AND vend.tenant_id = v.tenant_id
-            WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2 AND vend.nome IS NOT NULL AND vend.nome != ''
-              AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $3 
-              AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $4
-              ${salesFilter}
-            GROUP BY vend.nome
-            ORDER BY total_vendido DESC
-        `, [tenantId, searchId, toSafeSqlString(start), toSafeSqlString(end)]);
         const vendedor_estrela = allSellers.length > 0 ? allSellers[0].vendedor : 'N/A';
-
-        // Melhor Horário (Densidade)
-        const { rows: heatmap } = await db.query(`
-            SELECT EXTRACT(HOUR FROM v.data_hora_proc) as hora, COUNT(*) as qtd
-            FROM dash_vendas v
-            WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2 AND v.data_hora_proc IS NOT NULL
-              ${salesFilter}
-            GROUP BY hora
-            ORDER BY qtd DESC
-            LIMIT 1
-        `, [tenantId, searchId]);
         const melhor_horario = heatmap.length > 0 ? `${String(heatmap[0].hora).padStart(2, '0')}:00` : 'N/A';
-
-        // Sazonalidade de Compras (Distribuição Mensal - Histórico)
-        const { rows: monthlySales } = await db.query(`
-            SELECT 
-                EXTRACT(MONTH FROM COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda)) as mes, 
-                SUM(v.valor_total - COALESCE(v.valor_desconto, 0)) as total
-            FROM dash_vendas v
-            WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2
-              ${salesFilter}
-            GROUP BY mes
-            ORDER BY mes ASC
-        `, [tenantId, searchId]);
 
         const mesesNomes = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
         const sazonalidade = Array.from({ length: 12 }, (_, i) => {
@@ -1970,23 +2080,11 @@ router.get('/customer/radar-360', async (req, res, next) => {
             mesMenor = mesesNomes[parseInt(sorted[sorted.length - 1].mes, 10) - 1];
         }
 
-        // Top 5 Produtos (Filtrado por data)
-        const { rows: topProdutos } = await db.query(`
-            SELECT 
-                COALESCE(NULLIF(TRIM(vi.produto), ''), NULLIF(TRIM(p.nome), ''), 'Sem Nome') as nome, 
-                SUM(vi.quantidade * (CASE WHEN v.valor_total < 0 THEN -1 ELSE 1 END)) as qtd, 
-                SUM((CASE WHEN v.valor_total < 0 THEN -1 ELSE 1 END) * (vi.valor_total * (1 - COALESCE(vi.desconto_item, 0) / 100.0))) as total
-            FROM dash_vendas_itens vi
-            JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
-            LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
-            WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2
-              AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $3 
-              AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $4
-              ${salesFilter}
-            GROUP BY COALESCE(NULLIF(TRIM(vi.produto), ''), NULLIF(TRIM(p.nome), ''), 'Sem Nome')
-            ORDER BY total DESC
-            LIMIT 5
-        `, [tenantId, searchId, toSafeSqlString(start), toSafeSqlString(end)]);
+        const topItemsRow = topItemsConsolidated[0] || {};
+        const topProdutos = topItemsRow.top_produtos || [];
+        const topGrupos = topItemsRow.top_grupos || [];
+        const topMarcas = topItemsRow.top_marcas || [];
+        const boughtCategoriesSet = new Set((topItemsRow.bought_categories || []).map(x => String(x || '').toUpperCase().trim()));
 
         const productsShare = topProdutos.map(p => ({
             nome: p.nome || 'Desconhecido',
@@ -1995,48 +2093,12 @@ router.get('/customer/radar-360', async (req, res, next) => {
             pct: ltv > 0 ? (parseFloat(p.total) / ltv) * 100 : 0
         }));
 
-        // Top 5 Grupos (Categoria - Filtrado por data)
-        const { rows: topGrupos } = await db.query(`
-            SELECT 
-                COALESCE(NULLIF(TRIM(vi.categoria), ''), NULLIF(TRIM(p.categoria), ''), 'S/ GRUPO') as nome, 
-                SUM(vi.quantidade * (CASE WHEN v.valor_total < 0 THEN -1 ELSE 1 END)) as qtd, 
-                SUM((CASE WHEN v.valor_total < 0 THEN -1 ELSE 1 END) * (vi.valor_total * (1 - COALESCE(vi.desconto_item, 0) / 100.0))) as total
-            FROM dash_vendas_itens vi
-            JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
-            LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
-            WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2
-              AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $3 
-              AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $4
-              ${salesFilter}
-            GROUP BY COALESCE(NULLIF(TRIM(vi.categoria), ''), NULLIF(TRIM(p.categoria), ''), 'S/ GRUPO')
-            ORDER BY total DESC
-            LIMIT 5
-        `, [tenantId, searchId, toSafeSqlString(start), toSafeSqlString(end)]);
-
         const groupsShare = topGrupos.map(g => ({
             nome: g.nome || 'Desconhecido',
             qtd: parseInt(g.qtd || 0, 10),
             total: parseFloat(g.total || 0),
             pct: ltv > 0 ? (parseFloat(g.total) / ltv) * 100 : 0
         }));
-
-        // Top 5 Marcas (Filtrado por data)
-        const { rows: topMarcas } = await db.query(`
-            SELECT 
-                COALESCE(NULLIF(TRIM(vi.marca), ''), NULLIF(TRIM(p.marca), ''), 'S/ MARCA') as nome, 
-                SUM(vi.quantidade * (CASE WHEN v.valor_total < 0 THEN -1 ELSE 1 END)) as qtd, 
-                SUM((CASE WHEN v.valor_total < 0 THEN -1 ELSE 1 END) * (vi.valor_total * (1 - COALESCE(vi.desconto_item, 0) / 100.0))) as total
-            FROM dash_vendas_itens vi
-            JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
-            LEFT JOIN dash_produtos p ON p.id_firebird = vi.produto_id_firebird AND p.tenant_id = vi.tenant_id
-            WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2
-              AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $3 
-              AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $4
-              ${salesFilter}
-            GROUP BY COALESCE(NULLIF(TRIM(vi.marca), ''), NULLIF(TRIM(p.marca), ''), 'S/ MARCA')
-            ORDER BY total DESC
-            LIMIT 5
-        `, [tenantId, searchId, toSafeSqlString(start), toSafeSqlString(end)]);
 
         const brandsShare = topMarcas.map(m => ({
             nome: m.nome || 'Desconhecido',
@@ -2045,24 +2107,9 @@ router.get('/customer/radar-360', async (req, res, next) => {
             pct: ltv > 0 ? (parseFloat(m.total) / ltv) * 100 : 0
         }));
 
-        // Upsell Opportunities (Categorias que mais faturam na empresa mas o cliente nunca comprou)
-        const { rows: upsellRows } = await db.query(`
-            SELECT DISTINCT vi.categoria as nome, SUM((CASE WHEN v.valor_total < 0 THEN -1 ELSE 1 END) * (vi.valor_total * (1 - COALESCE(vi.desconto_item, 0) / 100.0))) as total_cat
-            FROM dash_vendas_itens vi
-            JOIN dash_vendas v ON v.id_firebird = vi.venda_id_firebird AND v.tenant_id = vi.tenant_id
-            WHERE v.tenant_id = $1 
-              AND vi.categoria IS NOT NULL AND vi.categoria != ''
-              AND vi.categoria NOT IN (
-                  SELECT DISTINCT vi2.categoria 
-                  FROM dash_vendas_itens vi2
-                  JOIN dash_vendas v2 ON v2.id_firebird = vi2.venda_id_firebird AND v2.tenant_id = vi2.tenant_id
-                  WHERE v2.tenant_id = $1 AND v2.cliente_id_firebird = $2
-              )
-            GROUP BY vi.categoria
-            ORDER BY total_cat DESC
-            LIMIT 3
-        `, [tenantId, searchId]);
-        const upsell_oportunidades = upsellRows.map(u => u.nome);
+        const upsell_oportunidades = (tenantTopCats || [])
+            .filter(cat => !boughtCategoriesSet.has(String(cat || '').toUpperCase().trim()))
+            .slice(0, 3);
 
         // Tempo de Cliente
         const dataCadastro = cliente.data_cadastro ? new Date(cliente.data_cadastro) : new Date();
@@ -2078,35 +2125,9 @@ router.get('/customer/radar-360', async (req, res, next) => {
             tempo_cliente = `${totalMonths} ${totalMonths > 1 ? 'meses' : 'mês'}`;
         }
 
-        // Order History (Filtrado pelo período selecionado)
-        const { rows: history } = await db.query(`
-            SELECT 
-                v.id_firebird as id, 
-                v.numero_pedido as numero_nota, 
-                COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) as data_emissao,
-                TO_CHAR(COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda), 'DD/MM/YYYY') as data_emissao_fmt,
-                COALESCE(NULLIF(TRIM(vend.nome), ''), 'Sem Vendedor') as vendedor_nome, 
-                (v.valor_total - COALESCE(v.valor_desconto, 0)) as valor_total, 
-                v.status 
-            FROM dash_vendas v
-            LEFT JOIN dash_vendedores vend ON vend.id_firebird = v.vendedor_id_firebird AND vend.tenant_id = v.tenant_id
-            WHERE v.tenant_id = $1 AND v.cliente_id_firebird = $2
-              AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) >= $3
-              AND COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) <= $4
-              ${salesFilter}
-            ORDER BY COALESCE(v.data_hora_proc, v.data_vencimento, v.data_venda) DESC
-            LIMIT 200
-        `, [tenantId, searchId, toSafeSqlString(start), toSafeSqlString(end)]);
-
-        const { rows: finClient } = await db.query(`
-            SELECT COALESCE(SUM(f.valor - COALESCE(f.valor_pago, 0)), 0) as saldo_devedor
-            FROM dash_financeiro f
-            WHERE f.tenant_id = $1 AND f.cliente_id_firebird = $2
-              AND TRIM(f.tipo) = 'RECEBER' AND TRIM(f.status_pagamento) = 'ABERTO'
-        `, [tenantId, searchId]);
         const saldo_devedor = parseFloat(finClient[0]?.saldo_devedor || 0);
 
-        res.json({
+        const payload = {
             dna: {
                 cliente_id: cliente.id_firebird,
                 nome: cliente.nome,
@@ -2169,7 +2190,9 @@ router.get('/customer/radar-360', async (req, res, next) => {
                 valor_total: parseFloat(h.valor_total),
                 status: h.status
             }))
-        });
+        };
+        setCache(cacheKey, payload, 120);
+        res.json(payload);
     } catch (err) { next(err); }
 });
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { usePeriodStore, periodToParams } from '../../store/periodStore';
+import { usePeriodStore, periodToParams, PERIOD_OPTIONS } from '../../store/periodStore';
 import { useBranchParam } from '../../contexts/BranchContext';
 import PeriodFilter from '../../components/PeriodFilter';
 import { useBranchPeriodQuery, useApiQuery } from '../../hooks/useApi';
@@ -8,10 +8,50 @@ import api from '../../services/api';
 import { 
   Users, UserPlus, UserMinus, Activity, AlertCircle, 
   Search, ChevronLeft, ChevronRight, ChevronDown, Award, EyeOff, FileText,
-  TrendingUp, TrendingDown, Phone, Mail, Printer, Download, Copy, Check, X, MessageCircle
+  TrendingUp, TrendingDown, Phone, Printer, Download, MessageCircle
 } from 'lucide-react';
 import { formatBRL, formatNum } from '../../utils/format';
 import clsx from 'clsx';
+
+function formatSelectedPeriodDisplay(periodState: { period: string; startDate?: string; endDate?: string }) {
+  const now = new Date();
+  const fmt = (d: Date) => d.toLocaleDateString('pt-BR');
+  const labelObj = PERIOD_OPTIONS.find(p => p.key === periodState.period);
+  const baseLabel = labelObj ? labelObj.label : 'Período Atual';
+
+  if (periodState.period === 'today') {
+    return `Hoje (${fmt(now)})`;
+  }
+  if (periodState.period === 'yesterday') {
+    const y = new Date(now);
+    y.setDate(y.getDate() - 1);
+    return `Ontem (${fmt(y)})`;
+  }
+  if (periodState.period === 'last7') {
+    const s = new Date(now);
+    s.setDate(s.getDate() - 7);
+    return `Últimos 7 dias (${fmt(s)} a ${fmt(now)})`;
+  }
+  if (periodState.period === 'thisMonth') {
+    const s = new Date(now.getFullYear(), now.getMonth(), 1);
+    return `Mês Atual (${fmt(s)} a ${fmt(now)})`;
+  }
+  if (periodState.period === 'lastMonth') {
+    const s = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const e = new Date(now.getFullYear(), now.getMonth(), 0);
+    return `Mês Anterior (${fmt(s)} a ${fmt(e)})`;
+  }
+  if (periodState.period === 'last12m') {
+    const s = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+    return `Últimos 12 Meses (${fmt(s)} a ${fmt(now)})`;
+  }
+  if (periodState.period === 'custom' && periodState.startDate && periodState.endDate) {
+    const [sy, sm, sd] = periodState.startDate.split('-');
+    const [ey, em, ed] = periodState.endDate.split('-');
+    return `Personalizado (${sd}/${sm}/${sy} a ${ed}/${em}/${ey})`;
+  }
+  return baseLabel;
+}
 
 function parsePhone(rawPhone?: string) {
   if (!rawPhone) return { display: '—', isWhatsApp: false, waLink: '' };
@@ -83,12 +123,8 @@ export default function CustomerAnalyticsDashboard() {
   const [page, setPage] = useState<number>(1);
   const limit = 15;
 
-  // Estados de exportação PDF e E-mail
+  // Estado de exportação PDF
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
-  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
-  const [emailTo, setEmailTo] = useState('');
-  const [emailSubject, setEmailSubject] = useState('Relatório - Visão Geral da Carteira de Clientes');
-  const [copiedReport, setCopiedReport] = useState(false);
 
   // Debounce ou trigger instantâneo do search
   const [searchDebounced, setSearchDebounced] = useState<string>('');
@@ -192,16 +228,17 @@ export default function CustomerAnalyticsDashboard() {
     }
   };
 
-  // Geração de PDF / Impressão formatada com todas as informações da tela + telefone
+  // Geração de PDF em estilo Relatório Corporativo (somente listagem de clientes, sem CNPJ)
   const handleGeneratePdf = async () => {
     setIsGeneratingPdf(true);
     try {
       const reportClients = await fetchFullReportClients();
-      const recorrentes = analytics.data?.recorrentes || [];
-      const churn = analytics.data?.churn || [];
       const emissionDate = new Date().toLocaleString('pt-BR');
+      const periodoSelecionado = formatSelectedPeriodDisplay(periodState);
+      const totalPedidosRelatorio = reportClients.reduce((acc: number, c: any) => acc + Number(c.qtd_pedidos || 0), 0);
+      const valorTotalRelatorio = reportClients.reduce((acc: number, c: any) => acc + Number(c.total_gasto || 0), 0);
 
-      const printWindow = window.open('', '_blank', 'width=1150,height=850');
+      const printWindow = window.open('', '_blank', 'width=1180,height=860');
       if (!printWindow) {
         alert('Permita pop-ups no navegador para gerar o PDF do relatório.');
         return;
@@ -212,203 +249,203 @@ export default function CustomerAnalyticsDashboard() {
         <html lang="pt-BR">
         <head>
           <meta charset="UTF-8" />
-          <title>Relatório - Visão Geral da Carteira</title>
+          <title>Relatório de Carteira de Clientes</title>
           <style>
+            @page { size: A4 landscape; margin: 12mm; }
             * { box-sizing: border-box; margin: 0; padding: 0; }
-            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; color: #0f172a; background: #fff; padding: 20px; font-size: 11px; }
-            .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #2563eb; padding-bottom: 12px; margin-bottom: 14px; }
-            .title { font-size: 17px; font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: 0.4px; }
-            .subtitle { font-size: 11px; color: #475569; margin-top: 3px; font-weight: 600; }
-            .meta { text-align: right; font-size: 10px; color: #475569; line-height: 1.5; }
-            .filters-bar { display: flex; flex-wrap: wrap; gap: 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 12px; margin-bottom: 14px; font-size: 10px; }
-            .filter-item { font-weight: 600; color: #334155; }
-            .filter-item strong { color: #0f172a; }
-            .section-title { font-size: 11px; font-weight: 800; text-transform: uppercase; color: #1e293b; margin: 12px 0 6px; letter-spacing: 0.5px; border-left: 3px solid #2563eb; padding-left: 7px; }
-            .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; }
-            .kpi-card { border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px 10px; background: #ffffff; }
-            .kpi-label { font-size: 9px; font-weight: 700; text-transform: uppercase; color: #64748b; }
-            .kpi-val { font-size: 15px; font-weight: 800; color: #0f172a; margin-top: 3px; font-family: monospace; }
-            .kpi-sub { font-size: 9px; color: #64748b; margin-top: 2px; }
-            .two-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
-            table { width: 100%; border-collapse: collapse; font-size: 9.5px; }
-            th { background: #f1f5f9; color: #334155; font-weight: 800; text-transform: uppercase; text-align: left; padding: 6px 7px; border-bottom: 1px solid #cbd5e1; font-size: 8.5px; }
-            td { padding: 5px 7px; border-bottom: 1px solid #e2e8f0; color: #1e293b; vertical-align: middle; }
-            tr:nth-child(even) td { background: #f8fafc; }
-            .text-right { text-align: right; }
-            .text-center { text-align: center; }
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+              color: #0f172a;
+              background: #ffffff;
+              padding: 16px 20px;
+              font-size: 11px;
+              line-height: 1.4;
+            }
+            .report-header {
+              border-bottom: 2px solid #0f172a;
+              padding-bottom: 12px;
+              margin-bottom: 14px;
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-end;
+            }
+            .report-title {
+              font-size: 18px;
+              font-weight: 800;
+              color: #0f172a;
+              text-transform: uppercase;
+              letter-spacing: 0.6px;
+            }
+            .report-subtitle {
+              font-size: 11px;
+              color: #475569;
+              margin-top: 3px;
+              font-weight: 600;
+            }
+            .report-emission {
+              text-align: right;
+              font-size: 10px;
+              color: #334155;
+              line-height: 1.5;
+            }
+            .params-grid {
+              display: grid;
+              grid-template-columns: repeat(4, 1fr);
+              gap: 10px;
+              background: #f8fafc;
+              border: 1px solid #cbd5e1;
+              border-radius: 6px;
+              padding: 10px 14px;
+              margin-bottom: 16px;
+            }
+            .param-box {
+              display: flex;
+              flex-direction: column;
+              border-right: 1px solid #e2e8f0;
+              padding-right: 10px;
+            }
+            .param-box:last-child {
+              border-right: none;
+              padding-right: 0;
+            }
+            .param-label {
+              font-size: 8.5px;
+              font-weight: 800;
+              text-transform: uppercase;
+              color: #64748b;
+              letter-spacing: 0.5px;
+              margin-bottom: 2px;
+            }
+            .param-value {
+              font-size: 11px;
+              font-weight: 700;
+              color: #0f172a;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              border: 1px solid #cbd5e1;
+              font-size: 10px;
+            }
+            thead th {
+              background: #1e293b;
+              color: #ffffff;
+              font-weight: 800;
+              text-transform: uppercase;
+              letter-spacing: 0.4px;
+              padding: 8px 10px;
+              border: 1px solid #334155;
+              font-size: 9px;
+              text-align: left;
+              white-space: nowrap;
+            }
+            tbody td {
+              padding: 7px 10px;
+              border: 1px solid #e2e8f0;
+              color: #1e293b;
+              vertical-align: middle;
+            }
+            tbody tr:nth-child(even) td {
+              background: #f8fafc;
+            }
+            tfoot td {
+              background: #f1f5f9;
+              color: #0f172a;
+              font-weight: 800;
+              padding: 8px 10px;
+              border: 1px solid #cbd5e1;
+              font-size: 10.5px;
+            }
+            .text-right { text-align: right !important; }
+            .text-center { text-align: center !important; }
             .font-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
             .font-bold { font-weight: 700; }
-            .badge-danger { color: #dc2626; font-weight: 700; }
-            .badge-warning { color: #d97706; font-weight: 700; }
-            .badge-success { color: #059669; font-weight: 700; }
+            .status-danger { color: #b91c1c; font-weight: 700; }
+            .status-warning { color: #b45309; font-weight: 700; }
+            .status-success { color: #047857; font-weight: 700; }
             @media print {
-              body { padding: 8px; }
-              .no-print { display: none !important; }
+              body { padding: 0; }
+              thead { display: table-header-group; }
+              tfoot { display: table-footer-group; }
+              tr { page-break-inside: avoid; }
             }
           </style>
         </head>
         <body>
-          <div class="header">
+          <div class="report-header">
             <div>
-              <div class="title">Visão Geral da Carteira de Clientes</div>
-              <div class="subtitle">Relatório Analítico de Atividade, Recorrência, Inatividade e Contatos</div>
+              <div class="report-title">Relatório de Carteira de Clientes</div>
+              <div class="report-subtitle">Listagem Comercial de Clientes, Telefones de Contato, Vendedor e Histórico de Compras</div>
             </div>
-            <div class="meta">
-              <div><strong>Emitido em:</strong> ${emissionDate}</div>
-              <div><strong>Total listado:</strong> ${reportClients.length} de ${list.data?.total || reportClients.length} clientes</div>
-            </div>
-          </div>
-
-          <div class="filters-bar">
-            <div class="filter-item"><strong>Vendedor:</strong> ${selectedVendedorNome}</div>
-            <div class="filter-item">•</div>
-            <div class="filter-item"><strong>Cidade:</strong> ${selectedCidade === 'todas' ? 'Todas' : selectedCidade}</div>
-            <div class="filter-item">•</div>
-            <div class="filter-item"><strong>Filtro Inatividade:</strong> ${tempoInativo}</div>
-            <div class="filter-item">•</div>
-            <div class="filter-item"><strong>Ordenação:</strong> ${ordenacao}</div>
-            ${searchDebounced ? `<div class="filter-item">•</div><div class="filter-item"><strong>Busca:</strong> "${searchDebounced}"</div>` : ''}
-          </div>
-
-          <div class="section-title">1. Indicadores da Carteira</div>
-          <div class="kpi-grid">
-            <div class="kpi-card">
-              <div class="kpi-label">Total de Clientes</div>
-              <div class="kpi-val">${formatNum(kpis.total_clientes)}</div>
-              <div class="kpi-sub">Base ativa cadastrada</div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-label">Mês Atual (Com Venda)</div>
-              <div class="kpi-val">${formatNum(kpis.mes_atual)}</div>
-              <div class="kpi-sub">Clientes positivados</div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-label">Mês Anterior</div>
-              <div class="kpi-val">${formatNum(kpis.mes_anterior)}</div>
-              <div class="kpi-sub">Comparativo período anterior</div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-label">Taxa de Retenção</div>
-              <div class="kpi-val">${retencaoPct.toFixed(1)}%</div>
-              <div class="kpi-sub">Meta CS: 28.0%</div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-label">Novos Clientes</div>
-              <div class="kpi-val">${formatNum(kpis.novos_clientes)}</div>
-              <div class="kpi-sub">Novos no período</div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-label">Sem Vendas (Mês Atual)</div>
-              <div class="kpi-val">${formatNum(kpis.sem_vendas_atual)} (${semVendasAtualPct.toFixed(1)}%)</div>
-              <div class="kpi-sub">Sem compras no período</div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-label">Sem Vendas (Mês Anterior)</div>
-              <div class="kpi-val">${formatNum(kpis.sem_vendas_anterior)} (${semVendasAnteriorPct.toFixed(1)}%)</div>
-              <div class="kpi-sub">Inatividade anterior</div>
-            </div>
-            <div class="kpi-card">
-              <div class="kpi-label">Risco de Churn</div>
-              <div class="kpi-val">${churnPct.toFixed(1)}%</div>
-              <div class="kpi-sub">Inativos sobre a base</div>
+            <div class="report-emission">
+              <div><strong>Data de Emissão:</strong> ${emissionDate}</div>
+              <div><strong>Clientes no Relatório:</strong> ${reportClients.length} de ${list.data?.total || reportClients.length} registros</div>
             </div>
           </div>
 
-          <div class="two-cols">
-            <div>
-              <div class="section-title">2. Top 10 Maior Recorrência</div>
-              <table>
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Cliente</th>
-                    <th>Telefone</th>
-                    <th class="text-right">Pedidos</th>
-                    <th class="text-right">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${recorrentes.map((c: any) => `
-                    <tr>
-                      <td class="font-mono font-bold">#${c.rank}</td>
-                      <td>
-                        <div class="font-bold">${c.name || '—'}</div>
-                        <div style="font-size:8px;color:#64748b;">Última: ${c.ultimo_pedido ? new Date(c.ultimo_pedido).toLocaleDateString('pt-BR') : '—'}</div>
-                      </td>
-                      <td class="font-mono">${parsePhone(c.telefone).display}</td>
-                      <td class="text-right font-mono font-bold">${c.pedidos}</td>
-                      <td class="text-right font-mono font-bold">${formatBRL(c.total_gasto || 0)}</td>
-                    </tr>
-                  `).join('') || '<tr><td colspan="5" class="text-center">Sem registros</td></tr>'}
-                </tbody>
-              </table>
+          <div class="params-grid">
+            <div class="param-box">
+              <span class="param-label">Período Selecionado</span>
+              <span class="param-value">${periodoSelecionado}</span>
             </div>
-
-            <div>
-              <div class="section-title">3. Top 10 Menos Recorrência (Alerta)</div>
-              <table>
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Cliente</th>
-                    <th>Telefone</th>
-                    <th class="text-right">Pedidos</th>
-                    <th class="text-right">Inativo</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${churn.map((c: any) => `
-                    <tr>
-                      <td class="font-mono font-bold badge-danger">#${c.rank}</td>
-                      <td>
-                        <div class="font-bold">${c.name || '—'}</div>
-                        <div style="font-size:8px;color:#64748b;">Última: ${c.ultimo_pedido ? new Date(c.ultimo_pedido).toLocaleDateString('pt-BR') : '—'}</div>
-                      </td>
-                      <td class="font-mono">${parsePhone(c.telefone).display}</td>
-                      <td class="text-right font-mono">${c.pedidos}</td>
-                      <td class="text-right font-mono badge-danger">${c.dias_inativo} dias</td>
-                    </tr>
-                  `).join('') || '<tr><td colspan="5" class="text-center">Sem registros</td></tr>'}
-                </tbody>
-              </table>
+            <div class="param-box">
+              <span class="param-label">Vendedor</span>
+              <span class="param-value">${selectedVendedorNome}</span>
+            </div>
+            <div class="param-box">
+              <span class="param-label">Cidade</span>
+              <span class="param-value">${selectedCidade === 'todas' ? 'Todas as Cidades' : selectedCidade}</span>
+            </div>
+            <div class="param-box">
+              <span class="param-label">Filtro de Inatividade / Ordem</span>
+              <span class="param-value">${tempoInativo} • ${ordenacao}${searchDebounced ? ` • Busca: "${searchDebounced}"` : ''}</span>
             </div>
           </div>
 
-          <div class="section-title">4. Listagem Geral de Clientes da Carteira (${reportClients.length} registros)</div>
           <table>
             <thead>
               <tr>
-                <th>Cliente / Razão Social</th>
-                <th>CNPJ / CPF</th>
-                <th>Telefone</th>
-                <th>Cidade / UF</th>
-                <th>Vendedor Resp.</th>
-                <th class="text-right">Pedidos</th>
-                <th class="text-right">Total Comprado</th>
-                <th>Última Compra</th>
-                <th class="text-right">Inatividade</th>
+                <th class="text-center" style="width: 38px;">#</th>
+                <th style="width: 65px;">Cód.</th>
+                <th>Nome do Cliente</th>
+                <th style="width: 125px;">Telefone</th>
+                <th style="width: 140px;">Cidade / UF</th>
+                <th style="width: 155px;">Vendedor</th>
+                <th class="text-right" style="width: 75px;">Pedidos</th>
+                <th class="text-right" style="width: 115px;">Valor Total</th>
+                <th class="text-center" style="width: 95px;">Última Compra</th>
+                <th class="text-right" style="width: 95px;">Inatividade</th>
               </tr>
             </thead>
             <tbody>
-              ${reportClients.map((c: any) => {
+              ${reportClients.map((c: any, idx: number) => {
                 const phone = parsePhone(c.telefone).display;
                 const diasStr = c.dias_inativo === 999 ? 'Sem Compras' : `${c.dias_inativo} dias`;
-                const badgeClass = c.dias_inativo > 90 ? 'badge-danger' : c.dias_inativo > 30 ? 'badge-warning' : 'badge-success';
+                const statusClass = c.dias_inativo > 90 ? 'status-danger' : c.dias_inativo > 30 ? 'status-warning' : 'status-success';
                 return `
                   <tr>
+                    <td class="text-center font-mono">${idx + 1}</td>
+                    <td class="font-mono font-bold">${c.id || '—'}</td>
                     <td class="font-bold">${c.nome || '—'}</td>
-                    <td class="font-mono">${c.documento || '—'}</td>
                     <td class="font-mono font-bold">${phone}</td>
-                    <td>${c.cidade ? `${c.cidade}/${c.estado || ''}` : '—'}</td>
+                    <td>${c.cidade ? `${c.cidade}${c.estado ? ` / ${c.estado}` : ''}` : '—'}</td>
                     <td>${c.vendedor_resp || '—'}</td>
                     <td class="text-right font-mono font-bold">${formatNum(c.qtd_pedidos || 0)}</td>
                     <td class="text-right font-mono font-bold">${formatBRL(c.total_gasto || 0)}</td>
-                    <td class="font-mono">${c.ultimo_pedido ? new Date(c.ultimo_pedido).toLocaleDateString('pt-BR') : '—'}</td>
-                    <td class="text-right font-mono ${badgeClass}">${diasStr}</td>
+                    <td class="text-center font-mono">${c.ultimo_pedido ? new Date(c.ultimo_pedido).toLocaleDateString('pt-BR') : '—'}</td>
+                    <td class="text-right font-mono ${statusClass}">${diasStr}</td>
                   </tr>
                 `;
-              }).join('')}
+              }).join('') || '<tr><td colspan="10" class="text-center">Nenhum cliente encontrado para os filtros informados.</td></tr>'}
             </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="6">TOTAL GERAL (${reportClients.length} clientes listados)</td>
+                <td class="text-right font-mono">${formatNum(totalPedidosRelatorio)}</td>
+                <td class="text-right font-mono">${formatBRL(valorTotalRelatorio)}</td>
+                <td colspan="2"></td>
+              </tr>
+            </tfoot>
           </table>
         </body>
         </html>
@@ -426,64 +463,10 @@ export default function CustomerAnalyticsDashboard() {
     }
   };
 
-  // Monta texto estruturado para envio por e-mail / cópia
-  const buildEmailReportText = () => {
-    const clients = list.data?.data || [];
-    const recorrentes = analytics.data?.recorrentes || [];
-    const churn = analytics.data?.churn || [];
-
-    const lines: string[] = [
-      `RELATÓRIO - VISÃO GERAL DA CARTEIRA DE CLIENTES`,
-      `Emitido em: ${new Date().toLocaleString('pt-BR')}`,
-      `Vendedor: ${selectedVendedorNome} | Cidade: ${selectedCidade === 'todas' ? 'Todas' : selectedCidade} | Filtro: ${tempoInativo}`,
-      `------------------------------------------------------------`,
-      `RESUMO DE INDICADORES:`,
-      `• Total de Clientes: ${formatNum(kpis.total_clientes)}`,
-      `• Clientes Ativos (Mês Atual): ${formatNum(kpis.mes_atual)}`,
-      `• Clientes Ativos (Mês Anterior): ${formatNum(kpis.mes_anterior)}`,
-      `• Taxa de Retenção: ${retencaoPct.toFixed(1)}%`,
-      `• Novos Clientes: ${formatNum(kpis.novos_clientes)}`,
-      `• Sem Vendas (Mês Atual): ${formatNum(kpis.sem_vendas_atual)} (${semVendasAtualPct.toFixed(1)}%)`,
-      `• Risco de Churn: ${churnPct.toFixed(1)}%`,
-      ``,
-      `TOP CLIENTES COM MAIOR RECORRÊNCIA:`,
-      ...recorrentes.slice(0, 10).map((c: any) =>
-        `  #${c.rank} ${c.name} | Tel: ${parsePhone(c.telefone).display} | ${c.pedidos} ped. | ${formatBRL(c.total_gasto || 0)}`
-      ),
-      ``,
-      `CLIENTES COM MENOS RECORRÊNCIA (ALERTA INATIVIDADE):`,
-      ...churn.slice(0, 10).map((c: any) =>
-        `  #${c.rank} ${c.name} | Tel: ${parsePhone(c.telefone).display} | ${c.dias_inativo} dias sem comprar | Última: ${c.ultimo_pedido ? new Date(c.ultimo_pedido).toLocaleDateString('pt-BR') : '—'}`
-      ),
-      ``,
-      `LISTAGEM DA CARTEIRA DE CLIENTES (COM TELEFONE):`,
-      ...clients.map((c: any) =>
-        `• ${c.nome} (${c.documento || 'S/ DOC'}) | Tel: ${parsePhone(c.telefone).display} | Cidade: ${c.cidade ? `${c.cidade}/${c.estado || ''}` : '—'} | Vend: ${c.vendedor_resp || '—'} | Pedidos: ${c.qtd_pedidos} | Total: ${formatBRL(c.total_gasto || 0)} | Inativo: ${c.dias_inativo === 999 ? 'Sem Compras' : `${c.dias_inativo} dias`}`
-      )
-    ];
-    return lines.join('\n');
-  };
-
-  const handleSendMailto = () => {
-    const body = buildEmailReportText();
-    const mailtoUrl = `mailto:${encodeURIComponent(emailTo.trim())}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(body.slice(0, 1800))}`;
-    window.location.href = mailtoUrl;
-  };
-
-  const handleCopyReport = async () => {
-    try {
-      await navigator.clipboard.writeText(buildEmailReportText());
-      setCopiedReport(true);
-      setTimeout(() => setCopiedReport(false), 2500);
-    } catch {
-      // Fallback
-    }
-  };
-
   return (
     <div aria-label="Análise de Clientes Dashboard" className="space-y-4 animate-in fade-in duration-300 min-w-0">
       
-      {/* BARRA ÚNICA COMPACTA DE FILTROS (PERÍODO + VENDEDOR + CIDADE + AÇÕES DE RELATÓRIO) */}
+      {/* BARRA ÚNICA COMPACTA DE FILTROS (PERÍODO + VENDEDOR + CIDADE + GERAR PDF) */}
       <div className="bi-filter-bar">
         <PeriodFilter />
 
@@ -532,26 +515,15 @@ export default function CustomerAnalyticsDashboard() {
             onClick={handleGeneratePdf}
             disabled={isGeneratingPdf}
             className="h-8 px-3 bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white rounded-lg text-xs font-bold inline-flex items-center gap-1.5 transition-all shadow-xs cursor-pointer whitespace-nowrap"
-            title="Gerar relatório completo da carteira em PDF com telefones"
+            title="Gerar relatório de clientes em PDF"
           >
             <Printer size={13} />
             <span>{isGeneratingPdf ? 'Gerando PDF...' : 'Gerar PDF'}</span>
           </button>
-
-          {/* Botão Enviar por E-mail */}
-          <button
-            type="button"
-            onClick={() => setIsEmailModalOpen(true)}
-            className="h-8 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold inline-flex items-center gap-1.5 transition-all shadow-xs cursor-pointer whitespace-nowrap"
-            title="Enviar relatório da carteira por e-mail"
-          >
-            <Mail size={13} />
-            <span>Enviar por E-mail</span>
-          </button>
         </div>
       </div>
 
-      {isLoading ? (
+      {isLoading && !analytics.data ? (
         <div className="flex flex-col items-center justify-center h-80 text-text-secondary">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-500 mr-3 mb-2"></div>
           <span className="text-xs font-extrabold uppercase tracking-widest text-text-secondary">Carregando painel de clientes...</span>
@@ -831,7 +803,7 @@ export default function CustomerAnalyticsDashboard() {
                   Listagem Geral de Clientes
                 </h3>
                 <p className="text-[10px] text-text-secondary font-bold mt-0.5">
-                  Todos os clientes ativos com filtro por vendedor, inatividade, telefone e exportação em PDF / E-mail.
+                  Todos os clientes ativos com filtro por vendedor, inatividade, telefone e exportação de relatório em PDF.
                 </p>
               </div>
 
@@ -844,14 +816,6 @@ export default function CustomerAnalyticsDashboard() {
                 >
                   <Download size={13} />
                   <span>{isGeneratingPdf ? 'Gerando PDF...' : 'Gerar PDF'}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsEmailModalOpen(true)}
-                  className="h-8 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold inline-flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
-                >
-                  <Mail size={13} />
-                  <span>Enviar por E-mail</span>
                 </button>
               </div>
             </div>
@@ -930,7 +894,7 @@ export default function CustomerAnalyticsDashboard() {
             </div>
 
             {/* TABELA DE DADOS */}
-            {list.isLoading ? (
+            {list.isLoading && !list.data ? (
               <div className="flex flex-col items-center justify-center py-12 text-text-secondary">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-brand-500 mr-3 mb-2"></div>
                 <span className="text-[10px] font-extrabold uppercase tracking-widest text-text-secondary">Buscando listagem...</span>
@@ -1082,115 +1046,6 @@ export default function CustomerAnalyticsDashboard() {
 
           </div>
         </>
-      )}
-
-      {/* MODAL DE ENVIO DE RELATÓRIO POR E-MAIL */}
-      {isEmailModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-bg-primary border border-divider shadow-2xl rounded-2xl w-full max-w-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
-            <div className="px-5 py-3.5 border-b border-divider flex items-center justify-between bg-bg-secondary/40">
-              <div className="flex items-center gap-2">
-                <Mail size={17} className="text-emerald-500" />
-                <h3 className="text-sm font-extrabold text-text-primary uppercase tracking-wider">
-                  Enviar Relatório da Carteira por E-mail
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsEmailModalOpen(false)}
-                className="p-1 text-text-secondary hover:text-text-primary rounded-lg cursor-pointer"
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            <div className="p-5 space-y-4 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[10px] font-bold text-text-secondary uppercase mb-1">
-                    E-mail do Destinatário
-                  </label>
-                  <input
-                    type="email"
-                    placeholder="exemplo@empresa.com.br"
-                    value={emailTo}
-                    onChange={(e) => setEmailTo(e.target.value)}
-                    className="w-full h-9 px-3 bg-bg-secondary border border-divider rounded-lg text-xs font-semibold text-text-primary outline-none focus:ring-2 focus:ring-brand-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-text-secondary uppercase mb-1">
-                    Assunto
-                  </label>
-                  <input
-                    type="text"
-                    value={emailSubject}
-                    onChange={(e) => setEmailSubject(e.target.value)}
-                    className="w-full h-9 px-3 bg-bg-secondary border border-divider rounded-lg text-xs font-semibold text-text-primary outline-none focus:ring-2 focus:ring-brand-500"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-[10px] font-bold text-text-secondary uppercase">
-                    Prévia do Conteúdo (Com Indicadores, Rankings e Telefones)
-                  </label>
-                  <span className="text-[10px] font-bold text-brand-500">
-                    Vendedor: {selectedVendedorNome}
-                  </span>
-                </div>
-                <textarea
-                  readOnly
-                  rows={11}
-                  value={buildEmailReportText()}
-                  className="w-full p-3 bg-bg-secondary/60 border border-divider rounded-xl font-mono text-[10.5px] text-text-primary outline-none resize-y"
-                />
-              </div>
-
-              <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-divider">
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handleGeneratePdf}
-                    disabled={isGeneratingPdf}
-                    className="h-9 px-3.5 bg-brand-500 hover:bg-brand-600 text-white rounded-lg text-xs font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer"
-                  >
-                    <Printer size={14} />
-                    <span>{isGeneratingPdf ? 'Gerando PDF...' : 'Baixar / Imprimir PDF'}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleCopyReport}
-                    className="h-9 px-3.5 bg-bg-secondary hover:bg-bg-tertiary border border-divider text-text-primary rounded-lg text-xs font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer"
-                  >
-                    {copiedReport ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
-                    <span>{copiedReport ? 'Copiado!' : 'Copiar Texto Completo'}</span>
-                  </button>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsEmailModalOpen(false)}
-                    className="h-9 px-3 text-text-secondary hover:text-text-primary font-bold text-xs cursor-pointer"
-                  >
-                    Fechar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSendMailto}
-                    className="h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold inline-flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
-                  >
-                    <Mail size={14} />
-                    <span>Abrir no Cliente de E-mail</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
       )}
 
     </div>
